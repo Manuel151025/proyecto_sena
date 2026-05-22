@@ -13,16 +13,17 @@ if (isAuthenticated()) {
 }
 
 $loginError = null;
+$loginSuccess = null;
 $isBlocked = false;
 
-// Comprobar bloqueo
-if (isset($_SESSION['login_blocked_until']) && $_SESSION['login_blocked_until'] > time()) {
-    $isBlocked = true;
-} elseif (isset($_SESSION['login_blocked_until']) && $_SESSION['login_blocked_until'] <= time()) {
-    // Desbloquear si el tiempo pasó
-    unset($_SESSION['login_blocked_until']);
-    $_SESSION['login_attempts'] = 0;
+// Mensaje flash de éxito (ej. desde recover.php después de cambiar contraseña)
+if (isset($_SESSION['_flash_success'])) {
+    $loginSuccess = $_SESSION['_flash_success'];
+    unset($_SESSION['_flash_success']);
 }
+
+// Comprobar bloqueo (Eliminado por petición del usuario)
+// $isBlocked siempre será false.
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     $email = $_POST['email'] ?? '';
@@ -38,15 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     } else {
         // Error de login
         $loginError = "Credenciales incorrectas.";
-        if (!isset($_SESSION['login_attempts'])) {
-            $_SESSION['login_attempts'] = 0;
-        }
-        $_SESSION['login_attempts']++;
-
-        if ($_SESSION['login_attempts'] >= 3) {
-            $_SESSION['login_blocked_until'] = time() + (15 * 60); // 15 minutos
-            $isBlocked = true;
-        }
     }
 }
 ?>
@@ -66,6 +58,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/theme.css">
 </head>
 <body>
+<script>
+(function () {
+  var t = sessionStorage.getItem('sena_tab_id');
+  if (!t) {
+    t = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 6);
+    sessionStorage.setItem('sena_tab_id', t);
+  }
+  window.__tabId = t;
+  document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
+  document.addEventListener('submit', function (e) {
+    document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
+    if (!e.target.querySelector('input[name="_tab"]')) {
+      var inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = '_tab'; inp.value = t;
+      e.target.appendChild(inp);
+    }
+  }, true);
+})();
+</script>
 <div class="auth-shell">
   <div class="auth-brand">
     <div class="brand-content">
@@ -89,12 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
         <p class="subtitle">Ingresa con tu correo institucional para continuar.</p>
       </div>
       
-      <?php if ($isBlocked): ?>
-          <div class="alert-flat warning mb-3">
-            <i class="bi bi-exclamation-triangle"></i>
-            <div>Cuenta bloqueada temporalmente por demasiados intentos fallidos. Intenta de nuevo en 15 minutos.</div>
+      <?php if ($loginSuccess): ?>
+          <div class="alert-flat success mb-3">
+            <i class="bi bi-check-circle"></i>
+            <div><?= htmlspecialchars($loginSuccess) ?></div>
           </div>
-      <?php elseif ($loginError): ?>
+      <?php endif; ?>
+
+      <?php if ($loginError): ?>
           <div class="alert-flat danger mb-3">
             <i class="bi bi-exclamation-circle"></i>
             <div><?= htmlspecialchars($loginError) ?></div>

@@ -32,6 +32,7 @@ class Database {
                     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Según corrección
                     PDO::ATTR_EMULATE_PREPARES   => false,
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
                 ]);
             } catch (PDOException $e) {
                 // Se detiene la ejecución para evitar exponer vulnerabilidades o rutas
