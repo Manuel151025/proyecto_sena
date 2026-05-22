@@ -1,0 +1,292 @@
+/* ===================================================================
+ * SEARCHABLE PICKER — estilos
+ * ===================================================================
+ * Componente reutilizable que convierte cualquier <select> en un
+ * selector con modal de búsqueda en vivo.
+ *
+ * Uso en HTML:
+ *   <select name="aprendiz_id" data-picker
+ *           data-picker-label="Buscar aprendiz"
+ *           data-picker-placeholder="Nombre, documento o ficha...">
+ *     <option value="">Selecciona...</option>
+ *     <option value="42" data-search="123456 ficha-2691234">Juan Pérez — CC 123456 — Ficha #2691234</option>
+ *     ...
+ *   </select>
+ * =================================================================== */
+
+/* Input visible que reemplaza al select */
+.sp-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-image: none;
+    border: 1px solid #ced4da;
+    border-radius: .375rem;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    text-align: left;
+}
+
+.sp-trigger:hover {
+    border-color: #adb5bd;
+}
+
+.sp-trigger:focus,
+.sp-trigger.is-open {
+    outline: 0;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25);
+}
+
+.sp-trigger.is-empty .sp-trigger-text {
+    color: #6c757d;
+}
+
+.sp-trigger-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sp-trigger-icons {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-shrink: 0;
+    margin-left: .5rem;
+}
+
+.sp-trigger-clear {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: #6c757d;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+}
+
+.sp-trigger-clear:hover {
+    color: #dc3545;
+}
+
+.sp-trigger.has-value .sp-trigger-clear {
+    display: inline-block;
+}
+
+.sp-trigger-arrow {
+    color: #6c757d;
+    line-height: 1;
+    font-size: .75rem;
+}
+
+/* Modal — z-index 1090 para quedar por encima de Bootstrap modal (1055)
+ * Cuando el picker se monta dentro de un modal de Bootstrap (necesario para
+ * heredar su focus trap), este z-index hace que el picker visualmente se
+ * superponga al modal padre. */
+.sp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 4rem 1rem 1rem;
+    background: rgba(15, 23, 42, .55);
+    backdrop-filter: blur(2px);
+    animation: sp-fade-in .15s ease-out;
+}
+
+.sp-modal.is-open {
+    display: flex;
+}
+
+@keyframes sp-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.sp-dialog {
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100vh - 6rem);
+    background: #fff;
+    border-radius: .75rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: sp-pop-in .2s ease-out;
+}
+
+@keyframes sp-pop-in {
+    from { transform: translateY(-10px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+.sp-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.sp-header h6 {
+    margin: 0;
+    font-weight: 600;
+    font-size: .9rem;
+    color: #1f2937;
+}
+
+.sp-close {
+    background: transparent;
+    border: 0;
+    color: #6b7280;
+    line-height: 1;
+    cursor: pointer;
+    padding: .25rem;
+    border-radius: .25rem;
+}
+
+.sp-close:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.sp-search-wrap {
+    padding: .75rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    position: relative;
+}
+
+.sp-search-icon {
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.sp-search-input {
+    width: 100%;
+    padding: .5rem .75rem .5rem 2.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: .375rem;
+    font-size: .9rem;
+    outline: none;
+    transition: border-color .15s;
+}
+
+.sp-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+}
+
+.sp-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 50vh;
+    padding: .25rem 0;
+}
+
+.sp-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .625rem 1.25rem;
+    cursor: pointer;
+    transition: background .1s;
+    font-size: .9rem;
+    color: #1f2937;
+    border: 0;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+}
+
+.sp-item:hover,
+.sp-item.is-focused {
+    background: #f3f4f6;
+}
+
+.sp-item.is-selected {
+    background: rgba(59, 130, 246, .08);
+    font-weight: 500;
+}
+
+.sp-item.is-selected::after {
+    content: "\F26B"; /* bi-check2 */
+    font-family: "bootstrap-icons";
+    margin-left: auto;
+    color: #3b82f6;
+    font-size: 1.1rem;
+}
+
+.sp-item-main {
+    flex: 1;
+    overflow: hidden;
+}
+
+.sp-item-title {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sp-item-meta {
+    font-size: .75rem;
+    color: #6b7280;
+    margin-top: .125rem;
+}
+
+.sp-item mark {
+    background: rgba(250, 204, 21, .35);
+    padding: 0;
+    color: inherit;
+    font-weight: 600;
+}
+
+.sp-empty {
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+    color: #6b7280;
+    font-size: .9rem;
+}
+
+.sp-empty i {
+    display: block;
+    font-size: 2rem;
+    opacity: .35;
+    margin-bottom: .5rem;
+}
+
+.sp-footer {
+    padding: .5rem 1.25rem;
+    border-top: 1px solid #e5e7eb;
+    font-size: .75rem;
+    color: #6b7280;
+    display: flex;
+    justify-content: space-between;
+    background: #fafafa;
+}
+
+.sp-footer kbd {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: .25rem;
+    padding: 0 .375rem;
+    font-size: .7rem;
+    color: #374151;
+    box-shadow: 0 1px 0 #d1d5db;
+}

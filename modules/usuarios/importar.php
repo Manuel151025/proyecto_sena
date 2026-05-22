@@ -17,4 +17,4 @@ requireRole(ROL_COORDINADOR);
 
 // Inicializamos y delegamos el control al UsuarioController
 $controller = new UsuarioController();
-$controller->create();
+$controller->import();

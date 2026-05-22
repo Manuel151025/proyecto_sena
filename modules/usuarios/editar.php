@@ -15,6 +15,12 @@ use Core\Controllers\UsuarioController;
 // Restringir el acceso según el rol
 requireRole(ROL_COORDINADOR);
 
+$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+if ($id <= 0) {
+    header('Location: ' . APP_URL . '/modules/usuarios/');
+    exit;
+}
+
 // Inicializamos y delegamos el control al UsuarioController
 $controller = new UsuarioController();
-$controller->create();
+$controller->edit($id);

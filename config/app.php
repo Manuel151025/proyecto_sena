@@ -18,3 +18,7 @@ define('UPLOADS_PATH', BASE_PATH . 'uploads/');
 define('ROL_COORDINADOR', 'coordinador');
 define('ROL_INSTRUCTOR', 'instructor');
 define('ROL_APRENDIZ', 'aprendiz');
+
+// Modo desarrollo: muestra el enlace de recuperación en pantalla.
+// Cambiar a false antes de desplegar en producción.
+define('DEV_MODE', true);

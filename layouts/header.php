@@ -17,5 +17,38 @@ declare(strict_types=1);
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Theme CSS -->
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/theme.css">
+    <!-- Searchable picker -->
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/picker.css">
 </head>
 <body>
+<script>
+(function () {
+  // Recuperar o generar el ID de pestaña persistido en sessionStorage
+  // (sessionStorage es exclusivo de cada pestaña, a diferencia de localStorage)
+  var t = sessionStorage.getItem('sena_tab_id');
+  if (!t) {
+    t = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 6);
+    sessionStorage.setItem('sena_tab_id', t);
+  }
+  window.__tabId = t;
+
+  // Establecer la cookie inmediatamente (cubre recargas y navegaciones directas)
+  document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
+
+  // JIT antes de cualquier clic en enlace
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[href]');
+    if (a) document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
+  }, true);
+
+  // JIT antes de cualquier envío de formulario + inyectar _tab como hidden
+  document.addEventListener('submit', function (e) {
+    document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
+    if (!e.target.querySelector('input[name="_tab"]')) {
+      var inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = '_tab'; inp.value = t;
+      e.target.appendChild(inp);
+    }
+  }, true);
+})();
+</script>

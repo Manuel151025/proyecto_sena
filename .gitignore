@@ -1,0 +1,51 @@
+# === Configuración sensible ===
+config/database.php
+.env
+.env.*
+!.env.example
+
+# === Logs ===
+logs/*.log
+logs/*.txt
+!logs/.htaccess
+
+# === Archivos subidos por usuarios ===
+uploads/
+assets/uploads/
+
+# === Caché y temporales ===
+cache/
+tmp/
+temp/
+*.tmp
+*.cache
+
+# === Dependencias (si se agregan en el futuro) ===
+vendor/
+node_modules/
+
+# === IDE y editores ===
+.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# === Sistema operativo ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === PHP ===
+*.log
+error_log
+
+# === Base de datos local (no subir dumps personales) ===
+*.sql
+!sena_seguimiento.sql
+
+# === install.php (peligroso en producción) ===
+install.php
+
+# === Otros archivos sensibles o temporales ===
+.vscode/
+settings.json
