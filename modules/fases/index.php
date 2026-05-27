@@ -269,9 +269,9 @@ if (!isset($app_included)) {
               <button class="btn btn-sm btn-soft flex-grow-1"
                 onclick="abrirModalEditarFase(
                   <?= $fase['id'] ?>, <?= $fase['numero_fase'] ?>,
-                  <?= json_encode($fase['nombre']) ?>, <?= json_encode($fase['descripcion'] ?? '') ?>,
-                  <?= json_encode($fase['fecha_inicio'] ?? '') ?>, <?= json_encode($fase['fecha_fin'] ?? '') ?>,
-                  <?= (float)$fase['cumplimiento_porcentaje'] ?>, <?= json_encode($fase['estado']) ?>)">
+                  <?= htmlspecialchars(json_encode($fase['nombre']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($fase['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
+                  <?= htmlspecialchars(json_encode($fase['fecha_inicio'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($fase['fecha_fin'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
+                  <?= (float)$fase['cumplimiento_porcentaje'] ?>, <?= htmlspecialchars(json_encode($fase['estado']), ENT_QUOTES, 'UTF-8') ?>)">
                 <i class="bi bi-pencil me-1"></i>Editar
               </button>
               <form method="POST" class="d-inline"

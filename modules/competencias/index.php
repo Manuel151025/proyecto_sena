@@ -272,11 +272,11 @@ if (!isset($app_included)) {
             </td>
             <td class="pe-4 text-end">
               <?php if (hasRole(ROL_COORDINADOR)): ?>
-              <button class="btn btn-sm btn-soft" onclick="abrirModalEditar(
+               <button class="btn btn-sm btn-soft" onclick="abrirModalEditar(
                   <?= $comp['id'] ?>, <?= $comp['programa_id'] ?>,
-                  <?= json_encode($comp['codigo']) ?>, <?= json_encode($comp['nombre']) ?>,
-                  <?= json_encode($comp['descripcion'] ?? '') ?>, <?= $comp['horas'] ?>,
-                  <?= json_encode($comp['estado']) ?>)">
+                  <?= htmlspecialchars(json_encode($comp['codigo']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($comp['nombre']), ENT_QUOTES, 'UTF-8') ?>,
+                  <?= htmlspecialchars(json_encode($comp['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= $comp['horas'] ?>,
+                  <?= htmlspecialchars(json_encode($comp['estado']), ENT_QUOTES, 'UTF-8') ?>)">
                 <i class="bi bi-pencil"></i>
               </button>
               <form method="POST" class="d-inline"

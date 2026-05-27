@@ -616,8 +616,8 @@ if (!isset($app_included)) {
                 </button>
 
 
-                <button class="btn btn-sm btn-soft text-danger"
-                        onclick="eliminarMatricula(<?= $ap['id'] ?>, <?= json_encode($ap['nombre']) ?>)"
+                 <button class="btn btn-sm btn-soft text-danger"
+                        onclick="eliminarMatricula(<?= $ap['id'] ?>, <?= htmlspecialchars(json_encode($ap['nombre']), ENT_QUOTES, 'UTF-8') ?>)"
                         title="Eliminar Matrícula">
                   <i class="bi bi-trash"></i>
                 </button>
