@@ -42,7 +42,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt->execute([$id]);
             $success = 'Proyecto eliminado correctamente.';
         } catch (Exception $e) {
-            $errors[] = 'Error al eliminar: ' . $e->getMessage();
+            $errors[] = 'No se puede eliminar: el proyecto tiene fichas o fases asociadas.';
+        }
+    }
+    if ($_POST['action'] === 'editar' && $user_rol === ROL_COORDINADOR) {
+        try {
+            $id          = (int)($_POST['id'] ?? 0);
+            $nombre      = trim($_POST['nombre'] ?? '');
+            $codigo      = trim($_POST['codigo'] ?? '');
+            $objetivo    = trim($_POST['objetivo'] ?? '');
+            $descripcion = trim($_POST['descripcion'] ?? '');
+            $estado      = $_POST['estado'] ?? 'activo';
+
+            if (empty($nombre) || empty($codigo)) {
+                throw new Exception('El nombre y código son obligatorios.');
+            }
+            $stmt = $db->prepare("
+                UPDATE proyectos SET nombre=?, codigo=?, objetivo=?, descripcion=?, estado=?
+                WHERE id=?
+            ");
+            $stmt->execute([$nombre, $codigo, $objetivo, $descripcion, $estado, $id]);
+            $success = 'Proyecto actualizado correctamente.';
+        } catch (Exception $e) {
+            $errors[] = 'Error: ' . $e->getMessage();
         }
     }
 }
@@ -137,10 +159,20 @@ if (!isset($app_included)) {
               <i class="bi bi-list-task me-1"></i>Ver Fases
             </a>
             <?php if ($user_rol === ROL_COORDINADOR): ?>
+            <button class="btn btn-soft px-3" style="border-radius: 8px;"
+              onclick="abrirModalEditarProyecto(
+                <?= $proj['id'] ?>, <?= json_encode($proj['nombre']) ?>,
+                <?= json_encode($proj['codigo']) ?>, <?= json_encode($proj['objetivo'] ?? '') ?>,
+                <?= json_encode($proj['descripcion'] ?? '') ?>, <?= json_encode($proj['estado']) ?>)">
+              <i class="bi bi-pencil"></i>
+            </button>
             <form method="POST" style="display:inline;">
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="id" value="<?= $proj['id'] ?>">
-              <button type="submit" class="btn btn-soft text-danger px-3" style="border-radius: 8px;" onclick="return confirm('¿Eliminar este proyecto?')"><i class="bi bi-trash"></i></button>
+              <button type="submit" class="btn btn-soft text-danger px-3" style="border-radius: 8px;"
+                onclick="return confirm('¿Eliminar el proyecto <?= htmlspecialchars(addslashes($proj['nombre'])) ?>?')">
+                <i class="bi bi-trash"></i>
+              </button>
             </form>
             <?php endif; ?>
           </div>
@@ -156,6 +188,65 @@ if (!isset($app_included)) {
     </div>
   <?php endif; ?>
 </div>
+
+<!-- Modal Editar Proyecto -->
+<?php if ($user_rol === ROL_COORDINADOR): ?>
+<div class="modal fade" id="modalEditar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
+      <form method="POST">
+        <input type="hidden" name="action" value="editar">
+        <input type="hidden" name="id" id="edit_id">
+        <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
+          <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar Proyecto Formativo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre del Proyecto <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" id="edit_nombre" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+            <input type="text" name="codigo" id="edit_codigo" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Objetivo</label>
+            <textarea name="objetivo" id="edit_objetivo" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea name="descripcion" id="edit_descripcion" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="mb-0">
+            <label class="form-label fw-semibold">Estado</label>
+            <select name="estado" id="edit_estado" class="form-select">
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+              <option value="finalizado">Finalizado</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-0 px-4 pb-4">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function abrirModalEditarProyecto(id, nombre, codigo, objetivo, descripcion, estado) {
+    document.getElementById('edit_id').value          = id;
+    document.getElementById('edit_nombre').value      = nombre;
+    document.getElementById('edit_codigo').value      = codigo;
+    document.getElementById('edit_objetivo').value    = objetivo;
+    document.getElementById('edit_descripcion').value = descripcion;
+    document.getElementById('edit_estado').value      = estado;
+    new bootstrap.Modal(document.getElementById('modalEditar')).show();
+}
+</script>
+<?php endif; ?>
 
 <!-- Modal Crear Proyecto -->
 <?php if ($user_rol === ROL_COORDINADOR): ?>

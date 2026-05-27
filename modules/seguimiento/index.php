@@ -33,25 +33,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
         $concepto_map  = ['aprobado' => 'A', 'en_proceso' => 'D', 'no_aplica' => 'pendiente'];
         $concepto      = $concepto_map[$concepto_form] ?? 'pendiente';
         $comentario    = trim($_POST['comentario'] ?? '');
+        $motivo        = trim($_POST['motivo'] ?? '');
 
         if ($ra_id <= 0 || $aprendiz_id_p <= 0 || $ficha_id_p <= 0) {
             $errors[] = 'Datos de evaluación incompletos.';
         } else {
             try {
+                // Obtener concepto anterior
                 $stmt = $db->prepare("
-                    SELECT id FROM evaluaciones
+                    SELECT id, concepto FROM evaluaciones
                     WHERE resultado_aprendizaje_id = ? AND aprendiz_id = ? AND ficha_id = ?
                 ");
                 $stmt->execute([$ra_id, $aprendiz_id_p, $ficha_id_p]);
-                $eval_id = $stmt->fetchColumn();
+                $eval_row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($eval_id) {
-                    $stmt = $db->prepare("
-                        UPDATE evaluaciones
-                        SET concepto = ?, comentario = ?, instructor_id = ?, fecha_evaluacion = ?
-                        WHERE id = ?
-                    ");
-                    $stmt->execute([$concepto, $comentario, $user_id, date('Y-m-d'), $eval_id]);
+                if ($eval_row) {
+                    $eval_id = (int)$eval_row['id'];
+                    $conceptoAnterior = $eval_row['concepto'];
+
+                    if ($conceptoAnterior !== $concepto) {
+                        // Exigir motivo si cambia de una calificación ya dada (A o D)
+                        if (in_array($conceptoAnterior, ['A', 'D']) && empty($motivo)) {
+                            throw new Exception('El motivo del cambio de calificación es requerido.');
+                        }
+
+                        $stmt = $db->prepare("
+                            UPDATE evaluaciones
+                            SET concepto = ?, comentario = ?, instructor_id = ?, fecha_evaluacion = ?, fecha_actualizacion = NOW()
+                            WHERE id = ?
+                        ");
+                        $stmt->execute([$concepto, $comentario, $user_id, date('Y-m-d'), $eval_id]);
+
+                        // Registrar en historial
+                        $stmtHist = $db->prepare("
+                            INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo)
+                            VALUES (?, ?, ?, ?, ?)
+                        ");
+                        $stmtHist->execute([$eval_id, $user_id, $conceptoAnterior, $concepto, $motivo ?: 'Calificación inicial']);
+                    } else {
+                        // Solo actualizar comentario
+                        $stmt = $db->prepare("
+                            UPDATE evaluaciones
+                            SET comentario = ?, instructor_id = ?, fecha_actualizacion = NOW()
+                            WHERE id = ?
+                        ");
+                        $stmt->execute([$comentario, $user_id, $eval_id]);
+                    }
                 } else {
                     $stmt = $db->prepare("
                         INSERT INTO evaluaciones
@@ -59,6 +86,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                     ");
                     $stmt->execute([$ra_id, $aprendiz_id_p, $user_id, $ficha_id_p, $concepto, $comentario, date('Y-m-d')]);
+                    $new_eval_id = (int)$db->lastInsertId();
+
+                    // Registrar en historial
+                    $stmtHist = $db->prepare("
+                        INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo)
+                        VALUES (?, ?, 'pendiente', ?, 'Calificación inicial')
+                    ");
+                    $stmtHist->execute([$new_eval_id, $user_id, $concepto]);
                 }
 
                 $successMessage = 'Evaluación académica guardada correctamente.';
@@ -853,6 +888,11 @@ $feedback_iconos = [
                 <textarea name="comentario" id="calif_comentario" class="form-control" rows="3"
                           placeholder="Describe los puntos a mejorar o felicita al aprendiz..."></textarea>
               </div>
+              <div class="mb-3" id="div_calif_motivo" style="display:none;">
+                <label class="form-label text-muted small fw-semibold text-danger">Motivo del cambio *</label>
+                <input type="text" name="motivo" id="calif_motivo" class="form-control" 
+                       placeholder="Ej. Plan de mejoramiento completado">
+              </div>
             </div>
             <div class="modal-footer border-top-0 pt-0">
               <button type="button" class="btn btn-soft" onclick="cerrarModalCalificar()">Cancelar</button>
@@ -1017,6 +1057,8 @@ $feedback_iconos = [
         modalDetalle.show();
     }
 
+    let originalConceptoSeguimiento = '';
+
     function abrirCalificarDesdeKey(key) {
         const d = calificarData[key];
         if (!d) return;
@@ -1024,12 +1066,58 @@ $feedback_iconos = [
         document.getElementById('calif_ra_id').value              = d.raId;
         document.getElementById('calif_ficha_id').value           = d.fichaId;
         document.getElementById('calif_actividad_nombre').innerText = d.raNombre;
+        
         // Map DB concepto to form option value
         const map = { 'A': 'aprobado', 'D': 'en_proceso', 'pendiente': 'no_aplica' };
-        document.getElementById('calif_concepto').value  = map[d.concepto] || 'aprobado';
-        document.getElementById('calif_comentario').value = d.comentario;
+        const mappedConcepto = map[d.concepto] || 'no_aplica';
+        document.getElementById('calif_concepto').value  = mappedConcepto;
+        document.getElementById('calif_comentario').value = d.comentario || '';
+        
+        originalConceptoSeguimiento = d.concepto || 'pendiente';
+        
+        // Ocultar div de motivo al abrir
+        const divMotivo = document.getElementById('div_calif_motivo');
+        const inputMotivo = document.getElementById('calif_motivo');
+        if (divMotivo && inputMotivo) {
+            divMotivo.style.display = 'none';
+            inputMotivo.value = '';
+            inputMotivo.required = false;
+        }
+
         modalCalificar.show();
     }
+
+    // Toggle visual del campo motivo según el cambio de concepto
+    document.getElementById('calif_concepto')?.addEventListener('change', function() {
+        const divMotivo = document.getElementById('div_calif_motivo');
+        const inputMotivo = document.getElementById('calif_motivo');
+        const mapRev = { 'aprobado': 'A', 'en_proceso': 'D', 'no_aplica': 'pendiente' };
+        const nuevoConcepto = mapRev[this.value] || 'pendiente';
+        
+        if (originalConceptoSeguimiento !== 'pendiente' && originalConceptoSeguimiento !== nuevoConcepto) {
+            if (divMotivo && inputMotivo) {
+                divMotivo.style.display = 'block';
+                inputMotivo.required = true;
+            }
+        } else {
+            if (divMotivo && inputMotivo) {
+                divMotivo.style.display = 'none';
+                inputMotivo.required = false;
+            }
+        }
+    });
+
+    // Validar motivo en el envío
+    document.getElementById('modalCalificarActividad')?.querySelector('form')?.addEventListener('submit', function(e) {
+        const mapRev = { 'aprobado': 'A', 'en_proceso': 'D', 'no_aplica': 'pendiente' };
+        const nuevoConcepto = mapRev[document.getElementById('calif_concepto').value] || 'pendiente';
+        const motivo = document.getElementById('calif_motivo').value.trim();
+        
+        if (originalConceptoSeguimiento !== 'pendiente' && originalConceptoSeguimiento !== nuevoConcepto && !motivo) {
+            e.preventDefault();
+            alert('Debes ingresar el motivo del cambio de calificación (ej. Plan de mejoramiento completado).');
+        }
+    });
 
     function cerrarModalCalificar() { modalCalificar.hide(); }
 

@@ -29,8 +29,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmt->execute([$id]);
         $mensaje = 'Programa eliminado correctamente';
         $tipo_mensaje = 'success';
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') {
+            $mensaje = 'No se puede eliminar el programa porque tiene fichas de formación asociadas u otros registros vinculados.';
+        } else {
+            $mensaje = 'Error de base de datos al eliminar el programa: ' . $e->getMessage();
+        }
+        $tipo_mensaje = 'danger';
     } catch (Exception $e) {
-        $mensaje = 'Error al eliminar programa';
+        $mensaje = 'Error al eliminar el programa: ' . $e->getMessage();
         $tipo_mensaje = 'danger';
     }
 }

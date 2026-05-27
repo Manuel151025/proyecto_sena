@@ -33,22 +33,31 @@ if ($user_rol === ROL_APRENDIZ) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'evaluar') {
     if ($user_rol === ROL_INSTRUCTOR || $user_rol === ROL_COORDINADOR) {
         try {
-            $eval_id = (int)$_POST['evaluacion_id'];
-            $nuevo_concepto = $_POST['concepto'];
+            $eval_id = (int)($_POST['evaluacion_id'] ?? 0);
+            $nuevo_concepto = trim($_POST['concepto'] ?? '');
             $comentario = trim($_POST['comentario'] ?? '');
             $motivo = trim($_POST['motivo'] ?? '');
-            
-            if (!in_array($nuevo_concepto, ['A', 'D', 'pendiente'])) {
-                throw new Exception('Concepto no válido.');
+
+            if ($eval_id <= 0) {
+                throw new Exception('ID de evaluación inválido (recibido: ' . htmlspecialchars($_POST['evaluacion_id'] ?? 'vacío') . '). Recarga la página e intenta de nuevo.');
             }
 
-            // Obtener concepto actual
-            $stmtCurrent = $db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
-            $stmtCurrent->execute([$eval_id]);
+            if (!in_array($nuevo_concepto, ['A', 'D', 'pendiente'])) {
+                throw new Exception('Concepto no válido: "' . htmlspecialchars($nuevo_concepto) . '". Selecciona Aprobado (A) o No Aprobado (D).');
+            }
+
+            // Verificar que la evaluación existe y pertenece a este instructor
+            if ($user_rol === ROL_INSTRUCTOR) {
+                $stmtCurrent = $db->prepare("SELECT concepto FROM evaluaciones WHERE id = ? AND instructor_id = ?");
+                $stmtCurrent->execute([$eval_id, $user_id]);
+            } else {
+                $stmtCurrent = $db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
+                $stmtCurrent->execute([$eval_id]);
+            }
             $conceptoAnterior = $stmtCurrent->fetchColumn();
 
             if ($conceptoAnterior === false) {
-                throw new Exception('Evaluación no encontrada.');
+                throw new Exception('Evaluación #' . $eval_id . ' no encontrada o sin permiso para editarla.');
             }
 
             // Actualizar evaluación
@@ -57,11 +66,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             // Registrar en historial si hubo cambio
             if ($conceptoAnterior !== $nuevo_concepto) {
+                // Exigir motivo si cambia de una calificación ya dada (A o D)
+                if (in_array($conceptoAnterior, ['A', 'D']) && empty($motivo)) {
+                    throw new Exception('El motivo del cambio de calificación es requerido.');
+                }
+
                 $stmtHist = $db->prepare("INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo) VALUES (?, ?, ?, ?, ?)");
-                $stmtHist->execute([$eval_id, $user_id, $conceptoAnterior, $nuevo_concepto, $motivo ?: 'Evaluación actualizada']);
+                $stmtHist->execute([$eval_id, $user_id, $conceptoAnterior, $nuevo_concepto, $motivo ?: 'Calificación inicial']);
             }
 
-            $success = 'Evaluación actualizada correctamente. Concepto: ' . $nuevo_concepto;
+            $success = 'Evaluación #' . $eval_id . ' actualizada correctamente. Concepto: ' . $nuevo_concepto;
         } catch (Exception $e) {
             $errors[] = 'Error al guardar evaluación: ' . $e->getMessage();
         }
@@ -181,15 +195,24 @@ if (!isset($app_included)) {
 }
 ?>
 
-<div class="mb-3">
-  <h1 class="mb-1">Juicios de Evaluación</h1>
-  <p class="text-muted mb-0">
-    <?php if ($user_rol === ROL_APRENDIZ): ?>
-      Consulta el estado de tus Resultados de Aprendizaje (RA) evaluados con conceptos A (Aprobado) y D (Aún no competente).
-    <?php else: ?>
-      Gestiona los juicios evaluativos por Resultado de Aprendizaje. Los conceptos válidos son <strong>A</strong> (Aprobado) y <strong>D</strong> (Aún no competente).
-    <?php endif; ?>
-  </p>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="mb-1">Juicios de Evaluación</h1>
+    <p class="text-muted mb-0">
+      <?php if ($user_rol === ROL_APRENDIZ): ?>
+        Consulta el estado de tus Resultados de Aprendizaje (RA) evaluados con conceptos A (Aprobado) y D (Aún no competente).
+      <?php else: ?>
+        Gestiona los juicios evaluativos por Resultado de Aprendizaje. Los conceptos válidos son <strong>A</strong> (Aprobado) y <strong>D</strong> (Aún no competente).
+      <?php endif; ?>
+    </p>
+  </div>
+  <?php if ($user_rol !== ROL_APRENDIZ): ?>
+  <div>
+    <a href="<?= MODULES_PATH ?>/evaluaciones/importar_juicios.php" class="btn btn-primary">
+      <i class="bi bi-file-earmark-excel me-1"></i> Importar Excel (Sofia Plus)
+    </a>
+  </div>
+  <?php endif; ?>
 </div>
 
 <?php if (!empty($errors)): ?>
@@ -333,8 +356,13 @@ if (!isset($app_included)) {
             </td>
             <td class="pe-4 text-end">
               <?php if ($user_rol !== ROL_APRENDIZ): ?>
-              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalEvaluar"
-                onclick="abrirModalEval(<?= $eval['id'] ?>, <?= json_encode($eval['ra_codigo']) ?>, <?= json_encode($eval['aprendiz_nombre']) ?>, <?= json_encode($eval['concepto']) ?>, <?= json_encode($eval['comentario'] ?? '') ?>)">
+              <button class="btn btn-sm btn-primary"
+                data-bs-toggle="modal" data-bs-target="#modalEvaluar"
+                data-eval-id="<?= $eval['id'] ?>"
+                data-ra="<?= htmlspecialchars($eval['ra_codigo'], ENT_QUOTES) ?>"
+                data-aprendiz="<?= htmlspecialchars($eval['aprendiz_nombre'], ENT_QUOTES) ?>"
+                data-concepto="<?= htmlspecialchars($eval['concepto'], ENT_QUOTES) ?>"
+                data-comentario="<?= htmlspecialchars($eval['comentario'] ?? '', ENT_QUOTES) ?>">
                 <i class="bi bi-pencil-square me-1"></i>Evaluar
               </button>
               <?php endif; ?>
@@ -396,9 +424,9 @@ if (!isset($app_included)) {
             <label class="form-label fw-semibold">Comentario / Retroalimentación</label>
             <textarea name="comentario" id="evalComentario" class="form-control" rows="3" placeholder="Escriba su observación sobre el desempeño del aprendiz..."></textarea>
           </div>
-          <div class="mb-0">
-            <label class="form-label fw-semibold">Motivo del cambio <small class="text-muted">(si está modificando)</small></label>
-            <input type="text" name="motivo" class="form-control" placeholder="Ej: Plan de mejoramiento completado">
+          <div class="mb-0" id="div_eval_motivo" style="display:none;">
+            <label class="form-label fw-semibold text-danger">Motivo del cambio *</label>
+            <input type="text" name="motivo" id="eval_motivo" class="form-control" placeholder="Ej: Plan de mejoramiento completado">
           </div>
         </div>
         <div class="modal-footer border-0 px-4 pb-4">
@@ -412,31 +440,111 @@ if (!isset($app_included)) {
 <?php endif; ?>
 
 <script>
-function abrirModalEval(id, ra, aprendiz, concepto, comentario) {
-    document.getElementById('evalId').value = id;
-    document.getElementById('evalRA').textContent = ra;
+// Poblar modal usando el evento de Bootstrap (método fiable)
+const modalEvaluar = document.getElementById('modalEvaluar');
+let originalConcepto = '';
+
+if (modalEvaluar) {
+  modalEvaluar.addEventListener('show.bs.modal', function(event) {
+    const btn = event.relatedTarget; // botón que disparó el modal
+    if (!btn) return;
+
+    const evalId    = btn.dataset.evalId;
+    const ra        = btn.dataset.ra;
+    const aprendiz  = btn.dataset.aprendiz;
+    const concepto  = btn.dataset.concepto;
+    const comentario = btn.dataset.comentario || '';
+
+    document.getElementById('evalId').value           = evalId;
+    document.getElementById('evalRA').textContent     = ra;
     document.getElementById('evalAprendiz').textContent = aprendiz;
-    document.getElementById('evalComentario').value = comentario;
-    
-    // Seleccionar radio
+    document.getElementById('evalComentario').value   = comentario;
+
+    originalConcepto = concepto; // Guardar el concepto original
+
+    // Resetear motivo
+    const divMotivo = document.getElementById('div_eval_motivo');
+    const inputMotivo = document.getElementById('eval_motivo');
+    if (divMotivo && inputMotivo) {
+      divMotivo.style.display = 'none';
+      inputMotivo.value = '';
+      inputMotivo.required = false;
+    }
+
+    // Marcar el radio del concepto actual
     document.querySelectorAll('.concepto-radio').forEach(label => {
-        label.classList.remove('active');
-        const radio = label.querySelector('input[type="radio"]');
-        if (radio.value === concepto) {
-            radio.checked = true;
-            label.classList.add('active');
-        } else {
-            radio.checked = false;
-        }
+      label.classList.remove('active');
+      const radio = label.querySelector('input[type="radio"]');
+      if (radio.value === concepto) {
+        radio.checked = true;
+        label.classList.add('active');
+      } else {
+        radio.checked = false;
+      }
     });
+
+    console.log('[Eval] Modal abierto para evaluación ID:', evalId, '| concepto actual:', concepto);
+  });
+
+  // Toggle visual del campo motivo según el concepto seleccionado
+  document.querySelectorAll('.concepto-radio').forEach(label => {
+    label.addEventListener('click', function() {
+      // Toggle de active class se maneja más abajo, aquí detectamos el radio de este label
+      setTimeout(() => {
+        const radio = this.querySelector('input[type="radio"]');
+        if (!radio) return;
+        const nuevoConcepto = radio.value;
+        const divMotivo = document.getElementById('div_eval_motivo');
+        const inputMotivo = document.getElementById('eval_motivo');
+
+        if (originalConcepto && originalConcepto !== 'pendiente' && originalConcepto !== nuevoConcepto) {
+          if (divMotivo && inputMotivo) {
+            divMotivo.style.display = 'block';
+            inputMotivo.required = true;
+          }
+        } else {
+          if (divMotivo && inputMotivo) {
+            divMotivo.style.display = 'none';
+            inputMotivo.required = false;
+          }
+        }
+      }, 50);
+    });
+  });
+
+  // Guardia antes de enviar
+  modalEvaluar.querySelector('form')?.addEventListener('submit', function(e) {
+    const id = parseInt(document.getElementById('evalId').value, 10);
+    const concepto = this.querySelector('input[name="concepto"]:checked');
+    const motivo = document.getElementById('eval_motivo').value.trim();
+
+    if (!id || id <= 0) {
+      e.preventDefault();
+      alert('Error: ID de evaluación no cargado. Cierra el modal y haz clic en Evaluar nuevamente.');
+      return;
+    }
+    if (!concepto) {
+      e.preventDefault();
+      alert('Debes seleccionar un concepto: Aprobado (A) o No Aprobado (D).');
+      return;
+    }
+
+    if (originalConcepto && originalConcepto !== 'pendiente' && originalConcepto !== concepto.value && !motivo) {
+      e.preventDefault();
+      alert('Debes ingresar el motivo del cambio de calificación (ej. Plan de mejoramiento completado).');
+      return;
+    }
+
+    console.log('[Eval] Enviando evaluación ID:', id, '| nuevo concepto:', concepto.value);
+  });
 }
 
-// Toggle de concepto radio visual
+// Toggle visual de radio buttons
 document.querySelectorAll('.concepto-radio').forEach(label => {
-    label.addEventListener('click', function() {
-        document.querySelectorAll('.concepto-radio').forEach(l => l.classList.remove('active'));
-        this.classList.add('active');
-    });
+  label.addEventListener('click', function() {
+    document.querySelectorAll('.concepto-radio').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+  });
 });
 </script>
 

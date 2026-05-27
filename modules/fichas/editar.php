@@ -44,23 +44,29 @@ if (!isset($app_included)) {
     exit;
 }
 
-// Obtener programas e instructores
+// Obtener programas, instructores y proyectos
 try {
     $stmt = $db->prepare("SELECT id, nombre FROM programas WHERE estado = 'activo' ORDER BY nombre");
     $stmt->execute();
     $programas = $stmt->fetchAll();
-    
+
     $stmt = $db->prepare("SELECT id, nombre FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' ORDER BY nombre");
     $stmt->execute();
     $instructores = $stmt->fetchAll();
+
+    $stmt = $db->prepare("SELECT id, nombre, codigo FROM proyectos WHERE estado = 'activo' ORDER BY nombre");
+    $stmt->execute();
+    $proyectos = $stmt->fetchAll();
 } catch (Exception $e) {
     $programas = [];
     $instructores = [];
+    $proyectos = [];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $numero_ficha = trim($_POST['numero_ficha'] ?? '');
-    $programa_id = (int) ($_POST['programa_id'] ?? 0);
+    $proyecto_id  = (int) ($_POST['proyecto_id'] ?? 0) ?: null;
+    $programa_id  = (int) ($_POST['programa_id'] ?? 0);
     $instructor_id = (int) ($_POST['instructor_id'] ?? 0);
     $estado = $_POST['estado'] ?? 'planeacion';
     $cantidad_aprendices = (int) ($_POST['cantidad_aprendices'] ?? 0);
@@ -81,14 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id > 0) {
                 // Editar ficha existente
                 $stmt = $db->prepare("
-                    UPDATE fichas 
-                    SET numero_ficha = ?, programa_id = ?, instructor_id = ?, estado = ?, 
-                        cantidad_aprendices = ?, fecha_inicio = ?, fecha_fin = ?, 
+                    UPDATE fichas
+                    SET numero_ficha = ?, proyecto_id = ?, programa_id = ?, instructor_id = ?,
+                        estado = ?, cantidad_aprendices = ?, fecha_inicio = ?, fecha_fin = ?,
                         cumplimiento_porcentaje = ?, fecha_actualizacion = NOW()
                     WHERE id = ?
                 ");
                 $stmt->execute([
-                    $numero_ficha, $programa_id, $instructor_id, $estado,
+                    $numero_ficha, $proyecto_id, $programa_id, $instructor_id, $estado,
                     $cantidad_aprendices, $fecha_inicio ?: null, $fecha_fin ?: null,
                     $cumplimiento_porcentaje, $id
                 ]);
@@ -97,11 +103,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Crear nueva ficha
                 $coordinador_id = getCurrentUser()['id'];
                 $stmt = $db->prepare("
-                    INSERT INTO fichas (numero_ficha, programa_id, instructor_id, coordinador_id, estado, cantidad_aprendices, fecha_inicio, fecha_fin, cumplimiento_porcentaje)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO fichas (numero_ficha, proyecto_id, programa_id, instructor_id, coordinador_id, estado, cantidad_aprendices, fecha_inicio, fecha_fin, cumplimiento_porcentaje)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
-                    $numero_ficha, $programa_id, $instructor_id, $coordinador_id,
+                    $numero_ficha, $proyecto_id, $programa_id, $instructor_id, $coordinador_id,
                     $estado, $cantidad_aprendices, $fecha_inicio ?: null, $fecha_fin ?: null,
                     $cumplimiento_porcentaje
                 ]);
@@ -155,6 +161,18 @@ $user = getCurrentUser();
           <div class="mb-3">
             <label class="form-label">Número de Ficha</label>
             <input type="text" name="numero_ficha" class="form-control" placeholder="Ej: 2845671" value="<?= htmlspecialchars($ficha['numero_ficha'] ?? $_POST['numero_ficha'] ?? '') ?>" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Proyecto Formativo <span class="text-muted small">(opcional)</span></label>
+            <select name="proyecto_id" class="form-select">
+              <option value="">-- Sin proyecto asignado --</option>
+              <?php foreach ($proyectos as $proy): ?>
+              <option value="<?= $proy['id'] ?>" <?= ($ficha['proyecto_id'] ?? $_POST['proyecto_id'] ?? 0) == $proy['id'] ? 'selected' : '' ?>>
+                <?= htmlspecialchars($proy['codigo'] . ' — ' . $proy['nombre']) ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
           </div>
 
           <div class="mb-3">

@@ -75,6 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'matriculado')
                 ");
                 $stmt->execute([$usuario_id, $ficha_id, $numero_documento, $tipo_documento, $genero, $fecha_nacimiento, $telefono, $ciudad]);
+                $new_aprendiz_id = (int)$db->lastInsertId();
+
+                // 2.5. Inicializar evaluaciones como 'pendiente' para todos los RAs
+                inicializarEvaluacionesAprendiz($db, $new_aprendiz_id, $ficha_id);
 
                 // 3. Incrementar el contador en la ficha
                 $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$ficha_id]);
@@ -84,13 +88,153 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
                     VALUES (?, 'Crear', 'Matriculas', 'aprendices', ?, ?)
                 ");
-                $stmt->execute([(int)getCurrentUser()['id'], $usuario_id, "Matriculó al aprendiz $nombre en ficha id $ficha_id"]);
+                $stmt->execute([(int)getCurrentUser()['id'], $new_aprendiz_id, "Matriculó al aprendiz $nombre en ficha id $ficha_id"]);
 
                 $db->commit();
                 $successMessage = 'Aprendiz matriculado exitosamente.';
             } catch (Exception $e) {
                 $db->rollBack();
                 $errors[] = 'Error al matricular aprendiz: ' . $e->getMessage();
+            }
+        }
+    }
+}
+
+// Procesar formulario de Carga Masiva (CSV)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'cargar_csv') {
+    if (!hasRole(ROL_COORDINADOR)) {
+        $errors[] = 'Solo los coordinadores pueden realizar esta acción.';
+    } else {
+        $ficha_id = (int)($_POST['ficha_id'] ?? 0);
+        if ($ficha_id <= 0) {
+            $errors[] = 'Debe seleccionar una ficha de destino válida.';
+        } elseif (!isset($_FILES['file_csv']) || $_FILES['file_csv']['error'] !== UPLOAD_ERR_OK) {
+            $errors[] = 'Error al subir el archivo CSV o no se seleccionó ninguno.';
+        } else {
+            $file = $_FILES['file_csv']['tmp_name'];
+            $handle = fopen($file, 'r');
+            if ($handle === false) {
+                $errors[] = 'No se pudo abrir el archivo CSV.';
+            } else {
+                try {
+                    $db->beginTransaction();
+
+                    // Detectar delimitador (coma o punto y coma)
+                    $firstLine = fgets($handle);
+                    $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+                    rewind($handle);
+
+                    $successCount = 0;
+                    $warnings = [];
+                    $rowNum = 0;
+                    $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
+                    $password_hash = password_hash('Sena2026', PASSWORD_DEFAULT);
+
+                    while (($data = fgetcsv($handle, 1000, $delimiter)) !== false) {
+                        $rowNum++;
+                        // Si es la primera fila y tiene texto de cabecera, la saltamos
+                        if ($rowNum === 1 && (
+                            stripos($data[0], 'nombre') !== false ||
+                            stripos($data[0], 'nombre_completo') !== false ||
+                            stripos($data[1], 'email') !== false ||
+                            stripos($data[3], 'documento') !== false
+                        )) {
+                            continue;
+                        }
+
+                        // Validar número de columnas mínimo (al menos nombre, email, documento)
+                        if (count($data) < 4) {
+                            $warnings[] = "Fila $rowNum: Columnas insuficientes (se requieren al menos Nombre, Email, Tipo Doc y Num Doc).";
+                            continue;
+                        }
+
+                        $nombre = mb_strtoupper(trim($data[0] ?? ''), 'UTF-8');
+                        $email = trim($data[1] ?? '');
+                        $tipo_doc = strtoupper(trim($data[2] ?? 'CC'));
+                        $num_doc = trim($data[3] ?? '');
+                        $genero = strtoupper(trim($data[4] ?? 'O'));
+                        $telefono = trim($data[5] ?? '');
+                        $ciudad = trim($data[6] ?? '');
+
+                        // Si está vacío el nombre o documento, saltar
+                        if (empty($nombre) || empty($email) || empty($num_doc)) {
+                            $warnings[] = "Fila $rowNum: Nombre, Email o Documento vacío. Fila omitida.";
+                            continue;
+                        }
+
+                        // Limpiar género
+                        if (!in_array($genero, ['M', 'F', 'O'])) {
+                            $genero = 'O';
+                        }
+                        // Limpiar tipo doc
+                        if (!in_array($tipo_doc, ['CC', 'TI', 'CE', 'PEP', 'PA'])) {
+                            $tipo_doc = 'CC';
+                        }
+
+                        // Verificar si el email ya existe en la tabla usuarios
+                        $stmt = $db->prepare("SELECT id FROM usuarios WHERE email = ?");
+                        $stmt->execute([$email]);
+                        if ($stmt->fetch()) {
+                            $warnings[] = "Fila $rowNum: El correo electrónico '$email' ya está registrado. Omitido.";
+                            continue;
+                        }
+
+                        // Verificar si el documento ya existe en la tabla aprendices
+                        $stmt = $db->prepare("SELECT id FROM aprendices WHERE numero_documento = ?");
+                        $stmt->execute([$num_doc]);
+                        if ($stmt->fetch()) {
+                            $warnings[] = "Fila $rowNum: El documento '$num_doc' ya está matriculado. Omitido.";
+                            continue;
+                        }
+
+                        // 1. Crear el usuario
+                        $avatar_color = $colors[array_rand($colors)];
+                        $stmt = $db->prepare("
+                            INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado)
+                            VALUES (?, ?, ?, 'aprendiz', ?, 'activo')
+                        ");
+                        $stmt->execute([$nombre, $email, $password_hash, $avatar_color]);
+                        $usuario_id = (int)$db->lastInsertId();
+
+                        // 2. Crear aprendiz
+                        $stmt = $db->prepare("
+                            INSERT INTO aprendices (usuario_id, ficha_id, numero_documento, tipo_documento, genero, estado, telefono, ciudad)
+                            VALUES (?, ?, ?, ?, ?, 'matriculado', ?, ?)
+                        ");
+                        $stmt->execute([$usuario_id, $ficha_id, $num_doc, $tipo_doc, $genero, $telefono, $ciudad]);
+                        $new_ap_id = (int)$db->lastInsertId();
+
+                        // 3. Inicializar evaluaciones como 'pendiente'
+                        inicializarEvaluacionesAprendiz($db, $new_ap_id, $ficha_id);
+
+                        // 4. Incrementar contador en la ficha
+                        $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$ficha_id]);
+
+                        $successCount++;
+                    }
+
+                    fclose($handle);
+
+                    if ($successCount > 0) {
+                        $db->commit();
+                        $successMessage = "Se matricularon exitosamente $successCount aprendices y se inicializaron sus evaluaciones.";
+                        if (!empty($warnings)) {
+                            $successMessage .= "<br><strong>Nota:</strong> Se omitieron algunas filas:<br>" . implode("<br>", array_slice($warnings, 0, 10));
+                            if (count($warnings) > 10) {
+                                $successMessage .= "<br>... y " . (count($warnings) - 10) . " advertencias más.";
+                            }
+                        }
+                    } else {
+                        $db->rollBack();
+                        $errors[] = "No se matriculó ningún aprendiz. Revise los errores:<br>" . implode("<br>", $warnings);
+                    }
+
+                } catch (Exception $e) {
+                    if ($db->inTransaction()) {
+                        $db->rollBack();
+                    }
+                    $errors[] = 'Error durante la carga masiva: ' . $e->getMessage();
+                }
             }
         }
     }
@@ -327,9 +471,14 @@ if (!isset($app_included)) {
     <p class="text-muted mb-0">Gestiona las admisiones de estudiantes y su asignación a fichas técnicas.</p>
   </div>
   <?php if (hasRole(ROL_COORDINADOR)): ?>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalMatricular">
-    <i class="bi bi-person-plus me-1"></i> Matricular Aprendiz
-  </button>
+  <div class="d-flex gap-2">
+    <button class="btn btn-soft text-primary" data-bs-toggle="modal" data-bs-target="#modalCargarCSV">
+      <i class="bi bi-file-earmark-spreadsheet me-1"></i> Carga Masiva (CSV)
+    </button>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalMatricular">
+      <i class="bi bi-person-plus me-1"></i> Matricular Aprendiz
+    </button>
+  </div>
   <?php endif; ?>
 </div>
 
@@ -575,6 +724,56 @@ if (!isset($app_included)) {
         <div class="modal-footer border-top-0 pt-0">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Matricular Aprendiz</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Carga Masiva CSV -->
+<div class="modal fade" id="modalCargarCSV" tabindex="-1" aria-labelledby="modalCargarCSVLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold" id="modalCargarCSVLabel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Carga Masiva de Aprendices</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="cargar_csv">
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Sube un archivo delimitado por comas (<strong>.csv</strong>) con la información de los aprendices. El sistema registrará a los usuarios e inicializará automáticamente todas sus evaluaciones para la ficha seleccionada.
+          </p>
+          
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Ficha de Destino</label>
+            <select name="ficha_id" class="form-select" required>
+              <option value="" disabled selected>Seleccionar Ficha...</option>
+              <?php foreach ($fichas as $f): ?>
+                <option value="<?= $f['id'] ?>">
+                  Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Seleccionar Archivo CSV</label>
+            <input type="file" name="file_csv" class="form-control" accept=".csv" required>
+          </div>
+
+          <div class="p-3 bg-light rounded-3 text-muted" style="font-size:0.8rem;">
+            <div class="fw-bold mb-1"><i class="bi bi-info-circle me-1"></i> Formato de Columnas del CSV:</div>
+            <code>nombre, email, tipo_documento, numero_documento, genero, telefono, ciudad</code>
+            <div class="mt-2">
+              * El tipo de documento debe ser uno de: <strong>CC, TI, CE, PEP, PA</strong>.<br>
+              * La contraseña por defecto de los nuevos aprendices será <strong>Sena2026</strong>.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Importar Aprendices</button>
         </div>
       </form>
     </div>
