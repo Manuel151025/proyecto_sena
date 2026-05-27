@@ -159,11 +159,11 @@ if (!isset($app_included)) {
               <i class="bi bi-list-task me-1"></i>Ver Fases
             </a>
             <?php if ($user_rol === ROL_COORDINADOR): ?>
-            <button class="btn btn-soft px-3" style="border-radius: 8px;"
+             <button class="btn btn-soft px-3" style="border-radius: 8px;"
               onclick="abrirModalEditarProyecto(
-                <?= $proj['id'] ?>, <?= json_encode($proj['nombre']) ?>,
-                <?= json_encode($proj['codigo']) ?>, <?= json_encode($proj['objetivo'] ?? '') ?>,
-                <?= json_encode($proj['descripcion'] ?? '') ?>, <?= json_encode($proj['estado']) ?>)">
+                <?= $proj['id'] ?>, <?= htmlspecialchars(json_encode($proj['nombre']), ENT_QUOTES, 'UTF-8') ?>,
+                <?= htmlspecialchars(json_encode($proj['codigo']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($proj['objetivo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
+                <?= htmlspecialchars(json_encode($proj['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($proj['estado']), ENT_QUOTES, 'UTF-8') ?>)">
               <i class="bi bi-pencil"></i>
             </button>
             <form method="POST" style="display:inline;">

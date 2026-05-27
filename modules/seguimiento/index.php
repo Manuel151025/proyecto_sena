@@ -775,12 +775,12 @@ $feedback_iconos = [
                   </td>
                   <td class="pe-4 text-end">
                     <button class="btn btn-sm btn-soft me-1"
-                            onclick="abrirModalDetalle(<?= $ap['aprendiz_id'] ?>, <?= json_encode($ap['aprendiz_nombre']) ?>, <?= json_encode($ap['aprendiz_email']) ?>)"
+                            onclick="abrirModalDetalle(<?= $ap['aprendiz_id'] ?>, <?= htmlspecialchars(json_encode($ap['aprendiz_nombre']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($ap['aprendiz_email']), ENT_QUOTES, 'UTF-8') ?>)"
                             title="Ver Detalle Académico">
                       <i class="bi bi-eye"></i> Detalle
                     </button>
                     <button class="btn btn-sm btn-soft btn-outline-info"
-                            onclick="abrirModalRetroalimentacion(<?= $ap['aprendiz_id'] ?>, <?= json_encode($ap['aprendiz_nombre']) ?>)"
+                            onclick="abrirModalRetroalimentacion(<?= $ap['aprendiz_id'] ?>, <?= htmlspecialchars(json_encode($ap['aprendiz_nombre']), ENT_QUOTES, 'UTF-8') ?>)"
                             title="Registrar Nota de Seguimiento">
                       <i class="bi bi-chat-dots"></i> Observación
                     </button>
