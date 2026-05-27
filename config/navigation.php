@@ -7,36 +7,34 @@ $MENU_CONFIG = [
     ROL_COORDINADOR => [
         'Principal' => [
             ['title' => 'Dashboard', 'icon' => 'bi bi-grid-1x2', 'url' => MODULES_PATH . '/dashboard/coordinador.php'],
-            ['title' => 'Usuarios', 'icon' => 'bi bi-people', 'url' => MODULES_PATH . '/usuarios/', 'badge' => null],
+            ['title' => 'Usuarios', 'icon' => 'bi bi-people', 'url' => MODULES_PATH . '/usuarios/'],
         ],
-        'Académico' => [
-            ['title' => 'Programas', 'icon' => 'bi bi-book', 'url' => MODULES_PATH . '/programas/'],
-            ['title' => 'Competencias', 'icon' => 'bi bi-diagram-3', 'url' => MODULES_PATH . '/competencias/'],
-            ['title' => 'Resultados RA', 'icon' => 'bi bi-clipboard-check', 'url' => MODULES_PATH . '/resultados-aprendizaje/'],
+        'Estructura Académica' => [
+            ['title' => 'Estructura Curricular', 'icon' => 'bi bi-journal-code', 'url' => MODULES_PATH . '/estructura/'],
         ],
-        'Gestión' => [
-            ['title' => 'Fichas', 'icon' => 'bi bi-folder2-open', 'url' => MODULES_PATH . '/fichas/'],
+        'Gestión de Fichas' => [
+            ['title' => 'Fichas de Formación', 'icon' => 'bi bi-folder2-open', 'url' => MODULES_PATH . '/fichas/'],
             ['title' => 'Matrículas', 'icon' => 'bi bi-person-plus', 'url' => MODULES_PATH . '/matriculas/'],
             ['title' => 'Asignaciones', 'icon' => 'bi bi-person-badge', 'url' => MODULES_PATH . '/asignaciones/'],
         ],
-        'Proyectos' => [
+        'Proyectos Formativos' => [
             ['title' => 'Proyectos', 'icon' => 'bi bi-kanban', 'url' => MODULES_PATH . '/proyectos/'],
-            ['title' => 'Fases', 'icon' => 'bi bi-list-task', 'url' => MODULES_PATH . '/fases/'],
             ['title' => 'Actividades', 'icon' => 'bi bi-check2-square', 'url' => MODULES_PATH . '/actividades/'],
             ['title' => 'Seguimiento', 'icon' => 'bi bi-graph-up', 'url' => MODULES_PATH . '/seguimiento/'],
         ],
-        'Evaluación' => [
-            ['title' => 'Evidencias', 'icon' => 'bi bi-file-earmark-arrow-up', 'url' => MODULES_PATH . '/evidencias/'],
+        'Evaluación y Calidad' => [
             ['title' => 'Evaluaciones', 'icon' => 'bi bi-pencil-square', 'url' => MODULES_PATH . '/evaluaciones/'],
+            ['title' => 'Evidencias', 'icon' => 'bi bi-file-earmark-arrow-up', 'url' => MODULES_PATH . '/evidencias/'],
             ['title' => 'Retroalimentación', 'icon' => 'bi bi-chat-left-text', 'url' => MODULES_PATH . '/retroalimentacion/'],
-            ['title' => 'Plan mejora', 'icon' => 'bi bi-arrow-up-circle', 'url' => MODULES_PATH . '/mejoramiento/'],
+            ['title' => 'Plan de Mejora', 'icon' => 'bi bi-arrow-up-circle', 'url' => MODULES_PATH . '/mejoramiento/'],
         ],
         'Sistema' => [
             ['title' => 'Reportes', 'icon' => 'bi bi-bar-chart-line', 'url' => MODULES_PATH . '/reportes/'],
             ['title' => 'Configuración', 'icon' => 'bi bi-gear', 'url' => MODULES_PATH . '/configuracion/'],
-            ['title' => 'Auditoría', 'icon' => 'bi bi-shield-check', 'url' => MODULES_PATH . '/logs/'],
+            ['title' => 'Auditoría de Logs', 'icon' => 'bi bi-shield-check', 'url' => MODULES_PATH . '/logs/'],
         ],
     ],
+
     ROL_INSTRUCTOR => [
         'Principal' => [
             ['title' => 'Dashboard', 'icon' => 'bi bi-grid-1x2', 'url' => MODULES_PATH . '/dashboard/instructor.php'],

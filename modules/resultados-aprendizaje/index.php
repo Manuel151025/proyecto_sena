@@ -50,6 +50,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Procesar edición de RAP
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'editar_rap') {
+    if (!hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)) {
+        $errors[] = 'No tiene permisos para editar Resultados de Aprendizaje.';
+    } else {
+        $id             = (int)($_POST['id'] ?? 0);
+        $competencia_id = (int)($_POST['competencia_id'] ?? 0);
+        $codigo         = trim($_POST['codigo'] ?? '');
+        $denominacion   = trim($_POST['denominacion'] ?? '');
+
+        if ($id <= 0)             $errors[] = 'RAP no válido.';
+        if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia válida.';
+        if (empty($codigo))       $errors[] = 'El código del RAP es obligatorio.';
+        if (empty($denominacion)) $errors[] = 'La denominación del RAP es obligatoria.';
+
+        if (empty($errors)) {
+            try {
+                $stmt = $db->prepare("
+                    UPDATE resultados_aprendizaje
+                    SET competencia_id=?, codigo=?, denominacion=?
+                    WHERE id=?
+                ");
+                $stmt->execute([$competencia_id, $codigo, $denominacion, $id]);
+
+                $logStmt = $db->prepare("
+                    INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
+                    VALUES (?, 'Editar', 'RAPs', 'resultados_aprendizaje', ?, ?)
+                ");
+                $logStmt->execute([(int)getCurrentUser()['id'], $id, "Editó el RAP $codigo"]);
+
+                $successMessage = 'Resultado de Aprendizaje actualizado exitosamente.';
+            } catch (Exception $e) {
+                $errors[] = 'Error al actualizar RAP: ' . $e->getMessage();
+            }
+        }
+    }
+}
+
+// Procesar eliminación de RAP
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'eliminar_rap') {
+    if (!hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)) {
+        $errors[] = 'No tiene permisos para eliminar Resultados de Aprendizaje.';
+    } else {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            $errors[] = 'RAP no válido.';
+        } else {
+            try {
+                $stmt = $db->prepare("DELETE FROM resultados_aprendizaje WHERE id = ?");
+                $stmt->execute([$id]);
+
+                $logStmt = $db->prepare("
+                    INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
+                    VALUES (?, 'Eliminar', 'RAPs', 'resultados_aprendizaje', ?, 'Eliminó el RAP')
+                ");
+                $logStmt->execute([(int)getCurrentUser()['id'], $id]);
+
+                $successMessage = 'Resultado de Aprendizaje eliminado exitosamente.';
+            } catch (Exception $e) {
+                $errors[] = 'No se puede eliminar: el RAP tiene evaluaciones asociadas.';
+            }
+        }
+    }
+}
+
 // Obtener competencias de la BD
 $competencias = [];
 try {
@@ -133,8 +198,27 @@ if (!isset($app_included)) {
           <ul class="list-group list-group-flush small" style="background:transparent;">
             <?php foreach ($comp['raps'] as $rap): ?>
               <li class="list-group-item d-flex gap-2 align-items-start ps-0 border-0" style="background:transparent;">
-                <span class="badge bg-success"><?= htmlspecialchars($rap['codigo']) ?></span>
-                <span class="text-dark"><?= htmlspecialchars($rap['denominacion']) ?></span>
+                <span class="badge bg-success flex-shrink-0"><?= htmlspecialchars($rap['codigo']) ?></span>
+                <span class="text-dark flex-grow-1"><?= htmlspecialchars($rap['denominacion']) ?></span>
+                <?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
+                <div class="d-flex gap-1 flex-shrink-0">
+                  <button class="btn btn-sm btn-soft py-0 px-1" style="font-size:.75rem;"
+                    onclick="abrirModalEditarRAP(
+                      <?= $rap['id'] ?>, <?= $comp['id'] ?>,
+                      <?= json_encode($rap['codigo']) ?>,
+                      <?= json_encode($rap['denominacion']) ?>)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <form method="POST" class="d-inline"
+                        onsubmit="return confirm('¿Eliminar este RAP? Esta acción no se puede deshacer.')">
+                    <input type="hidden" name="action" value="eliminar_rap">
+                    <input type="hidden" name="id" value="<?= $rap['id'] ?>">
+                    <button type="submit" class="btn btn-sm btn-soft py-0 px-1 text-danger" style="font-size:.75rem;">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+                <?php endif; ?>
               </li>
             <?php endforeach; ?>
             <?php if (empty($comp['raps'])): ?>
@@ -155,6 +239,57 @@ if (!isset($app_included)) {
     </div>
   <?php endif; ?>
 </div>
+
+<!-- Modal Editar RAP -->
+<?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
+<div class="modal fade" id="modalEditarRAP" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold">Editar Resultado de Aprendizaje (RAP)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="editar_rap">
+        <input type="hidden" name="id" id="edit_rap_id">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Competencia Asociada</label>
+            <select name="competencia_id" id="edit_rap_competencia_id" class="form-select" required>
+              <?php foreach ($competencias as $c): ?>
+                <option value="<?= $c['id'] ?>">
+                  <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Código del RAP</label>
+            <input type="text" name="codigo" id="edit_rap_codigo" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Denominación del Resultado de Aprendizaje</label>
+            <textarea name="denominacion" id="edit_rap_denominacion" class="form-control" rows="4" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function abrirModalEditarRAP(id, competenciaId, codigo, denominacion) {
+    document.getElementById('edit_rap_id').value             = id;
+    document.getElementById('edit_rap_competencia_id').value = competenciaId;
+    document.getElementById('edit_rap_codigo').value         = codigo;
+    document.getElementById('edit_rap_denominacion').value   = denominacion;
+    new bootstrap.Modal(document.getElementById('modalEditarRAP')).show();
+}
+</script>
+<?php endif; ?>
 
 <!-- Modal Registrar RAP -->
 <?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>

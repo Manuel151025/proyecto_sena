@@ -31,8 +31,15 @@ if ($role === ROL_COORDINADOR && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
         $stmt->execute([$id]);
         $mensaje = 'Ficha eliminada correctamente';
         $tipo_mensaje = 'success';
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') {
+            $mensaje = 'No se puede eliminar la ficha porque tiene aprendices matriculados, actividades, o evaluaciones registradas.';
+        } else {
+            $mensaje = 'Error de base de datos al eliminar la ficha: ' . $e->getMessage();
+        }
+        $tipo_mensaje = 'danger';
     } catch (Exception $e) {
-        $mensaje = 'Error al eliminar ficha';
+        $mensaje = 'Error al eliminar la ficha: ' . $e->getMessage();
         $tipo_mensaje = 'danger';
     }
 }
@@ -50,10 +57,13 @@ try {
             p.nombre as programa,
             p.codigo as codigo_programa,
             u.nombre as instructor,
-            u.id as instructor_id
+            u.id as instructor_id,
+            pr.nombre as proyecto_nombre,
+            pr.codigo as proyecto_codigo
         FROM fichas f
         JOIN programas p ON f.programa_id = p.id
         JOIN usuarios u ON f.instructor_id = u.id
+        LEFT JOIN proyectos pr ON f.proyecto_id = pr.id
     ";
     
     $params = [];
@@ -144,6 +154,23 @@ $estados_label = [
               <i class="bi bi-person-video3"></i>
             </div>
             <span class="text-muted small fw-medium text-truncate"><?= htmlspecialchars($ficha['instructor']) ?></span>
+          </div>
+          <?php endif; ?>
+          <?php if (!empty($ficha['proyecto_nombre'])): ?>
+          <div class="d-flex align-items-center mb-2">
+            <div class="icon-bg bg-light text-muted rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px;height:28px;font-size:0.8rem;">
+              <i class="bi bi-kanban"></i>
+            </div>
+            <span class="text-muted small fw-medium text-truncate" title="<?= htmlspecialchars($ficha['proyecto_nombre']) ?>">
+              <?= htmlspecialchars($ficha['proyecto_codigo'] . ' — ' . substr($ficha['proyecto_nombre'], 0, 28) . (strlen($ficha['proyecto_nombre']) > 28 ? '…' : '')) ?>
+            </span>
+          </div>
+          <?php else: ?>
+          <div class="d-flex align-items-center mb-2">
+            <div class="icon-bg bg-light text-muted rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px;height:28px;font-size:0.8rem;">
+              <i class="bi bi-kanban"></i>
+            </div>
+            <span class="text-muted small fst-italic">Sin proyecto asignado</span>
           </div>
           <?php endif; ?>
           <div class="d-flex align-items-center">

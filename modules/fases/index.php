@@ -52,6 +52,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Procesar edición de fase
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'editar') {
+    if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
+        $errors[] = 'No tiene permisos para editar fases.';
+    } else {
+        $id          = (int)($_POST['id'] ?? 0);
+        $numero_fase = (int)($_POST['numero_fase'] ?? 0);
+        $nombre      = trim($_POST['nombre'] ?? '');
+        $descripcion = trim($_POST['descripcion'] ?? '');
+        $fecha_inicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
+        $fecha_fin    = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
+        $cumplimiento = (float)($_POST['cumplimiento_porcentaje'] ?? 0);
+        $estado       = $_POST['estado'] ?? 'planeada';
+
+        if ($id <= 0)          $errors[] = 'Fase no válida.';
+        if ($numero_fase <= 0) $errors[] = 'El número de fase debe ser mayor a 0.';
+        if (empty($nombre))    $errors[] = 'El nombre de la fase es obligatorio.';
+
+        if (empty($errors)) {
+            try {
+                $stmt = $db->prepare("
+                    UPDATE fases_proyecto
+                    SET numero_fase=?, nombre=?, descripcion=?, fecha_inicio=?, fecha_fin=?,
+                        cumplimiento_porcentaje=?, estado=?
+                    WHERE id=?
+                ");
+                $stmt->execute([$numero_fase, $nombre, $descripcion, $fecha_inicio, $fecha_fin, $cumplimiento, $estado, $id]);
+                $successMessage = 'Fase actualizada exitosamente.';
+            } catch (Exception $e) {
+                $errors[] = 'Error al actualizar la fase: ' . $e->getMessage();
+            }
+        }
+    }
+}
+
+// Procesar eliminación de fase
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'eliminar') {
+    if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
+        $errors[] = 'No tiene permisos para eliminar fases.';
+    } else {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            $errors[] = 'Fase no válida.';
+        } else {
+            try {
+                $stmt = $db->prepare("DELETE FROM fases_proyecto WHERE id = ?");
+                $stmt->execute([$id]);
+                $successMessage = 'Fase eliminada exitosamente.';
+            } catch (Exception $e) {
+                $errors[] = 'No se puede eliminar: la fase tiene registros asociados.';
+            }
+        }
+    }
+}
+
 // Obtener proyectos para el filtro
 $proyectos = [];
 try {
@@ -210,8 +265,23 @@ if (!isset($app_included)) {
           </div>
           
           <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
-            <div class="d-grid">
-              <button class="btn btn-sm btn-soft" onclick="alert('Edición de fases próximamente.')">Editar Fase</button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-soft flex-grow-1"
+                onclick="abrirModalEditarFase(
+                  <?= $fase['id'] ?>, <?= $fase['numero_fase'] ?>,
+                  <?= json_encode($fase['nombre']) ?>, <?= json_encode($fase['descripcion'] ?? '') ?>,
+                  <?= json_encode($fase['fecha_inicio'] ?? '') ?>, <?= json_encode($fase['fecha_fin'] ?? '') ?>,
+                  <?= (float)$fase['cumplimiento_porcentaje'] ?>, <?= json_encode($fase['estado']) ?>)">
+                <i class="bi bi-pencil me-1"></i>Editar
+              </button>
+              <form method="POST" class="d-inline"
+                    onsubmit="return confirm('¿Eliminar la fase <?= htmlspecialchars(addslashes($fase['nombre'])) ?>?')">
+                <input type="hidden" name="action" value="eliminar">
+                <input type="hidden" name="id" value="<?= $fase['id'] ?>">
+                <button type="submit" class="btn btn-sm btn-soft text-danger px-3">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
             </div>
           <?php endif; ?>
         </div>
@@ -226,6 +296,81 @@ if (!isset($app_included)) {
     </div>
   <?php endif; ?>
 </div>
+
+<!-- Modal Editar Fase -->
+<?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar Fase</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="editar">
+        <input type="hidden" name="id" id="edit_fase_id">
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label text-muted small fw-semibold">Fase N°</label>
+              <input type="number" name="numero_fase" id="edit_fase_numero" class="form-control" min="1" required>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label text-muted small fw-semibold">Nombre de la Fase</label>
+              <input type="text" name="nombre" id="edit_fase_nombre" class="form-control" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Descripción</label>
+            <textarea name="descripcion" id="edit_fase_descripcion" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small fw-semibold">Fecha Inicio</label>
+              <input type="date" name="fecha_inicio" id="edit_fase_inicio" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small fw-semibold">Fecha Fin</label>
+              <input type="date" name="fecha_fin" id="edit_fase_fin" class="form-control">
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small fw-semibold">Cumplimiento (%)</label>
+              <input type="number" name="cumplimiento_porcentaje" id="edit_fase_cumplimiento" class="form-control" min="0" max="100">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small fw-semibold">Estado</label>
+              <select name="estado" id="edit_fase_estado" class="form-select">
+                <option value="planeada">Planeada</option>
+                <option value="en_ejecucion">En Ejecución</option>
+                <option value="completada">Completada</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 px-4 pb-4">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fechaFin, cumplimiento, estado) {
+    document.getElementById('edit_fase_id').value           = id;
+    document.getElementById('edit_fase_numero').value       = numero;
+    document.getElementById('edit_fase_nombre').value       = nombre;
+    document.getElementById('edit_fase_descripcion').value  = descripcion;
+    document.getElementById('edit_fase_inicio').value       = fechaInicio;
+    document.getElementById('edit_fase_fin').value          = fechaFin;
+    document.getElementById('edit_fase_cumplimiento').value = cumplimiento;
+    document.getElementById('edit_fase_estado').value       = estado;
+    new bootstrap.Modal(document.getElementById('modalEditar')).show();
+}
+</script>
+<?php endif; ?>
 
 <!-- Modal Crear Fase -->
 <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>

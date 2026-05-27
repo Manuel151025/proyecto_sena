@@ -46,6 +46,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Procesar edición de competencia
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'editar') {
+    if (!hasRole(ROL_COORDINADOR)) {
+        $errors[] = 'Solo los coordinadores pueden editar competencias.';
+    } else {
+        $id          = (int)($_POST['id'] ?? 0);
+        $programa_id = (int)($_POST['programa_id'] ?? 0);
+        $nombre      = trim($_POST['nombre'] ?? '');
+        $codigo      = trim($_POST['codigo'] ?? '');
+        $descripcion = trim($_POST['descripcion'] ?? '');
+        $horas       = (int)($_POST['horas'] ?? 0);
+        $estado      = $_POST['estado'] ?? 'activo';
+
+        if ($id <= 0)          $errors[] = 'Competencia no válida.';
+        if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa válido.';
+        if (empty($nombre))    $errors[] = 'El nombre de la competencia es obligatorio.';
+        if (empty($codigo))    $errors[] = 'El código de la competencia es obligatorio.';
+        if ($horas <= 0)       $errors[] = 'La duración en horas debe ser mayor a 0.';
+
+        if (empty($errors)) {
+            try {
+                $stmt = $db->prepare("
+                    UPDATE competencias
+                    SET programa_id=?, nombre=?, codigo=?, descripcion=?, horas=?, estado=?
+                    WHERE id=?
+                ");
+                $stmt->execute([$programa_id, $nombre, $codigo, $descripcion, $horas, $estado, $id]);
+                $successMessage = 'Competencia actualizada exitosamente.';
+            } catch (Exception $e) {
+                $errors[] = 'Error al actualizar competencia: ' . $e->getMessage();
+            }
+        }
+    }
+}
+
+// Procesar eliminación de competencia
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'eliminar') {
+    if (!hasRole(ROL_COORDINADOR)) {
+        $errors[] = 'Solo los coordinadores pueden eliminar competencias.';
+    } else {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            $errors[] = 'Competencia no válida.';
+        } else {
+            try {
+                $stmt = $db->prepare("DELETE FROM competencias WHERE id = ?");
+                $stmt->execute([$id]);
+                $successMessage = 'Competencia eliminada exitosamente.';
+            } catch (Exception $e) {
+                $errors[] = 'No se puede eliminar: la competencia tiene registros asociados.';
+            }
+        }
+    }
+}
+
 // Obtener programas para los filtros y el formulario
 $programas = [];
 try {
@@ -216,9 +271,23 @@ if (!isset($app_included)) {
               </span>
             </td>
             <td class="pe-4 text-end">
-              <button class="btn btn-sm btn-soft" onclick="alert('Funcionalidad de edición próximamente disponible.')">
+              <?php if (hasRole(ROL_COORDINADOR)): ?>
+              <button class="btn btn-sm btn-soft" onclick="abrirModalEditar(
+                  <?= $comp['id'] ?>, <?= $comp['programa_id'] ?>,
+                  <?= json_encode($comp['codigo']) ?>, <?= json_encode($comp['nombre']) ?>,
+                  <?= json_encode($comp['descripcion'] ?? '') ?>, <?= $comp['horas'] ?>,
+                  <?= json_encode($comp['estado']) ?>)">
                 <i class="bi bi-pencil"></i>
               </button>
+              <form method="POST" class="d-inline"
+                    onsubmit="return confirm('¿Eliminar la competencia <?= htmlspecialchars(addslashes($comp['nombre'])) ?>? Esta acción no se puede deshacer.')">
+                <input type="hidden" name="action" value="eliminar">
+                <input type="hidden" name="id" value="<?= $comp['id'] ?>">
+                <button type="submit" class="btn btn-sm btn-soft text-danger">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+              <?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>
@@ -235,6 +304,77 @@ if (!isset($app_included)) {
     </div>
   </div>
 </div>
+
+<!-- Modal Editar Competencia -->
+<?php if (hasRole(ROL_COORDINADOR)): ?>
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold">Editar Competencia</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="editar">
+        <input type="hidden" name="id" id="edit_id">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Programa de Formación</label>
+            <select name="programa_id" id="edit_programa_id" class="form-select" required>
+              <?php foreach ($programas as $p): ?>
+                <option value="<?= $p['id'] ?>">
+                  <?= htmlspecialchars($p['codigo'] . ' - ' . $p['nombre']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-8">
+              <label class="form-label text-muted small fw-semibold">Código</label>
+              <input type="text" name="codigo" id="edit_codigo" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-muted small fw-semibold">Horas</label>
+              <input type="number" name="horas" id="edit_horas" class="form-control" min="1" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Nombre de Competencia</label>
+            <input type="text" name="nombre" id="edit_nombre" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Descripción (Opcional)</label>
+            <textarea name="descripcion" id="edit_descripcion" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Estado</label>
+            <select name="estado" id="edit_estado" class="form-select">
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function abrirModalEditar(id, programaId, codigo, nombre, descripcion, horas, estado) {
+    document.getElementById('edit_id').value          = id;
+    document.getElementById('edit_programa_id').value = programaId;
+    document.getElementById('edit_codigo').value      = codigo;
+    document.getElementById('edit_nombre').value      = nombre;
+    document.getElementById('edit_descripcion').value = descripcion;
+    document.getElementById('edit_horas').value       = horas;
+    document.getElementById('edit_estado').value      = estado;
+    new bootstrap.Modal(document.getElementById('modalEditar')).show();
+}
+</script>
+<?php endif; ?>
 
 <!-- Modal Crear Competencia -->
 <?php if (hasRole(ROL_COORDINADOR)): ?>

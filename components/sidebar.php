@@ -11,7 +11,9 @@ $user = getCurrentUser();
 ?>
 <aside class="sidebar">
   <div class="sidebar-brand">
-    <div class="brand-mark">S</div>
+    <div class="brand-mark" style="background: transparent;">
+      <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA Logo" style="width: 38px; height: 38px; object-fit: contain;">
+    </div>
     <div class="brand-text">
       <strong>SENA</strong>
       <small>Proyecto Formativo</small>

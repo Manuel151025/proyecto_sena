@@ -75,3 +75,47 @@ function timeAgo(string $datetime): string {
 function sanitize(string $str): string {
     return htmlspecialchars(trim($str), ENT_QUOTES, 'UTF-8');
 }
+
+/**
+ * Inicializa los registros de evaluación en estado 'pendiente'
+ * para todos los Resultados de Aprendizaje (RAs) del programa de la ficha
+ * asociada a un aprendiz.
+ */
+function inicializarEvaluacionesAprendiz(PDO $db, int $aprendizId, int $fichaId): void {
+    // 1. Obtener el programa_id y el instructor responsable de la ficha
+    $stmtFicha = $db->prepare("SELECT programa_id, instructor_id FROM fichas WHERE id = ?");
+    $stmtFicha->execute([$fichaId]);
+    $ficha = $stmtFicha->fetch(PDO::FETCH_ASSOC);
+    if (!$ficha) return;
+
+    $programaId = (int)$ficha['programa_id'];
+    $instructorId = (int)($ficha['instructor_id'] ?: 0);
+
+    // 2. Obtener todos los RAs asociados a este programa
+    $stmtRas = $db->prepare("
+        SELECT ra.id
+        FROM resultados_aprendizaje ra
+        JOIN competencias c ON ra.competencia_id = c.id
+        WHERE c.programa_id = ?
+    ");
+    $stmtRas->execute([$programaId]);
+    $ras = $stmtRas->fetchAll(PDO::FETCH_COLUMN);
+
+    if (empty($ras)) return;
+
+    // 3. Insertar registros en evaluaciones (si no existen)
+    $stmtInsert = $db->prepare("
+        INSERT INTO evaluaciones (resultado_aprendizaje_id, aprendiz_id, instructor_id, ficha_id, concepto, comentario, fecha_evaluacion)
+        VALUES (?, ?, ?, ?, 'pendiente', NULL, NULL)
+        ON DUPLICATE KEY UPDATE concepto = concepto
+    ");
+
+    foreach ($ras as $raId) {
+        $stmtInsert->execute([
+            (int)$raId, 
+            $aprendizId, 
+            $instructorId > 0 ? $instructorId : null, 
+            $fichaId
+        ]);
+    }
+}
