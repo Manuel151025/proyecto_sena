@@ -717,9 +717,21 @@ $feedback_iconos = [
 
     <!-- Tabla de aprendices con sus estadísticas -->
     <div class="card glass-card border-0 shadow-sm">
-      <div class="card-header border-bottom-0 pb-0 bg-transparent p-4">
-        <h4 class="fw-bold text-dark mb-1">Rendimiento Académico por Aprendiz</h4>
-        <p class="text-muted small mb-0">Monitorea el avance por resultados de aprendizaje e interviene oportunamente.</p>
+      <div class="card-header border-bottom-0 bg-transparent p-4 pb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div>
+            <h4 class="fw-bold text-dark mb-1">Rendimiento Académico por Aprendiz</h4>
+            <p class="text-muted small mb-0">Monitorea el avance por resultados de aprendizaje e interviene oportunamente.</p>
+          </div>
+          <div style="min-width: 320px;">
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(0,0,0,0.15)">
+                <i class="bi bi-search text-muted"></i>
+              </span>
+              <input type="text" id="buscar_aprendiz" class="form-control border-start-0 ps-0" placeholder="Buscar aprendiz por nombre o documento...">
+            </div>
+          </div>
+        </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -746,7 +758,7 @@ $feedback_iconos = [
                   elseif ($prog < 80 || $en_proc > 0)   { $alerta_label = 'Riesgo';  $alerta_class = 'warning'; }
                   else                                   { $alerta_label = 'Al Día';  $alerta_class = 'success'; }
                 ?>
-                <tr>
+                <tr class="aprendiz-fila" data-search="<?= htmlspecialchars(strtolower($ap['aprendiz_nombre'] . ' ' . $ap['numero_documento']), ENT_QUOTES, 'UTF-8') ?>">
                   <td class="ps-4">
                     <div class="d-flex align-items-center gap-2">
                       <div class="avatar bg-light text-dark fw-bold rounded-circle border"
@@ -1126,6 +1138,19 @@ $feedback_iconos = [
         document.getElementById('retro_aprendiz_nombre').innerText = nombre;
         modalRetro.show();
     }
+
+    // Buscador en tiempo real de aprendices (con soporte de acentos/tildes)
+    document.getElementById('buscar_aprendiz')?.addEventListener('input', function() {
+        const query = this.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        document.querySelectorAll('.aprendiz-fila').forEach(tr => {
+            const searchVal = (tr.dataset.search || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (searchVal.includes(query)) {
+                tr.style.display = '';
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+    });
     </script>
   <?php endif; ?>
 <?php endif; ?>
