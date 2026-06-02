@@ -101,7 +101,39 @@ try {
     // se mantiene en 0
 }
 
-// Fichas asignadas al instructor (incluyendo asignaciones específicas)
+// KPI 3 — aprendices en etapa práctica a cargo del instructor
+$kpi_aprendices_seguimiento = 0;
+try {
+    $stmt = $db->prepare("
+        SELECT COUNT(*)
+        FROM aprendices
+        WHERE instructor_seguimiento_id = ? AND estado = 'etapa_practica'
+    ");
+    $stmt->execute([$instructor_id]);
+    $kpi_aprendices_seguimiento = (int)$stmt->fetchColumn();
+} catch (Exception $e) {
+    // se mantiene en 0
+}
+
+// Aprendices en Etapa Práctica a cargo del instructor
+$aprendices_seguimiento_lista = [];
+try {
+    $stmt = $db->prepare("
+        SELECT ap.id, u.nombre, f.numero_ficha, p.nombre as programa, ap.telefono, ap.ciudad, f.id as ficha_id
+        FROM aprendices ap
+        JOIN usuarios u ON ap.usuario_id = u.id
+        LEFT JOIN fichas f ON ap.ficha_id = f.id
+        LEFT JOIN programas p ON f.programa_id = p.id
+        WHERE ap.instructor_seguimiento_id = ? AND ap.estado = 'etapa_practica'
+        ORDER BY u.nombre
+    ");
+    $stmt->execute([$instructor_id]);
+    $aprendices_seguimiento_lista = $stmt->fetchAll();
+} catch (Exception $e) {
+    // se mantiene vacía
+}
+
+// Fichas asignadas al instructor (incluyendo asignaciones específicas y de seguimiento)
 $fichasInstructor = [];
 try {
     $stmt = $db->prepare("
@@ -111,10 +143,11 @@ try {
         FROM fichas f
         JOIN programas p ON f.programa_id = p.id
         LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
-        WHERE f.instructor_id = ? OR asg.instructor_id = ?
+        LEFT JOIN aprendices ap ON ap.ficha_id = f.id
+        WHERE f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?
         ORDER BY f.cumplimiento_porcentaje ASC
     ");
-    $stmt->execute([$instructor_id, $instructor_id]);
+    $stmt->execute([$instructor_id, $instructor_id, $instructor_id]);
     $rows = $stmt->fetchAll();
 
     foreach ($rows as $f) {
@@ -220,41 +253,60 @@ try {
 
 <!-- ===== KPIs ===== -->
 <div class="row g-3 mb-3">
-  <div class="col-md-6">
+  <div class="col-md-4">
     <?php if ($kpi_evaluaciones_pendientes > 0): ?>
-      <div class="alert-flat danger">
+      <div class="alert-flat danger h-100">
         <i class="bi bi-clipboard-x"></i>
         <div>
           <strong><?= number_format($kpi_evaluaciones_pendientes) ?>
             <?= $kpi_evaluaciones_pendientes === 1 ? 'evaluación pendiente' : 'evaluaciones pendientes' ?></strong>
           requieren tu calificación.
-          <a href="<?= MODULES_PATH ?>/evaluaciones/" class="ms-2 fw-semibold"
-             style="color:inherit;text-decoration:underline">Ir a evaluar</a>
+          <a href="<?= MODULES_PATH ?>/evaluaciones/" class="ms-2 fw-semibold d-block text-decoration-underline"
+             style="color:inherit">Ir a evaluar →</a>
         </div>
       </div>
     <?php else: ?>
-      <div class="alert-flat success">
+      <div class="alert-flat success h-100">
         <i class="bi bi-check2-circle"></i>
         <div><strong>Sin evaluaciones pendientes.</strong> ¡Estás al día!</div>
       </div>
     <?php endif; ?>
   </div>
-  <div class="col-md-6">
+  <div class="col-md-4">
     <?php if ($kpi_planes_requeridos > 0): ?>
-      <div class="alert-flat warning">
+      <div class="alert-flat warning h-100">
         <i class="bi bi-person-exclamation"></i>
         <div>
           <strong><?= number_format($kpi_planes_requeridos) ?>
             <?= $kpi_planes_requeridos === 1 ? 'aprendiz necesita' : 'aprendices necesitan' ?> plan de mejoramiento</strong>
           en tus fichas.
-          <a href="<?= MODULES_PATH ?>/mejoramiento/" class="ms-2 fw-semibold"
-             style="color:inherit;text-decoration:underline">Revisar</a>
+          <a href="<?= MODULES_PATH ?>/mejoramiento/" class="ms-2 fw-semibold d-block text-decoration-underline"
+             style="color:inherit">Revisar →</a>
         </div>
       </div>
     <?php else: ?>
-      <div class="alert-flat success">
+      <div class="alert-flat success h-100">
         <i class="bi bi-patch-check"></i>
         <div><strong>Ningún aprendiz</strong> requiere plan de mejoramiento.</div>
+      </div>
+    <?php endif; ?>
+  </div>
+  <div class="col-md-4">
+    <?php if ($kpi_aprendices_seguimiento > 0): ?>
+      <div class="alert-flat info h-100" style="background: rgba(13, 110, 253, 0.05); border-left: 4px solid #0d6efd; color: #084298;">
+        <i class="bi bi-person-video3" style="color: #0d6efd;"></i>
+        <div>
+          <strong><?= number_format($kpi_aprendices_seguimiento) ?>
+            <?= $kpi_aprendices_seguimiento === 1 ? 'aprendiz' : 'aprendices' ?> en Etapa Práctica</strong>
+          bajo tu seguimiento.
+          <a href="#practica-seguimiento" class="ms-2 fw-semibold d-block text-decoration-underline"
+             style="color:inherit">Ver listado ↓</a>
+        </div>
+      </div>
+    <?php else: ?>
+      <div class="alert-flat success h-100">
+        <i class="bi bi-person-video3"></i>
+        <div><strong>0 aprendices</strong> asignados en Etapa Práctica.</div>
       </div>
     <?php endif; ?>
   </div>
@@ -378,6 +430,61 @@ try {
               <td class="text-end">
                 <a href="<?= MODULES_PATH ?>/mejoramiento/" class="btn btn-sm btn-primary">
                   <i class="bi bi-arrow-right"></i> Atender
+                </a>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== Aprendices en Etapa Práctica (Seguimiento) ===== -->
+<div class="card mt-4 mb-4" id="practica-seguimiento">
+  <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-person-video3 text-primary me-2"></i>Mis Aprendices en Etapa Práctica (Seguimiento)</h5>
+    <small class="text-muted">Listado de aprendices asignados para seguimiento de etapa productiva.</small>
+  </div>
+  <div class="table-wrap mt-3" style="border:0;border-radius:0">
+    <table class="table mb-0 align-middle">
+      <thead>
+        <tr>
+          <th class="ps-4">Aprendiz</th>
+          <th>Ficha</th>
+          <th>Programa</th>
+          <th>Teléfono / Ciudad</th>
+          <th class="pe-4 text-end">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php if (empty($aprendices_seguimiento_lista)): ?>
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">
+              <i class="bi bi-person-badge-fill text-muted d-block mb-1" style="font-size:1.5rem; opacity:0.5;"></i>
+              No tienes aprendices en etapa práctica asignados.
+            </td>
+          </tr>
+        <?php else: ?>
+          <?php foreach ($aprendices_seguimiento_lista as $ap_seg): ?>
+            <tr>
+              <td class="ps-4">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="avatar bg-soft-primary text-primary" style="width:32px;height:32px;font-size:.75rem">
+                    <?= getInitials($ap_seg['nombre']) ?>
+                  </div>
+                  <strong><?= htmlspecialchars($ap_seg['nombre']) ?></strong>
+                </div>
+              </td>
+              <td>#<?= htmlspecialchars($ap_seg['numero_ficha']) ?></td>
+              <td><small class="text-muted"><?= htmlspecialchars($ap_seg['programa']) ?></small></td>
+              <td>
+                <div><?= htmlspecialchars($ap_seg['telefono'] ?: '—') ?></div>
+                <small class="text-muted"><?= htmlspecialchars($ap_seg['ciudad'] ?: '—') ?></small>
+              </td>
+              <td class="pe-4 text-end">
+                <a href="<?= MODULES_PATH ?>/seguimiento/index.php?ficha_id=<?= $ap_seg['ficha_id'] ?>&ver_aprendiz_id=<?= $ap_seg['id'] ?>" class="btn btn-sm btn-soft">
+                  <i class="bi bi-chat-dots me-1"></i> Seguimiento
                 </a>
               </td>
             </tr>

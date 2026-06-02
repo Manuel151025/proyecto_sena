@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $telefono = trim($_POST['telefono'] ?? '');
         $ciudad = trim($_POST['ciudad'] ?? '');
         $fecha_nacimiento = !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : null;
+        $instructor_seguimiento_id = !empty($_POST['instructor_seguimiento_id']) ? (int)$_POST['instructor_seguimiento_id'] : null;
 
         // Validaciones básicas
         if (empty($nombre)) $errors[] = 'El nombre completo es obligatorio.';
@@ -71,10 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
                 // 2. Crear registro de aprendiz
                 $stmt = $db->prepare("
-                    INSERT INTO aprendices (usuario_id, ficha_id, numero_documento, tipo_documento, genero, fecha_nacimiento, telefono, ciudad, estado)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'matriculado')
+                    INSERT INTO aprendices (usuario_id, ficha_id, instructor_seguimiento_id, numero_documento, tipo_documento, genero, fecha_nacimiento, telefono, ciudad, estado)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'matriculado')
                 ");
-                $stmt->execute([$usuario_id, $ficha_id, $numero_documento, $tipo_documento, $genero, $fecha_nacimiento, $telefono, $ciudad]);
+                $stmt->execute([$usuario_id, $ficha_id, $instructor_seguimiento_id, $numero_documento, $tipo_documento, $genero, $fecha_nacimiento, $telefono, $ciudad]);
                 $new_aprendiz_id = (int)$db->lastInsertId();
 
                 // 2.5. Inicializar evaluaciones como 'pendiente' para todos los RAs
@@ -256,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $fecha_nacimiento = !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : null;
         $telefono = trim($_POST['telefono'] ?? '');
         $ciudad = trim($_POST['ciudad'] ?? '');
+        $instructor_seguimiento_id = !empty($_POST['instructor_seguimiento_id']) ? (int)$_POST['instructor_seguimiento_id'] : null;
 
         if ($aprendiz_id <= 0) $errors[] = 'Aprendiz no válido.';
         if (empty($nombre)) $errors[] = 'El nombre completo es obligatorio.';
@@ -301,12 +303,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     // 2. Actualizar tabla aprendices
                     $stmt = $db->prepare("
                         UPDATE aprendices 
-                        SET ficha_id = ?, estado = ?, tipo_documento = ?, numero_documento = ?, 
+                        SET ficha_id = ?, instructor_seguimiento_id = ?, estado = ?, tipo_documento = ?, numero_documento = ?, 
                             genero = ?, fecha_nacimiento = ?, telefono = ?, ciudad = ? 
                         WHERE id = ?
                     ");
                     $stmt->execute([
-                        $ficha_id, $estado, $tipo_documento, $numero_documento,
+                        $ficha_id, $instructor_seguimiento_id, $estado, $tipo_documento, $numero_documento,
                         $genero, $fecha_nacimiento, $telefono, $ciudad, $aprendiz_id
                     ]);
 
@@ -418,6 +420,15 @@ try {
     $errors[] = 'Error al cargar fichas.';
 }
 
+$instructores = [];
+try {
+    $stmtInst = $db->prepare("SELECT id, nombre FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' ORDER BY nombre");
+    $stmtInst->execute();
+    $instructores = $stmtInst->fetchAll();
+} catch (Exception $e) {
+    $errors[] = 'Error al cargar instructores.';
+}
+
 // Obtener filtros de búsqueda
 $search = trim($_GET['search'] ?? '');
 $filter_ficha = (int)($_GET['ficha_id'] ?? 0);
@@ -425,17 +436,20 @@ $filter_estado = $_GET['estado'] ?? '';
 
 // Construir consulta de aprendices
 $sql = "
-    SELECT a.*, u.nombre, u.email, u.avatar_color, f.numero_ficha, p.nombre as programa_nombre
+    SELECT a.*, u.nombre, u.email, u.avatar_color, f.numero_ficha, p.nombre as programa_nombre,
+           u2.nombre as instructor_seguimiento_nombre
     FROM aprendices a
     JOIN usuarios u ON a.usuario_id = u.id
     LEFT JOIN fichas f ON a.ficha_id = f.id
     LEFT JOIN programas p ON f.programa_id = p.id
+    LEFT JOIN usuarios u2 ON a.instructor_seguimiento_id = u2.id
     WHERE 1=1
 ";
 $params = [];
 
 if (getCurrentRole() === ROL_INSTRUCTOR) {
-    $sql .= " AND f.instructor_id = ?";
+    $sql .= " AND (f.instructor_id = ? OR a.instructor_seguimiento_id = ?)";
+    $params[] = getCurrentUser()['id'];
     $params[] = getCurrentUser()['id'];
 }
 
@@ -469,7 +483,8 @@ $estados_label = [
     'matriculado' => ['Matriculado', 'success'],
     'suspendido' => ['Suspendido', 'warning'],
     'desertado' => ['Desertado', 'danger'],
-    'egresado' => ['Egresado', 'info']
+    'egresado' => ['Egresado', 'info'],
+    'etapa_practica' => ['Etapa Práctica', 'primary']
 ];
 
 $pageTitle = 'Gestión de Matrículas · SENA';
@@ -552,6 +567,7 @@ if (!isset($app_included)) {
           <option value="suspendido" <?= $filter_estado === 'suspendido' ? 'selected' : '' ?>>Suspendido</option>
           <option value="desertado" <?= $filter_estado === 'desertado' ? 'selected' : '' ?>>Desertado</option>
           <option value="egresado" <?= $filter_estado === 'egresado' ? 'selected' : '' ?>>Egresado</option>
+          <option value="etapa_practica" <?= $filter_estado === 'etapa_practica' ? 'selected' : '' ?>>Etapa Práctica</option>
         </select>
       </div>
       <div class="col-md-2 d-grid">
@@ -597,9 +613,12 @@ if (!isset($app_included)) {
             <td>
               <?php if ($ap['numero_ficha']): ?>
                 <div class="fw-bold text-dark">Ficha #<?= htmlspecialchars($ap['numero_ficha']) ?></div>
-                <small class="text-muted text-wrap d-inline-block" style="max-width:200px;"><?= htmlspecialchars($ap['programa_nombre']) ?></small>
+                <small class="text-muted text-wrap d-block" style="max-width:200px;"><?= htmlspecialchars($ap['programa_nombre']) ?></small>
               <?php else: ?>
-                <span class="text-danger small"><i class="bi bi-x-circle me-1"></i>Sin Ficha</span>
+                <span class="text-danger small d-block mb-1"><i class="bi bi-x-circle me-1"></i>Sin Ficha</span>
+              <?php endif; ?>
+              <?php if ($ap['instructor_seguimiento_nombre']): ?>
+                <div class="mt-1"><span class="badge bg-soft-info text-info"><i class="bi bi-person-video3 me-1"></i>Seguimiento: <?= htmlspecialchars($ap['instructor_seguimiento_nombre']) ?></span></div>
               <?php endif; ?>
             </td>
             <td>
@@ -626,6 +645,7 @@ if (!isset($app_included)) {
                         data-ciudad="<?= htmlspecialchars($ap['ciudad'] ?: '', ENT_QUOTES, 'UTF-8') ?>"
                         data-ficha-id="<?= $ap['ficha_id'] ?>"
                         data-estado="<?= htmlspecialchars($ap['estado'], ENT_QUOTES, 'UTF-8') ?>"
+                        data-instructor-seguimiento-id="<?= $ap['instructor_seguimiento_id'] ?: '' ?>"
                         data-bs-toggle="modal" 
                         data-bs-target="#modalEditarMatricula"
                         title="Gestionar Matrícula">
@@ -735,6 +755,17 @@ if (!isset($app_included)) {
             <div class="col-md-3">
               <label class="form-label text-muted small fw-semibold">Ciudad</label>
               <input type="text" name="ciudad" class="form-control" placeholder="Ej. Medellín">
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-12">
+              <label class="form-label text-muted small fw-semibold">Instructor de Seguimiento (Etapa Práctica)</label>
+              <select name="instructor_seguimiento_id" class="form-select">
+                <option value="">-- Sin asignar --</option>
+                <?php foreach ($instructores as $inst): ?>
+                  <option value="<?= $inst['id'] ?>"><?= htmlspecialchars($inst['nombre']) ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
           </div>
         </div>
@@ -862,6 +893,7 @@ if (!isset($app_included)) {
                 <option value="suspendido">Suspendido</option>
                 <option value="desertado">Desertado</option>
                 <option value="egresado">Egresado</option>
+                <option value="etapa_practica">Etapa Práctica</option>
               </select>
             </div>
             <div class="col-md-3">
@@ -885,6 +917,15 @@ if (!isset($app_included)) {
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Ciudad</label>
             <input type="text" name="ciudad" id="edit_ciudad" class="form-control" placeholder="Ej. Medellín">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Instructor de Seguimiento (Etapa Práctica)</label>
+            <select name="instructor_seguimiento_id" id="edit_instructor_seguimiento_id" class="form-select">
+              <option value="">-- Sin asignar --</option>
+              <?php foreach ($instructores as $inst): ?>
+                <option value="<?= $inst['id'] ?>"><?= htmlspecialchars($inst['nombre']) ?></option>
+              <?php endforeach; ?>
+            </select>
           </div>
         </div>
         <div class="modal-footer border-top-0 pt-0">
@@ -934,6 +975,8 @@ function mostrarEditarMatricula(button) {
     if (elFechaNac) elFechaNac.value = button.getAttribute('data-fecha-nacimiento') || '';
     if (elTelefono) elTelefono.value = button.getAttribute('data-telefono') || '';
     if (elCiudad) elCiudad.value = button.getAttribute('data-ciudad') || '';
+    const elInstSeg = document.getElementById('edit_instructor_seguimiento_id');
+    if (elInstSeg) elInstSeg.value = button.getAttribute('data-instructor-seguimiento-id') || '';
 }
 </script>
 

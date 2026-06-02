@@ -76,9 +76,11 @@ if ($ficha) {
                 a.tipo_documento,
                 u.nombre,
                 u.avatar_color,
-                a.estado
+                a.estado,
+                u2.nombre as instructor_seguimiento_nombre
             FROM aprendices a
             JOIN usuarios u ON a.usuario_id = u.id
+            LEFT JOIN usuarios u2 ON a.instructor_seguimiento_id = u2.id
             WHERE a.ficha_id = ?
             ORDER BY u.nombre
         ");
@@ -108,7 +110,8 @@ $estados_aprendiz = [
     'matriculado' => ['Matriculado', 'success'],
     'suspendido' => ['Suspendido', 'warning'],
     'desertado' => ['Desertado', 'danger'],
-    'egresado' => ['Egresado', 'info']
+    'egresado' => ['Egresado', 'info'],
+    'etapa_practica' => ['Etapa Práctica', 'primary']
 ];
 ?>
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
@@ -209,6 +212,7 @@ $estados_aprendiz = [
             <th>Aprendiz</th>
             <th>Tipo de documento</th>
             <th>Estado</th>
+            <th>Instructor de Seguimiento</th>
             <th class="text-end">Acciones</th>
           </tr>
         </thead>
@@ -226,9 +230,16 @@ $estados_aprendiz = [
             </td>
             <td><?= htmlspecialchars($aprendiz['tipo_documento']) ?></td>
             <td>
-              <span class="badge-soft <?= $estados_aprendiz[$aprendiz['estado']][1] ?>">
-                <?= $estados_aprendiz[$aprendiz['estado']][0] ?>
+              <span class="badge-soft <?= $estados_aprendiz[$aprendiz['estado']][1] ?? 'secondary' ?>">
+                <?= $estados_aprendiz[$aprendiz['estado']][0] ?? 'N/A' ?>
               </span>
+            </td>
+            <td>
+              <?php if ($aprendiz['instructor_seguimiento_nombre']): ?>
+                <span class="small text-muted"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($aprendiz['instructor_seguimiento_nombre']) ?></span>
+              <?php else: ?>
+                <span class="small text-muted italic">—</span>
+              <?php endif; ?>
             </td>
             <td class="text-end">
               <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
