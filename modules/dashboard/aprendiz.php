@@ -68,15 +68,18 @@ try {
                 c.codigo as comp_codigo,
                 COUNT(e.id) as total_ra,
                 SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-                SUM(CASE WHEN e.concepto = 'D' THEN 1 ELSE 0 END) as reprobados
+                SUM(CASE WHEN e.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
+                u_inst.nombre as instructor_nombre
             FROM evaluaciones e
             JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
             JOIN competencias c ON ra.competencia_id = c.id
+            LEFT JOIN asignaciones asg ON asg.competencia_id = c.id AND asg.ficha_id = ?
+            LEFT JOIN usuarios u_inst ON asg.instructor_id = u_inst.id
             WHERE e.aprendiz_id = ?
-            GROUP BY c.id, c.nombre, c.codigo
+            GROUP BY c.id, c.nombre, c.codigo, u_inst.nombre
             ORDER BY c.codigo
         ");
-        $stmtComp->execute([$aprendiz['id']]);
+        $stmtComp->execute([$aprendiz['ficha_id'], $aprendiz['id']]);
         $progresoCompetencias = $stmtComp->fetchAll(PDO::FETCH_ASSOC);
 
         // Fases del proyecto
@@ -93,9 +96,10 @@ try {
 
         // Últimas evaluaciones
         $stmtRecientes = $db->prepare("
-            SELECT ra.codigo as ra_codigo, ra.denominacion, e.concepto, e.fecha_evaluacion, e.comentario
+            SELECT ra.codigo as ra_codigo, ra.denominacion, e.concepto, e.fecha_evaluacion, e.comentario, u.nombre as instructor_evaluador
             FROM evaluaciones e
             JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
+            LEFT JOIN usuarios u ON e.instructor_id = u.id
             WHERE e.aprendiz_id = ? AND e.concepto != 'pendiente'
             ORDER BY e.fecha_evaluacion DESC
             LIMIT 6
@@ -190,6 +194,15 @@ $pctPendiente = round(((int)$progreso['pendientes'] / $totalRA) * 100);
           <span class="fw-bold <?= $compClass === 'danger' ? 'text-danger' : ($compClass === 'warning' ? 'text-warning' : 'text-success') ?>"><?= $compPct ?>%</span>
         </div>
         <small class="text-muted d-block mb-2"><?= htmlspecialchars($comp['comp_codigo']) ?> · <?= (int)$comp['aprobados'] ?>/<?= $compTotal ?> RAs aprobados</small>
+        <?php if (!empty($comp['instructor_nombre'])): ?>
+        <div class="text-muted small mb-2" style="font-size: 0.75rem;">
+          <i class="bi bi-person me-1"></i>Instructor: <?= htmlspecialchars($comp['instructor_nombre']) ?>
+        </div>
+        <?php else: ?>
+        <div class="text-muted small mb-2" style="font-size: 0.75rem; font-style: italic;">
+          <i class="bi bi-person me-1"></i>Instructor: Por asignar
+        </div>
+        <?php endif; ?>
         <div class="progress-flat <?= $compClass ?>"><div style="width:<?= $compPct ?>%"></div></div>
       </div>
     </div>
@@ -216,6 +229,11 @@ $pctPendiente = round(((int)$progreso['pendientes'] / $totalRA) * 100);
             <div style="max-width: 65%;">
               <strong><?= htmlspecialchars($ev['ra_codigo']) ?></strong>
               <small class="text-muted d-block text-truncate"><?= htmlspecialchars($ev['denominacion']) ?></small>
+              <?php if (!empty($ev['instructor_evaluador'])): ?>
+              <small class="text-muted d-block text-truncate" style="font-size: 0.72rem; margin-top: 2px;" title="<?= htmlspecialchars($ev['instructor_evaluador']) ?>">
+                <i class="bi bi-person me-1"></i>Evaluado por: <?= htmlspecialchars($ev['instructor_evaluador']) ?>
+              </small>
+              <?php endif; ?>
             </div>
             <div class="text-end">
               <span class="badge-soft <?= $ev['concepto'] === 'A' ? 'success' : 'danger' ?> mb-1">

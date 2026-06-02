@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../core/Database.php';
 
 use Core\Database;
 
-requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
+requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ);
 
 $pageTitle = 'Fichas de formación · SENA';
 $contentView = __FILE__;
@@ -20,6 +20,21 @@ if (!isset($app_included)) {
 $db = Database::getConnection();
 $user = getCurrentUser();
 $role = getCurrentRole();
+
+// Si es aprendiz, redirigir directamente al panel de su ficha
+if ($role === ROL_APRENDIZ) {
+    try {
+        $stmt = $db->prepare("SELECT ficha_id FROM aprendices WHERE usuario_id = ?");
+        $stmt->execute([$user['id']]);
+        $ficha_id = (int)$stmt->fetchColumn();
+        if ($ficha_id > 0) {
+            header('Location: ' . MODULES_PATH . '/fichas/ver.php?id=' . $ficha_id);
+            exit;
+        }
+    } catch (Exception $e) {}
+    denyAccess();
+}
+
 $mensaje = '';
 $tipo_mensaje = '';
 

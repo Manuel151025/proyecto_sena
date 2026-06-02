@@ -396,12 +396,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Obtener fichas para formulario y filtros
 $fichas = [];
 try {
-    $fichas = $db->query("
-        SELECT f.id, f.numero_ficha, p.nombre as programa 
-        FROM fichas f
-        JOIN programas p ON f.programa_id = p.id 
-        ORDER BY f.numero_ficha
-    ")->fetchAll();
+    if (getCurrentRole() === ROL_INSTRUCTOR) {
+        $stmtFichas = $db->prepare("
+            SELECT f.id, f.numero_ficha, p.nombre as programa 
+            FROM fichas f
+            JOIN programas p ON f.programa_id = p.id 
+            WHERE f.instructor_id = ?
+            ORDER BY f.numero_ficha
+        ");
+        $stmtFichas->execute([getCurrentUser()['id']]);
+        $fichas = $stmtFichas->fetchAll();
+    } else {
+        $fichas = $db->query("
+            SELECT f.id, f.numero_ficha, p.nombre as programa 
+            FROM fichas f
+            JOIN programas p ON f.programa_id = p.id 
+            ORDER BY f.numero_ficha
+        ")->fetchAll();
+    }
 } catch (Exception $e) {
     $errors[] = 'Error al cargar fichas.';
 }
@@ -421,6 +433,11 @@ $sql = "
     WHERE 1=1
 ";
 $params = [];
+
+if (getCurrentRole() === ROL_INSTRUCTOR) {
+    $sql .= " AND f.instructor_id = ?";
+    $params[] = getCurrentUser()['id'];
+}
 
 if (!empty($search)) {
     $sql .= " AND (u.nombre LIKE ? OR a.numero_documento LIKE ? OR u.email LIKE ?)";
@@ -508,7 +525,7 @@ if (!isset($app_included)) {
       <div class="col-md-4">
         <label class="form-label text-muted small">Buscar aprendiz</label>
         <div class="input-group">
-          <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(255,255,255,0.15)"><i class="bi bi-search text-muted"></i></span>
+          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre, correo o documento..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>

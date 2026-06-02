@@ -7,11 +7,32 @@ require_once __DIR__ . '/../../core/Database.php';
 
 use Core\Database;
 
-requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
+requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ);
 
 $id = (int) ($_GET['id'] ?? 0);
 $db = Database::getConnection();
 $errors = [];
+
+// Scoping check for apprentice role
+$user = getCurrentUser();
+$role = getCurrentRole();
+if ($role === ROL_APRENDIZ) {
+    try {
+        $stmt = $db->prepare("SELECT ficha_id FROM aprendices WHERE usuario_id = ?");
+        $stmt->execute([$user['id']]);
+        $user_ficha_id = (int)$stmt->fetchColumn();
+        if ($user_ficha_id <= 0 || $id !== $user_ficha_id) {
+            if ($user_ficha_id > 0) {
+                header('Location: ' . MODULES_PATH . '/fichas/ver.php?id=' . $user_ficha_id);
+                exit;
+            } else {
+                denyAccess();
+            }
+        }
+    } catch (Exception $e) {
+        denyAccess();
+    }
+}
 
 // Obtener ficha con información completa
 try {
@@ -92,7 +113,11 @@ $estados_aprendiz = [
 ?>
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
   <div>
-    <a href="<?= MODULES_PATH ?>/fichas/" class="small"><i class="bi bi-arrow-left"></i> Volver a fichas</a>
+    <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
+      <a href="<?= MODULES_PATH ?>/fichas/" class="small"><i class="bi bi-arrow-left"></i> Volver a fichas</a>
+    <?php else: ?>
+      <a href="<?= MODULES_PATH ?>/dashboard/aprendiz.php" class="small"><i class="bi bi-arrow-left"></i> Volver al Inicio</a>
+    <?php endif; ?>
     <h1 class="mt-2 mb-1">
       Ficha #<?= htmlspecialchars($ficha['numero_ficha']) ?> 
       <span class="badge-soft <?= $estados_label[$ficha['estado']][1] ?> ms-2"><?= $estados_label[$ficha['estado']][0] ?></span>
@@ -103,9 +128,11 @@ $estados_aprendiz = [
       <?= $ficha['cantidad_aprendices'] ?> aprendices
     </p>
   </div>
+  <?php if (getCurrentRole() === ROL_COORDINADOR): ?>
   <a href="<?= MODULES_PATH ?>/fichas/editar.php?id=<?= $id ?>" class="btn btn-primary">
     <i class="bi bi-pencil me-1"></i>Editar ficha
   </a>
+  <?php endif; ?>
 </div>
 
 <ul class="nav nav-tabs mb-3" role="tablist">

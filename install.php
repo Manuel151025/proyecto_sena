@@ -115,6 +115,21 @@ CREATE TABLE fichas (
     INDEX idx_proyecto (proyecto_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE asignaciones (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    ficha_id INT NOT NULL,
+    competencia_id INT NOT NULL,
+    instructor_id INT NOT NULL,
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_ficha_competencia (ficha_id, competencia_id),
+    FOREIGN KEY (ficha_id) REFERENCES fichas(id) ON DELETE CASCADE,
+    FOREIGN KEY (competencia_id) REFERENCES competencias(id) ON DELETE CASCADE,
+    FOREIGN KEY (instructor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    INDEX idx_ficha (ficha_id),
+    INDEX idx_competencia (competencia_id),
+    INDEX idx_instructor (instructor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE aprendices (
     id INT PRIMARY KEY AUTO_INCREMENT,
     usuario_id INT NOT NULL,

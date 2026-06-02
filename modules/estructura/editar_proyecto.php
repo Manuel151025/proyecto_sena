@@ -48,9 +48,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $proyecto) {
     $estado = $_POST['estado'] ?? 'activo';
 
     // Validaciones
-    if (empty($nombre)) $errors[] = 'El nombre del proyecto es requerido';
-    if (empty($codigo)) $errors[] = 'El código del proyecto es requerido';
-    if (!in_array($estado, ['activo', 'inactivo', 'finalizado'])) $errors[] = 'Estado inválido';
+    if (empty($nombre)) {
+        $errors[] = 'El nombre del proyecto es requerido';
+    } elseif (mb_strlen($nombre) > 255) {
+        $errors[] = 'El nombre del proyecto no puede exceder los 255 caracteres';
+    }
+
+    if (empty($codigo)) {
+        $errors[] = 'El código del proyecto es requerido';
+    } elseif (mb_strlen($codigo) > 50) {
+        $errors[] = 'El código del proyecto no puede exceder los 50 caracteres';
+    }
+
+    if (mb_strlen($objetivo) > 5000) {
+        $errors[] = 'El objetivo general no puede exceder los 5000 caracteres';
+    }
+
+    if (mb_strlen($descripcion) > 5000) {
+        $errors[] = 'La descripción no puede exceder los 5000 caracteres';
+    }
+
+    if (!in_array($estado, ['activo', 'inactivo', 'finalizado'])) {
+        $errors[] = 'Estado inválido';
+    }
 
     if (empty($errors)) {
         try {
@@ -125,22 +145,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $proyecto) {
         <form method="POST">
           <div class="mb-3">
             <label class="form-label fw-bold">Nombre del Proyecto</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej: Implementación de un modelo integral..." value="<?= htmlspecialchars($proyecto['nombre']) ?>" required>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Implementación de un modelo integral..." value="<?= htmlspecialchars($proyecto['nombre']) ?>" required maxlength="255">
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-bold">Código del Proyecto</label>
-            <input type="text" name="codigo" class="form-control" placeholder="Ej: 3240214" value="<?= htmlspecialchars($proyecto['codigo']) ?>" required>
+            <input type="text" name="codigo" class="form-control" placeholder="Ej: 3240214" value="<?= htmlspecialchars($proyecto['codigo']) ?>" required maxlength="50">
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-bold">Objetivo General</label>
-            <textarea name="objetivo" class="form-control" rows="4" placeholder="Describe el objetivo general del proyecto..."><?= htmlspecialchars($proyecto['objetivo'] ?? '') ?></textarea>
+            <textarea name="objetivo" class="form-control" rows="4" placeholder="Describe el objetivo general del proyecto..." maxlength="5000"><?= htmlspecialchars($proyecto['objetivo'] ?? '') ?></textarea>
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-bold">Descripción / Justificación</label>
-            <textarea name="descripcion" class="form-control" rows="3" placeholder="Descripción adicional del proyecto..."><?= htmlspecialchars($proyecto['descripcion'] ?? '') ?></textarea>
+            <textarea name="descripcion" class="form-control" rows="3" placeholder="Descripción adicional del proyecto..." maxlength="5000"><?= htmlspecialchars($proyecto['descripcion'] ?? '') ?></textarea>
           </div>
 
           <div class="mb-4">

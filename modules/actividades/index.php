@@ -152,8 +152,14 @@ $instructores = [];
 
 if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
     try {
-        $fichas = $db->query("SELECT id, numero_ficha FROM fichas ORDER BY numero_ficha")->fetchAll();
-        $competencias = $db->query("SELECT id, codigo, nombre FROM competencias WHERE estado = 'activo' ORDER BY codigo")->fetchAll();
+        if ($user_rol === ROL_INSTRUCTOR) {
+            $stmtF = $db->prepare("SELECT id, numero_ficha, programa_id FROM fichas WHERE instructor_id = ? ORDER BY numero_ficha");
+            $stmtF->execute([$user_id]);
+            $fichas = $stmtF->fetchAll();
+        } else {
+            $fichas = $db->query("SELECT id, numero_ficha, programa_id FROM fichas ORDER BY numero_ficha")->fetchAll();
+        }
+        $competencias = $db->query("SELECT id, codigo, nombre, programa_id FROM competencias WHERE estado = 'activo' ORDER BY codigo")->fetchAll();
         $instructores = $db->query("SELECT id, nombre FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' ORDER BY nombre")->fetchAll();
     } catch (Exception $e) {
         $errors[] = 'Error al cargar auxiliares.';
@@ -179,6 +185,13 @@ $params = [];
 if ($user_rol === ROL_APRENDIZ) {
     $sql .= " AND act.ficha_id = ?";
     $params[] = $aprendiz_ficha_id;
+} elseif ($user_rol === ROL_INSTRUCTOR) {
+    $sql .= " AND f.instructor_id = ?";
+    $params[] = $user_id;
+    if ($filter_ficha > 0) {
+        $sql .= " AND act.ficha_id = ?";
+        $params[] = $filter_ficha;
+    }
 } else {
     if ($filter_ficha > 0) {
         $sql .= " AND act.ficha_id = ?";
@@ -270,7 +283,7 @@ if (!isset($app_included)) {
       <div class="col-md-4">
         <label class="form-label text-muted small">Buscar Actividad</label>
         <div class="input-group">
-          <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(255,255,255,0.15)"><i class="bi bi-search text-muted"></i></span>
+          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre de tarea..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>
@@ -402,7 +415,7 @@ if (!isset($app_included)) {
               <label class="form-label text-muted small fw-semibold">Ficha Asociada</label>
               <select name="ficha_id" id="edit_act_ficha" class="form-select" required>
                 <?php foreach ($fichas as $f): ?>
-                  <option value="<?= $f['id'] ?>">Ficha #<?= htmlspecialchars($f['numero_ficha']) ?></option>
+                  <option value="<?= $f['id'] ?>" data-programa-id="<?= $f['programa_id'] ?>">Ficha #<?= htmlspecialchars($f['numero_ficha']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
@@ -466,9 +479,62 @@ if (!isset($app_included)) {
   </div>
 </div>
 <script>
+const todasCompetencias = <?= json_encode(array_map(function($c) {
+    return [
+        'id' => (int)$c['id'],
+        'codigo' => $c['codigo'],
+        'nombre' => $c['nombre'],
+        'programa_id' => (int)$c['programa_id']
+    ];
+}, $competencias)) ?>;
+
+function filtrarCompetencias(fichaSelectId, competenciaSelectId) {
+    const fichaSelect = document.getElementById(fichaSelectId);
+    const competenciaSelect = document.getElementById(competenciaSelectId);
+    if (!fichaSelect || !competenciaSelect) return;
+
+    const selectedOption = fichaSelect.options[fichaSelect.selectedIndex];
+    const programaId = selectedOption ? parseInt(selectedOption.dataset.programaId || 0, 10) : 0;
+
+    const prevValue = competenciaSelect.value;
+    competenciaSelect.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
+
+    if (programaId > 0) {
+        todasCompetencias.forEach(c => {
+            if (c.programa_id === programaId) {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.codigo + ' — ' + c.nombre;
+                opt.dataset.search = c.codigo + ' ' + c.nombre;
+                if (String(c.id) === String(prevValue)) {
+                    opt.selected = true;
+                }
+                competenciaSelect.appendChild(opt);
+            }
+        });
+    }
+
+    // Si es un searchable-picker, notificar el cambio
+    competenciaSelect.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+// Escuchar cambios en la selección de ficha del modal de creación
+document.getElementById('crear_act_ficha')?.addEventListener('change', function() {
+    filtrarCompetencias('crear_act_ficha', 'crear_act_competencia');
+});
+
+// Escuchar cambios en la selección de ficha del modal de edición
+document.getElementById('edit_act_ficha')?.addEventListener('change', function() {
+    filtrarCompetencias('edit_act_ficha', 'edit_act_competencia');
+});
+
 function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripcion, fechaInicio, fechaFin, responsableId, estado, cumplimiento) {
     document.getElementById('edit_act_id').value           = id;
     document.getElementById('edit_act_ficha').value        = fichaId;
+    
+    // Filtrar competencias para la ficha seleccionada antes de setear el valor de la competencia
+    filtrarCompetencias('edit_act_ficha', 'edit_act_competencia');
+    
     document.getElementById('edit_act_competencia').value  = competenciaId;
     document.getElementById('edit_act_nombre').value       = nombre;
     document.getElementById('edit_act_descripcion').value  = descripcion;
@@ -497,14 +563,15 @@ function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripci
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Ficha Asociada</label>
-              <select name="ficha_id" class="form-select" required
+              <select name="ficha_id" id="crear_act_ficha" class="form-select" required
                       data-picker
                       data-picker-label="Seleccionar ficha"
                       data-picker-placeholder="Número de ficha...">
                 <option value="" disabled selected>Seleccione Ficha...</option>
                 <?php foreach ($fichas as $f): ?>
                   <option value="<?= $f['id'] ?>"
-                          data-search="<?= htmlspecialchars($f['numero_ficha']) ?>">
+                          data-search="<?= htmlspecialchars($f['numero_ficha']) ?>"
+                          data-programa-id="<?= $f['programa_id'] ?>">
                     Ficha #<?= htmlspecialchars($f['numero_ficha']) ?>
                   </option>
                 <?php endforeach; ?>
@@ -512,14 +579,15 @@ function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripci
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Competencia Relacionada</label>
-              <select name="competencia_id" class="form-select" required
+              <select name="competencia_id" id="crear_act_competencia" class="form-select" required
                       data-picker
                       data-picker-label="Seleccionar competencia"
                       data-picker-placeholder="Código o nombre de la competencia...">
                 <option value="" disabled selected>Seleccione...</option>
                 <?php foreach ($competencias as $c): ?>
                   <option value="<?= $c['id'] ?>"
-                          data-search="<?= htmlspecialchars($c['codigo'] . ' ' . $c['nombre']) ?>">
+                          data-search="<?= htmlspecialchars($c['codigo'] . ' ' . $c['nombre']) ?>"
+                          data-programa-id="<?= $c['programa_id'] ?>">
                     <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
                   </option>
                 <?php endforeach; ?>

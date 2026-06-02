@@ -28,6 +28,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
         switch ($type) {
             case 'evaluaciones_ficha':
                 $ficha_id = (int)($_POST['ficha_id'] ?? 0);
+                
+                // Validación de scoping para instructores
+                if ($user_rol === ROL_INSTRUCTOR) {
+                    $stmtFichaCheck = $db->prepare("SELECT COUNT(*) FROM fichas WHERE id = ? AND instructor_id = ?");
+                    $stmtFichaCheck->execute([$ficha_id, $user_id]);
+                    if ((int)$stmtFichaCheck->fetchColumn() === 0) {
+                        throw new Exception("No tiene permisos para descargar los reportes de esta ficha.");
+                    }
+                }
+
                 $headers = ['Aprendiz', 'Documento', 'RA Código', 'RA Denominación', 'Competencia', 'Concepto', 'Fecha Evaluación', 'Instructor'];
                 $sql = "
                     SELECT u.nombre as aprendiz, ap.numero_documento, ra.codigo as ra_codigo, ra.denominacion,
@@ -59,11 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                     FROM evaluaciones e
                     JOIN fichas f ON e.ficha_id = f.id
                     JOIN programas p ON f.programa_id = p.id
-                    JOIN usuarios ui ON e.instructor_id = ui.id
+                    JOIN usuarios ui ON f.instructor_id = ui.id
                 ";
                 $params = [];
                 if ($user_rol === ROL_INSTRUCTOR) {
-                    $sql .= " WHERE e.instructor_id = ?";
+                    $sql .= " WHERE f.instructor_id = ?";
                     $params[] = $user_id;
                 }
                 $sql .= " GROUP BY ui.id, f.id ORDER BY ui.nombre, f.numero_ficha";
@@ -85,11 +95,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                     JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
                     JOIN competencias c ON ra.competencia_id = c.id
                     JOIN programas p ON c.programa_id = p.id
+                    JOIN fichas f ON e.ficha_id = f.id
                     WHERE e.concepto != 'pendiente'
-                    GROUP BY c.id
-                    ORDER BY p.nombre, c.codigo
                 ";
-                $data = $db->query($sql)->fetchAll(PDO::FETCH_NUM);
+                $params = [];
+                if ($user_rol === ROL_INSTRUCTOR) {
+                    $sql .= " AND f.instructor_id = ?";
+                    $params[] = $user_id;
+                }
+                $sql .= " GROUP BY c.id ORDER BY p.nombre, c.codigo";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $data = $stmt->fetchAll(PDO::FETCH_NUM);
                 $filename = "cumplimiento_competencia_" . date('Ymd');
                 break;
 
@@ -101,13 +118,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                            u_mod.nombre as modificado_por, he.fecha_cambio
                     FROM historial_evaluaciones he
                     JOIN evaluaciones e ON he.evaluacion_id = e.id
+                    JOIN fichas f ON e.ficha_id = f.id
                     JOIN aprendices ap ON e.aprendiz_id = ap.id
                     JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
                     JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
                     JOIN usuarios u_mod ON he.usuario_id = u_mod.id
-                    ORDER BY he.fecha_cambio DESC
                 ";
-                $data = $db->query($sql)->fetchAll(PDO::FETCH_NUM);
+                $params = [];
+                if ($user_rol === ROL_INSTRUCTOR) {
+                    $sql .= " WHERE f.instructor_id = ?";
+                    $params[] = $user_id;
+                }
+                $sql .= " ORDER BY he.fecha_cambio DESC";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $data = $stmt->fetchAll(PDO::FETCH_NUM);
                 $filename = "historial_evaluaciones_" . date('Ymd');
                 break;
         }
@@ -116,16 +141,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
             // Export as Excel-compatible HTML table
             header('Content-Type: application/vnd.ms-excel; charset=utf-8');
             header('Content-Disposition: attachment; filename=' . $filename . '.xls');
-            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body>';
-            echo '<table border="1" cellpadding="4" style="border-collapse:collapse; font-family:Arial; font-size:11px;">';
-            echo '<tr style="background-color:#39A900; color:white; font-weight:bold;">';
-            foreach ($headers as $h) echo '<td>' . htmlspecialchars($h) . '</td>';
+            
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+            echo '<head>';
+            echo '<meta charset="UTF-8">';
+            echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>' . htmlspecialchars($type) . '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            echo '<style>';
+            echo 'table { border-collapse: collapse; font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; }';
+            echo 'th { background-color: #00324D; color: white; font-weight: bold; border: 1px solid #cccccc; padding: 8px; text-align: center; }';
+            echo 'td { border: 1px solid #e2e8f0; padding: 6px; }';
+            echo '.alert-critico { background-color: #fce8e6; color: #a51d24; font-weight: bold; text-align: center; }';
+            echo '.alert-riesgo { background-color: #fef7e0; color: #b06000; font-weight: bold; text-align: center; }';
+            echo '.alert-dia { background-color: #e6f4ea; color: #137333; font-weight: bold; text-align: center; }';
+            echo '.text-center { text-align: center; }';
+            echo '.fw-bold { font-weight: bold; }';
+            echo '</style>';
+            echo '</head>';
+            echo '<body>';
+            echo '<h2 style="color: #00324D;">REPORTE: ' . htmlspecialchars(str_replace('_', ' ', strtoupper($type))) . '</h2>';
+            echo '<table>';
+            echo '<thead>';
+            echo '<tr>';
+            foreach ($headers as $h) echo '<th>' . htmlspecialchars($h) . '</th>';
             echo '</tr>';
+            echo '</thead>';
+            echo '<tbody>';
             foreach ($data as $row) {
                 echo '<tr>';
-                foreach ($row as $cell) echo '<td>' . htmlspecialchars((string)($cell ?? '')) . '</td>';
+                foreach ($row as $colIdx => $cell) {
+                    $style = '';
+                    $class = '';
+                    
+                    // Formatear celdas basadas en el tipo de reporte y columna
+                    if ($type === 'evaluaciones_ficha' && $colIdx === 5) {
+                        if ($cell === 'A') {
+                            $class = ' class="alert-dia"';
+                        } elseif ($cell === 'D') {
+                            $class = ' class="alert-critico"';
+                        } else {
+                            $class = ' class="alert-riesgo"';
+                        }
+                    } elseif (($type === 'cumplimiento_instructor' && $colIdx === 7) || ($type === 'cumplimiento_competencia' && $colIdx === 6)) {
+                        $val = (float)$cell;
+                        if ($val >= 80) {
+                            $class = ' class="alert-dia"';
+                        } elseif ($val >= 60) {
+                            $class = ' class="alert-riesgo"';
+                        } else {
+                            $class = ' class="alert-critico"';
+                        }
+                    } elseif ($type === 'historial_cambios' && ($colIdx === 3 || $colIdx === 4)) {
+                        if ($cell === 'A') {
+                            $class = ' class="alert-dia"';
+                        } elseif ($cell === 'D') {
+                            $class = ' class="alert-critico"';
+                        } else {
+                            $class = ' class="alert-riesgo"';
+                        }
+                    }
+                    
+                    if (is_numeric($cell) && $class === '') {
+                        $style = ' style="text-align: center;"';
+                    }
+                    
+                    echo "<td{$class}{$style}>" . htmlspecialchars((string)($cell ?? '')) . '</td>';
+                }
                 echo '</tr>';
             }
+            echo '</tbody>';
             echo '</table></body></html>';
             exit;
         } else {
@@ -134,8 +217,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
             header('Content-Disposition: attachment; filename=' . $filename . '.csv');
             $output = fopen('php://output', 'w');
             fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM para Excel
-            fputcsv($output, $headers);
-            foreach ($data as $row) fputcsv($output, $row);
+            fwrite($output, "sep=;\n"); // Directiva separador
+            fputcsv($output, $headers, ';');
+            foreach ($data as $row) fputcsv($output, $row, ';');
             fclose($output);
             exit;
         }
@@ -147,12 +231,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
 // Cargar estadísticas
 $stats = [];
 try {
-    $stats['total_evaluaciones'] = $db->query("SELECT COUNT(*) FROM evaluaciones")->fetchColumn();
-    $stats['aprobados'] = $db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'A'")->fetchColumn();
-    $stats['reprobados'] = $db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'D'")->fetchColumn();
-    $stats['pendientes'] = $db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'pendiente'")->fetchColumn();
-    $stats['total_fichas'] = $db->query("SELECT COUNT(*) FROM fichas")->fetchColumn();
-    $stats['cambios_historial'] = $db->query("SELECT COUNT(*) FROM historial_evaluaciones")->fetchColumn();
+    if ($user_rol === ROL_INSTRUCTOR) {
+        // Evaluaciones de las fichas del instructor
+        $stmtStats = $db->prepare("
+            SELECT 
+                COUNT(*) as total_evaluaciones,
+                SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
+                SUM(CASE WHEN e.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
+                SUM(CASE WHEN e.concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
+            FROM evaluaciones e
+            JOIN fichas f ON e.ficha_id = f.id
+            WHERE f.instructor_id = ?
+        ");
+        $stmtStats->execute([$user_id]);
+        $rowStats = $stmtStats->fetch(PDO::FETCH_ASSOC);
+        
+        $stats['total_evaluaciones'] = (int)($rowStats['total_evaluaciones'] ?? 0);
+        $stats['aprobados']          = (int)($rowStats['aprobados'] ?? 0);
+        $stats['reprobados']         = (int)($rowStats['reprobados'] ?? 0);
+        $stats['pendientes']         = (int)($rowStats['pendientes'] ?? 0);
+        
+        $stmtFichas = $db->prepare("SELECT COUNT(*) FROM fichas WHERE instructor_id = ?");
+        $stmtFichas->execute([$user_id]);
+        $stats['total_fichas'] = (int)$stmtFichas->fetchColumn();
+        
+        // Historial de cambios de las fichas del instructor
+        $stmtHist = $db->prepare("
+            SELECT COUNT(*) 
+            FROM historial_evaluaciones he
+            JOIN evaluaciones e ON he.evaluacion_id = e.id
+            JOIN fichas f ON e.ficha_id = f.id
+            WHERE f.instructor_id = ?
+        ");
+        $stmtHist->execute([$user_id]);
+        $stats['cambios_historial'] = (int)$stmtHist->fetchColumn();
+    } else {
+        // Coordinador: Estadísticas globales
+        $stats['total_evaluaciones'] = $db->query("SELECT COUNT(*) FROM evaluaciones")->fetchColumn();
+        $stats['aprobados'] = $db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'A'")->fetchColumn();
+        $stats['reprobados'] = $db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'D'")->fetchColumn();
+        $stats['pendientes'] = $db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'pendiente'")->fetchColumn();
+        $stats['total_fichas'] = $db->query("SELECT COUNT(*) FROM fichas")->fetchColumn();
+        $stats['cambios_historial'] = $db->query("SELECT COUNT(*) FROM historial_evaluaciones")->fetchColumn();
+    }
 } catch (Exception $e) {
     $stats = array_fill_keys(['total_evaluaciones','aprobados','reprobados','pendientes','total_fichas','cambios_historial'], 0);
 }

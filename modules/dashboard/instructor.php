@@ -133,6 +133,23 @@ try {
 } catch (Exception $e) {
     // dejar lista vacía
 }
+
+// Distribución de conceptos para el gráfico de analítica
+$eval_conceptos = ['A' => 0, 'D' => 0, 'pendiente' => 0];
+try {
+    $stmt = $db->prepare("
+        SELECT e.concepto, COUNT(*) as cantidad
+        FROM evaluaciones e
+        JOIN fichas f ON e.ficha_id = f.id
+        WHERE f.instructor_id = ?
+        GROUP BY e.concepto
+    ");
+    $stmt->execute([$instructor_id]);
+    foreach ($stmt->fetchAll() as $row) {
+        $concepto = $row['concepto'] ?: 'pendiente';
+        $eval_conceptos[$concepto] = (int)$row['cantidad'];
+    }
+} catch (Exception $e) {}
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -221,6 +238,39 @@ try {
   </div>
 <?php endif; ?>
 
+<!-- ===== Sección de Analítica ===== -->
+<div class="row g-4 mt-3 mb-4">
+  <!-- Gráfico de Cumplimiento por Ficha -->
+  <div class="col-md-8">
+    <div class="card glass-card border-0 shadow-sm h-100" style="border-radius:12px;">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-bar-chart-line text-primary me-2"></i>Avance de Cumplimiento por Ficha</h5>
+        <small class="text-muted">Progreso integralizado de resultados de aprendizaje evaluados con 'A' por cada una de tus fichas.</small>
+      </div>
+      <div class="card-body p-4">
+        <div style="height: 280px; position: relative;">
+          <canvas id="chartFichasCumplimiento"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráfico de Distribución de Juicios -->
+  <div class="col-md-4">
+    <div class="card glass-card border-0 shadow-sm h-100" style="border-radius:12px;">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pie-chart text-success me-2"></i>Distribución de Evaluaciones</h5>
+        <small class="text-muted">Estado actual de todos los juicios de tu cohorte.</small>
+      </div>
+      <div class="card-body p-4 d-flex align-items-center justify-content-center">
+        <div style="width: 100%; max-width: 240px; height: 240px; position: relative;">
+          <canvas id="chartConceptosDistribucion"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Aprendices con concepto D ===== -->
 <div class="card mt-4">
   <div class="card-header d-flex justify-content-between align-items-center">
@@ -278,3 +328,112 @@ try {
     </table>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const labelsFichas = <?= json_encode(array_map(function($f) { return '#' . $f['numero']; }, $fichasInstructor)) ?>;
+    const progFichas = <?= json_encode(array_column($fichasInstructor, 'cumplimiento')) ?>;
+    
+    const countA = <?= (int)$eval_conceptos['A'] ?>;
+    const countD = <?= (int)$eval_conceptos['D'] ?>;
+    const countPendiente = <?= (int)$eval_conceptos['pendiente'] ?>;
+
+    // Chart 1: Bar Chart de Avance de Fichas
+    if (document.getElementById('chartFichasCumplimiento') && labelsFichas.length > 0) {
+        const ctxBar = document.getElementById('chartFichasCumplimiento').getContext('2d');
+        
+        // Generar gradiente para el color principal
+        const gradient = ctxBar.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(57, 169, 0, 0.85)'); // Verde SENA
+        gradient.addColorStop(1, 'rgba(0, 50, 77, 0.85)');  // Azul SENA
+        
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: labelsFichas,
+                datasets: [{
+                    label: 'Cumplimiento (%)',
+                    data: progFichas,
+                    backgroundColor: gradient,
+                    borderColor: '#00324D',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    barPercentage: 0.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) { return ` ${context.parsed.y}%`; }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { callback: value => value + '%' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Chart 2: Doughnut Chart de Distribución de Juicios
+    if (document.getElementById('chartConceptosDistribucion')) {
+        const ctxPie = document.getElementById('chartConceptosDistribucion').getContext('2d');
+        new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: ['Aprobado (A)', 'En Proceso (D)', 'Pendiente'],
+                datasets: [{
+                    data: [countA, countD, countPendiente],
+                    backgroundColor: [
+                        'rgba(34, 197, 94, 0.15)', // Verde suave
+                        'rgba(239, 68, 68, 0.15)', // Rojo suave
+                        'rgba(234, 179, 8, 0.15)'  // Amarillo suave
+                    ],
+                    borderColor: [
+                        '#22c55e', // Verde
+                        '#ef4444', // Rojo
+                        '#eab308'  // Amarillo
+                    ],
+                    borderWidth: 1.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 11 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = countA + countD + countPendiente;
+                                const val = context.parsed;
+                                const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                return ` ${context.label}: ${val} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
