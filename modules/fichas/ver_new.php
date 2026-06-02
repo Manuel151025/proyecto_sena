@@ -206,7 +206,11 @@ $estados_aprendiz = [
               </span>
             </td>
             <td class="text-end">
-              <button class="btn btn-sm btn-soft" onclick="alert('Función de detalle de aprendiz próximamente')">Ver</button>
+              <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
+              <a href="<?= MODULES_PATH ?>/seguimiento/index.php?ficha_id=<?= $id ?>&ver_aprendiz_id=<?= $aprendiz['id'] ?>" class="btn btn-sm btn-soft">Ver</a>
+              <?php else: ?>
+              <span class="text-muted">—</span>
+              <?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>

@@ -1013,6 +1013,16 @@ $feedback_iconos = [
         modalCalificar = new bootstrap.Modal(document.getElementById('modalCalificarActividad'));
         modalRetro     = new bootstrap.Modal(document.getElementById('modalRetroalimentacion'));
 
+        // Auto-open apprentice detail modal if ver_aprendiz_id is in URL query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const verAprendizId = parseInt(urlParams.get('ver_aprendiz_id'));
+        if (verAprendizId) {
+            const ap = aprendicesStats.find(x => parseInt(x.aprendiz_id) === verAprendizId);
+            if (ap) {
+                abrirModalDetalle(ap.aprendiz_id, ap.aprendiz_nombre, ap.aprendiz_email);
+            }
+        }
+
         // Event listener for switch_ver_pendientes
         document.getElementById('switch_ver_pendientes')?.addEventListener('change', function() {
             const verSoloPendientes = this.checked;
