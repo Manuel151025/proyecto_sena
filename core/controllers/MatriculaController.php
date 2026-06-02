@@ -8,6 +8,7 @@ use Core\Models\AprendizModel;
 use Core\Models\FichaModel;
 use Core\Database;
 use Exception;
+use PDO;
 
 class MatriculaController extends BaseController {
     public function index(): void {
