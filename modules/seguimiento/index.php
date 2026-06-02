@@ -147,11 +147,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'agreg
                         SELECT 1 FROM aprendices ap
                         JOIN fichas f ON ap.ficha_id = f.id
                         LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
-                        WHERE ap.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ?)
+                        WHERE ap.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?)
                     ");
-                    $stmtCheckAp->execute([$aprendiz_id_r, $user_id, $user_id]);
+                    $stmtCheckAp->execute([$aprendiz_id_r, $user_id, $user_id, $user_id]);
                     if (!$stmtCheckAp->fetchColumn()) {
-                        throw new Exception('El aprendiz no pertenece a ninguna de sus fichas asignadas.');
+                        throw new Exception('El aprendiz no pertenece a ninguna de sus fichas asignadas ni está asignado a su seguimiento.');
                     }
                 }
 
@@ -195,14 +195,16 @@ if ($user_rol === ROL_APRENDIZ) {
     // ---- FLUJO APRENDIZ ----
     try {
         $stmt = $db->prepare("
-            SELECT ap.id, ap.ficha_id,
+            SELECT ap.id, ap.ficha_id, ap.estado as aprendiz_estado,
                    f.numero_ficha, p.nombre as programa_nombre, p.id as programa_id,
-                   u_inst.nombre as instructor_nombre, u_coor.nombre as coordinador_nombre
+                   u_inst.nombre as instructor_nombre, u_coor.nombre as coordinador_nombre,
+                   u_seg.nombre as instructor_seguimiento_nombre
             FROM aprendices ap
             JOIN fichas f    ON ap.ficha_id = f.id
             JOIN programas p ON f.programa_id = p.id
             LEFT JOIN usuarios u_inst ON f.instructor_id = u_inst.id
             LEFT JOIN usuarios u_coor ON f.coordinador_id = u_coor.id
+            LEFT JOIN usuarios u_seg  ON ap.instructor_seguimiento_id = u_seg.id
             WHERE ap.usuario_id = ?
         ");
         $stmt->execute([$user_id]);
@@ -259,10 +261,11 @@ if ($user_rol === ROL_APRENDIZ) {
                 FROM fichas f
                 JOIN programas p ON f.programa_id = p.id
                 LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
-                WHERE f.instructor_id = ? OR asg.instructor_id = ?
+                LEFT JOIN aprendices ap ON ap.ficha_id = f.id
+                WHERE f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?
                 ORDER BY f.numero_ficha
             ");
-            $stmt->execute([$user_id, $user_id]);
+            $stmt->execute([$user_id, $user_id, $user_id]);
             $fichas = $stmt->fetchAll();
         } else {
             $fichas = $db->query("
@@ -315,6 +318,9 @@ if ($user_rol === ROL_APRENDIZ) {
                     ap.genero,
                     ap.telefono,
                     ap.ciudad,
+                    ap.estado        AS aprendiz_estado,
+                    ap.instructor_seguimiento_id,
+                    u2.nombre        AS instructor_seguimiento_nombre,
                     (SELECT COUNT(DISTINCT ra.id)
                      FROM resultados_aprendizaje ra
                      JOIN competencias c ON ra.competencia_id = c.id
@@ -327,6 +333,7 @@ if ($user_rol === ROL_APRENDIZ) {
                      WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'pendiente') AS no_aplica
                 FROM aprendices ap
                 JOIN usuarios u ON ap.usuario_id = u.id
+                LEFT JOIN usuarios u2 ON ap.instructor_seguimiento_id = u2.id
                 WHERE ap.ficha_id = ?
                 ORDER BY u.nombre
             ");
@@ -495,11 +502,18 @@ $feedback_iconos = [
           <div class="col">
             <h4 class="fw-bold text-dark mb-1"><?= htmlspecialchars(getCurrentUser()['nombre'] ?? '') ?></h4>
             <span class="badge bg-soft primary me-2">Ficha #<?= htmlspecialchars($mi_perfil['numero_ficha']) ?></span>
-            <span class="text-muted small"><?= htmlspecialchars($mi_perfil['programa_nombre']) ?></span>
+            <span class="text-muted small me-2"><?= htmlspecialchars($mi_perfil['programa_nombre']) ?></span>
+            <?php if ($mi_perfil['aprendiz_estado'] === 'etapa_practica'): ?>
+              <span class="badge bg-primary text-white">Etapa Práctica</span>
+            <?php endif; ?>
           </div>
           <div class="col-12 col-md-4 text-md-end">
             <div class="text-muted small">Instructor Líder:</div>
             <div class="fw-bold text-dark"><?= htmlspecialchars($mi_perfil['instructor_nombre'] ?: 'No asignado') ?></div>
+            <?php if ($mi_perfil['instructor_seguimiento_nombre']): ?>
+              <div class="text-muted small mt-1">Instructor de Seguimiento:</div>
+              <div class="fw-bold text-info"><?= htmlspecialchars($mi_perfil['instructor_seguimiento_nombre']) ?></div>
+            <?php endif; ?>
             <div class="text-muted small mt-1">Coordinador:</div>
             <div class="fw-semibold text-muted small"><?= htmlspecialchars($mi_perfil['coordinador_nombre'] ?: 'No asignado') ?></div>
           </div>
@@ -824,8 +838,16 @@ $feedback_iconos = [
                         <?= strtoupper(substr($ap['aprendiz_nombre'], 0, 2)) ?>
                       </div>
                       <div>
-                        <h6 class="mb-0 fw-semibold"><?= htmlspecialchars($ap['aprendiz_nombre']) ?></h6>
+                        <div class="d-flex align-items-center gap-2">
+                          <h6 class="mb-0 fw-semibold"><?= htmlspecialchars($ap['aprendiz_nombre']) ?></h6>
+                          <?php if ($ap['aprendiz_estado'] === 'etapa_practica'): ?>
+                            <span class="badge bg-primary bg-opacity-10 text-primary small py-0 px-2 rounded">Etapa Práctica</span>
+                          <?php endif; ?>
+                        </div>
                         <small class="text-muted font-monospace"><?= htmlspecialchars($ap['tipo_documento']) ?> <?= htmlspecialchars($ap['numero_documento']) ?></small>
+                        <?php if ($ap['instructor_seguimiento_nombre']): ?>
+                          <div class="small text-info mt-1"><i class="bi bi-person-badge me-1"></i>Seguimiento: <?= htmlspecialchars($ap['instructor_seguimiento_nombre']) ?></div>
+                        <?php endif; ?>
                       </div>
                     </div>
                   </td>
