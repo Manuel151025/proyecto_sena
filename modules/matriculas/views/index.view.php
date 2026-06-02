@@ -42,7 +42,7 @@
         <label class="form-label text-muted small">Buscar aprendiz</label>
         <div class="input-group">
           <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre, correo o documento..." value="<?= htmlspecialchars($search) ?>">
+          <input type="text" name="search" id="searchAprendizInput" class="form-control border-start-0 ps-0" placeholder="Nombre, correo o documento..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>
       <div class="col-md-3">
@@ -95,7 +95,7 @@
         </thead>
         <tbody>
           <?php foreach ($aprendices as $ap): ?>
-          <tr>
+          <tr class="aprendiz-row" data-search="<?= htmlspecialchars(strtolower($ap['nombre'] . ' ' . $ap['email'] . ' ' . $ap['numero_documento']), ENT_QUOTES, 'UTF-8') ?>">
             <td class="ps-4 font-monospace fw-bold text-muted">
               <span class="badge bg-light text-dark border"><?= htmlspecialchars($ap['tipo_documento']) ?></span> 
               <?= htmlspecialchars($ap['numero_documento']) ?>
@@ -478,4 +478,18 @@ function mostrarEditarMatricula(button) {
     const elInstSeg = document.getElementById('edit_instructor_seguimiento_id');
     if (elInstSeg) elInstSeg.value = button.getAttribute('data-instructor-seguimiento-id') || '';
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchAprendizInput');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function(e) {
+            const filter = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.aprendiz-row');
+            rows.forEach(row => {
+                const text = row.getAttribute('data-search') || '';
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+    }
+});
 </script>
