@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                 break;
 
             case 'cumplimiento_instructor':
-                $headers = ['Instructor', 'Ficha', 'Programa', 'Total RAs', 'Aprobados (A)', 'No Aprobados (D)', 'Pendientes', '% Cumplimiento'];
+                $headers = ['Instructor Líder', 'Ficha', 'Programa', 'Total RAs', 'Aprobados (A)', 'No Aprobados (D)', 'Pendientes', '% Cumplimiento'];
                 $sql = "
                     SELECT ui.nombre as instructor, f.numero_ficha, p.nombre as programa,
                            COUNT(e.id) as total_ra,
@@ -415,8 +415,8 @@ if (!isset($app_included)) {
     <div class="card glass-card h-100 border-0 shadow-sm" style="border-top: 4px solid #3b82f6; border-radius: 12px;">
       <div class="card-body p-4">
         <div class="mb-3"><i class="bi bi-person-workspace" style="font-size: 2.5rem; color: #3b82f6;"></i></div>
-        <h5 class="fw-bold text-dark">Cumplimiento por Instructor</h5>
-        <p class="text-muted small">Cantidad de RAs evaluados vs faltantes agrupados por instructor y ficha asignada.</p>
+        <h5 class="fw-bold text-dark">Cumplimiento por Instructor Líder</h5>
+        <p class="text-muted small">Cantidad de RAs evaluados vs faltantes agrupados por instructor líder y ficha asignada.</p>
         <form method="POST">
           <input type="hidden" name="export" value="cumplimiento_instructor">
           <div class="d-flex gap-2 mt-4">
