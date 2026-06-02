@@ -523,7 +523,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
     }
 }
 
-$pageTitle = 'Importar Juicios Sofia Plus · SENA';
+$pageTitle = 'Importar Juicios Evaluativos · SENA';
 $contentView = __FILE__;
 
 if (!isset($app_included)) {
@@ -535,8 +535,8 @@ if (!isset($app_included)) {
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h1 class="mb-1">Importar Juicios desde Excel</h1>
-    <p class="text-muted mb-0">Carga el reporte de juicios evaluativos exportado de Sofia Plus para registrar notas, fichas y aprendices automáticamente.</p>
+    <h1 class="mb-1">Importar Juicios Evaluativos</h1>
+    <p class="text-muted mb-0">Carga el reporte de juicios evaluativos desde Excel para registrar notas, fichas y aprendices automáticamente.</p>
   </div>
   <div>
     <a href="<?= MODULES_PATH ?>/evaluaciones/" class="btn btn-soft">
@@ -631,14 +631,14 @@ if (!isset($app_included)) {
       <div class="card-body p-4 pt-0">
         <form method="POST" enctype="multipart/form-data">
           <p class="text-muted small mb-4">
-            Selecciona el archivo binario de Excel (<strong>.xls</strong>) exportado de Sofia Plus. El sistema lo convertirá y procesará para crear la ficha, los aprendices, las competencias y todos los juicios de evaluación.
+            Selecciona el archivo binario de Excel (<strong>.xls</strong>) que contiene los juicios evaluativos. El sistema lo convertirá y procesará para crear la ficha, los aprendices, las competencias y todos los juicios de evaluación.
           </p>
           
           <div class="mb-4">
             <label class="form-label text-muted small fw-bold">Archivo Excel (.xls)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xls" required>
             <div class="form-text text-muted" style="font-size:0.75rem;">
-              * Asegúrate de no alterar el archivo original descargado de Sofia Plus.
+              * Asegúrate de no alterar el archivo original de juicios evaluativos.
             </div>
           </div>
           
