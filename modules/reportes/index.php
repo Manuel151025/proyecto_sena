@@ -31,8 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                 
                 // Validación de scoping para instructores
                 if ($user_rol === ROL_INSTRUCTOR) {
-                    $stmtFichaCheck = $db->prepare("SELECT COUNT(*) FROM fichas WHERE id = ? AND instructor_id = ?");
-                    $stmtFichaCheck->execute([$ficha_id, $user_id]);
+                    $stmtFichaCheck = $db->prepare("
+                        SELECT COUNT(*) FROM fichas f
+                        LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
+                        WHERE f.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ?)
+                    ");
+                    $stmtFichaCheck->execute([$ficha_id, $user_id, $user_id]);
                     if ((int)$stmtFichaCheck->fetchColumn() === 0) {
                         throw new Exception("No tiene permisos para descargar los reportes de esta ficha.");
                     }
@@ -73,7 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                 ";
                 $params = [];
                 if ($user_rol === ROL_INSTRUCTOR) {
-                    $sql .= " WHERE f.instructor_id = ?";
+                    $sql .= " WHERE (f.instructor_id = ? OR EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+                    ))";
+                    $params[] = $user_id;
                     $params[] = $user_id;
                 }
                 $sql .= " GROUP BY ui.id, f.id ORDER BY ui.nombre, f.numero_ficha";
@@ -100,7 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                 ";
                 $params = [];
                 if ($user_rol === ROL_INSTRUCTOR) {
-                    $sql .= " AND f.instructor_id = ?";
+                    $sql .= " AND (f.instructor_id = ? OR EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+                    ))";
+                    $params[] = $user_id;
                     $params[] = $user_id;
                 }
                 $sql .= " GROUP BY c.id ORDER BY p.nombre, c.codigo";
@@ -126,7 +138,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                 ";
                 $params = [];
                 if ($user_rol === ROL_INSTRUCTOR) {
-                    $sql .= " WHERE f.instructor_id = ?";
+                    $sql .= " WHERE (f.instructor_id = ? OR EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+                    ))";
+                    $params[] = $user_id;
                     $params[] = $user_id;
                 }
                 $sql .= " ORDER BY he.fecha_cambio DESC";
@@ -241,9 +257,12 @@ try {
                 SUM(CASE WHEN e.concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
             FROM evaluaciones e
             JOIN fichas f ON e.ficha_id = f.id
-            WHERE f.instructor_id = ?
+            WHERE f.instructor_id = ? OR EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+            )
         ");
-        $stmtStats->execute([$user_id]);
+        $stmtStats->execute([$user_id, $user_id]);
         $rowStats = $stmtStats->fetch(PDO::FETCH_ASSOC);
         
         $stats['total_evaluaciones'] = (int)($rowStats['total_evaluaciones'] ?? 0);
@@ -251,8 +270,13 @@ try {
         $stats['reprobados']         = (int)($rowStats['reprobados'] ?? 0);
         $stats['pendientes']         = (int)($rowStats['pendientes'] ?? 0);
         
-        $stmtFichas = $db->prepare("SELECT COUNT(*) FROM fichas WHERE instructor_id = ?");
-        $stmtFichas->execute([$user_id]);
+        $stmtFichas = $db->prepare("
+            SELECT COUNT(DISTINCT f.id) 
+            FROM fichas f 
+            LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
+            WHERE f.instructor_id = ? OR asg.instructor_id = ?
+        ");
+        $stmtFichas->execute([$user_id, $user_id]);
         $stats['total_fichas'] = (int)$stmtFichas->fetchColumn();
         
         // Historial de cambios de las fichas del instructor
@@ -261,9 +285,12 @@ try {
             FROM historial_evaluaciones he
             JOIN evaluaciones e ON he.evaluacion_id = e.id
             JOIN fichas f ON e.ficha_id = f.id
-            WHERE f.instructor_id = ?
+            WHERE f.instructor_id = ? OR EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+            )
         ");
-        $stmtHist->execute([$user_id]);
+        $stmtHist->execute([$user_id, $user_id]);
         $stats['cambios_historial'] = (int)$stmtHist->fetchColumn();
     } else {
         // Coordinador: Estadísticas globales
@@ -282,8 +309,15 @@ try {
 $fichas = [];
 try {
     if ($user_rol === ROL_INSTRUCTOR) {
-        $stmtF = $db->prepare("SELECT f.id, f.numero_ficha, p.nombre as programa FROM fichas f JOIN programas p ON f.programa_id = p.id WHERE f.instructor_id = ? ORDER BY f.numero_ficha");
-        $stmtF->execute([$user_id]);
+        $stmtF = $db->prepare("
+            SELECT DISTINCT f.id, f.numero_ficha, p.nombre as programa 
+            FROM fichas f 
+            JOIN programas p ON f.programa_id = p.id 
+            LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
+            WHERE f.instructor_id = ? OR asg.instructor_id = ? 
+            ORDER BY f.numero_ficha
+        ");
+        $stmtF->execute([$user_id, $user_id]);
         $fichas = $stmtF->fetchAll();
     } else {
         $fichas = $db->query("SELECT f.id, f.numero_ficha, p.nombre as programa FROM fichas f JOIN programas p ON f.programa_id = p.id ORDER BY f.numero_ficha")->fetchAll();

@@ -128,11 +128,18 @@ $estados_aprendiz = [
       <?= $ficha['cantidad_aprendices'] ?> aprendices
     </p>
   </div>
-  <?php if (getCurrentRole() === ROL_COORDINADOR): ?>
-  <a href="<?= MODULES_PATH ?>/fichas/editar.php?id=<?= $id ?>" class="btn btn-primary">
-    <i class="bi bi-pencil me-1"></i>Editar ficha
-  </a>
-  <?php endif; ?>
+  <div class="d-flex gap-2">
+    <?php if (getCurrentRole() === ROL_COORDINADOR || getCurrentRole() === ROL_INSTRUCTOR): ?>
+      <a href="<?= MODULES_PATH ?>/evaluaciones/index.php?ficha_id=<?= $id ?>" class="btn btn-success">
+        <i class="bi bi-clipboard-check me-1"></i>Evaluar Ficha (Juicios)
+      </a>
+    <?php endif; ?>
+    <?php if (getCurrentRole() === ROL_COORDINADOR): ?>
+      <a href="<?= MODULES_PATH ?>/fichas/editar.php?id=<?= $id ?>" class="btn btn-primary">
+        <i class="bi bi-pencil me-1"></i>Editar ficha
+      </a>
+    <?php endif; ?>
+  </div>
 </div>
 
 <ul class="nav nav-tabs mb-3" role="tablist">

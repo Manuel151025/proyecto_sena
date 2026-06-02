@@ -39,6 +39,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
             $errors[] = 'Datos de evaluación incompletos.';
         } else {
             try {
+                if ($user_rol === ROL_INSTRUCTOR) {
+                    $stmtRA = $db->prepare("SELECT competencia_id FROM resultados_aprendizaje WHERE id = ?");
+                    $stmtRA->execute([$ra_id]);
+                    $competencia_id = (int)($stmtRA->fetchColumn() ?: 0);
+
+                    $stmtAuth = $db->prepare("
+                        SELECT 1 FROM fichas f
+                        WHERE f.id = ? AND (
+                            f.instructor_id = ?
+                            OR EXISTS (
+                                SELECT 1 FROM asignaciones asg
+                                WHERE asg.ficha_id = ? 
+                                  AND asg.competencia_id = ? 
+                                  AND asg.instructor_id = ?
+                            )
+                        )
+                    ");
+                    $stmtAuth->execute([$ficha_id_p, $user_id, $ficha_id_p, $competencia_id, $user_id]);
+                    if (!$stmtAuth->fetchColumn()) {
+                        throw new Exception('No tiene permisos para calificar esta competencia en la ficha seleccionada.');
+                    }
+                }
+
                 // Obtener concepto anterior
                 $stmt = $db->prepare("
                     SELECT id, concepto FROM evaluaciones
@@ -119,6 +142,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'agreg
 
         if (empty($errors)) {
             try {
+                if ($user_rol === ROL_INSTRUCTOR) {
+                    $stmtCheckAp = $db->prepare("
+                        SELECT 1 FROM aprendices ap
+                        JOIN fichas f ON ap.ficha_id = f.id
+                        LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
+                        WHERE ap.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ?)
+                    ");
+                    $stmtCheckAp->execute([$aprendiz_id_r, $user_id, $user_id]);
+                    if (!$stmtCheckAp->fetchColumn()) {
+                        throw new Exception('El aprendiz no pertenece a ninguna de sus fichas asignadas.');
+                    }
+                }
+
                 $stmt = $db->prepare("
                     INSERT INTO retroalimentacion (aprendiz_id, instructor_id, tipo, contenido, privada)
                     VALUES (?, ?, ?, ?, ?)
@@ -219,13 +255,14 @@ if ($user_rol === ROL_APRENDIZ) {
     try {
         if ($user_rol === ROL_INSTRUCTOR) {
             $stmt = $db->prepare("
-                SELECT f.id, f.numero_ficha, p.nombre AS programa
+                SELECT DISTINCT f.id, f.numero_ficha, p.nombre AS programa
                 FROM fichas f
                 JOIN programas p ON f.programa_id = p.id
-                WHERE f.instructor_id = ?
+                LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
+                WHERE f.instructor_id = ? OR asg.instructor_id = ?
                 ORDER BY f.numero_ficha
             ");
-            $stmt->execute([$user_id]);
+            $stmt->execute([$user_id, $user_id]);
             $fichas = $stmt->fetchAll();
         } else {
             $fichas = $db->query("

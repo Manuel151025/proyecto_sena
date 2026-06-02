@@ -46,10 +46,26 @@ $kpi_evaluaciones_pendientes = 0;
 try {
     $stmt = $db->prepare("
         SELECT COUNT(*)
-        FROM evaluaciones
-        WHERE instructor_id = ? AND concepto = 'pendiente'
+        FROM evaluaciones eval
+        JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+        JOIN competencias c ON ra.competencia_id = c.id
+        JOIN fichas f ON eval.ficha_id = f.id
+        WHERE eval.concepto = 'pendiente' AND (
+            EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id 
+                  AND asg.instructor_id = ?
+            )
+            OR
+            (f.instructor_id = ? AND NOT EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id
+            ))
+        )
     ");
-    $stmt->execute([$instructor_id]);
+    $stmt->execute([$instructor_id, $instructor_id]);
     $kpi_evaluaciones_pendientes = (int)$stmt->fetchColumn();
 } catch (Exception $e) {
     // si falla, se mantiene en 0
@@ -61,28 +77,44 @@ try {
     $stmt = $db->prepare("
         SELECT COUNT(DISTINCT eval.aprendiz_id)
         FROM evaluaciones eval
+        JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+        JOIN competencias c ON ra.competencia_id = c.id
         JOIN fichas f ON eval.ficha_id = f.id
-        WHERE f.instructor_id = ? AND eval.concepto = 'D'
+        WHERE eval.concepto = 'D' AND (
+            EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id 
+                  AND asg.instructor_id = ?
+            )
+            OR
+            (f.instructor_id = ? AND NOT EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id
+            ))
+        )
     ");
-    $stmt->execute([$instructor_id]);
+    $stmt->execute([$instructor_id, $instructor_id]);
     $kpi_planes_requeridos = (int)$stmt->fetchColumn();
 } catch (Exception $e) {
     // se mantiene en 0
 }
 
-// Fichas asignadas al instructor (mantengo la query original, ya estaba bien)
+// Fichas asignadas al instructor (incluyendo asignaciones específicas)
 $fichasInstructor = [];
 try {
     $stmt = $db->prepare("
-        SELECT f.id, f.numero_ficha AS numero, p.nombre AS programa,
+        SELECT DISTINCT f.id, f.numero_ficha AS numero, p.nombre AS programa,
                f.cantidad_aprendices AS aprendices,
                f.cumplimiento_porcentaje AS cumplimiento, f.estado
         FROM fichas f
         JOIN programas p ON f.programa_id = p.id
-        WHERE f.instructor_id = ?
+        LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
+        WHERE f.instructor_id = ? OR asg.instructor_id = ?
         ORDER BY f.cumplimiento_porcentaje ASC
     ");
-    $stmt->execute([$instructor_id]);
+    $stmt->execute([$instructor_id, $instructor_id]);
     $rows = $stmt->fetchAll();
 
     foreach ($rows as $f) {
@@ -109,7 +141,7 @@ try {
     // dejar lista vacía
 }
 
-// Aprendices con D más recientes (top 10) — esto reemplaza la tabla TODO
+// Aprendices con D más recientes (top 10)
 $pendientesPlanes = [];
 try {
     $stmt = $db->prepare("
@@ -124,11 +156,25 @@ try {
         JOIN aprendices ap           ON eval.aprendiz_id = ap.id
         JOIN usuarios u              ON ap.usuario_id = u.id
         JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-        WHERE f.instructor_id = ? AND eval.concepto = 'D'
+        JOIN competencias c          ON ra.competencia_id = c.id
+        WHERE eval.concepto = 'D' AND (
+            EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id 
+                  AND asg.instructor_id = ?
+            )
+            OR
+            (f.instructor_id = ? AND NOT EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id
+            ))
+        )
         ORDER BY eval.fecha_evaluacion DESC
         LIMIT 10
     ");
-    $stmt->execute([$instructor_id]);
+    $stmt->execute([$instructor_id, $instructor_id]);
     $pendientesPlanes = $stmt->fetchAll();
 } catch (Exception $e) {
     // dejar lista vacía
@@ -138,13 +184,26 @@ try {
 $eval_conceptos = ['A' => 0, 'D' => 0, 'pendiente' => 0];
 try {
     $stmt = $db->prepare("
-        SELECT e.concepto, COUNT(*) as cantidad
-        FROM evaluaciones e
-        JOIN fichas f ON e.ficha_id = f.id
-        WHERE f.instructor_id = ?
-        GROUP BY e.concepto
+        SELECT eval.concepto, COUNT(*) as cantidad
+        FROM evaluaciones eval
+        JOIN fichas f ON eval.ficha_id = f.id
+        JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+        JOIN competencias c ON ra.competencia_id = c.id
+        WHERE EXISTS (
+            SELECT 1 FROM asignaciones asg 
+            WHERE asg.ficha_id = eval.ficha_id 
+              AND asg.competencia_id = c.id 
+              AND asg.instructor_id = ?
+        )
+        OR
+        (f.instructor_id = ? AND NOT EXISTS (
+            SELECT 1 FROM asignaciones asg 
+            WHERE asg.ficha_id = eval.ficha_id 
+              AND asg.competencia_id = c.id
+        ))
+        GROUP BY eval.concepto
     ");
-    $stmt->execute([$instructor_id]);
+    $stmt->execute([$instructor_id, $instructor_id]);
     foreach ($stmt->fetchAll() as $row) {
         $concepto = $row['concepto'] ?: 'pendiente';
         $eval_conceptos[$concepto] = (int)$row['cantidad'];
