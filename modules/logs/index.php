@@ -92,7 +92,7 @@ if (!isset($app_included)) {
       <div class="col-md-6">
         <label class="form-label text-muted small">Buscar por Usuario, Descripción o Módulo</label>
         <div class="input-group">
-          <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(255,255,255,0.15)"><i class="bi bi-search text-muted"></i></span>
+          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Buscar..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>

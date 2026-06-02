@@ -172,24 +172,6 @@ try {
   </div>
 </div>
 
-<!-- Sección de Importación / Acción -->
-<div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, var(--sena-primary-50) 0%, rgba(57,169,0,0.05) 100%); border-left: 5px solid var(--sena-primary) !important;">
-  <div class="card-body p-4">
-    <div class="row align-items-center">
-      <div class="col-lg-8 mb-3 mb-lg-0">
-        <h4 class="fw-bold text-dark mb-2"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>¿Deseas registrar un nuevo Programa o Proyecto?</h4>
-        <p class="text-muted mb-0" style="font-size: 0.95rem;">
-          No es necesario registrar manualmente las competencias y resultados de aprendizaje uno a uno. Sube los documentos PDF oficiales de la <strong>Estructura Curricular</strong> y el <strong>Proyecto Formativo</strong> del SENA y el sistema procesará, extraerá e insertará automáticamente toda la información organizada en minutos.
-        </p>
-      </div>
-      <div class="col-lg-4 text-lg-end">
-        <a href="<?= MODULES_PATH ?>/estructura/importar.php" class="btn btn-primary py-2 px-4 shadow-sm" style="border-radius: 8px;">
-          <i class="bi bi-file-earmark-pdf me-2"></i>Ir al Importador Web
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div class="row g-4">
   <!-- Programas de Formación Activos -->

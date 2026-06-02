@@ -131,6 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'calif
                 $evidencia = $stmt->fetch();
 
                 if ($evidencia) {
+                    if ($user_rol === ROL_INSTRUCTOR) {
+                        $stmtCheck = $db->prepare("SELECT 1 FROM fichas WHERE id = ? AND instructor_id = ?");
+                        $stmtCheck->execute([$evidencia['ficha_id'], $user_id]);
+                        if (!$stmtCheck->fetchColumn()) {
+                            throw new Exception('No tiene permisos para calificar evidencias de esta ficha.');
+                        }
+                    }
                     $eval_id = $evidencia['evaluacion_id'];
 
                     // 1. Actualizar estado de la evidencia
@@ -210,7 +217,7 @@ try {
         $stmt->execute([$aprendiz_id]);
         $evidencias = $stmt->fetchAll();
     } else {
-        $evidencias = $db->query("
+        $sql = "
             SELECT ev.*, ra.denominacion AS ra_denominacion,
                    f.numero_ficha, u_ap.nombre AS aprendiz_nombre, u_ap.email AS aprendiz_email
             FROM evidencias ev
@@ -219,8 +226,17 @@ try {
             JOIN fichas f    ON ev.ficha_id = f.id
             JOIN aprendices ap ON ev.aprendiz_id = ap.id
             JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
-            ORDER BY ev.estado = 'enviada' DESC, ev.fecha_envio DESC
-        ")->fetchAll();
+        ";
+        $params = [];
+        if ($user_rol === ROL_INSTRUCTOR) {
+            $sql .= " WHERE f.instructor_id = ?";
+            $params[] = $user_id;
+        }
+        $sql .= " ORDER BY ev.estado = 'enviada' DESC, ev.fecha_envio DESC";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $evidencias = $stmt->fetchAll();
     }
 } catch (Exception $e) {
     $errors[] = 'Error al cargar evidencias: ' . $e->getMessage();

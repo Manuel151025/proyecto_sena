@@ -48,7 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             // Verificar que la evaluación existe y pertenece a este instructor
             if ($user_rol === ROL_INSTRUCTOR) {
-                $stmtCurrent = $db->prepare("SELECT concepto FROM evaluaciones WHERE id = ? AND instructor_id = ?");
+                $stmtCurrent = $db->prepare("
+                    SELECT eval.concepto 
+                    FROM evaluaciones eval
+                    JOIN fichas f ON eval.ficha_id = f.id
+                    WHERE eval.id = ? AND f.instructor_id = ?
+                ");
                 $stmtCurrent->execute([$eval_id, $user_id]);
             } else {
                 $stmtCurrent = $db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
@@ -61,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             // Actualizar evaluación
-            $stmtUpdate = $db->prepare("UPDATE evaluaciones SET concepto = ?, comentario = ?, fecha_evaluacion = CURDATE(), fecha_actualizacion = NOW() WHERE id = ?");
-            $stmtUpdate->execute([$nuevo_concepto, $comentario, $eval_id]);
+            $stmtUpdate = $db->prepare("UPDATE evaluaciones SET concepto = ?, comentario = ?, instructor_id = ?, fecha_evaluacion = CURDATE(), fecha_actualizacion = NOW() WHERE id = ?");
+            $stmtUpdate->execute([$nuevo_concepto, $comentario, $user_id, $eval_id]);
 
             // Registrar en historial si hubo cambio
             if ($conceptoAnterior !== $nuevo_concepto) {
@@ -117,7 +122,7 @@ $sql = "
     JOIN fichas f ON eval.ficha_id = f.id
     JOIN aprendices ap ON eval.aprendiz_id = ap.id
     JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
-    JOIN usuarios u_inst ON eval.instructor_id = u_inst.id
+    LEFT JOIN usuarios u_inst ON eval.instructor_id = u_inst.id
     WHERE 1=1
 ";
 $params = [];
@@ -126,7 +131,7 @@ if ($user_rol === ROL_APRENDIZ) {
     $sql .= " AND eval.aprendiz_id = ?";
     $params[] = $aprendiz_id;
 } elseif ($user_rol === ROL_INSTRUCTOR) {
-    $sql .= " AND eval.instructor_id = ?";
+    $sql .= " AND f.instructor_id = ?";
     $params[] = $user_id;
     if ($filter_ficha > 0) {
         $sql .= " AND eval.ficha_id = ?";
@@ -277,7 +282,7 @@ if (!isset($app_included)) {
       <div class="col-md-4">
         <label class="form-label text-muted small">Buscar Aprendiz / RA</label>
         <div class="input-group">
-          <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(255,255,255,0.15)"><i class="bi bi-search text-muted"></i></span>
+          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre o código RA..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>

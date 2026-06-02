@@ -203,7 +203,7 @@ if (!isset($app_included)) {
       <div class="col-md-4">
         <label class="form-label text-muted small">Buscar asignación</label>
         <div class="input-group">
-          <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(255,255,255,0.15)"><i class="bi bi-search text-muted"></i></span>
+          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Ficha, instructor o competencia..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>

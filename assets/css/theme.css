@@ -292,3 +292,108 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
   .concept-toggle{grid-template-columns:1fr;}
 }
 :focus-visible{outline:2px solid var(--sena-primary);outline-offset:2px;border-radius:4px;}
+
+/* ============================================================
+   UNIFICACIÓN DE TAMAÑOS Y ESTILOS DE INPUTS Y SELECTS
+   ============================================================ */
+
+/* 1. Unificar selectores de búsqueda personalizados (.sp-trigger) */
+.sp-trigger {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: .55rem .75rem !important;
+  font-size: .9rem !important;
+  height: 40px !important; /* Altura idéntica a .form-control */
+  line-height: 1.5 !important;
+  transition: border-color .15s ease, box-shadow .15s ease !important;
+  box-shadow: none !important;
+}
+
+.sp-trigger:hover {
+  border-color: var(--text-soft) !important;
+}
+
+.sp-trigger:focus,
+.sp-trigger.is-open {
+  border-color: var(--sena-primary) !important;
+  box-shadow: 0 0 0 3px rgba(57,169,0,0.15) !important;
+}
+
+/* 2. Unificar .input-group-text (iconos de búsqueda) */
+.input-group-text {
+  background-color: var(--surface) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius);
+  padding: .55rem .75rem;
+  font-size: .9rem;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+/* Forzar la altura del input-group */
+.input-group > .form-control,
+.input-group > .form-select,
+.input-group > .input-group-text {
+  height: 40px;
+}
+
+/* 3. Enfoque premium de input-groups */
+.input-group:focus-within {
+  box-shadow: 0 0 0 3px rgba(57,169,0,0.15);
+  border-radius: var(--radius);
+}
+
+.input-group:focus-within > .form-control,
+.input-group:focus-within > .input-group-text {
+  border-color: var(--sena-primary) !important;
+}
+
+.input-group > .form-control:focus {
+  box-shadow: none !important;
+}
+
+/* Asegurar que las cajas de diálogo del picker también sigan el tema */
+.sp-dialog {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  border-radius: var(--radius-lg) !important;
+}
+.sp-header, .sp-search-wrap, .sp-footer {
+  border-color: var(--border) !important;
+  background: var(--surface-2) !important;
+}
+.sp-header h6, .sp-footer {
+  color: var(--text) !important;
+}
+.sp-search-input {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.sp-search-input:focus {
+  border-color: var(--sena-primary) !important;
+  box-shadow: 0 0 0 3px rgba(57,169,0,0.15) !important;
+}
+.sp-item {
+  color: var(--text) !important;
+}
+.sp-item:hover, .sp-item.is-focused {
+  background: var(--surface-2) !important;
+}
+.sp-item.is-selected {
+  background: var(--sena-primary-50) !important;
+}
+.sp-item.is-selected::after {
+  color: var(--sena-primary) !important;
+}
+.sp-close {
+  color: var(--text-muted) !important;
+}
+.sp-close:hover {
+  background: var(--border) !important;
+  color: var(--text) !important;
+}
+

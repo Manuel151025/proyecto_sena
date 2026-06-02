@@ -226,12 +226,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
                             }
                             
                             // 3. Registrar / Obtener Ficha
-                            $stmt = $db->prepare("SELECT id FROM fichas WHERE numero_ficha = ?");
+                            $stmt = $db->prepare("SELECT id, instructor_id FROM fichas WHERE numero_ficha = ?");
                             $stmt->execute([$ficha_numero]);
                             $ficha_db = $stmt->fetch();
                             
                             if ($ficha_db) {
                                 $ficha_id = (int)$ficha_db['id'];
+                                if ($user_rol === ROL_INSTRUCTOR && (int)$ficha_db['instructor_id'] !== $user_id) {
+                                    throw new Exception("No tienes permisos para importar juicios en la ficha #$ficha_numero porque está asignada a otro instructor.");
+                                }
                                 $stats['ficha_estado'] = 'Actualizada (ya existía)';
                             } else {
                                 // Buscar un instructor asignado por defecto (el usuario actual si es instructor, o el primero de la BD)

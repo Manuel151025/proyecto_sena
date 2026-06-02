@@ -47,10 +47,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $programa) {
     $estado = $_POST['estado'] ?? 'activo';
 
     // Validaciones
-    if (empty($nombre)) $errors[] = 'El nombre del programa es requerido';
-    if (empty($codigo)) $errors[] = 'El código del programa es requerido';
-    if ($duracion_horas <= 0) $errors[] = 'La duración en horas debe ser un número positivo';
-    if (!in_array($estado, ['activo', 'inactivo'])) $errors[] = 'Estado inválido';
+    if (empty($nombre)) {
+        $errors[] = 'El nombre del programa es requerido';
+    } elseif (mb_strlen($nombre) > 200) {
+        $errors[] = 'El nombre del programa no puede exceder los 200 caracteres';
+    }
+
+    if (empty($codigo)) {
+        $errors[] = 'El código del programa es requerido';
+    } elseif (mb_strlen($codigo) > 50) {
+        $errors[] = 'El código del programa no puede exceder los 50 caracteres';
+    }
+
+    if ($duracion_horas <= 0) {
+        $errors[] = 'La duración en horas debe ser un número positivo';
+    } elseif ($duracion_horas > 99999) {
+        $errors[] = 'La duración en horas no puede superar las 99,999 horas';
+    }
+
+    if (!in_array($estado, ['activo', 'inactivo'])) {
+        $errors[] = 'Estado inválido';
+    }
 
     if (empty($errors)) {
         try {
@@ -124,17 +141,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $programa) {
         <form method="POST">
           <div class="mb-3">
             <label class="form-label fw-bold">Nombre del Programa</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej: Tecnólogo en Análisis y Desarrollo de Software" value="<?= htmlspecialchars($programa['nombre']) ?>" required>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Tecnólogo en Análisis y Desarrollo de Software" value="<?= htmlspecialchars($programa['nombre']) ?>" required maxlength="200">
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-bold">Código del Programa</label>
-            <input type="text" name="codigo" class="form-control" placeholder="Ej: 228118" value="<?= htmlspecialchars($programa['codigo']) ?>" required>
+            <input type="text" name="codigo" class="form-control" placeholder="Ej: 228118" value="<?= htmlspecialchars($programa['codigo']) ?>" required maxlength="50">
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-bold">Duración total (Horas)</label>
-            <input type="number" name="duracion_horas" class="form-control" min="1" placeholder="Ej: 3984" value="<?= htmlspecialchars((string)$programa['duracion_horas']) ?>" required>
+            <input type="number" name="duracion_horas" class="form-control" min="1" max="99999" placeholder="Ej: 3984" value="<?= htmlspecialchars((string)$programa['duracion_horas']) ?>" required>
           </div>
 
           <div class="mb-4">

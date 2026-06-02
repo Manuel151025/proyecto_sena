@@ -72,20 +72,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // Obtener proyectos con fichas y fases asociadas
 $proyectos = [];
 try {
-    $proyectos = $db->query("
-        SELECT 
-            pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
-            COUNT(DISTINCT f.id) as total_fichas,
-            SUM(f.cantidad_aprendices) as total_aprendices,
-            COUNT(DISTINCT fp.id) as total_fases,
-            SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
-            AVG(fp.cumplimiento_porcentaje) as avance_promedio
-        FROM proyectos pr
-        LEFT JOIN fichas f ON f.proyecto_id = pr.id
-        LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
-        GROUP BY pr.id
-        ORDER BY pr.nombre
-    ")->fetchAll();
+    $user_id = (int)getCurrentUser()['id'];
+    if ($user_rol === ROL_APRENDIZ) {
+        $stmt = $db->prepare("
+            SELECT 
+                pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
+                COUNT(DISTINCT f.id) as total_fichas,
+                SUM(f.cantidad_aprendices) as total_aprendices,
+                COUNT(DISTINCT fp.id) as total_fases,
+                SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
+                AVG(fp.cumplimiento_porcentaje) as avance_promedio
+            FROM proyectos pr
+            JOIN fichas f ON f.proyecto_id = pr.id
+            JOIN aprendices ap ON ap.ficha_id = f.id
+            LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
+            WHERE ap.usuario_id = ?
+            GROUP BY pr.id
+            ORDER BY pr.nombre
+        ");
+        $stmt->execute([$user_id]);
+        $proyectos = $stmt->fetchAll();
+    } elseif ($user_rol === ROL_INSTRUCTOR) {
+        $stmt = $db->prepare("
+            SELECT 
+                pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
+                COUNT(DISTINCT f.id) as total_fichas,
+                SUM(f.cantidad_aprendices) as total_aprendices,
+                COUNT(DISTINCT fp.id) as total_fases,
+                SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
+                AVG(fp.cumplimiento_porcentaje) as avance_promedio
+            FROM proyectos pr
+            JOIN fichas f ON f.proyecto_id = pr.id
+            LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
+            WHERE f.instructor_id = ?
+            GROUP BY pr.id
+            ORDER BY pr.nombre
+        ");
+        $stmt->execute([$user_id]);
+        $proyectos = $stmt->fetchAll();
+    } else {
+        $proyectos = $db->query("
+            SELECT 
+                pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
+                COUNT(DISTINCT f.id) as total_fichas,
+                SUM(f.cantidad_aprendices) as total_aprendices,
+                COUNT(DISTINCT fp.id) as total_fases,
+                SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
+                AVG(fp.cumplimiento_porcentaje) as avance_promedio
+            FROM proyectos pr
+            LEFT JOIN fichas f ON f.proyecto_id = pr.id
+            LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
+            GROUP BY pr.id
+            ORDER BY pr.nombre
+        ")->fetchAll();
+    }
 } catch (Exception $e) {
     $errors[] = 'Error al cargar los proyectos: ' . $e->getMessage();
 }

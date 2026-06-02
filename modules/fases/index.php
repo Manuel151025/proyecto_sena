@@ -107,12 +107,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+$user_id = (int)getCurrentUser()['id'];
+
 // Obtener proyectos para el filtro
 $proyectos = [];
+$aprendiz_proyecto_id = 0;
+
+if ($user_rol === ROL_APRENDIZ) {
+    try {
+        $stmt = $db->prepare("
+            SELECT f.proyecto_id 
+            FROM aprendices ap
+            JOIN fichas f ON ap.ficha_id = f.id
+            WHERE ap.usuario_id = ?
+        ");
+        $stmt->execute([$user_id]);
+        $aprendiz_proyecto_id = (int)($stmt->fetchColumn() ?: 0);
+    } catch (Exception $e) {
+        $errors[] = 'Error al obtener el proyecto del aprendiz.';
+    }
+}
+
 try {
-    $proyectos = $db->query("SELECT id, nombre, codigo FROM proyectos ORDER BY nombre")->fetchAll();
-    if ($selected_proyecto_id === 0 && !empty($proyectos)) {
-        $selected_proyecto_id = (int)$proyectos[0]['id'];
+    if ($user_rol === ROL_APRENDIZ) {
+        if ($aprendiz_proyecto_id > 0) {
+            $stmt = $db->prepare("SELECT id, nombre, codigo FROM proyectos WHERE id = ?");
+            $stmt->execute([$aprendiz_proyecto_id]);
+            $proyectos = $stmt->fetchAll();
+        } else {
+            $proyectos = [];
+        }
+        $selected_proyecto_id = $aprendiz_proyecto_id;
+    } else {
+        $proyectos = $db->query("SELECT id, nombre, codigo FROM proyectos ORDER BY nombre")->fetchAll();
+        if ($selected_proyecto_id === 0 && !empty($proyectos)) {
+            $selected_proyecto_id = (int)$proyectos[0]['id'];
+        }
     }
 } catch (Exception $e) {
     $errors[] = 'Error al cargar proyectos.';
@@ -183,6 +213,7 @@ if (!isset($app_included)) {
 </div>
 <?php endif; ?>
 
+<?php if ($user_rol !== ROL_APRENDIZ): ?>
 <!-- Selección de Proyecto -->
 <div class="card glass-card mb-4 border-0">
   <div class="card-body">
@@ -207,6 +238,7 @@ if (!isset($app_included)) {
     </form>
   </div>
 </div>
+<?php endif; ?>
 
 <?php if ($proyectoActual): ?>
 <div class="card mb-4" style="border-left: 4px solid var(--sena-primary); border-radius: 8px;">
@@ -292,7 +324,11 @@ if (!isset($app_included)) {
   <?php if (empty($fases)): ?>
     <div class="col-12 text-center py-5 text-muted">
       <i class="bi bi-list-task d-block mb-2" style="font-size:3rem; opacity:0.3;"></i>
-      No hay fases registradas para este proyecto.
+      <?php if ($user_rol === ROL_APRENDIZ && $aprendiz_proyecto_id === 0): ?>
+        Tu ficha no tiene un proyecto formativo asignado actualmente.
+      <?php else: ?>
+        No hay fases registradas para este proyecto.
+      <?php endif; ?>
     </div>
   <?php endif; ?>
 </div>

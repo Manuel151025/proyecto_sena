@@ -241,6 +241,14 @@ if ($user_rol === ROL_APRENDIZ) {
             $selected_ficha_id = (int)$fichas[0]['id'];
         }
 
+        // Si es instructor, validar propiedad de la ficha seleccionada
+        if ($selected_ficha_id > 0 && $user_rol === ROL_INSTRUCTOR) {
+            $fichasIds = array_map('intval', array_column($fichas, 'id'));
+            if (!in_array($selected_ficha_id, $fichasIds, true)) {
+                $selected_ficha_id = !empty($fichas) ? (int)$fichas[0]['id'] : 0;
+            }
+        }
+
         if ($selected_ficha_id > 0) {
             // Detalle de la ficha
             $stmt = $db->prepare("
@@ -723,13 +731,24 @@ $feedback_iconos = [
             <h4 class="fw-bold text-dark mb-1">Rendimiento Académico por Aprendiz</h4>
             <p class="text-muted small mb-0">Monitorea el avance por resultados de aprendizaje e interviene oportunamente.</p>
           </div>
-          <div style="min-width: 320px;">
-            <div class="input-group">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="input-group" style="width: auto; min-width: 250px;">
               <span class="input-group-text bg-transparent border-end-0" style="border-color:rgba(0,0,0,0.15)">
                 <i class="bi bi-search text-muted"></i>
               </span>
-              <input type="text" id="buscar_aprendiz" class="form-control border-start-0 ps-0" placeholder="Buscar aprendiz por nombre o documento...">
+              <input type="text" id="buscar_aprendiz" class="form-control border-start-0 ps-0" placeholder="Buscar aprendiz...">
             </div>
+            
+            <div class="btn-group shadow-sm" role="group">
+              <button type="button" class="btn btn-sm btn-outline-secondary active btn-alerta-filtro" data-filtro="todos">Todos</button>
+              <button type="button" class="btn btn-sm btn-outline-danger btn-alerta-filtro" data-filtro="danger">Críticos</button>
+              <button type="button" class="btn btn-sm btn-outline-warning btn-alerta-filtro" data-filtro="warning">Riesgo</button>
+              <button type="button" class="btn btn-sm btn-outline-success btn-alerta-filtro" data-filtro="success">Al Día</button>
+            </div>
+
+            <button type="button" id="btn_exportar_excel" class="btn btn-sm btn-soft text-primary">
+              <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+            </button>
           </div>
         </div>
       </div>
@@ -758,7 +777,9 @@ $feedback_iconos = [
                   elseif ($prog < 80 || $en_proc > 0)   { $alerta_label = 'Riesgo';  $alerta_class = 'warning'; }
                   else                                   { $alerta_label = 'Al Día';  $alerta_class = 'success'; }
                 ?>
-                <tr class="aprendiz-fila" data-search="<?= htmlspecialchars(strtolower($ap['aprendiz_nombre'] . ' ' . $ap['numero_documento']), ENT_QUOTES, 'UTF-8') ?>">
+                <tr class="aprendiz-fila" 
+                    data-search="<?= htmlspecialchars(strtolower($ap['aprendiz_nombre'] . ' ' . $ap['numero_documento']), ENT_QUOTES, 'UTF-8') ?>"
+                    data-alerta="<?= $alerta_class ?>">
                   <td class="ps-4">
                     <div class="d-flex align-items-center gap-2">
                       <div class="avatar bg-light text-dark fw-bold rounded-circle border"
@@ -841,6 +862,17 @@ $feedback_iconos = [
             </ul>
             <div class="tab-content">
               <div class="tab-pane fade show active" id="pills-evals">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="switch_ver_pendientes">
+                    <label class="form-check-label fw-semibold text-muted small" for="switch_ver_pendientes">
+                      Ver solo pendientes y calificados con D (Deficiente)
+                    </label>
+                  </div>
+                  <button type="button" id="btn_generar_plan_mejoramiento" class="btn btn-sm btn-soft text-danger" style="display:none;">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Borrador Plan de Mejoramiento
+                  </button>
+                </div>
                 <div class="table-responsive">
                   <table class="table align-middle">
                     <thead>
@@ -968,6 +1000,8 @@ $feedback_iconos = [
     const conceptosLabels          = <?= json_encode($conceptos_labels) ?>;
     const feedbackIconos           = <?= json_encode($feedback_iconos) ?>;
     const currentFichaId           = <?= $selected_ficha_id ?>;
+    const aprendicesStats          = <?= json_encode($aprendices_stats) ?>;
+    const fichaDetalle             = <?= json_encode($ficha_detalle) ?>;
 
     // Map para pasar datos al modal de calificación sin inyección HTML
     const calificarData = {};
@@ -978,6 +1012,499 @@ $feedback_iconos = [
         modalDetalle   = new bootstrap.Modal(document.getElementById('modalDetalleAprendiz'));
         modalCalificar = new bootstrap.Modal(document.getElementById('modalCalificarActividad'));
         modalRetro     = new bootstrap.Modal(document.getElementById('modalRetroalimentacion'));
+
+        // Event listener for switch_ver_pendientes
+        document.getElementById('switch_ver_pendientes')?.addEventListener('change', function() {
+            const verSoloPendientes = this.checked;
+            document.querySelectorAll('.ra-fila-modal').forEach(tr => {
+                const concepto = tr.dataset.concepto;
+                if (verSoloPendientes) {
+                    if (concepto === 'D' || concepto === 'pendiente') {
+                        tr.style.display = '';
+                    } else {
+                        tr.style.display = 'none';
+                    }
+                } else {
+                    tr.style.display = '';
+                }
+            });
+        });
+
+        // Event listener for btn_generar_plan_mejoramiento
+        document.getElementById('btn_generar_plan_mejoramiento')?.addEventListener('click', function() {
+            const aprendizId = parseInt(this.dataset.aprendizId);
+            if (!aprendizId) return;
+            
+            const ap = aprendicesStats.find(x => parseInt(x.aprendiz_id) === aprendizId);
+            if (!ap) return;
+            
+            const evals = detalleEvaluaciones[aprendizId] || [];
+            const reprobados = evals.filter(ev => ev.concepto === 'D');
+            
+            if (reprobados.length === 0) {
+                alert('El aprendiz no tiene Resultados de Aprendizaje calificados con D (Deficiente).');
+                return;
+            }
+            
+            const printWindow = window.open('', '_blank', 'width=900,height=800');
+            if (!printWindow) {
+                alert('El navegador bloqueó la ventana emergente. Por favor, permita las ventanas emergentes para este sitio.');
+                return;
+            }
+            
+            const hoy = new Date();
+            const fechaFormateada = hoy.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            let raRowsHtml = '';
+            reprobados.forEach((ev, idx) => {
+                raRowsHtml += `
+                    <tr>
+                        <td style="text-align: center; font-weight: bold; width: 5%;">${idx + 1}</td>
+                        <td style="width: 25%; font-family: monospace; font-size: 0.85rem;">${esc(ev.ra_codigo)}</td>
+                        <td style="width: 45%;">${esc(ev.ra_nombre)}</td>
+                        <td style="width: 25%; font-size: 0.85rem; font-style: italic; color: #555;">${esc(ev.comentario || 'Pendiente de nivelación')}</td>
+                    </tr>
+                `;
+            });
+            
+            const fichaNum = fichaDetalle ? esc(fichaDetalle.numero_ficha) : 'N/A';
+            const programaNombre = fichaDetalle ? esc(fichaDetalle.programa_nombre) : 'N/A';
+            const instructorNombre = fichaDetalle ? esc(fichaDetalle.instructor_nombre || 'No asignado') : 'No asignado';
+            const coordinadorNombre = fichaDetalle ? esc(fichaDetalle.coordinador_nombre || 'No asignado') : 'No asignado';
+            
+            const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Plan de Mejoramiento Académico - Ficha #${fichaNum}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #333;
+            line-height: 1.4;
+            font-size: 0.9rem;
+            margin: 0;
+            padding: 0;
+            background-color: #fff;
+        }
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .header-table td {
+            border: 1px solid #00324D;
+            padding: 10px;
+            vertical-align: middle;
+        }
+        .logo-container {
+            width: 15%;
+            text-align: center;
+        }
+        .logo-sena {
+            width: 55px;
+            height: 55px;
+            display: inline-block;
+            background-color: #39A900;
+            border-radius: 50%;
+            position: relative;
+        }
+        .logo-sena::before {
+            content: "SENA";
+            color: white;
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 15px;
+            font-weight: 900;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            letter-spacing: 0.5px;
+        }
+        .header-title {
+            width: 60%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.05rem;
+            color: #00324D;
+            text-transform: uppercase;
+        }
+        .header-meta {
+            width: 25%;
+            font-size: 0.75rem;
+            color: #555;
+        }
+        
+        .section-title {
+            background-color: #00324D;
+            color: #ffffff;
+            font-weight: bold;
+            padding: 6px 10px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-radius: 3px;
+        }
+        
+        .info-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .info-grid td {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            font-size: 0.85rem;
+        }
+        .info-grid td.label {
+            font-weight: bold;
+            background-color: #f7f9fa;
+            color: #00324D;
+            width: 20%;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+        .data-table th {
+            background-color: #f0f4f7;
+            color: #00324D;
+            border: 1px solid #ccc;
+            padding: 8px;
+            font-size: 0.85rem;
+            text-align: left;
+            font-weight: bold;
+        }
+        .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 0.85rem;
+            vertical-align: top;
+        }
+        
+        .text-box {
+            border: 1px solid #ccc;
+            min-height: 80px;
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .text-box-fill {
+            min-height: 50px;
+            font-family: inherit;
+            color: #555;
+        }
+        
+        .signatures-container {
+            width: 100%;
+            margin-top: 40px;
+            border-collapse: collapse;
+        }
+        .signatures-container td {
+            width: 33%;
+            text-align: center;
+            vertical-align: bottom;
+            padding-bottom: 10px;
+            border: none;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            width: 80%;
+            margin: 0 auto 5px auto;
+        }
+        .signature-title {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #00324D;
+        }
+        .signature-subtitle {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        .footer-note {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .btn-print-action {
+            background-color: #39A900;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            transition: background-color 0.2s;
+        }
+        .btn-print-action:hover {
+            background-color: #2e8a00;
+        }
+        
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                font-size: 0.85rem;
+            }
+            .text-box {
+                background-color: #fff;
+                border: 1px solid #999;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="padding: 10px; background-color: #f0f4f7; border-bottom: 1px solid #ddd; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #00324D; font-weight: bold;">Vista Previa de Impresión - Formato Plan de Mejoramiento</span>
+        <button class="btn-print-action" onclick="window.print()">Imprimir Plan de Mejoramiento</button>
+    </div>
+
+    <table class="header-table">
+        <tr>
+            <td class="logo-container">
+                <div class="logo-sena"></div>
+            </td>
+            <td class="header-title">
+                Proceso de Gestión de Formación Profesional Integral<br>
+                <span style="font-size: 0.85rem; font-weight: normal;">Plan de Mejoramiento Académico</span>
+            </td>
+            <td class="header-meta">
+                <strong>Código:</strong> F-GFPI-19<br>
+                <strong>Versión:</strong> 1<br>
+                <strong>Fecha:</strong> ${fechaFormateada}
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">1. Información General del Aprendiz y del Programa</div>
+    <table class="info-grid">
+        <tr>
+            <td class="label">Nombre del Aprendiz</td>
+            <td>${esc(ap.aprendiz_nombre)}</td>
+            <td class="label">Documento</td>
+            <td>${esc(ap.tipo_documento)} ${esc(ap.numero_documento)}</td>
+        </tr>
+        <tr>
+            <td class="label">Programa de Formación</td>
+            <td>${programaNombre}</td>
+            <td class="label">Número de Ficha</td>
+            <td><strong>#${fichaNum}</strong></td>
+        </tr>
+        <tr>
+            <td class="label">Instructor Líder</td>
+            <td>${instructorNombre}</td>
+            <td class="label">Coordinador Académico</td>
+            <td>${coordinadorNombre}</td>
+        </tr>
+        <tr>
+            <td class="label">Correo Electrónico</td>
+            <td>${esc(ap.aprendiz_email)}</td>
+            <td class="label">Teléfono / Celular</td>
+            <td>${esc(ap.telefono || 'No registrado')}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">2. Resultados de Aprendizaje por Nivelar (Concepto D)</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 5%; text-align: center;">Item</th>
+                <th style="width: 25%;">Código RA</th>
+                <th style="width: 45%;">Descripción del Resultado de Aprendizaje</th>
+                <th style="width: 25%;">Observaciones del Instructor</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${raRowsHtml}
+        </tbody>
+    </table>
+
+    <div class="section-title">3. Diagnóstico Académico y Justificación del Plan</div>
+    <div class="text-box text-box-fill">
+        El aprendiz presenta rezago o no ha alcanzado las evidencias correspondientes a los resultados de aprendizaje descritos en la sección anterior. Es necesario implementar actividades de nivelación para asegurar el cumplimiento del perfil de egreso del programa.
+    </div>
+
+    <div class="section-title">4. Actividades de Aprendizaje a Desarrollar (A concertar con el Instructor)</div>
+    <div class="text-box" style="min-height: 100px;">
+        1. Presentación de las evidencias de producto y desempeño pendientes detalladas por el instructor.<br>
+        2. Sustentación presencial o virtual del componente técnico asociado a los resultados evaluados con D.<br>
+        3. Desarrollo de talleres prácticos complementarios.<br>
+        <br>
+        <strong>Fecha Límite de Entrega:</strong> ____________________________
+    </div>
+
+    <div class="section-title">5. Compromisos del Aprendiz</div>
+    <div class="text-box" style="min-height: 80px; font-style: italic;">
+        Yo, <strong>${esc(ap.aprendiz_nombre)}</strong>, identificado con documento número <strong>${esc(ap.numero_documento)}</strong>, me comprometo a desarrollar y entregar en las fechas y condiciones establecidas en este documento las actividades de nivelación propuestas, entendiendo que el incumplimiento del presente plan de mejoramiento dará lugar a los trámites disciplinarios y académicos establecidos en el Reglamento del Aprendiz SENA.
+    </div>
+
+    <table class="signatures-container">
+        <tr>
+            <td>
+                <div class="signature-line"></div>
+                <div class="signature-title">${esc(ap.aprendiz_nombre)}</div>
+                <div class="signature-subtitle">Firma del Aprendiz</div>
+                <div class="signature-subtitle">CC. ${esc(ap.numero_documento)}</div>
+            </td>
+            <td>
+                <div class="signature-line"></div>
+                <div class="signature-title">${instructorNombre}</div>
+                <div class="signature-subtitle">Firma del Instructor</div>
+                <div class="signature-subtitle">Gestor Académico</div>
+            </td>
+            <td>
+                <div class="signature-line"></div>
+                <div class="signature-title">${coordinadorNombre}</div>
+                <div class="signature-subtitle">Firma Coordinador</div>
+                <div class="signature-subtitle">Centro de Formación</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="footer-note">
+        Servicio Nacional de Aprendizaje SENA - Dirección de Formación Profesional - Formato Plan de Mejoramiento Académico<br>
+        Copia controlada - Proceso de Gestión de Formación
+    </div>
+</body>
+</html>
+            `;
+            printWindow.document.write(html);
+            printWindow.document.close();
+        });
+
+        // Event listener for btn_exportar_excel
+        document.getElementById('btn_exportar_excel')?.addEventListener('click', function() {
+            if (!aprendicesStats || aprendicesStats.length === 0) {
+                alert('No hay datos para exportar.');
+                return;
+            }
+            
+            let tbodyHtml = '';
+            
+            aprendicesStats.forEach(ap => {
+                const total = parseInt(ap.total_actividades) || 0;
+                const aprobadas = parseInt(ap.aprobadas) || 0;
+                const en_proceso = parseInt(ap.en_proceso) || 0;
+                const prog = total > 0 ? Math.round((aprobadas / total) * 100) : 0;
+                
+                let alertaClass = 'alert-dia';
+                let alertaText = 'Al Día';
+                if (prog < 60 || en_proceso > 2) {
+                    alertaClass = 'alert-critico';
+                    alertaText = 'Crítico';
+                } else if (prog < 80 || en_proceso > 0) {
+                    alertaClass = 'alert-riesgo';
+                    alertaText = 'Riesgo';
+                }
+                
+                tbodyHtml += `
+                    <tr>
+                        <td style="border: 1px solid #cccccc; padding: 8px;">${esc(ap.tipo_documento)}</td>
+                        <td style="border: 1px solid #cccccc; padding: 8px; font-family: 'Consolas', monospace; text-align: center;">${esc(ap.numero_documento)}</td>
+                        <td style="border: 1px solid #cccccc; padding: 8px; font-weight: bold;">${esc(ap.aprendiz_nombre)}</td>
+                        <td style="border: 1px solid #cccccc; padding: 8px; text-align: center;">${total}</td>
+                        <td style="border: 1px solid #cccccc; padding: 8px; text-align: center; color: #137333; font-weight: bold;">${aprobadas}</td>
+                        <td style="border: 1px solid #cccccc; padding: 8px; text-align: center; color: #a51d24; font-weight: bold;">${en_proceso}</td>
+                        <td style="border: 1px solid #cccccc; padding: 8px; text-align: center; font-weight: bold;">${prog}%</td>
+                        <td class="${alertaClass}" style="border: 1px solid #cccccc; padding: 8px;">${alertaText}</td>
+                    </tr>
+                `;
+            });
+            
+            const fichaNum = fichaDetalle ? esc(fichaDetalle.numero_ficha) : 'N/A';
+            const programaNombre = fichaDetalle ? esc(fichaDetalle.programa_nombre) : 'N/A';
+            
+            const excelHtml = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta charset="utf-8">
+    <!--[if gte mso 9]>
+    <xml>
+        <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                    <x:Name>Seguimiento Ficha #${fichaNum}</x:Name>
+                    <x:WorksheetOptions>
+                        <x:DisplayGridlines/>
+                    </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+        </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
+    <style>
+        table { border-collapse: collapse; font-family: 'Segoe UI', Arial, sans-serif; }
+        th { background-color: #00324D; color: #ffffff; font-weight: bold; border: 1px solid #cccccc; padding: 10px; text-align: center; }
+        .alert-critico { background-color: #fce8e6; color: #a51d24; font-weight: bold; text-align: center; }
+        .alert-riesgo { background-color: #fef7e0; color: #b06000; font-weight: bold; text-align: center; }
+        .alert-dia { background-color: #e6f4ea; color: #137333; font-weight: bold; text-align: center; }
+        .title-header { font-size: 1.3rem; font-weight: bold; color: #00324D; }
+        .sub-header { font-size: 1rem; color: #555555; }
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td colspan="8" class="title-header" style="border: none; padding: 10px 0;">REPORTE DE SEGUIMIENTO ACADÉMICO - SENA</td>
+        </tr>
+        <tr>
+            <td colspan="8" class="sub-header" style="border: none; padding-bottom: 20px;">
+                <strong>Programa:</strong> ${programaNombre} | <strong>Ficha:</strong> #${fichaNum}
+            </td>
+        </tr>
+        <thead>
+            <tr>
+                <th>Tipo Documento</th>
+                <th>Número Documento</th>
+                <th>Nombre Aprendiz</th>
+                <th>Total RAs</th>
+                <th>Aprobados (A)</th>
+                <th>En Proceso (D)</th>
+                <th>Progreso (%)</th>
+                <th>Nivel Alerta</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${tbodyHtml}
+        </tbody>
+    </table>
+</body>
+</html>
+            `;
+            
+            const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            
+            const numeroFicha = fichaDetalle ? fichaDetalle.numero_ficha : 'Seguimiento';
+            link.setAttribute("download", `Seguimiento_Ficha_${numeroFicha}.xls`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
     });
 
     function esc(str) {
@@ -986,6 +1513,12 @@ $feedback_iconos = [
 
     function abrirModalDetalle(aprendizId, nombre, email) {
         document.getElementById('detalle_aprendiz_subtitulo').innerText = nombre + ' (' + email + ')';
+
+        // Reset the switch on open
+        const switchPendientes = document.getElementById('switch_ver_pendientes');
+        if (switchPendientes) {
+            switchPendientes.checked = false;
+        }
 
         const tbody = document.getElementById('lista_actividades_detalle');
         tbody.innerHTML = '';
@@ -1010,7 +1543,7 @@ $feedback_iconos = [
                 };
 
                 tbody.innerHTML += `
-                    <tr>
+                    <tr class="ra-fila-modal" data-concepto="${esc(ev.concepto || 'pendiente')}">
                       <td>
                         <div class="fw-semibold text-dark">${esc(ev.ra_nombre)}</div>
                         <small class="text-muted font-monospace">${esc(ev.ra_codigo)}</small>
@@ -1032,6 +1565,18 @@ $feedback_iconos = [
                       </td>
                     </tr>`;
             });
+        }
+
+        // Show/hide plan de mejoramiento button
+        const tieneReprobados = evals.some(ev => ev.concepto === 'D');
+        const btnPlan = document.getElementById('btn_generar_plan_mejoramiento');
+        if (btnPlan) {
+            if (tieneReprobados) {
+                btnPlan.style.display = 'inline-block';
+                btnPlan.dataset.aprendizId = aprendizId;
+            } else {
+                btnPlan.style.display = 'none';
+            }
         }
 
         const container = document.getElementById('lista_feedback_detalle');
@@ -1139,16 +1684,35 @@ $feedback_iconos = [
         modalRetro.show();
     }
 
-    // Buscador en tiempo real de aprendices (con soporte de acentos/tildes)
-    document.getElementById('buscar_aprendiz')?.addEventListener('input', function() {
-        const query = this.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    let filtroAlertaActivo = 'todos';
+
+    function filtrarAprendices() {
+        const query = document.getElementById('buscar_aprendiz')?.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() || '';
         document.querySelectorAll('.aprendiz-fila').forEach(tr => {
             const searchVal = (tr.dataset.search || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (searchVal.includes(query)) {
+            const alertaVal = tr.dataset.alerta || 'success';
+            
+            const matchSearch = searchVal.includes(query);
+            const matchAlerta = (filtroAlertaActivo === 'todos' || alertaVal === filtroAlertaActivo);
+            
+            if (matchSearch && matchAlerta) {
                 tr.style.display = '';
             } else {
                 tr.style.display = 'none';
             }
+        });
+    }
+
+    // Buscador en tiempo real de aprendices (con soporte de acentos/tildes)
+    document.getElementById('buscar_aprendiz')?.addEventListener('input', filtrarAprendices);
+
+    // Filtros de nivel de alerta
+    document.querySelectorAll('.btn-alerta-filtro').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.btn-alerta-filtro').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            filtroAlertaActivo = this.dataset.filtro;
+            filtrarAprendices();
         });
     });
     </script>
