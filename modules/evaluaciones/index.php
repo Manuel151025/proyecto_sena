@@ -51,10 +51,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $stmtCurrent = $db->prepare("
                     SELECT eval.concepto 
                     FROM evaluaciones eval
+                    JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+                    JOIN competencias c ON ra.competencia_id = c.id
                     JOIN fichas f ON eval.ficha_id = f.id
-                    WHERE eval.id = ? AND f.instructor_id = ?
+                    WHERE eval.id = ? AND (
+                        f.instructor_id = ?
+                        OR EXISTS (
+                            SELECT 1 FROM asignaciones asg 
+                            WHERE asg.ficha_id = eval.ficha_id 
+                              AND asg.competencia_id = c.id 
+                              AND asg.instructor_id = ?
+                        )
+                    )
                 ");
-                $stmtCurrent->execute([$eval_id, $user_id]);
+                $stmtCurrent->execute([$eval_id, $user_id, $user_id]);
             } else {
                 $stmtCurrent = $db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
                 $stmtCurrent->execute([$eval_id]);
@@ -92,8 +102,14 @@ $fichas = [];
 if ($user_rol !== ROL_APRENDIZ) {
     try {
         if ($user_rol === ROL_INSTRUCTOR) {
-            $stmtF = $db->prepare("SELECT id, numero_ficha FROM fichas WHERE instructor_id = ? ORDER BY numero_ficha");
-            $stmtF->execute([$user_id]);
+            $stmtF = $db->prepare("
+                SELECT DISTINCT f.id, f.numero_ficha 
+                FROM fichas f 
+                LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
+                WHERE f.instructor_id = ? OR asg.instructor_id = ? 
+                ORDER BY f.numero_ficha
+            ");
+            $stmtF->execute([$user_id, $user_id]);
             $fichas = $stmtF->fetchAll();
         } else {
             $fichas = $db->query("SELECT id, numero_ficha FROM fichas ORDER BY numero_ficha")->fetchAll();
@@ -131,7 +147,16 @@ if ($user_rol === ROL_APRENDIZ) {
     $sql .= " AND eval.aprendiz_id = ?";
     $params[] = $aprendiz_id;
 } elseif ($user_rol === ROL_INSTRUCTOR) {
-    $sql .= " AND f.instructor_id = ?";
+    $sql .= " AND (
+        f.instructor_id = ? 
+        OR EXISTS (
+            SELECT 1 FROM asignaciones asg 
+            WHERE asg.ficha_id = eval.ficha_id 
+              AND asg.competencia_id = c.id 
+              AND asg.instructor_id = ?
+        )
+    )";
+    $params[] = $user_id;
     $params[] = $user_id;
     if ($filter_ficha > 0) {
         $sql .= " AND eval.ficha_id = ?";
@@ -170,16 +195,36 @@ try {
 // Estadísticas rápidas
 $statsEval = ['total' => 0, 'aprobados' => 0, 'reprobados' => 0, 'pendientes' => 0];
 try {
-    $sqlStats = "SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-        SUM(CASE WHEN concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
-        SUM(CASE WHEN concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
-        FROM evaluaciones";
     if ($user_rol === ROL_APRENDIZ) {
-        $sqlStats .= " WHERE aprendiz_id = " . (int)$aprendiz_id;
+        $sqlStats = "SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
+            SUM(CASE WHEN concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
+            SUM(CASE WHEN concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
+            FROM evaluaciones WHERE aprendiz_id = " . (int)$aprendiz_id;
     } elseif ($user_rol === ROL_INSTRUCTOR) {
-        $sqlStats .= " WHERE instructor_id = " . (int)$user_id;
+        $sqlStats = "SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN eval.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
+            SUM(CASE WHEN eval.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
+            SUM(CASE WHEN eval.concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
+            FROM evaluaciones eval
+            JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+            JOIN competencias c ON ra.competencia_id = c.id
+            JOIN fichas f ON eval.ficha_id = f.id
+            WHERE f.instructor_id = " . (int)$user_id . " OR EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id 
+                  AND asg.instructor_id = " . (int)$user_id . "
+            )";
+    } else {
+        $sqlStats = "SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
+            SUM(CASE WHEN concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
+            SUM(CASE WHEN concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
+            FROM evaluaciones";
     }
     $statsEval = $db->query($sqlStats)->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {}
