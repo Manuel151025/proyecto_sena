@@ -498,7 +498,7 @@ $feedback_iconos = [
             <span class="text-muted small"><?= htmlspecialchars($mi_perfil['programa_nombre']) ?></span>
           </div>
           <div class="col-12 col-md-4 text-md-end">
-            <div class="text-muted small">Instructor Asignado:</div>
+            <div class="text-muted small">Instructor Líder:</div>
             <div class="fw-bold text-dark"><?= htmlspecialchars($mi_perfil['instructor_nombre'] ?: 'No asignado') ?></div>
             <div class="text-muted small mt-1">Coordinador:</div>
             <div class="fw-semibold text-muted small"><?= htmlspecialchars($mi_perfil['coordinador_nombre'] ?: 'No asignado') ?></div>
@@ -703,7 +703,7 @@ $feedback_iconos = [
             </div>
             <div class="row g-3 mt-3">
               <div class="col-sm-6">
-                <small class="text-muted d-block">Instructor Asignado:</small>
+                <small class="text-muted d-block">Instructor Líder:</small>
                 <strong><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($ficha_detalle['instructor_nombre'] ?: 'Sin asignar') ?></strong>
               </div>
               <div class="col-sm-6">

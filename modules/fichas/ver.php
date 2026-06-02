@@ -124,7 +124,7 @@ $estados_aprendiz = [
     </h1>
     <p class="text-muted mb-0">
       <?= htmlspecialchars($ficha['programa']) ?> · 
-      Instructor: <?= htmlspecialchars($ficha['instructor']) ?> · 
+      Instructor Líder: <?= htmlspecialchars($ficha['instructor']) ?> · 
       <?= $ficha['cantidad_aprendices'] ?> aprendices
     </p>
   </div>
@@ -165,7 +165,7 @@ $estados_aprendiz = [
             <div class="fw-semibold"><?= htmlspecialchars($ficha['programa']) ?></div>
           </div>
           <div class="col-md-4">
-            <small class="text-muted">Instructor responsable</small>
+            <small class="text-muted">Instructor Líder</small>
             <div class="fw-semibold"><?= htmlspecialchars($ficha['instructor']) ?></div>
           </div>
           <div class="col-md-4">
