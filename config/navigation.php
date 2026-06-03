@@ -7,6 +7,7 @@ $MENU_CONFIG = [
     ROL_COORDINADOR => [
         'Principal' => [
             ['title' => 'Dashboard', 'icon' => 'bi bi-grid-1x2', 'url' => MODULES_PATH . '/dashboard/coordinador.php'],
+            ['title' => 'Calendario', 'icon' => 'bi bi-calendar3', 'url' => MODULES_PATH . '/calendario/'],
             ['title' => 'Usuarios', 'icon' => 'bi bi-people', 'url' => MODULES_PATH . '/usuarios/'],
         ],
         'Estructura Académica' => [
@@ -38,6 +39,7 @@ $MENU_CONFIG = [
     ROL_INSTRUCTOR => [
         'Principal' => [
             ['title' => 'Dashboard', 'icon' => 'bi bi-grid-1x2', 'url' => MODULES_PATH . '/dashboard/instructor.php'],
+            ['title' => 'Calendario', 'icon' => 'bi bi-calendar3', 'url' => MODULES_PATH . '/calendario/'],
         ],
         'Mis Fichas' => [
             ['title' => 'Fichas asignadas', 'icon' => 'bi bi-folder2-open', 'url' => MODULES_PATH . '/fichas/'],
@@ -61,6 +63,7 @@ $MENU_CONFIG = [
     ROL_APRENDIZ => [
         'Principal' => [
             ['title' => 'Dashboard', 'icon' => 'bi bi-grid-1x2', 'url' => MODULES_PATH . '/dashboard/aprendiz.php'],
+            ['title' => 'Calendario', 'icon' => 'bi bi-calendar3', 'url' => MODULES_PATH . '/calendario/'],
         ],
         'Mi Formación' => [
             ['title' => 'Mi ficha', 'icon' => 'bi bi-folder2-open', 'url' => MODULES_PATH . '/fichas/'],
