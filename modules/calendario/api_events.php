@@ -16,7 +16,7 @@ use Core\Database;
 header('Content-Type: application/json; charset=utf-8');
 
 // Solo usuarios autenticados
-if (!isLoggedIn()) {
+if (!isAuthenticated()) {
     http_response_code(401);
     echo json_encode(['error' => 'No autenticado']);
     exit;
