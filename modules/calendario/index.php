@@ -5,11 +5,8 @@ require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../core/Database.php';
 
-// Cualquier rol puede acceder
-if (!isLoggedIn()) {
-    header('Location: ' . APP_URL . '/login.php');
-    exit;
-}
+// Cualquier rol autenticado puede acceder
+requireAuth();
 
 $pageTitle  = 'Calendario · SENA';
 $contentView = __FILE__;
