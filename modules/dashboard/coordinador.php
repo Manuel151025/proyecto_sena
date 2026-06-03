@@ -100,6 +100,61 @@ try {
     $stmt->execute();
     $topInstructores = $stmt->fetchAll();
 
+    // Fichas por estado para sparkline
+    $stmt = $db->query("
+        SELECT estado, COUNT(*) as count 
+        FROM fichas 
+        GROUP BY estado 
+        ORDER BY FIELD(estado, 'planeacion', 'induccion', 'ejecucion', 'cierre')
+    ");
+    $fichasPorEstadoData = $stmt->fetchAll();
+    $fichasEstadosMap = ['planeacion' => 0, 'induccion' => 0, 'ejecucion' => 0, 'cierre' => 0];
+    foreach ($fichasPorEstadoData as $f) {
+        if ($f['estado'] !== null) {
+            $fichasEstadosMap[$f['estado']] = (int)$f['count'];
+        }
+    }
+
+    // Aprendices por estado para sparkline
+    $stmt = $db->query("
+        SELECT estado, COUNT(*) as count 
+        FROM aprendices 
+        GROUP BY estado 
+        ORDER BY FIELD(estado, 'matriculado', 'suspendido', 'desertado', 'egresado')
+    ");
+    $aprendicesPorEstadoData = $stmt->fetchAll();
+    $aprendicesEstadosMap = ['matriculado' => 0, 'suspendido' => 0, 'desertado' => 0, 'egresado' => 0];
+    foreach ($aprendicesPorEstadoData as $a) {
+        if ($a['estado'] !== null) {
+            $aprendicesEstadosMap[$a['estado']] = (int)$a['count'];
+        }
+    }
+
+    // Instructores por estado para sparkline
+    $stmt = $db->query("
+        SELECT estado, COUNT(*) as count 
+        FROM usuarios 
+        WHERE rol = 'instructor' 
+        GROUP BY estado 
+        ORDER BY FIELD(estado, 'activo', 'inactivo', 'bloqueado')
+    ");
+    $instructoresPorEstadoData = $stmt->fetchAll();
+    $instructoresEstadosMap = ['activo' => 0, 'inactivo' => 0, 'bloqueado' => 0];
+    foreach ($instructoresPorEstadoData as $inst) {
+        if ($inst['estado'] !== null) {
+            $instructoresEstadosMap[$inst['estado']] = (int)$inst['count'];
+        }
+    }
+
+    // Fichas cumplimiento para sparkline
+    $stmt = $db->query("
+        SELECT numero_ficha, cumplimiento_porcentaje 
+        FROM fichas 
+        ORDER BY numero_ficha ASC 
+        LIMIT 6
+    ");
+    $fichasCumplimientoData = $stmt->fetchAll();
+
 } catch (Exception $e) {
     $fichasActivas = 0;
     $aprendicesMatriculados = 0;
@@ -109,6 +164,10 @@ try {
     $cumplimientoProgramas = [];
     $statsProgramas = [];
     $topInstructores = [];
+    $fichasEstadosMap = ['planeacion' => 0, 'induccion' => 0, 'ejecucion' => 0, 'cierre' => 0];
+    $aprendicesEstadosMap = ['matriculado' => 0, 'suspendido' => 0, 'desertado' => 0, 'egresado' => 0];
+    $instructoresEstadosMap = ['activo' => 0, 'inactivo' => 0, 'bloqueado' => 0];
+    $fichasCumplimientoData = [];
 }
 
 ?>
@@ -290,36 +349,112 @@ document.addEventListener('DOMContentLoaded', function() {
     const css = getComputedStyle(document.documentElement);
     const primaryColor = css.getPropertyValue('--sena-primary').trim();
     
-    // Configuración común para Sparklines
-    const sparklineOptions = {
-        type: 'line',
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: { x: { display: false }, y: { display: false } },
-            layout: { padding: 0 },
-            elements: { point: { radius: 0 }, line: { tension: 0.4, borderWidth: 2 } }
-        }
-    };
-
-    // Renderizar Sparklines aleatorios simulando tendencia
-    ['sparkFichas', 'sparkAprendices', 'sparkInstructores', 'sparkRetencion'].forEach(id => {
+    // Función reutilizable para crear Sparklines premium e interactivos
+    function createSparkline(id, labels, data, color, fillGradStart, isPercentage = false) {
         if (!document.getElementById(id)) return;
         const ctx = document.getElementById(id).getContext('2d');
         const grad = ctx.createLinearGradient(0, 0, 0, 45);
-        grad.addColorStop(0, 'rgba(57, 169, 0, 0.4)');
-        grad.addColorStop(1, 'rgba(57, 169, 0, 0)');
+        grad.addColorStop(0, fillGradStart);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         
-        const data = Array.from({length: 10}, () => Math.floor(Math.random() * 40) + 60);
         new Chart(ctx, {
-            ...sparklineOptions,
+            type: 'line',
             data: {
-                labels: data.map((_, i) => i),
-                datasets: [{ data: data, borderColor: primaryColor, backgroundColor: grad, fill: true }]
+                labels: labels.length > 0 ? labels : ['Sin datos'],
+                datasets: [{
+                    data: data.length > 0 ? data : [0],
+                    borderColor: color,
+                    backgroundColor: grad,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: color,
+                    pointBorderWidth: 1.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleFont: { size: 10, family: "'Inter', sans-serif", weight: '600' },
+                        bodyFont: { size: 10, family: "'Inter', sans-serif" },
+                        padding: 6,
+                        cornerRadius: 6,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.parsed.y;
+                                return isPercentage ? ` Progreso: ${val}%` : ` Cantidad: ${val}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false, beginAtZero: true }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
             }
         });
-    });
+    }
+
+    // Inicializar sparklines con datos reales consultados de BD
+    createSparkline(
+        'sparkFichas', 
+        ['Planeación', 'Inducción', 'Ejecución', 'Cierre'],
+        <?= json_encode([
+            $fichasEstadosMap['planeacion'],
+            $fichasEstadosMap['induccion'],
+            $fichasEstadosMap['ejecucion'],
+            $fichasEstadosMap['cierre']
+        ]) ?>,
+        primaryColor,
+        'rgba(57, 169, 0, 0.25)'
+    );
+
+    createSparkline(
+        'sparkAprendices', 
+        ['Matriculados', 'Suspendidos', 'Desertados', 'Egresados'],
+        <?= json_encode([
+            $aprendicesEstadosMap['matriculado'],
+            $aprendicesEstadosMap['suspendido'],
+            $aprendicesEstadosMap['desertado'],
+            $aprendicesEstadosMap['egresado']
+        ]) ?>,
+        '#3B82F6',
+        'rgba(59, 130, 246, 0.25)'
+    );
+
+    createSparkline(
+        'sparkInstructores', 
+        ['Activos', 'Inactivos', 'Bloqueados'],
+        <?= json_encode([
+            $instructoresEstadosMap['activo'],
+            $instructoresEstadosMap['inactivo'],
+            $instructoresEstadosMap['bloqueado']
+        ]) ?>,
+        '#8B5CF6',
+        'rgba(139, 92, 246, 0.25)'
+    );
+
+    createSparkline(
+        'sparkRetencion', 
+        <?= json_encode(array_map(fn($f) => "Ficha #" . $f['numero_ficha'], $fichasCumplimientoData)) ?>,
+        <?= json_encode(array_map(fn($f) => round((float)$f['cumplimiento_porcentaje'], 1), $fichasCumplimientoData)) ?>,
+        '#F59E0B',
+        'rgba(245, 158, 11, 0.25)',
+        true
+    );
 
     // Plugin personalizado para efecto "Glow" (Neón) en líneas
     const neonGlowPlugin = {
