@@ -34,9 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                     $stmtFichaCheck = $db->prepare("
                         SELECT COUNT(*) FROM fichas f
                         LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
-                        WHERE f.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ?)
+                        LEFT JOIN aprendices ap ON ap.ficha_id = f.id
+                        WHERE f.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?)
                     ");
-                    $stmtFichaCheck->execute([$ficha_id, $user_id, $user_id]);
+                    $stmtFichaCheck->execute([$ficha_id, $user_id, $user_id, $user_id]);
                     if ((int)$stmtFichaCheck->fetchColumn() === 0) {
                         throw new Exception("No tiene permisos para descargar los reportes de esta ficha.");
                     }
@@ -46,17 +47,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                 $sql = "
                     SELECT u.nombre as aprendiz, ap.numero_documento, ra.codigo as ra_codigo, ra.denominacion,
                            c.nombre as competencia, e.concepto, e.fecha_evaluacion, ui.nombre as instructor
-                    FROM evaluaciones e
-                    JOIN aprendices ap ON e.aprendiz_id = ap.id
-                    JOIN usuarios u ON ap.usuario_id = u.id
-                    JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
-                    JOIN competencias c ON ra.competencia_id = c.id
-                    JOIN usuarios ui ON e.instructor_id = ui.id
-                    WHERE e.ficha_id = ?
-                    ORDER BY u.nombre, ra.codigo
+                     FROM evaluaciones e
+                     JOIN aprendices ap ON e.aprendiz_id = ap.id
+                     JOIN usuarios u ON ap.usuario_id = u.id
+                     JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
+                     JOIN competencias c ON ra.competencia_id = c.id
+                     JOIN usuarios ui ON e.instructor_id = ui.id
+                     JOIN fichas f ON e.ficha_id = f.id
+                     WHERE e.ficha_id = ?
                 ";
+                $params = [$ficha_id];
+                if ($user_rol === ROL_INSTRUCTOR) {
+                    $sql .= " AND (
+                        EXISTS (
+                            SELECT 1 FROM asignaciones asg 
+                            WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                        )
+                        OR
+                        (
+                            f.instructor_id = ?
+                            AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND NOT EXISTS (
+                                SELECT 1 FROM asignaciones asg 
+                                WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                            )
+                        )
+                        OR
+                        (
+                            (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND ap.instructor_seguimiento_id = ?
+                        )
+                    )";
+                    $params[] = $user_id;
+                    $params[] = $user_id;
+                    $params[] = $user_id;
+                }
+                $sql .= " ORDER BY u.nombre, ra.codigo";
                 $stmt = $db->prepare($sql);
-                $stmt->execute([$ficha_id]);
+                $stmt->execute($params);
                 $data = $stmt->fetchAll(PDO::FETCH_NUM);
                 $filename = "evaluaciones_ficha_{$ficha_id}_" . date('Ymd');
                 break;
@@ -80,7 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                     $sql .= " WHERE (f.instructor_id = ? OR EXISTS (
                         SELECT 1 FROM asignaciones asg 
                         WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+                    ) OR EXISTS (
+                        SELECT 1 FROM aprendices ap 
+                        WHERE ap.ficha_id = f.id AND ap.instructor_seguimiento_id = ?
                     ))";
+                    $params[] = $user_id;
                     $params[] = $user_id;
                     $params[] = $user_id;
                 }
@@ -104,14 +136,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                     JOIN competencias c ON ra.competencia_id = c.id
                     JOIN programas p ON c.programa_id = p.id
                     JOIN fichas f ON e.ficha_id = f.id
+                    JOIN aprendices ap ON e.aprendiz_id = ap.id
                     WHERE e.concepto != 'pendiente'
                 ";
                 $params = [];
                 if ($user_rol === ROL_INSTRUCTOR) {
-                    $sql .= " AND (f.instructor_id = ? OR EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
-                    ))";
+                    $sql .= " AND (
+                        EXISTS (
+                            SELECT 1 FROM asignaciones asg 
+                            WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                        )
+                        OR
+                        (
+                            f.instructor_id = ?
+                            AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND NOT EXISTS (
+                                SELECT 1 FROM asignaciones asg 
+                                WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                            )
+                        )
+                        OR
+                        (
+                            (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND ap.instructor_seguimiento_id = ?
+                        )
+                    )";
+                    $params[] = $user_id;
                     $params[] = $user_id;
                     $params[] = $user_id;
                 }
@@ -134,14 +184,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
                     JOIN aprendices ap ON e.aprendiz_id = ap.id
                     JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
                     JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
+                    JOIN competencias c ON ra.competencia_id = c.id
                     JOIN usuarios u_mod ON he.usuario_id = u_mod.id
                 ";
                 $params = [];
                 if ($user_rol === ROL_INSTRUCTOR) {
-                    $sql .= " WHERE (f.instructor_id = ? OR EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
-                    ))";
+                    $sql .= " WHERE (
+                        EXISTS (
+                            SELECT 1 FROM asignaciones asg 
+                            WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                        )
+                        OR
+                        (
+                            f.instructor_id = ?
+                            AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND NOT EXISTS (
+                                SELECT 1 FROM asignaciones asg 
+                                WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                            )
+                        )
+                        OR
+                        (
+                            (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND ap.instructor_seguimiento_id = ?
+                        )
+                    )";
+                    $params[] = $user_id;
                     $params[] = $user_id;
                     $params[] = $user_id;
                 }
@@ -257,12 +325,31 @@ try {
                 SUM(CASE WHEN e.concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
             FROM evaluaciones e
             JOIN fichas f ON e.ficha_id = f.id
-            WHERE f.instructor_id = ? OR EXISTS (
-                SELECT 1 FROM asignaciones asg 
-                WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
+            JOIN competencias c ON ra.competencia_id = c.id
+            JOIN aprendices ap ON e.aprendiz_id = ap.id
+            WHERE (
+                EXISTS (
+                    SELECT 1 FROM asignaciones asg 
+                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                )
+                OR
+                (
+                    f.instructor_id = ?
+                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND NOT EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                    )
+                )
+                OR
+                (
+                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND ap.instructor_seguimiento_id = ?
+                )
             )
         ");
-        $stmtStats->execute([$user_id, $user_id]);
+        $stmtStats->execute([$user_id, $user_id, $user_id]);
         $rowStats = $stmtStats->fetch(PDO::FETCH_ASSOC);
         
         $stats['total_evaluaciones'] = (int)($rowStats['total_evaluaciones'] ?? 0);
@@ -274,9 +361,10 @@ try {
             SELECT COUNT(DISTINCT f.id) 
             FROM fichas f 
             LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
-            WHERE f.instructor_id = ? OR asg.instructor_id = ?
+            LEFT JOIN aprendices ap ON ap.ficha_id = f.id
+            WHERE f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?
         ");
-        $stmtFichas->execute([$user_id, $user_id]);
+        $stmtFichas->execute([$user_id, $user_id, $user_id]);
         $stats['total_fichas'] = (int)$stmtFichas->fetchColumn();
         
         // Historial de cambios de las fichas del instructor
@@ -285,12 +373,31 @@ try {
             FROM historial_evaluaciones he
             JOIN evaluaciones e ON he.evaluacion_id = e.id
             JOIN fichas f ON e.ficha_id = f.id
-            WHERE f.instructor_id = ? OR EXISTS (
-                SELECT 1 FROM asignaciones asg 
-                WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
+            JOIN competencias c ON ra.competencia_id = c.id
+            JOIN aprendices ap ON e.aprendiz_id = ap.id
+            WHERE (
+                EXISTS (
+                    SELECT 1 FROM asignaciones asg 
+                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                )
+                OR
+                (
+                    f.instructor_id = ?
+                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND NOT EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                    )
+                )
+                OR
+                (
+                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND ap.instructor_seguimiento_id = ?
+                )
             )
         ");
-        $stmtHist->execute([$user_id, $user_id]);
+        $stmtHist->execute([$user_id, $user_id, $user_id]);
         $stats['cambios_historial'] = (int)$stmtHist->fetchColumn();
     } else {
         // Coordinador: Estadísticas globales
@@ -314,10 +421,11 @@ try {
             FROM fichas f 
             JOIN programas p ON f.programa_id = p.id 
             LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
-            WHERE f.instructor_id = ? OR asg.instructor_id = ? 
+            LEFT JOIN aprendices ap ON ap.ficha_id = f.id
+            WHERE f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?
             ORDER BY f.numero_ficha
         ");
-        $stmtF->execute([$user_id, $user_id]);
+        $stmtF->execute([$user_id, $user_id, $user_id]);
         $fichas = $stmtF->fetchAll();
     } else {
         $fichas = $db->query("SELECT f.id, f.numero_ficha, p.nombre as programa FROM fichas f JOIN programas p ON f.programa_id = p.id ORDER BY f.numero_ficha")->fetchAll();

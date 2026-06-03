@@ -54,17 +54,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
                     JOIN competencias c ON ra.competencia_id = c.id
                     JOIN fichas f ON eval.ficha_id = f.id
+                    JOIN aprendices ap ON eval.aprendiz_id = ap.id
                     WHERE eval.id = ? AND (
-                        f.instructor_id = ?
-                        OR EXISTS (
+                        EXISTS (
                             SELECT 1 FROM asignaciones asg 
                             WHERE asg.ficha_id = eval.ficha_id 
                               AND asg.competencia_id = c.id 
                               AND asg.instructor_id = ?
                         )
+                        OR
+                        (
+                            f.instructor_id = ?
+                            AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND NOT EXISTS (
+                                SELECT 1 FROM asignaciones asg 
+                                WHERE asg.ficha_id = eval.ficha_id 
+                                  AND asg.competencia_id = c.id
+                            )
+                        )
+                        OR
+                        (
+                            (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND ap.instructor_seguimiento_id = ?
+                        )
                     )
                 ");
-                $stmtCurrent->execute([$eval_id, $user_id, $user_id]);
+                $stmtCurrent->execute([$eval_id, $user_id, $user_id, $user_id]);
             } else {
                 $stmtCurrent = $db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
                 $stmtCurrent->execute([$eval_id]);
@@ -148,14 +163,29 @@ if ($user_rol === ROL_APRENDIZ) {
     $params[] = $aprendiz_id;
 } elseif ($user_rol === ROL_INSTRUCTOR) {
     $sql .= " AND (
-        f.instructor_id = ? 
-        OR EXISTS (
+        EXISTS (
             SELECT 1 FROM asignaciones asg 
             WHERE asg.ficha_id = eval.ficha_id 
               AND asg.competencia_id = c.id 
               AND asg.instructor_id = ?
         )
+        OR
+        (
+            f.instructor_id = ?
+            AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+            AND NOT EXISTS (
+                SELECT 1 FROM asignaciones asg 
+                WHERE asg.ficha_id = eval.ficha_id 
+                  AND asg.competencia_id = c.id
+            )
+        )
+        OR
+        (
+            (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+            AND ap.instructor_seguimiento_id = ?
+        )
     )";
+    $params[] = $user_id;
     $params[] = $user_id;
     $params[] = $user_id;
     if ($filter_ficha > 0) {
@@ -212,11 +242,29 @@ try {
             JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
             JOIN competencias c ON ra.competencia_id = c.id
             JOIN fichas f ON eval.ficha_id = f.id
-            WHERE f.instructor_id = " . (int)$user_id . " OR EXISTS (
-                SELECT 1 FROM asignaciones asg 
-                WHERE asg.ficha_id = eval.ficha_id 
-                  AND asg.competencia_id = c.id 
-                  AND asg.instructor_id = " . (int)$user_id . "
+            JOIN aprendices ap ON eval.aprendiz_id = ap.id
+            WHERE (
+                EXISTS (
+                    SELECT 1 FROM asignaciones asg 
+                    WHERE asg.ficha_id = eval.ficha_id 
+                      AND asg.competencia_id = c.id 
+                      AND asg.instructor_id = " . (int)$user_id . "
+                )
+                OR
+                (
+                    f.instructor_id = " . (int)$user_id . "
+                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND NOT EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = eval.ficha_id 
+                          AND asg.competencia_id = c.id
+                    )
+                )
+                OR
+                (
+                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND ap.instructor_seguimiento_id = " . (int)$user_id . "
+                )
             )";
     } else {
         $sqlStats = "SELECT 
