@@ -132,10 +132,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'calif
 
                 if ($evidencia) {
                     if ($user_rol === ROL_INSTRUCTOR) {
-                        $stmtCheck = $db->prepare("SELECT 1 FROM fichas WHERE id = ? AND instructor_id = ?");
-                        $stmtCheck->execute([$evidencia['ficha_id'], $user_id]);
+                        // If it has an evaluation, check the specific competency permissions
+                        if ($evidencia['evaluacion_id']) {
+                            $stmtCheck = $db->prepare("
+                                SELECT 1 FROM evaluaciones eval
+                                JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+                                JOIN competencias c ON ra.competencia_id = c.id
+                                JOIN fichas f ON eval.ficha_id = f.id
+                                JOIN aprendices ap ON eval.aprendiz_id = ap.id
+                                WHERE eval.id = ? AND (
+                                    EXISTS (
+                                        SELECT 1 FROM asignaciones asg 
+                                        WHERE asg.ficha_id = eval.ficha_id 
+                                          AND asg.competencia_id = c.id 
+                                          AND asg.instructor_id = ?
+                                    )
+                                    OR
+                                    (
+                                        f.instructor_id = ?
+                                        AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                        AND NOT EXISTS (
+                                            SELECT 1 FROM asignaciones asg 
+                                            WHERE asg.ficha_id = eval.ficha_id 
+                                              AND asg.competencia_id = c.id
+                                        )
+                                    )
+                                    OR
+                                    (
+                                        (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                        AND ap.instructor_seguimiento_id = ?
+                                    )
+                                )
+                            ");
+                            $stmtCheck->execute([$evidencia['evaluacion_id'], $user_id, $user_id, $user_id]);
+                        } else {
+                            // If no evaluation yet, check if they are the leader, a transversal instructor, or tracking instructor for this apprentice
+                            $stmtCheck = $db->prepare("
+                                SELECT 1 FROM fichas f
+                                JOIN aprendices ap ON ap.id = ?
+                                WHERE f.id = ? AND (
+                                    f.instructor_id = ?
+                                    OR EXISTS (
+                                        SELECT 1 FROM asignaciones asg 
+                                        WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+                                    )
+                                    OR ap.instructor_seguimiento_id = ?
+                                )
+                            ");
+                            $stmtCheck->execute([$evidencia['aprendiz_id'], $evidencia['ficha_id'], $user_id, $user_id, $user_id]);
+                        }
                         if (!$stmtCheck->fetchColumn()) {
-                            throw new Exception('No tiene permisos para calificar evidencias de esta ficha.');
+                            throw new Exception('No tiene permisos para calificar esta evidencia.');
                         }
                     }
                     $eval_id = $evidencia['evaluacion_id'];
@@ -217,20 +264,62 @@ try {
         $stmt->execute([$aprendiz_id]);
         $evidencias = $stmt->fetchAll();
     } else {
-        $sql = "
-            SELECT ev.*, ra.denominacion AS ra_denominacion,
-                   f.numero_ficha, u_ap.nombre AS aprendiz_nombre, u_ap.email AS aprendiz_email
-            FROM evidencias ev
-            LEFT JOIN evaluaciones eval ON ev.evaluacion_id = eval.id
-            LEFT JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-            JOIN fichas f    ON ev.ficha_id = f.id
-            JOIN aprendices ap ON ev.aprendiz_id = ap.id
-            JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
-        ";
-        $params = [];
         if ($user_rol === ROL_INSTRUCTOR) {
-            $sql .= " WHERE f.instructor_id = ?";
-            $params[] = $user_id;
+            $sql = "
+                SELECT ev.*, ra.denominacion AS ra_denominacion,
+                       f.numero_ficha, u_ap.nombre AS aprendiz_nombre, u_ap.email AS aprendiz_email
+                FROM evidencias ev
+                LEFT JOIN evaluaciones eval ON ev.evaluacion_id = eval.id
+                LEFT JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+                LEFT JOIN competencias c ON ra.competencia_id = c.id
+                JOIN fichas f    ON ev.ficha_id = f.id
+                JOIN aprendices ap ON ev.aprendiz_id = ap.id
+                JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
+                WHERE (
+                    EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                    )
+                    OR
+                    (
+                        f.instructor_id = ?
+                        AND (c.id IS NULL OR (NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                        AND NOT EXISTS (
+                            SELECT 1 FROM asignaciones asg 
+                            WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                        )))
+                    )
+                    OR
+                    (
+                        (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                        AND ap.instructor_seguimiento_id = ?
+                    )
+                    OR
+                    (
+                        eval.id IS NULL AND (
+                            f.instructor_id = ?
+                            OR EXISTS (
+                                SELECT 1 FROM asignaciones asg 
+                                WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+                            )
+                            OR ap.instructor_seguimiento_id = ?
+                        )
+                    )
+                )
+            ";
+            $params = [$user_id, $user_id, $user_id, $user_id, $user_id, $user_id];
+        } else {
+            $sql = "
+                SELECT ev.*, ra.denominacion AS ra_denominacion,
+                       f.numero_ficha, u_ap.nombre AS aprendiz_nombre, u_ap.email AS aprendiz_email
+                FROM evidencias ev
+                LEFT JOIN evaluaciones eval ON ev.evaluacion_id = eval.id
+                LEFT JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+                JOIN fichas f    ON ev.ficha_id = f.id
+                JOIN aprendices ap ON ev.aprendiz_id = ap.id
+                JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
+            ";
+            $params = [];
         }
         $sql .= " ORDER BY ev.estado = 'enviada' DESC, ev.fecha_envio DESC";
         

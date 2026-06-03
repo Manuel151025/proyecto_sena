@@ -9,14 +9,6 @@ use Core\Database;
 
 requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ);
 
-$pageTitle = 'Fichas de formación · SENA';
-$contentView = __FILE__;
-if (!isset($app_included)) {
-    $app_included = true;
-    require_once __DIR__ . '/../../layouts/app.php';
-    exit;
-}
-
 $db = Database::getConnection();
 $user = getCurrentUser();
 $role = getCurrentRole();
@@ -33,6 +25,14 @@ if ($role === ROL_APRENDIZ) {
         }
     } catch (Exception $e) {}
     denyAccess();
+}
+
+$pageTitle = 'Fichas de formación · SENA';
+$contentView = __FILE__;
+if (!isset($app_included)) {
+    $app_included = true;
+    require_once __DIR__ . '/../../layouts/app.php';
+    exit;
 }
 
 $mensaje = '';

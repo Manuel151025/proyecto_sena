@@ -50,7 +50,7 @@ try {
         $stmt->execute([$aprendiz_id]);
         $planes = $stmt->fetchAll();
     } elseif ($user_rol === ROL_INSTRUCTOR) {
-        // El instructor solo ve planes de aprendices de SUS fichas
+        // El instructor solo ve planes de aprendices de SUS fichas y competencias asignadas
         $stmt = $db->prepare("
             SELECT eval.id,
                    ra.denominacion as actividad_nombre,
@@ -62,14 +62,37 @@ try {
                    eval.comentario
             FROM evaluaciones eval
             JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+            JOIN competencias c ON ra.competencia_id = c.id
             JOIN fichas f ON eval.ficha_id = f.id
             JOIN aprendices ap ON eval.aprendiz_id = ap.id
             JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
             JOIN usuarios u_inst ON eval.instructor_id = u_inst.id
-            WHERE eval.concepto = 'D' AND f.instructor_id = ?
+            WHERE eval.concepto = 'D' AND (
+                EXISTS (
+                    SELECT 1 FROM asignaciones asg 
+                    WHERE asg.ficha_id = eval.ficha_id 
+                      AND asg.competencia_id = c.id 
+                      AND asg.instructor_id = ?
+                )
+                OR
+                (
+                    f.instructor_id = ?
+                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND NOT EXISTS (
+                        SELECT 1 FROM asignaciones asg 
+                        WHERE asg.ficha_id = eval.ficha_id 
+                          AND asg.competencia_id = c.id
+                    )
+                )
+                OR
+                (
+                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND ap.instructor_seguimiento_id = ?
+                )
+            )
             ORDER BY eval.fecha_evaluacion DESC
         ");
-        $stmt->execute([$user_id]);
+        $stmt->execute([$user_id, $user_id, $user_id]);
         $planes = $stmt->fetchAll();
     } else {
         // El coordinador ve todos los planes del sistema

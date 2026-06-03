@@ -46,17 +46,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
 
                     $stmtAuth = $db->prepare("
                         SELECT 1 FROM fichas f
+                        JOIN resultados_aprendizaje ra ON ra.id = ?
+                        JOIN competencias c ON ra.competencia_id = c.id
+                        JOIN aprendices ap ON ap.id = ?
                         WHERE f.id = ? AND (
-                            f.instructor_id = ?
-                            OR EXISTS (
+                            EXISTS (
                                 SELECT 1 FROM asignaciones asg
-                                WHERE asg.ficha_id = ? 
-                                  AND asg.competencia_id = ? 
+                                WHERE asg.ficha_id = f.id 
+                                  AND asg.competencia_id = c.id 
                                   AND asg.instructor_id = ?
+                            )
+                            OR
+                            (
+                                f.instructor_id = ?
+                                AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                AND NOT EXISTS (
+                                    SELECT 1 FROM asignaciones asg
+                                    WHERE asg.ficha_id = f.id
+                                      AND asg.competencia_id = c.id
+                                )
+                            )
+                            OR
+                            (
+                                (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                AND ap.instructor_seguimiento_id = ?
                             )
                         )
                     ");
-                    $stmtAuth->execute([$ficha_id_p, $user_id, $ficha_id_p, $competencia_id, $user_id]);
+                    $stmtAuth->execute([$ra_id, $aprendiz_id_p, $ficha_id_p, $user_id, $user_id, $user_id]);
                     if (!$stmtAuth->fetchColumn()) {
                         throw new Exception('No tiene permisos para calificar esta competencia en la ficha seleccionada.');
                     }
@@ -308,49 +325,237 @@ if ($user_rol === ROL_APRENDIZ) {
             }
 
             // Estadísticas por aprendiz (subqueries sin actividad_id)
-            $stmt = $db->prepare("
-                SELECT
-                    ap.id            AS aprendiz_id,
-                    u.nombre         AS aprendiz_nombre,
-                    u.email          AS aprendiz_email,
-                    ap.numero_documento,
-                    ap.tipo_documento,
-                    ap.genero,
-                    ap.telefono,
-                    ap.ciudad,
-                    ap.estado        AS aprendiz_estado,
-                    ap.instructor_seguimiento_id,
-                    u2.nombre        AS instructor_seguimiento_nombre,
-                    (SELECT COUNT(DISTINCT ra.id)
-                     FROM resultados_aprendizaje ra
-                     JOIN competencias c ON ra.competencia_id = c.id
-                     WHERE c.programa_id = ?) AS total_actividades,
-                    (SELECT COUNT(*) FROM evaluaciones eval
-                     WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'A') AS aprobadas,
-                    (SELECT COUNT(*) FROM evaluaciones eval
-                     WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'D') AS en_proceso,
-                    (SELECT COUNT(*) FROM evaluaciones eval
-                     WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'pendiente') AS no_aplica
-                FROM aprendices ap
-                JOIN usuarios u ON ap.usuario_id = u.id
-                LEFT JOIN usuarios u2 ON ap.instructor_seguimiento_id = u2.id
-                WHERE ap.ficha_id = ?
-                ORDER BY u.nombre
-            ");
-            $stmt->execute([$selected_programa_id, $selected_ficha_id, $selected_ficha_id, $selected_ficha_id, $selected_ficha_id]);
-            $aprendices_stats = $stmt->fetchAll();
+            if ($user_rol === ROL_INSTRUCTOR) {
+                $stmt = $db->prepare("
+                    SELECT
+                        ap.id            AS aprendiz_id,
+                        u.nombre         AS aprendiz_nombre,
+                        u.email          AS aprendiz_email,
+                        ap.numero_documento,
+                        ap.tipo_documento,
+                        ap.genero,
+                        ap.telefono,
+                        ap.ciudad,
+                        ap.estado        AS aprendiz_estado,
+                        ap.instructor_seguimiento_id,
+                        u2.nombre        AS instructor_seguimiento_nombre,
+                        (SELECT COUNT(DISTINCT ra.id)
+                         FROM resultados_aprendizaje ra
+                         JOIN competencias c ON ra.competencia_id = c.id
+                         JOIN fichas f ON f.id = ?
+                         WHERE c.programa_id = ?
+                           AND (
+                               EXISTS (
+                                   SELECT 1 FROM asignaciones asg 
+                                   WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                               )
+                               OR
+                               (
+                                   f.instructor_id = ?
+                                   AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND NOT EXISTS (
+                                       SELECT 1 FROM asignaciones asg 
+                                       WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                                   )
+                               )
+                               OR
+                               (
+                                   (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND ap.instructor_seguimiento_id = ?
+                               )
+                           )
+                        ) AS total_actividades,
+                        (SELECT COUNT(*) FROM evaluaciones eval
+                         JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+                         JOIN competencias c ON ra.competencia_id = c.id
+                         JOIN fichas f ON eval.ficha_id = f.id
+                         WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'A'
+                           AND (
+                               EXISTS (
+                                   SELECT 1 FROM asignaciones asg 
+                                   WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                               )
+                               OR
+                               (
+                                   f.instructor_id = ?
+                                   AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND NOT EXISTS (
+                                       SELECT 1 FROM asignaciones asg 
+                                       WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                                   )
+                               )
+                               OR
+                               (
+                                   (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND ap.instructor_seguimiento_id = ?
+                               )
+                           )
+                        ) AS aprobadas,
+                        (SELECT COUNT(*) FROM evaluaciones eval
+                         JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+                         JOIN competencias c ON ra.competencia_id = c.id
+                         JOIN fichas f ON eval.ficha_id = f.id
+                         WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'D'
+                           AND (
+                               EXISTS (
+                                   SELECT 1 FROM asignaciones asg 
+                                   WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                               )
+                               OR
+                               (
+                                   f.instructor_id = ?
+                                   AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND NOT EXISTS (
+                                       SELECT 1 FROM asignaciones asg 
+                                       WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                                   )
+                               )
+                               OR
+                               (
+                                   (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND ap.instructor_seguimiento_id = ?
+                               )
+                           )
+                        ) AS en_proceso,
+                        (SELECT COUNT(*) FROM evaluaciones eval
+                         JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
+                         JOIN competencias c ON ra.competencia_id = c.id
+                         JOIN fichas f ON eval.ficha_id = f.id
+                         WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'pendiente'
+                           AND (
+                               EXISTS (
+                                   SELECT 1 FROM asignaciones asg 
+                                   WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                               )
+                               OR
+                               (
+                                   f.instructor_id = ?
+                                   AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND NOT EXISTS (
+                                       SELECT 1 FROM asignaciones asg 
+                                       WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                                   )
+                               )
+                               OR
+                               (
+                                   (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                                   AND ap.instructor_seguimiento_id = ?
+                               )
+                           )
+                        ) AS no_aplica
+                    FROM aprendices ap
+                    JOIN usuarios u ON ap.usuario_id = u.id
+                    LEFT JOIN usuarios u2 ON ap.instructor_seguimiento_id = u2.id
+                    WHERE ap.ficha_id = ?
+                      AND (
+                          EXISTS (
+                              SELECT 1 FROM fichas f
+                              WHERE f.id = ? 
+                                AND (f.instructor_id = ? OR EXISTS (
+                                    SELECT 1 FROM asignaciones asg 
+                                    WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
+                                ))
+                          )
+                          OR ap.instructor_seguimiento_id = ?
+                      )
+                    ORDER BY u.nombre
+                ");
+                $stmt->execute([
+                    $selected_ficha_id, $selected_programa_id, $user_id, $user_id, $user_id, // total_actividades
+                    $selected_ficha_id, $user_id, $user_id, $user_id,                       // aprobadas
+                    $selected_ficha_id, $user_id, $user_id, $user_id,                       // en_proceso
+                    $selected_ficha_id, $user_id, $user_id, $user_id,                       // no_aplica
+                    $selected_ficha_id,                                                     // ap.ficha_id
+                    $selected_ficha_id, $user_id, $user_id,                                 // exists check for leader/transversal
+                    $user_id                                                                // ap.instructor_seguimiento_id
+                ]);
+                $aprendices_stats = $stmt->fetchAll();
+            } else {
+                $stmt = $db->prepare("
+                    SELECT
+                        ap.id            AS aprendiz_id,
+                        u.nombre         AS aprendiz_nombre,
+                        u.email          AS aprendiz_email,
+                        ap.numero_documento,
+                        ap.tipo_documento,
+                        ap.genero,
+                        ap.telefono,
+                        ap.ciudad,
+                        ap.estado        AS aprendiz_estado,
+                        ap.instructor_seguimiento_id,
+                        u2.nombre        AS instructor_seguimiento_nombre,
+                        (SELECT COUNT(DISTINCT ra.id)
+                         FROM resultados_aprendizaje ra
+                         JOIN competencias c ON ra.competencia_id = c.id
+                         WHERE c.programa_id = ?) AS total_actividades,
+                        (SELECT COUNT(*) FROM evaluaciones eval
+                         WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'A') AS aprobadas,
+                        (SELECT COUNT(*) FROM evaluaciones eval
+                         WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'D') AS en_proceso,
+                        (SELECT COUNT(*) FROM evaluaciones eval
+                         WHERE eval.aprendiz_id = ap.id AND eval.ficha_id = ? AND eval.concepto = 'pendiente') AS no_aplica
+                    FROM aprendices ap
+                    JOIN usuarios u ON ap.usuario_id = u.id
+                    LEFT JOIN usuarios u2 ON ap.instructor_seguimiento_id = u2.id
+                    WHERE ap.ficha_id = ?
+                    ORDER BY u.nombre
+                ");
+                $stmt->execute([$selected_programa_id, $selected_ficha_id, $selected_ficha_id, $selected_ficha_id, $selected_ficha_id]);
+                $aprendices_stats = $stmt->fetchAll();
+            }
 
             // Todos los RAs del programa de esta ficha
-            $stmt = $db->prepare("
-                SELECT ra.id AS ra_id, ra.denominacion AS ra_nombre, ra.codigo AS ra_codigo,
-                       c.codigo AS competencia_codigo, c.nombre AS competencia_nombre
-                FROM resultados_aprendizaje ra
-                JOIN competencias c ON ra.competencia_id = c.id
-                WHERE c.programa_id = ?
-                ORDER BY c.codigo, ra.codigo
-            ");
-            $stmt->execute([$selected_programa_id]);
-            $todas_actividades = $stmt->fetchAll();
+            if ($user_rol === ROL_INSTRUCTOR) {
+                $stmt = $db->prepare("
+                    SELECT ra.id AS ra_id, ra.denominacion AS ra_nombre, ra.codigo AS ra_codigo,
+                           c.codigo AS competencia_codigo, c.nombre AS competencia_nombre
+                    FROM resultados_aprendizaje ra
+                    JOIN competencias c ON ra.competencia_id = c.id
+                    JOIN fichas f ON f.id = ?
+                    WHERE c.programa_id = ?
+                      AND (
+                          EXISTS (
+                              SELECT 1 FROM asignaciones asg
+                              WHERE asg.ficha_id = f.id
+                                AND asg.competencia_id = c.id
+                                AND asg.instructor_id = ?
+                          )
+                          OR
+                          (
+                              f.instructor_id = ?
+                              AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM asignaciones asg
+                                  WHERE asg.ficha_id = f.id
+                                    AND asg.competencia_id = c.id
+                              )
+                          )
+                          OR
+                          (
+                              (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                              AND EXISTS (
+                                  SELECT 1 FROM aprendices ap
+                                  WHERE ap.ficha_id = f.id
+                                    AND ap.instructor_seguimiento_id = ?
+                              )
+                          )
+                      )
+                    ORDER BY c.codigo, ra.codigo
+                ");
+                $stmt->execute([$selected_ficha_id, $selected_programa_id, $user_id, $user_id, $user_id]);
+                $todas_actividades = $stmt->fetchAll();
+            } else {
+                $stmt = $db->prepare("
+                    SELECT ra.id AS ra_id, ra.denominacion AS ra_nombre, ra.codigo AS ra_codigo,
+                           c.codigo AS competencia_codigo, c.nombre AS competencia_nombre
+                    FROM resultados_aprendizaje ra
+                    JOIN competencias c ON ra.competencia_id = c.id
+                    WHERE c.programa_id = ?
+                    ORDER BY c.codigo, ra.codigo
+                ");
+                $stmt->execute([$selected_programa_id]);
+                $todas_actividades = $stmt->fetchAll();
+            }
 
             // Todas las evaluaciones de los aprendices de esta ficha
             $stmt = $db->prepare("
