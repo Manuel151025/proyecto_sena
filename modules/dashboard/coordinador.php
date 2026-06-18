@@ -177,7 +177,7 @@ try {
     <p class="text-muted mb-0">Resumen institucional de seguimiento académico.</p>
   </div>
   <div class="d-flex gap-2">
-    <a href="<?= MODULES_PATH ?>/usuarios/crear.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo Usuario</a>
+    <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo Usuario</a>
   </div>
 </div>
 
@@ -252,9 +252,9 @@ try {
 <div class="row g-3 mb-4">
   <div class="col-lg-4">
     <div class="card h-100 glass-card">
-      <div class="card-header">Desempeño Integral</div>
+      <div class="card-header">Tasa de Deserción por Programa</div>
       <div class="card-body">
-        <canvas id="chartRadar" height="220"></canvas>
+        <canvas id="chartDesercionRate" height="220"></canvas>
       </div>
     </div>
   </div>
@@ -296,52 +296,87 @@ try {
     </div>
   </div>
 </div>
+<?php endif; ?>
 
-<div class="card glass-card mb-4 border-0">
-  <div class="card-header d-flex justify-content-between align-items-center" style="border-bottom:1px solid rgba(255,255,255,0.1)">
-    <span><i class="bi bi-exclamation-triangle text-danger me-2"></i>Alertas críticas — Fichas con cumplimiento menor al 60%</span>
-    <a href="<?= MODULES_PATH ?>/fichas/" class="small text-danger fw-semibold">Ver todas</a>
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <?php if (!empty($fichasCriticas)): ?>
+      <div class="card glass-card h-100 border-0">
+        <div class="card-header d-flex justify-content-between align-items-center" style="border-bottom:1px solid rgba(255,255,255,0.1)">
+          <span><i class="bi bi-exclamation-triangle text-danger me-2"></i>Alertas críticas — Fichas con cumplimiento menor al 60%</span>
+          <a href="<?= MODULES_PATH ?>/fichas/" class="small text-danger fw-semibold">Ver todas</a>
+        </div>
+        <div class="table-wrap" style="border:0;border-radius:0;background:transparent;">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>Ficha</th>
+                <th>Programa</th>
+                <th>Instructor</th>
+                <th>Cumplimiento</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($fichasCriticas as $ficha): ?>
+              <tr style="background:var(--danger-bg)">
+                <td><strong>#<?= htmlspecialchars($ficha['numero_ficha']) ?></strong></td>
+                <td><?= htmlspecialchars($ficha['programa']) ?></td>
+                <td><?= htmlspecialchars($ficha['instructor']) ?></td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress-flat danger" style="width:120px">
+                      <div style="width:<?= $ficha['cumplimiento_porcentaje'] ?>%"></div>
+                    </div>
+                    <span class="text-danger fw-semibold"><?= round((float)$ficha['cumplimiento_porcentaje'], 1) ?>%</span>
+                  </div>
+                </td>
+                <td><span class="badge-soft danger"><?= htmlspecialchars($ficha['estado']) ?></span></td>
+                <td><a href="<?= MODULES_PATH ?>/fichas/ver.php?id=<?= $ficha['id'] ?>" class="btn btn-sm btn-soft">Ver</a></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php else: ?>
+      <!-- Tarjeta premium de "Institución al Día" -->
+      <div class="card border-0 h-100 shadow-sm" style="border-left: 5px solid var(--success) !important; border-radius: 12px; background: var(--success-bg);">
+        <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center h-100">
+          <div class="rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px; background-color: var(--sena-primary-50); color: var(--success); border: 1.5px solid var(--sena-primary-50);">
+            <i class="bi bi-shield-fill-check" style="font-size: 1.8rem; color: var(--success);"></i>
+          </div>
+          <h4 class="mb-2 fw-bold text-success">¡Fichas al Día!</h4>
+          <p class="text-muted mb-0" style="max-width: 400px; font-size: 0.85rem;">
+            Todas las fichas de formación superan el 60% de cumplimiento académico. No se reportan alertas de rendimiento crítico en este momento.
+          </p>
+        </div>
+      </div>
+    <?php endif; ?>
   </div>
-  <div class="table-wrap" style="border:0;border-radius:0;background:transparent;">
-    <table class="table mb-0">
-      <thead>
-        <tr>
-          <th>Ficha</th>
-          <th>Programa</th>
-          <th>Instructor</th>
-          <th>Cumplimiento</th>
-          <th>Estado</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($fichasCriticas as $ficha): ?>
-        <tr style="background:var(--danger-bg)">
-          <td><strong>#<?= htmlspecialchars($ficha['numero_ficha']) ?></strong></td>
-          <td><?= htmlspecialchars($ficha['programa']) ?></td>
-          <td><?= htmlspecialchars($ficha['instructor']) ?></td>
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              <div class="progress-flat danger" style="width:120px">
-                <div style="width:<?= $ficha['cumplimiento_porcentaje'] ?>%"></div>
-              </div>
-              <span class="text-danger fw-semibold"><?= round((float)$ficha['cumplimiento_porcentaje'], 1) ?>%</span>
-            </div>
-          </td>
-          <td><span class="badge-soft danger"><?= htmlspecialchars($ficha['estado']) ?></span></td>
-          <td><a href="<?= MODULES_PATH ?>/fichas/ver.php?id=<?= $ficha['id'] ?>" class="btn btn-sm btn-soft">Ver</a></td>
-        </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
+
+  <div class="col-lg-4">
+    <div class="card h-100" style="border-radius: 10px;">
+      <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+        <span>Próximos Eventos</span>
+        <a href="<?= APP_URL ?>/modules/calendario/" class="text-primary small fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-calendar3 me-1"></i>Ver todo</a>
+      </div>
+      <div class="card-body" id="dashboard-events-list" style="max-height: 380px; overflow-y: auto;">
+        <div class="text-center py-4 text-muted" id="events-loader">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+          <div class="small">Cargando eventos...</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
-<?php endif; ?>
+
 
 <div class="row g-3">
   <div class="col-md-4"><a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-soft w-100 py-3"><i class="bi bi-journal-bookmark me-2"></i>Gestionar Fichas</a></div>
-  <div class="col-md-4"><a href="<?= MODULES_PATH ?>/programas/" class="btn btn-soft w-100 py-3"><i class="bi bi-briefcase me-2"></i>Ver Programas</a></div>
-  <div class="col-md-4"><a href="<?= MODULES_PATH ?>/usuarios/crear.php" class="btn btn-primary w-100 py-3"><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</a></div>
+  <div class="col-md-4"><a href="<?= APP_URL ?>/index.php/programas" class="btn btn-soft w-100 py-3"><i class="bi bi-briefcase me-2"></i>Ver Programas</a></div>
+  <div class="col-md-4"><a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary w-100 py-3"><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</a></div>
 </div>
 
 <script>
@@ -659,49 +694,65 @@ document.addEventListener('DOMContentLoaded', function() {
     const statsProgramas = <?php echo json_encode($statsProgramas); ?>;
     const radarLabels = statsProgramas.map(p => p.programa.substring(0, 15) + '...');
     
-    // Chart de Radar (Desempeño Integral)
-    if (document.getElementById('chartRadar') && statsProgramas.length > 0) {
-        const dataCumplimiento = statsProgramas.map(p => parseFloat(p.cumplimiento_avg || 0));
-        
-        // Simulamos un factor de retención normalizando matriculados vs desertados a %
-        const dataRetencion = statsProgramas.map(p => {
-            let total = parseInt(p.matriculados) + parseInt(p.desertados);
-            return total > 0 ? (parseInt(p.matriculados) / total) * 100 : 0;
+    // Chart de Tasa de Deserción por Programa (Barra Horizontal)
+    if (document.getElementById('chartDesercionRate') && statsProgramas.length > 0) {
+        const desercionRates = statsProgramas.map(p => {
+            const matriculados = parseInt(p.matriculados || 0);
+            const desertados = parseInt(p.desertados || 0);
+            const total = matriculados + desertados;
+            return total > 0 ? Math.round((desertados / total) * 100) : 0;
         });
 
-        new Chart(document.getElementById('chartRadar'), {
-            type: 'radar',
+        new Chart(document.getElementById('chartDesercionRate'), {
+            type: 'bar',
             data: {
                 labels: radarLabels,
-                datasets: [
-                    {
-                        label: 'Cumplimiento Promedio',
-                        data: dataCumplimiento,
-                        backgroundColor: 'rgba(57, 169, 0, 0.2)',
-                        borderColor: primaryColor,
-                        pointBackgroundColor: primaryColor,
-                        borderWidth: 2
-                    },
-                    {
-                        label: 'Retención Estimada',
-                        data: dataRetencion,
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        borderColor: '#3B82F6',
-                        pointBackgroundColor: '#3B82F6',
-                        borderWidth: 2
-                    }
-                ]
+                datasets: [{
+                    label: 'Tasa de Deserción (%)',
+                    data: desercionRates,
+                    backgroundColor: 'rgba(239, 68, 68, 0.75)',
+                    borderColor: 'rgb(239, 68, 68)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barThickness: 16
+                }]
             },
             options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
-                    r: {
-                        angleLines: { color: 'rgba(0,0,0,0.1)' },
-                        grid: { color: 'rgba(0,0,0,0.1)' },
-                        pointLabels: { font: { size: 10 } },
-                        ticks: { display: false, max: 100, min: 0 }
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) { return value + '%'; },
+                            font: { family: "'Inter', sans-serif" }
+                        },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { family: "'Inter', sans-serif", weight: '500' }
+                        }
                     }
                 },
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleFont: { family: "'Inter', sans-serif" },
+                        bodyFont: { family: "'Inter', sans-serif" },
+                        padding: 10,
+                        cornerRadius: 6,
+                        callbacks: {
+                            label: function(context) {
+                                return ` Tasa de Deserción: ${context.parsed.x}%`;
+                            }
+                        }
+                    }
+                }
             }
         });
     }
@@ -744,6 +795,92 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+    }
+    // Cargar eventos del calendario para el dashboard
+    const eventsList = document.getElementById('dashboard-events-list');
+    if (eventsList) {
+        const today = new Date();
+        const formatDate = (d) => d.toISOString().split('T')[0];
+        
+        const start = formatDate(today);
+        const next30Days = new Date(today);
+        next30Days.setDate(today.getDate() + 30);
+        const end = formatDate(next30Days);
+        
+        const url = `<?= APP_URL ?>/modules/calendario/api_events.php?start=${start}&end=${end}`;
+        
+        fetch(url)
+            .then(res => res.json())
+            .then(events => {
+                const loader = document.getElementById('events-loader');
+                if (loader) loader.remove();
+                
+                if (!events || events.length === 0) {
+                    eventsList.innerHTML = `
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar-x d-block mb-2" style="font-size:2rem; opacity:0.4;"></i>
+                            Sin eventos programados para los próximos 30 días.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Ordenar eventos por fecha ascendente
+                events.sort((a, b) => new Date(a.start) - new Date(b.start));
+                
+                // Mostrar un máximo de 5 eventos
+                const upcoming = events.slice(0, 5);
+                
+                let html = '';
+                const formatLabel = (dateStr) => {
+                    const parts = dateStr.split('-');
+                    if (parts.length < 3) return dateStr;
+                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    const t = new Date();
+                    t.setHours(0,0,0,0);
+                    d.setHours(0,0,0,0);
+                    
+                    const diffTime = d.getTime() - t.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays === 0) return 'Hoy';
+                    if (diffDays === 1) return 'Mañ.';
+                    
+                    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                    return `${d.getDate()} ${months[d.getMonth()]}`;
+                };
+
+                upcoming.forEach(ev => {
+                    const color = ev.color || '#39A900';
+                    const targetUrl = ev.url || '#';
+                    const title = ev.title || 'Evento';
+                    const tipo = (ev.extendedProps && ev.extendedProps.tipo) || 'Académico';
+                    const extra = (ev.extendedProps && (ev.extendedProps.ficha || ev.extendedProps.programa || ev.extendedProps.instructor)) || '';
+                    
+                    html += `
+                        <a href="${targetUrl}" class="event-item">
+                            <span class="event-badge-dot" style="background-color: ${color};"></span>
+                            <div class="event-body">
+                                <div class="event-title">${title}</div>
+                                <div class="event-desc">${tipo}${extra ? ' · ' + extra : ''}</div>
+                            </div>
+                            <span class="event-date-badge">${formatLabel(ev.start)}</span>
+                        </a>
+                    `;
+                });
+                eventsList.innerHTML = html;
+            })
+            .catch(err => {
+                console.error(err);
+                const loader = document.getElementById('events-loader');
+                if (loader) loader.remove();
+                eventsList.innerHTML = `
+                    <div class="text-center py-5 text-danger">
+                        <i class="bi bi-exclamation-octagon d-block mb-2" style="font-size:2rem;"></i>
+                        Error al cargar los eventos.
+                    </div>
+                `;
+            });
     }
 
 });

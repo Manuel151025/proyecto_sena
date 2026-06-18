@@ -11,11 +11,21 @@ use Exception;
 use PDO;
 
 class MatriculaController extends BaseController {
+    private PDO $db;
+    private FichaModel $fichaModel;
+    private AprendizModel $aprendizModel;
+
+    public function __construct(?PDO $db = null, ?FichaModel $fichaModel = null, ?AprendizModel $aprendizModel = null) {
+        $this->db = $db ?? Database::getConnection();
+        $this->fichaModel = $fichaModel ?? new FichaModel($this->db);
+        $this->aprendizModel = $aprendizModel ?? new AprendizModel($this->db);
+    }
+
     public function index(): void {
         // Exigir sesión y rol
         requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
 
-        $db = Database::getConnection();
+        $db = $this->db;
         $errors = [];
         $successMessage = '';
 
@@ -47,7 +57,7 @@ class MatriculaController extends BaseController {
                     if (empty($data['numero_documento'])) throw new Exception('El número de documento es obligatorio.');
                     if ($data['ficha_id'] <= 0) throw new Exception('Debe seleccionar una ficha de formación.');
 
-                    AprendizModel::matricular($data, (int)getCurrentUser()['id']);
+                    $this->aprendizModel->matricular($data, (int)getCurrentUser()['id']);
                     $successMessage = 'Aprendiz matriculado exitosamente.';
 
                 } elseif ($action === 'editar_matricula') {
@@ -76,7 +86,7 @@ class MatriculaController extends BaseController {
                     if (empty($data['numero_documento'])) throw new Exception('El número de documento es obligatorio.');
                     if ($data['ficha_id'] <= 0) throw new Exception('Debe seleccionar una ficha de formación.');
 
-                    AprendizModel::editarMatricula($aprendiz_id, $data, (int)getCurrentUser()['id']);
+                    $this->aprendizModel->editarMatricula($aprendiz_id, $data, (int)getCurrentUser()['id']);
                     $successMessage = 'Matrícula y datos del aprendiz actualizados exitosamente.';
 
                 } elseif ($action === 'eliminar_matricula') {
@@ -87,7 +97,7 @@ class MatriculaController extends BaseController {
                     $aprendiz_id = (int)($_POST['aprendiz_id'] ?? 0);
                     if ($aprendiz_id <= 0) throw new Exception('Aprendiz no válido.');
 
-                    AprendizModel::eliminar($aprendiz_id, (int)getCurrentUser()['id']);
+                    $this->aprendizModel->eliminar($aprendiz_id, (int)getCurrentUser()['id']);
                     $successMessage = 'Matrícula eliminada exitosamente.';
 
                 } elseif ($action === 'cargar_csv') {
@@ -230,9 +240,9 @@ class MatriculaController extends BaseController {
 
         try {
             if (getCurrentRole() === ROL_INSTRUCTOR) {
-                $fichas = FichaModel::getByInstructor((int)getCurrentUser()['id']);
+                $fichas = $this->fichaModel->getByInstructor((int)getCurrentUser()['id']);
             } else {
-                $fichas = FichaModel::getAll();
+                $fichas = $this->fichaModel->getAll();
             }
 
             // Instructores activos
@@ -256,7 +266,7 @@ class MatriculaController extends BaseController {
 
         try {
             $instructorIdScope = (getCurrentRole() === ROL_INSTRUCTOR) ? (int)getCurrentUser()['id'] : null;
-            $aprendices = AprendizModel::getFilteredList($filters, $instructorIdScope);
+            $aprendices = $this->aprendizModel->getFilteredList($filters, $instructorIdScope);
         } catch (Exception $e) {
             $errors[] = 'Error al cargar los aprendices: ' . $e->getMessage();
         }

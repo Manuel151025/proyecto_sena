@@ -6,7 +6,6 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 
-// Si ya está logueado, redirigir al index
 if (isAuthenticated()) {
     header('Location: ' . APP_URL . '/index.php');
     exit;
@@ -14,9 +13,25 @@ if (isAuthenticated()) {
 
 $loginError   = null;
 $loginSuccess = null;
-$isBlocked    = false;
 
-// Mensaje flash de éxito (ej. desde recover.php después de cambiar contraseña)
+// Duración del bloqueo en segundos (5 minutos = 300 segundos)
+define('BLOCK_DURATION', 300);
+
+// Verificar si el bloqueo temporal está activo
+if (isset($_SESSION['blocked_until']) && $_SESSION['blocked_until'] > time()) {
+    $isBlocked = true;
+    $remaining = $_SESSION['blocked_until'] - time();
+    $minutes = ceil($remaining / 60);
+    $loginError = "Has excedido el límite de intentos. Acceso bloqueado. Inténtalo de nuevo en {$minutes} minuto(s).";
+} else {
+    // Si el tiempo de bloqueo expiró, limpiar el estado
+    if (isset($_SESSION['blocked_until'])) {
+        unset($_SESSION['login_attempts']);
+        unset($_SESSION['blocked_until']);
+    }
+    $isBlocked = false;
+}
+
 if (isset($_SESSION['_flash_success'])) {
     $loginSuccess = $_SESSION['_flash_success'];
     unset($_SESSION['_flash_success']);
@@ -30,483 +45,573 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
 
     if ($user) {
         unset($_SESSION['login_attempts']);
+        unset($_SESSION['blocked_until']);
         header('Location: ' . APP_URL . '/index.php');
         exit;
     } else {
-        $loginError = "Credenciales incorrectas. Verifica tu correo y contraseña.";
+        $_SESSION['login_attempts'] = ($_SESSION['login_attempts'] ?? 0) + 1;
+        
+        if ($_SESSION['login_attempts'] >= 5) {
+            $_SESSION['blocked_until'] = time() + BLOCK_DURATION;
+            $isBlocked = true;
+            $loginError = "Has excedido el límite de intentos permitidos (5). Acceso bloqueado por 5 minutos.";
+        } else {
+            $remainingAttempts = 5 - $_SESSION['login_attempts'];
+            $loginError = "Credenciales incorrectas. Te quedan {$remainingAttempts} intento(s).";
+        }
     }
 }
 ?>
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Iniciar Sesión — SENA · Sistema de Seguimiento de Proyectos Formativos</title>
-  <meta name="description" content="Plataforma institucional del SENA para la gestión de fichas, instructores y aprendices.">
-  <!-- Iconos -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <!-- CSS Nano Login -->
-  <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/login-nano.css">
+  <title>Iniciar Sesión — SENA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0f0d;
+      --bg-card: rgba(14, 22, 17, 0.65);
+      --emerald: #34d399;
+      --emerald-dim: #059669;
+      --emerald-glow: rgba(52, 211, 153, 0.12);
+      --text-primary: #f0fdf4;
+      --text-secondary: #a7b5ae;
+      --text-muted: #5a6b62;
+      --border: rgba(52, 211, 153, 0.1);
+      --border-hover: rgba(52, 211, 153, 0.25);
+      --input-bg: rgba(255, 255, 255, 0.04);
+      --input-border: rgba(255, 255, 255, 0.08);
+      --radius: 12px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Canvas ── */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Ambient glow spots ── */
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(100px);
+    }
+
+    body::before {
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(52, 211, 153, 0.08), transparent 70%);
+      top: -10%;
+      left: -5%;
+      animation: floatA 20s ease-in-out infinite;
+    }
+
+    body::after {
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.06), transparent 70%);
+      bottom: -15%;
+      right: -5%;
+      animation: floatB 24s ease-in-out infinite;
+    }
+
+    @keyframes floatA {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(40px, 30px); }
+    }
+    @keyframes floatB {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-30px, -40px); }
+    }
+
+    /* ── Shell ── */
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* ── Left Panel ── */
+    .brand {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 5rem;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 3rem;
+    }
+
+    .brand-logo img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 8px var(--emerald-glow));
+    }
+
+    .brand-logo span {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--emerald);
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.08;
+      color: var(--text-primary);
+      margin-bottom: 1.2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .brand h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--emerald), #6ee7b7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .brand p {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      max-width: 440px;
+    }
+
+    .brand-features {
+      margin-top: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .brand-features .feat {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+
+    .brand-features .feat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .brand-footer {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 5rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Right Panel ── */
+    .form-side {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--bg-card);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      transition: border-color 0.5s ease, box-shadow 0.5s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 0 60px rgba(52, 211, 153, 0.04);
+    }
+
+    .card-header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .card-header h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .card-header p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Form ── */
+    .field {
+      margin-bottom: 24px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 13px 16px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.92rem;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+
+    .field input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--emerald);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.1), 0 0 20px rgba(52, 211, 153, 0.05);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 4px;
+      background: var(--emerald-dim);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+    }
+
+    .submit-btn:hover {
+      background: var(--emerald);
+      color: #022c22;
+      box-shadow: 0 4px 20px rgba(52, 211, 153, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .submit-btn:hover::before {
+      transform: translateX(100%);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    /* ── Alerts ── */
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 0.82rem;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    .alert-success {
+      background: rgba(52, 211, 153, 0.08);
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      color: #6ee7b7;
+    }
+
+    /* ── Footer link ── */
+    .card-footer {
+      text-align: center;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .card-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      transition: color 0.3s;
+    }
+
+    .card-footer a:hover {
+      color: var(--emerald);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      .brand { display: none; }
+      .card { max-width: 420px; }
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 36px 24px; border-radius: 16px; }
+    }
+
+    .field input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.02);
+      border-color: rgba(255, 255, 255, 0.04);
+    }
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #1e293b;
+      color: var(--text-muted);
+      box-shadow: none;
+      transform: none !important;
+    }
+    .submit-btn:disabled::before {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-
-<!-- Tab ID -->
+<canvas id="particle-canvas"></canvas>
 <script>
-(function () {
-  var t = sessionStorage.getItem('sena_tab_id');
-  if (!t) {
-    t = Math.random().toString(36).slice(2,12) + Math.random().toString(36).slice(2,6);
-    sessionStorage.setItem('sena_tab_id', t);
-  }
-  window.__tabId = t;
-  document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
-  document.addEventListener('submit', function(e) {
-    document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
-    if (!e.target.querySelector('input[name="_tab"]')) {
-      var inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = '_tab'; inp.value = t;
-      e.target.appendChild(inp);
-    }
-  }, true);
-})();
+(function(){var t=sessionStorage.getItem('sena_tab_id');if(!t){t=Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,6);sessionStorage.setItem('sena_tab_id',t);}window.__tabId=t;document.cookie='sena_tab='+t+'; path=/; SameSite=Lax';document.addEventListener('submit',function(e){document.cookie='sena_tab='+t+'; path=/; SameSite=Lax';if(!e.target.querySelector('input[name="_tab"]')){var inp=document.createElement('input');inp.type='hidden';inp.name='_tab';inp.value=t;e.target.appendChild(inp);}},true);})();
 </script>
 
-<!-- Canvas de fondo animado -->
-<canvas id="nano-canvas"></canvas>
+<div class="shell">
 
-<div class="login-shell">
+  <!-- Left: Branding -->
+  <div class="brand">
+    <div>
+      <div class="brand-logo">
+        <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA">
+        <span>Sena Colombia</span>
+      </div>
+      <h1>Gestión de<br>Proyectos <em>Formativos</em></h1>
+      <p>Plataforma institucional para el seguimiento integral de fichas, instructores, aprendices y proyectos de formación.</p>
 
-  <!-- ══════════════ PANEL IZQUIERDO — BRANDING ══════════════ -->
-  <div class="nano-brand">
-    <div class="scan-lines"></div>
-    <div class="hex-grid">
-      <svg viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <pattern id="hex" width="60" height="52" patternUnits="userSpaceOnUse" patternTransform="scale(1.5)">
-            <polygon points="30,1 58,16 58,46 30,61 2,46 2,16"
-              fill="none" stroke="rgba(57,169,0,0.18)" stroke-width="0.8"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#hex)"/>
-        <!-- Hexágonos iluminados aleatorios -->
-        <polygon points="90,53 118,68 118,98 90,113 62,98 62,68" fill="rgba(57,169,0,0.06)" stroke="rgba(57,169,0,0.4)" stroke-width="1">
-          <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite"/>
-        </polygon>
-        <polygon points="210,131 238,146 238,176 210,191 182,176 182,146" fill="rgba(57,169,0,0.04)" stroke="rgba(57,169,0,0.3)" stroke-width="1">
-          <animate attributeName="opacity" values="1;0.2;1" dur="4.5s" repeatCount="indefinite"/>
-        </polygon>
-        <polygon points="360,53 388,68 388,98 360,113 332,98 332,68" fill="rgba(57,169,0,0.06)" stroke="rgba(57,169,0,0.5)" stroke-width="1">
-          <animate attributeName="opacity" values="0.4;1;0.4" dur="2.8s" repeatCount="indefinite"/>
-        </polygon>
-        <polygon points="150,287 178,302 178,332 150,347 122,332 122,302" fill="rgba(57,169,0,0.05)" stroke="rgba(57,169,0,0.35)" stroke-width="1">
-          <animate attributeName="opacity" values="0.6;0.1;0.6" dur="5s" repeatCount="indefinite"/>
-        </polygon>
-        <polygon points="480,183 508,198 508,228 480,243 452,228 452,198" fill="rgba(57,169,0,0.08)" stroke="rgba(57,169,0,0.6)" stroke-width="1.2">
-          <animate attributeName="opacity" values="0.2;1;0.2" dur="3.5s" repeatCount="indefinite"/>
-        </polygon>
-        <!-- Líneas de conexión -->
-        <line x1="90" y1="83" x2="210" y2="161" stroke="rgba(57,169,0,0.15)" stroke-width="0.6" stroke-dasharray="4,6">
-          <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="3s" repeatCount="indefinite"/>
-        </line>
-        <line x1="210" y1="161" x2="360" y2="83" stroke="rgba(57,169,0,0.12)" stroke-width="0.6" stroke-dasharray="4,6">
-          <animate attributeName="stroke-dashoffset" from="0" to="100" dur="4s" repeatCount="indefinite"/>
-        </line>
-        <line x1="150" y1="317" x2="480" y2="213" stroke="rgba(57,169,0,0.1)" stroke-width="0.5" stroke-dasharray="3,8">
-          <animate attributeName="stroke-dashoffset" from="0" to="-120" dur="5s" repeatCount="indefinite"/>
-        </line>
-      </svg>
-    </div>
-
-    <!-- Partículas flotantes -->
-    <div class="nano-particles">
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-    </div>
-
-    <!-- Contenido superior -->
-    <div class="brand-top">
-      <div class="nano-logo-wrap">
-        <div class="nano-logo-img">
-          <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="Logo SENA">
+      <div class="brand-features">
+        <div class="feat">
+          <div class="feat-icon">📋</div>
+          Gestión de fichas y programas de formación
         </div>
-        <div class="nano-logo-text">
-          <span class="abbr">SENA</span>
-          <span class="full">Servicio Nacional de Aprendizaje</span>
+        <div class="feat">
+          <div class="feat-icon">👥</div>
+          Seguimiento de instructores y aprendices
         </div>
-      </div>
-
-      <div class="nano-title">
-        <span class="accent">// SSPF · v<?= APP_VERSION ?></span>
-        Sistema de<br>Seguimiento de<br>Proyectos Formativos
-      </div>
-
-      <div class="nano-subtitle-box">
-        <p class="nano-desc">
-          Plataforma institucional del <strong>SENA Colombia</strong> para la gestión integral
-          de <strong>Fichas de Formación</strong>, instructores, aprendices y el seguimiento
-          de <strong>Proyectos Formativos</strong>.
-        </p>
-      </div>
-
-    </div>
-
-
-    <!-- Orbe central animado -->
-    <div class="brand-center">
-      <div class="nano-orb-wrap">
-        <div class="nano-orb">
-          <div class="orbit-ring"></div>
-          <div class="orbit-ring"></div>
-          <div class="orbit-ring"></div>
-          <div class="orb-inner">
-            <img src="<?= APP_URL ?>/assets/img/sena_logo.png"
-                 alt="SENA" class="orb-center-img">
-          </div>
+        <div class="feat">
+          <div class="feat-icon">📊</div>
+          Reportes y análisis en tiempo real
         </div>
       </div>
     </div>
-
-    <!-- Footer del brand -->
-    <div class="brand-footer">
-      <div class="nano-footer-text">© 2026 Servicio Nacional de Aprendizaje · Colombia</div>
-      <div class="system-status">
-        <span class="status-dot"></span>
-        Sistema en línea · Entorno <?= DEV_MODE ? 'Desarrollo' : 'Producción' ?>
-      </div>
-    </div>
+    <div class="brand-footer">© <?= date('Y') ?> Servicio Nacional de Aprendizaje · Colombia</div>
   </div>
 
-  <!-- ══════════════ PANEL DERECHO — FORMULARIO ══════════════ -->
-  <div class="nano-form-panel">
-    <div class="nano-form">
-
-      <!-- Header -->
-      <div class="form-nano-header">
-        <div class="form-nano-logo">
-          <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA">
-        </div>
-        <h2>Bienvenido de <span class="highlight">nuevo</span></h2>
-        <p class="subtitle">// Sistema de Seguimiento de Proyectos Formativos</p>
+  <!-- Right: Form -->
+  <div class="form-side">
+    <div class="card">
+      <div class="card-header">
+        <h2>Iniciar Sesión</h2>
+        <p>Ingresa con tu cuenta institucional</p>
       </div>
 
-      <div class="nano-divider"></div>
-
-      <!-- Alertas -->
       <?php if ($loginSuccess): ?>
-        <div class="nano-alert success" role="alert">
-          <i class="bi bi-check-circle-fill"></i>
-          <span><?= htmlspecialchars($loginSuccess) ?></span>
-        </div>
+        <div class="alert alert-success"><?= htmlspecialchars($loginSuccess) ?></div>
       <?php endif; ?>
-
       <?php if ($loginError): ?>
-        <div class="nano-alert danger" role="alert">
-          <i class="bi bi-shield-exclamation"></i>
-          <span><?= htmlspecialchars($loginError) ?></span>
-        </div>
+        <div class="alert alert-error"><?= htmlspecialchars($loginError) ?></div>
       <?php endif; ?>
 
-      <!-- Formulario -->
-      <form method="post" id="login-form" autocomplete="on">
-
-        <!-- Email -->
-        <div class="nano-field">
-          <div class="nano-label">
-            <span>Correo institucional</span>
-          </div>
-          <div class="nano-input-wrap">
-            <input
-              type="email"
-              name="email"
-              id="login-email"
-              class="nano-input"
-              placeholder="usuario@sena.edu.co"
-              autocomplete="email"
-              <?= $isBlocked ? 'disabled' : '' ?>
-              required>
-            <i class="bi bi-envelope-fill nano-input-icon"></i>
-          </div>
+      <form method="post" autocomplete="on">
+        <div class="field">
+          <label for="login-email">Correo institucional</label>
+          <input type="email" name="email" id="login-email" placeholder="usuario@sena.edu.co" autocomplete="email" required <?= $isBlocked ? 'disabled' : '' ?>>
         </div>
-
-        <!-- Contraseña -->
-        <div class="nano-field">
-          <div class="nano-label">
-            <span>Contraseña</span>
-            <a href="recover.php">¿Olvidaste tu contraseña?</a>
-          </div>
-          <div class="nano-input-wrap">
-            <input
-              type="password"
-              name="password"
-              id="pw-login"
-              class="nano-input"
-              placeholder="••••••••"
-              autocomplete="current-password"
-              <?= $isBlocked ? 'disabled' : '' ?>
-              required>
-            <i class="bi bi-lock-fill nano-input-icon"></i>
-            <button type="button" class="pw-toggle-btn" data-pw-toggle="#pw-login" <?= $isBlocked ? 'disabled' : '' ?>>
-              <i class="bi bi-eye" id="pw-eye-icon"></i>
-            </button>
-          </div>
+        <div class="field">
+          <label for="pw-login">Contraseña</label>
+          <input type="password" name="password" id="pw-login" placeholder="••••••••" autocomplete="current-password" required <?= $isBlocked ? 'disabled' : '' ?>>
         </div>
-
-        <!-- Botón submit -->
-        <button type="submit" id="login-submit" class="nano-btn" <?= $isBlocked ? 'disabled' : '' ?>>
-          <i class="bi bi-shield-lock-fill"></i>
-          Ingresar al sistema
-          <i class="bi bi-arrow-right"></i>
-        </button>
+        <button type="submit" class="submit-btn" <?= $isBlocked ? 'disabled' : '' ?>><?= $isBlocked ? 'Acceso Bloqueado' : 'Ingresar al sistema' ?></button>
       </form>
 
-      <!-- Footer del form -->
-      <div class="form-nano-footer">
-        <button type="button" class="theme-btn" onclick="toggleTheme()" aria-label="Cambiar tema">
-          <i class="bi bi-moon-stars" id="theme-icon"></i>
-        </button>
-        <span class="nano-copyright">SENA · Sistema Institucional · <?= date('Y') ?></span>
+      <div class="card-footer">
+        <a href="recover.php">¿Olvidaste tu contraseña?</a>
       </div>
-
-      <?php if (DEV_MODE): ?>
-        <div style="margin-top:1.5rem; padding: 0.75rem 1rem; background: rgba(57,169,0,0.06); border: 1px dashed rgba(57,169,0,0.2); border-radius:8px; font-size:0.72rem; font-family: 'JetBrains Mono', monospace; color: rgba(57,169,0,0.7); text-align:center;">
-          <i class="bi bi-code-slash"></i> DEV_MODE activo —
-          <a href="recover.php" style="color: rgba(57,169,0,0.9);">Recuperar contraseña</a>
-        </div>
-      <?php endif; ?>
     </div>
   </div>
 
-</div><!-- /.login-shell -->
+</div>
 
 <script>
-/* ══════════════════════════════════════════
-   SENA — Login Nanotecnología · Scripts
-══════════════════════════════════════════ */
-
-/* ── Toggle contraseña ── */
-document.querySelectorAll('[data-pw-toggle]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const input = document.querySelector(btn.dataset.pwToggle);
-    const icon  = btn.querySelector('i');
-    if (!input) return;
-    if (input.type === 'password') {
-      input.type = 'text';
-      icon.classList.replace('bi-eye', 'bi-eye-slash');
-    } else {
-      input.type = 'password';
-      icon.classList.replace('bi-eye-slash', 'bi-eye');
-    }
-  });
-});
-
-/* ── Toggle de tema ── */
-function toggleTheme() {
-  const root   = document.documentElement;
-  const icon   = document.getElementById('theme-icon');
-  const isDark = root.dataset.theme === 'dark';
-  root.dataset.theme = isDark ? 'light' : 'dark';
-  icon.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-stars';
-  localStorage.setItem('sena_theme', root.dataset.theme);
-}
 (function() {
-  const saved = localStorage.getItem('sena_theme');
-  if (saved) {
-    document.documentElement.dataset.theme = saved;
-    const icon = document.getElementById('theme-icon');
-    if (icon) icon.className = saved === 'dark' ? 'bi bi-moon-stars' : 'bi bi-sun-fill';
-  }
-})();
-
-/* ── Canvas Red Neuronal Nano ── */
-(function() {
-  const canvas = document.getElementById('nano-canvas');
+  var canvas = document.getElementById('particle-canvas');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let W, H, nodes = [], mouse = { x: -999, y: -999 }, animId;
-  const GREEN = '94,203,0';
+  var ctx = canvas.getContext('2d');
+  var W, H, nodes = [], mouse = { x: -999, y: -999 }, animId;
 
   function resize() {
-    W = canvas.width  = window.innerWidth;
+    W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
   }
 
   function mkNode() {
     return {
-      x:   Math.random() * W,
-      y:   Math.random() * H,
-      vx:  (Math.random() - 0.5) * 0.45,
-      vy:  (Math.random() - 0.5) * 0.45,
-      r:   Math.random() * 1.8 + 0.5,
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.4,
       phi: Math.random() * Math.PI * 2
     };
   }
 
   function initNodes() {
     nodes = [];
-    const count = Math.min(70, Math.floor(W * H / 15000));
-    for (let i = 0; i < count; i++) nodes.push(mkNode());
+    var count = Math.min(70, Math.floor(W * H / 18000));
+    for (var i = 0; i < count; i++) nodes.push(mkNode());
   }
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    const maxD = 150, mouseD = 180;
+    var maxD = 140, mouseD = 160;
 
-    /* Conexiones */
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {
-        const dx = nodes[i].x - nodes[j].x;
-        const dy = nodes[i].y - nodes[j].y;
-        const d  = Math.hypot(dx, dy);
+    for (var i = 0; i < nodes.length; i++) {
+      for (var j = i + 1; j < nodes.length; j++) {
+        var dx = nodes[i].x - nodes[j].x;
+        var dy = nodes[i].y - nodes[j].y;
+        var d = Math.hypot(dx, dy);
         if (d < maxD) {
           ctx.beginPath();
           ctx.moveTo(nodes[i].x, nodes[i].y);
           ctx.lineTo(nodes[j].x, nodes[j].y);
-          ctx.strokeStyle = `rgba(${GREEN},${(1 - d / maxD) * 0.4})`;
-          ctx.lineWidth   = 0.7;
+          ctx.strokeStyle = 'rgba(52,211,153,' + ((1 - d / maxD) * 0.2) + ')';
+          ctx.lineWidth = 0.5;
           ctx.stroke();
         }
       }
     }
 
-    /* Nodos */
-    nodes.forEach(n => {
-      n.phi += 0.012;
-      const glow = Math.sin(n.phi) * 0.35 + 0.55;
+    for (var k = 0; k < nodes.length; k++) {
+      var n = nodes[k];
+      n.phi += 0.01;
+      var glow = Math.sin(n.phi) * 0.3 + 0.5;
 
-      /* Repulsión/atracción al mouse */
-      const mdx = n.x - mouse.x, mdy = n.y - mouse.y;
-      const md  = Math.hypot(mdx, mdy);
+      var mdx = n.x - mouse.x, mdy = n.y - mouse.y;
+      var md = Math.hypot(mdx, mdy);
       if (md < mouseD && md > 0) {
-        const force = (1 - md / mouseD) * 0.6;
+        var force = (1 - md / mouseD) * 0.4;
         n.vx += (mdx / md) * force;
         n.vy += (mdy / md) * force;
       }
-      /* Damping */
-      n.vx *= 0.97; n.vy *= 0.97;
+      n.vx *= 0.97;
+      n.vy *= 0.97;
 
       ctx.beginPath();
-      ctx.arc(n.x, n.y, n.r * (md < mouseD ? 1 + (1 - md/mouseD) * 1.5 : 1), 0, Math.PI * 2);
-      ctx.fillStyle   = `rgba(${GREEN},${glow})`;
-      ctx.shadowBlur  = md < mouseD ? 18 : 9;
-      ctx.shadowColor = `rgba(${GREEN},0.7)`;
+      var radius = n.r * (md < mouseD ? 1 + (1 - md / mouseD) * 0.8 : 1);
+      ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(52,211,153,' + glow + ')';
+      ctx.shadowBlur = md < mouseD ? 12 : 6;
+      ctx.shadowColor = 'rgba(52,211,153,0.4)';
       ctx.fill();
-      ctx.shadowBlur  = 0;
+      ctx.shadowBlur = 0;
 
       n.x += n.vx;
       n.y += n.vy;
       if (n.x < 0 || n.x > W) n.vx *= -1;
       if (n.y < 0 || n.y > H) n.vy *= -1;
-    });
+    }
 
     animId = requestAnimationFrame(draw);
   }
 
-  /* Mouse tracking */
-  window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-  window.addEventListener('mouseleave', () => { mouse.x = -999; mouse.y = -999; });
+  window.addEventListener('mousemove', function(e) { mouse.x = e.clientX; mouse.y = e.clientY; });
+  window.addEventListener('mouseleave', function() { mouse.x = -999; mouse.y = -999; });
 
-  /* Click: crear onda expansiva de nodos */
-  window.addEventListener('click', e => {
-    for (let i = 0; i < 6; i++) {
-      const n = mkNode();
+  window.addEventListener('click', function(e) {
+    for (var i = 0; i < 4; i++) {
+      var n = mkNode();
       n.x = e.clientX; n.y = e.clientY;
-      const angle = (Math.PI * 2 / 6) * i;
-      n.vx = Math.cos(angle) * 2.5;
-      n.vy = Math.sin(angle) * 2.5;
+      var angle = (Math.PI * 2 / 4) * i;
+      n.vx = Math.cos(angle) * 1.5;
+      n.vy = Math.sin(angle) * 1.5;
       nodes.push(n);
       if (nodes.length > 100) nodes.shift();
     }
   });
 
   resize(); initNodes(); draw();
-  window.addEventListener('resize', () => {
+  window.addEventListener('resize', function() {
     cancelAnimationFrame(animId);
     resize(); initNodes(); draw();
   });
 })();
-
-/* ── Efecto 3D Tilt en el formulario ── */
-(function() {
-  const card = document.querySelector('.nano-form');
-  if (!card) return;
-  const panel = document.querySelector('.nano-form-panel');
-
-  let ticking = false;
-  panel?.addEventListener('mousemove', e => {
-    if (!ticking) {
-      requestAnimationFrame(() => {
-        const rect = card.getBoundingClientRect();
-        const cx   = rect.left + rect.width  / 2;
-        const cy   = rect.top  + rect.height / 2;
-        const dx   = (e.clientX - cx) / (rect.width  / 2);
-        const dy   = (e.clientY - cy) / (rect.height / 2);
-        card.style.transform =
-          `perspective(900px) rotateY(${dx * 5}deg) rotateX(${-dy * 4}deg) translateZ(4px)`;
-        ticking = false;
-      });
-      ticking = true;
-    }
-  });
-  panel?.addEventListener('mouseleave', () => {
-    card.style.transform = '';
-    card.style.transition = 'transform 0.6s cubic-bezier(0.22,1,0.36,1), border-color 0.4s, box-shadow 0.4s';
-    setTimeout(() => { card.style.transition = ''; }, 620);
-  });
-})();
-
-/* ── Hover en stats: efecto conteo ── */
-document.querySelectorAll('.nano-stat').forEach(stat => {
-  stat.addEventListener('mouseenter', () => {
-    stat.style.transition = 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)';
-  });
-});
-
-/* ── Ripple en el botón ── */
-document.querySelector('.nano-btn')?.addEventListener('click', function(e) {
-  if (this.disabled) return;
-  const ripple = document.createElement('span');
-  const rect   = this.getBoundingClientRect();
-  const size   = Math.max(rect.width, rect.height) * 2;
-  ripple.style.cssText = `
-    position:absolute;border-radius:50%;pointer-events:none;
-    width:${size}px;height:${size}px;
-    left:${e.clientX - rect.left - size/2}px;
-    top:${e.clientY - rect.top  - size/2}px;
-    background:rgba(255,255,255,0.25);
-    transform:scale(0);animation:ripple-anim 0.6s ease-out forwards;
-  `;
-  this.appendChild(ripple);
-  setTimeout(() => ripple.remove(), 700);
-});
-
-/* ── Animación de carga en el submit ── */
-document.getElementById('login-form')?.addEventListener('submit', function() {
-  const btn = document.getElementById('login-submit');
-  if (btn && !btn.disabled) {
-    btn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="animation:spin .7s linear infinite">
-        <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
-        <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-      Verificando acceso...`;
-    btn.disabled = true;
-  }
-});
 </script>
-<style>
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes ripple-anim {
-  to { transform: scale(1); opacity: 0; }
-}
-</style>
 </body>
 </html>

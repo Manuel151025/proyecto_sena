@@ -4,8 +4,8 @@
     <p class="text-muted mb-0">Administra usuarios del sistema (Coordinadores, Instructores y Aprendices).</p>
   </div>
   <div class="d-flex gap-2">
-    <a href="<?= MODULES_PATH ?>/usuarios/importar.php" class="btn btn-soft"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Importar CSV</a>
-    <a href="<?= MODULES_PATH ?>/usuarios/crear.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo Usuario</a>
+    <a href="<?= APP_URL ?>/index.php/usuarios/importar" class="btn btn-soft"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Importar CSV</a>
+    <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo Usuario</a>
   </div>
 </div>
 
@@ -41,7 +41,7 @@
         <td><span class="badge-soft <?= htmlspecialchars($estados_label[$usuario['estado']][1] ?? 'secondary') ?>"><?= htmlspecialchars($estados_label[$usuario['estado']][0] ?? $usuario['estado']) ?></span></td>
         <td><?= date('d/m/Y', strtotime($usuario['fecha_creacion'])) ?></td>
         <td class="text-end">
-          <a href="<?= MODULES_PATH ?>/usuarios/editar.php?id=<?= $usuario['id'] ?>" class="btn btn-sm btn-soft">Editar</a>
+          <button type="button" class="btn btn-sm btn-soft" onclick="openEditUserModal(<?= $usuario['id'] ?>)">Editar</button>
           <button type="button" class="btn btn-sm btn-soft text-danger" onclick="deleteUser(<?= $usuario['id'] ?>)">Eliminar</button>
         </td>
       </tr>

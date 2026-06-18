@@ -8,11 +8,17 @@ use Exception;
 use PDO;
 
 class AprendizModel {
+    private PDO $db;
+
+    public function __construct(?PDO $db = null) {
+        $this->db = $db ?? Database::getConnection();
+    }
+
     /**
      * Get learners with filters and search
      */
-    public static function getFilteredList(array $filters = [], ?int $instructorId = null): array {
-        $db = Database::getConnection();
+    public function getFilteredList(array $filters = [], ?int $instructorId = null): array {
+        $db = $this->db;
 
         $sql = "
             SELECT a.*, u.nombre, u.email, u.avatar_color, f.numero_ficha, p.nombre as programa_nombre,
@@ -59,8 +65,8 @@ class AprendizModel {
     /**
      * Enroll a new apprentice (Transaction: User + Apprentice + Evaluations + Ficha count)
      */
-    public static function matricular(array $data, int $createdByUserId): int {
-        $db = Database::getConnection();
+    public function matricular(array $data, int $createdByUserId): int {
+        $db = $this->db;
         
         // Validar duplicados
         $stmt = $db->prepare("SELECT id FROM usuarios WHERE email = ?");
@@ -136,8 +142,8 @@ class AprendizModel {
     /**
      * Update apprentice enrollment details
      */
-    public static function editarMatricula(int $aprendizId, array $data, int $updatedByUserId): void {
-        $db = Database::getConnection();
+    public function editarMatricula(int $aprendizId, array $data, int $updatedByUserId): void {
+        $db = $this->db;
 
         // Obtener datos actuales
         $stmt = $db->prepare("SELECT ficha_id, usuario_id FROM aprendices WHERE id = ?");
@@ -216,8 +222,8 @@ class AprendizModel {
     /**
      * Delete/unregister an apprentice
      */
-    public static function eliminar(int $aprendizId, int $deletedByUserId): void {
-        $db = Database::getConnection();
+    public function eliminar(int $aprendizId, int $deletedByUserId): void {
+        $db = $this->db;
 
         $stmt = $db->prepare("SELECT ficha_id, usuario_id FROM aprendices WHERE id = ?");
         $stmt->execute([$aprendizId]);

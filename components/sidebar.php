@@ -20,21 +20,47 @@ $user = getCurrentUser();
     </div>
   </div>
   <nav class="sidebar-nav">
-    <?php foreach ($menu as $groupName => $items): ?>
-      <div class="sidebar-section"><?= htmlspecialchars($groupName) ?></div>
-      <?php foreach ($items as $item): ?>
+    <?php foreach ($menu as $groupName => $group): ?>
+      <?php 
+      $items = $group['items'] ?? [];
+      $icon = $group['icon'] ?? 'bi bi-folder';
+      
+      // Determinar si el grupo está activo (cualquiera de sus sub-elementos está activo)
+      $isGroupActive = false;
+      foreach ($items as $item) {
+          if (isActiveMenu($item['url']) === 'active') {
+              $isGroupActive = true;
+              break;
+          }
+      }
+      $activeClass = $isGroupActive ? 'active' : '';
+      ?>
+      
+      <?php if (count($items) === 1): ?>
         <?php 
-        $activeClass = isActiveMenu($item['url']) ? 'active' : ''; 
-        $itemUrl = $item['url'];
+        $singleItem = $items[0];
+        $itemUrl = $singleItem['url'];
         ?>
         <a href="<?= $itemUrl ?>" class="sidebar-link <?= $activeClass ?>">
-          <i class="<?= htmlspecialchars($item['icon']) ?>"></i>
-          <span><?= htmlspecialchars($item['title']) ?></span>
-          <?php if (isset($item['badge'])): ?>
-            <span class="badge-side"><?= htmlspecialchars((string)$item['badge']) ?></span>
-          <?php endif; ?>
+          <i class="<?= htmlspecialchars($icon) ?>"></i>
+          <span><?= htmlspecialchars($singleItem['title']) ?></span>
         </a>
-      <?php endforeach; ?>
+      <?php elseif (count($items) > 1): ?>
+        <div class="sidebar-link sidebar-dropdown <?= $activeClass ?>">
+          <i class="<?= htmlspecialchars($icon) ?>"></i>
+          <span class="dropdown-menu-custom">
+            <div class="dropdown-header"><?= htmlspecialchars($groupName) ?></div>
+            <div class="dropdown-links">
+              <?php foreach ($items as $item): ?>
+                <?php $subActive = (isActiveMenu($item['url']) === 'active') ? 'active' : ''; ?>
+                <a href="<?= $item['url'] ?>" class="dropdown-link <?= $subActive ?>">
+                  <?= htmlspecialchars($item['title']) ?>
+                </a>
+              <?php endforeach; ?>
+            </div>
+          </span>
+        </div>
+      <?php endif; ?>
     <?php endforeach; ?>
   </nav>
   <div class="sidebar-user">

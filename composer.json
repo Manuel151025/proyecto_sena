@@ -1,0 +1,11 @@
+{
+    "name": "sena/seguimiento",
+    "description": "Sistema de Seguimiento de Proyectos Formativos SENA",
+    "type": "project",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Core\\": "core/"
+        }
+    }
+}
