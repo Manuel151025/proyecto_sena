@@ -7,12 +7,17 @@ use Core\Database;
 use PDO;
 
 class FichaModel {
+    private PDO $db;
+
+    public function __construct(?PDO $db = null) {
+        $this->db = $db ?? Database::getConnection();
+    }
+
     /**
      * Get all Fichas with program name
      */
-    public static function getAll(): array {
-        $db = Database::getConnection();
-        return $db->query("
+    public function getAll(): array {
+        return $this->db->query("
             SELECT f.id, f.numero_ficha, p.nombre as programa 
             FROM fichas f
             JOIN programas p ON f.programa_id = p.id 
@@ -23,9 +28,8 @@ class FichaModel {
     /**
      * Get Fichas assigned to an instructor (as leader or through assignments or tracking)
      */
-    public static function getByInstructor(int $instructorId): array {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
+    public function getByInstructor(int $instructorId): array {
+        $stmt = $this->db->prepare("
             SELECT DISTINCT f.id, f.numero_ficha, p.nombre as programa 
             FROM fichas f
             JOIN programas p ON f.programa_id = p.id 

@@ -422,60 +422,79 @@ try {
 </div>
 
 <!-- ===== Aprendices con concepto D ===== -->
-<div class="card mt-4">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <span>Aprendices con concepto D que requieren plan de mejoramiento</span>
-    <?php if (count($pendientesPlanes) === 10): ?>
-      <a href="<?= MODULES_PATH ?>/mejoramiento/" class="small text-muted">Ver todos →</a>
-    <?php endif; ?>
-  </div>
-  <div class="table-wrap" style="border:0;border-radius:0">
-    <table class="table mb-0">
-      <thead>
-        <tr>
-          <th>Aprendiz</th>
-          <th>Ficha</th>
-          <th>RA</th>
-          <th>Fecha D</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php if (empty($pendientesPlanes)): ?>
-          <tr>
-            <td colspan="5" class="text-center text-muted py-4">
-              <i class="bi bi-patch-check-fill text-success d-block mb-1" style="font-size:1.5rem"></i>
-              No hay aprendices con concepto D pendiente.
-            </td>
-          </tr>
-        <?php else: ?>
-          <?php foreach ($pendientesPlanes as $p): ?>
-            <tr>
-              <td>
-                <div class="d-flex align-items-center gap-2">
-                  <div class="avatar" style="width:32px;height:32px;font-size:.75rem">
-                    <?= getInitials($p['aprendiz']) ?>
-                  </div>
-                  <?= htmlspecialchars($p['aprendiz']) ?>
-                </div>
-              </td>
-              <td>#<?= htmlspecialchars($p['ficha']) ?></td>
-              <td>
-                <span class="badge-soft" title="<?= htmlspecialchars($p['ra_nombre']) ?>">
-                  <?= htmlspecialchars($p['ra_codigo']) ?>
-                </span>
-              </td>
-              <td><?= !empty($p['fecha']) ? date('d/m/Y', strtotime($p['fecha'])) : '—' ?></td>
-              <td class="text-end">
-                <a href="<?= MODULES_PATH ?>/mejoramiento/" class="btn btn-sm btn-primary">
-                  <i class="bi bi-arrow-right"></i> Atender
-                </a>
-              </td>
-            </tr>
-          <?php endforeach; ?>
+<div class="row g-4 mt-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Aprendices con concepto D que requieren plan de mejoramiento</span>
+        <?php if (count($pendientesPlanes) === 10): ?>
+          <a href="<?= MODULES_PATH ?>/mejoramiento/" class="small text-muted">Ver todos →</a>
         <?php endif; ?>
-      </tbody>
-    </table>
+      </div>
+      <div class="table-wrap" style="border:0;border-radius:0">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>Aprendiz</th>
+              <th>Ficha</th>
+              <th>RA</th>
+              <th>Fecha D</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if (empty($pendientesPlanes)): ?>
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                  <i class="bi bi-patch-check-fill text-success d-block mb-1" style="font-size:1.5rem"></i>
+                  No hay aprendices con concepto D pendiente.
+                </td>
+              </tr>
+            <?php else: ?>
+              <?php foreach ($pendientesPlanes as $p): ?>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="avatar" style="width:32px;height:32px;font-size:.75rem">
+                        <?= getInitials($p['aprendiz']) ?>
+                      </div>
+                      <?= htmlspecialchars($p['aprendiz']) ?>
+                    </div>
+                  </td>
+                  <td>#<?= htmlspecialchars($p['ficha']) ?></td>
+                  <td>
+                    <span class="badge-soft" title="<?= htmlspecialchars($p['ra_nombre']) ?>">
+                      <?= htmlspecialchars($p['ra_codigo']) ?>
+                    </span>
+                  </td>
+                  <td><?= !empty($p['fecha']) ? date('d/m/Y', strtotime($p['fecha'])) : '—' ?></td>
+                  <td class="text-end">
+                    <a href="<?= MODULES_PATH ?>/mejoramiento/" class="btn btn-sm btn-primary">
+                      <i class="bi bi-arrow-right"></i> Atender
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100" style="border-radius: 10px;">
+      <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+        <span>Próximos Eventos</span>
+        <a href="<?= APP_URL ?>/modules/calendario/" class="text-primary small fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-calendar3 me-1"></i>Ver todo</a>
+      </div>
+      <div class="card-body" id="dashboard-events-list" style="max-height: 380px; overflow-y: auto;">
+        <div class="text-center py-4 text-muted" id="events-loader">
+          <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+          <div class="small">Cargando eventos...</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -639,6 +658,93 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+    }
+
+    // Cargar eventos del calendario para el dashboard
+    const eventsList = document.getElementById('dashboard-events-list');
+    if (eventsList) {
+        const today = new Date();
+        const formatDate = (d) => d.toISOString().split('T')[0];
+        
+        const start = formatDate(today);
+        const next30Days = new Date(today);
+        next30Days.setDate(today.getDate() + 30);
+        const end = formatDate(next30Days);
+        
+        const url = `<?= APP_URL ?>/modules/calendario/api_events.php?start=${start}&end=${end}`;
+        
+        fetch(url)
+            .then(res => res.json())
+            .then(events => {
+                const loader = document.getElementById('events-loader');
+                if (loader) loader.remove();
+                
+                if (!events || events.length === 0) {
+                    eventsList.innerHTML = `
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar-x d-block mb-2" style="font-size:2rem; opacity:0.4;"></i>
+                            Sin eventos programados para los próximos 30 días.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Ordenar eventos por fecha ascendente
+                events.sort((a, b) => new Date(a.start) - new Date(b.start));
+                
+                // Mostrar un máximo de 5 eventos
+                const upcoming = events.slice(0, 5);
+                
+                let html = '';
+                const formatLabel = (dateStr) => {
+                    const parts = dateStr.split('-');
+                    if (parts.length < 3) return dateStr;
+                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    const t = new Date();
+                    t.setHours(0,0,0,0);
+                    d.setHours(0,0,0,0);
+                    
+                    const diffTime = d.getTime() - t.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays === 0) return 'Hoy';
+                    if (diffDays === 1) return 'Mañ.';
+                    
+                    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                    return `${d.getDate()} ${months[d.getMonth()]}`;
+                };
+
+                upcoming.forEach(ev => {
+                    const color = ev.color || '#39A900';
+                    const targetUrl = ev.url || '#';
+                    const title = ev.title || 'Evento';
+                    const tipo = (ev.extendedProps && ev.extendedProps.tipo) || 'Académico';
+                    const extra = (ev.extendedProps && (ev.extendedProps.ficha || ev.extendedProps.programa || ev.extendedProps.instructor)) || '';
+                    
+                    html += `
+                        <a href="${targetUrl}" class="event-item">
+                            <span class="event-badge-dot" style="background-color: ${color};"></span>
+                            <div class="event-body">
+                                <div class="event-title">${title}</div>
+                                <div class="event-desc">${tipo}${extra ? ' · ' + extra : ''}</div>
+                            </div>
+                            <span class="event-date-badge">${formatLabel(ev.start)}</span>
+                        </a>
+                    `;
+                });
+                eventsList.innerHTML = html;
+            })
+            .catch(err => {
+                console.error(err);
+                const loader = document.getElementById('events-loader');
+                if (loader) loader.remove();
+                eventsList.innerHTML = `
+                    <div class="text-center py-5 text-danger">
+                        <i class="bi bi-exclamation-octagon d-block mb-2" style="font-size:2rem;"></i>
+                        Error al cargar los eventos.
+                    </div>
+                `;
+            });
     }
 });
 </script>

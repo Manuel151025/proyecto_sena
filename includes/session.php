@@ -168,3 +168,57 @@ function getInitials(string $name): string {
     }
     return $initials;
 }
+
+// ---------------------------------------------------------------------------
+// PROTECCIÓN CSRF (CROSS-SITE REQUEST FORGERY) CON SOPORTE DE PESTAÑAS
+// ---------------------------------------------------------------------------
+
+/**
+ * Obtiene o genera el token CSRF para la pestaña actual.
+ */
+function getCsrfToken(): string {
+    $tabId = getTabId();
+    if (!isset($_SESSION['tabs'][$tabId])) {
+        $_SESSION['tabs'][$tabId] = [];
+    }
+    if (empty($_SESSION['tabs'][$tabId]['csrf_token'])) {
+        $_SESSION['tabs'][$tabId]['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['tabs'][$tabId]['csrf_token'];
+}
+
+/**
+ * Retorna el campo input oculto HTML con el token CSRF para formularios.
+ */
+function csrfField(): string {
+    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(getCsrfToken(), ENT_QUOTES, 'UTF-8') . '">';
+}
+
+/**
+ * Valida de forma segura el token CSRF suministrado contra el esperado en esta pestaña.
+ */
+function validateCsrfToken(?string $token): bool {
+    if ($token === null || $token === '') {
+        return false;
+    }
+    $expected = $_SESSION['tabs'][getTabId()]['csrf_token'] ?? null;
+    if (empty($expected)) {
+        return false;
+    }
+    return hash_equals($expected, $token);
+}
+
+/**
+ * Middleware para validar el token CSRF en peticiones de tipo POST.
+ * Termina la ejecución con 403 Forbidden si el token no es válido.
+ */
+function requireCsrf(): void {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (!validateCsrfToken($token)) {
+            http_response_code(403);
+            die('Error 403: Solicitud rechazada por validación de seguridad (Token CSRF inválido o ausente).');
+        }
+    }
+}
+

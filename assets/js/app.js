@@ -40,6 +40,16 @@
     }
     updateThemeIcons();
 
+    // Posicionamiento dinámico de tooltips del sidebar para evitar clipping al hacer scroll
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+      const span = link.querySelector('span');
+      if (!span) return;
+      link.addEventListener('mouseenter', () => {
+        const rect = link.getBoundingClientRect();
+        span.style.top = rect.top + 'px';
+      });
+    });
+
     // Password toggle
     document.querySelectorAll('[data-pw-toggle]').forEach(btn => {
       btn.addEventListener('click', () => {

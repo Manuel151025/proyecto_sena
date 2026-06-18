@@ -203,6 +203,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset
 
                 $db->commit();
 
+                // Limpiar intentos de bloqueo si existían
+                unset($_SESSION['login_attempts']);
+                unset($_SESSION['blocked_until']);
+
                 // Redirigir a login con mensaje de éxito
                 $_SESSION['_flash_success'] = 'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.';
                 header('Location: ' . APP_URL . '/login.php');
@@ -244,113 +248,656 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
 }
 
 ?>
-
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Restablecer Contrasena - SENA - Sistema de Seguimiento de Proyectos Formativos</title>
+  <title>Restablecer Contraseña — SENA</title>
   <meta name="description" content="Recupera el acceso a tu cuenta institucional SENA de forma segura.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/login-nano.css">
   <style>
-.step-track{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:1.75rem;}
-.step-node{display:flex;flex-direction:column;align-items:center;gap:.35rem;}
-.step-node .circle{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(94,203,0,.22);background:rgba(10,25,12,.8);display:grid;place-items:center;font-size:.8rem;font-weight:700;font-family:var(--mono);color:var(--nano-soft);transition:all .35s cubic-bezier(0.34,1.56,0.64,1);}
-.step-node.active .circle{border-color:var(--g1);background:rgba(94,203,0,.14);color:var(--g1);box-shadow:0 0 16px rgba(94,203,0,.32);}
-.step-node.done .circle{border-color:var(--g1);background:var(--g1);color:#fff;box-shadow:0 0 12px rgba(94,203,0,.4);}
-.step-node .slabel{font-size:.6rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--nano-soft);transition:color .3s;white-space:nowrap;}
-.step-node.active .slabel{color:var(--g1);}.step-node.done .slabel{color:var(--g2);}
-.step-line{width:50px;height:1px;background:linear-gradient(90deg,rgba(94,203,0,.2),rgba(94,203,0,.1));margin-bottom:1.35rem;flex-shrink:0;transition:background .3s;}
-.step-line.done{background:linear-gradient(90deg,rgba(94,203,0,.55),rgba(94,203,0,.28));}
-.success-orb{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle,rgba(94,203,0,.2) 0%,rgba(94,203,0,.04) 70%);border:1.5px solid rgba(94,203,0,.38);display:grid;place-items:center;margin:0 auto 1.2rem;font-size:1.75rem;color:var(--g1);box-shadow:0 0 35px rgba(94,203,0,.25),inset 0 0 20px rgba(94,203,0,.07);animation:orb-pulse 3s ease-in-out infinite;}
-.pw-req-nano{display:flex;align-items:center;gap:.45rem;font-size:.74rem;font-family:var(--mono);color:var(--nano-soft);margin:.22rem 0;transition:color .25s;}
-.pw-req-nano i{font-size:.76rem;transition:all .25s;}.pw-req-nano.ok{color:var(--g2);}.pw-req-nano.ok i{text-shadow:0 0 8px rgba(94,203,0,.6);}
-.pw-strength-nano{display:flex;gap:4px;margin:.45rem 0 .65rem;}
-.pw-strength-nano span{flex:1;height:3px;border-radius:2px;background:rgba(94,203,0,.1);transition:background .3s;}
-.pw-strength-nano.s1 span:nth-child(1){background:#e74c3c;}.pw-strength-nano.s2 span:nth-child(-n+2){background:#f39c12;}
-.pw-strength-nano.s3 span:nth-child(-n+3){background:#3498db;}.pw-strength-nano.s4 span{background:var(--g1);box-shadow:0 0 6px rgba(94,203,0,.4);}
-.dev-box{background:rgba(94,203,0,.06);border:1px dashed rgba(94,203,0,.28);border-radius:10px;padding:.9rem 1rem;font-size:.75rem;font-family:var(--mono);color:var(--nano-muted);margin-bottom:1.1rem;}
-.dev-box strong{color:var(--g1);display:block;margin-bottom:.35rem;}.dev-box a{color:var(--g2);word-break:break-all;text-decoration:none;}.dev-box .dev-note{color:var(--nano-soft);margin-top:.45rem;font-size:.68rem;}
-.back-link{display:inline-flex;align-items:center;gap:.4rem;font-size:.76rem;font-family:var(--mono);color:var(--nano-soft);text-decoration:none;margin-bottom:1.4rem;padding:.3rem .65rem;border:1px solid rgba(94,203,0,.12);border-radius:6px;transition:all .25s;}
-.back-link:hover{color:var(--g1);border-color:rgba(94,203,0,.35);background:rgba(94,203,0,.06);transform:translateX(-3px);}
-.back-link i{transition:transform .25s;}.back-link:hover i{transform:translateX(-2px);}
-.nano-btn-outline{width:100%;padding:.9rem 1.5rem;border:1.5px solid rgba(94,203,0,.32);border-radius:11px;background:transparent;font-family:var(--sans);font-size:.95rem;font-weight:600;color:var(--g1);cursor:pointer;transition:all .3s cubic-bezier(0.34,1.56,0.64,1);display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:.65rem;text-decoration:none;}
-.nano-btn-outline:hover{background:rgba(94,203,0,.1);border-color:var(--g1);box-shadow:0 0 20px rgba(94,203,0,.2);color:var(--g2);transform:translateY(-2px);}
-@keyframes spin{to{transform:rotate(360deg);}}
-@keyframes ripple-anim{to{transform:scale(1);opacity:0;}}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0f0d;
+      --bg-card: rgba(14, 22, 17, 0.65);
+      --emerald: #34d399;
+      --emerald-dim: #059669;
+      --emerald-glow: rgba(52, 211, 153, 0.12);
+      --text-primary: #f0fdf4;
+      --text-secondary: #a7b5ae;
+      --text-muted: #5a6b62;
+      --border: rgba(52, 211, 153, 0.1);
+      --border-hover: rgba(52, 211, 153, 0.25);
+      --input-bg: rgba(255, 255, 255, 0.04);
+      --input-border: rgba(255, 255, 255, 0.08);
+      --radius: 12px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Canvas ── */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Ambient glow spots ── */
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(100px);
+    }
+
+    body::before {
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(52, 211, 153, 0.08), transparent 70%);
+      top: -10%;
+      left: -5%;
+      animation: floatA 20s ease-in-out infinite;
+    }
+
+    body::after {
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.06), transparent 70%);
+      bottom: -15%;
+      right: -5%;
+      animation: floatB 24s ease-in-out infinite;
+    }
+
+    @keyframes floatA {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(40px, 30px); }
+    }
+    @keyframes floatB {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-30px, -40px); }
+    }
+
+    /* ── Shell ── */
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* ── Left Panel ── */
+    .brand {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 5rem;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 3rem;
+    }
+
+    .brand-logo img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 8px var(--emerald-glow));
+    }
+
+    .brand-logo span {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--emerald);
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.08;
+      color: var(--text-primary);
+      margin-bottom: 1.2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .brand h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--emerald), #6ee7b7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .brand p {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      max-width: 440px;
+    }
+
+    .brand-features {
+      margin-top: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .brand-features .feat {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+
+    .brand-features .feat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .brand-footer {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 5rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Right Panel ── */
+    .form-side {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--bg-card);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      transition: border-color 0.5s ease, box-shadow 0.5s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 0 60px rgba(52, 211, 153, 0.04);
+    }
+
+    /* ── Back Link ── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-decoration: none;
+      margin-bottom: 1.5rem;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--input-bg);
+      transition: all 0.25s;
+    }
+
+    .back-link:hover {
+      color: var(--emerald);
+      border-color: var(--border-hover);
+      background: rgba(52, 211, 153, 0.04);
+      transform: translateX(-2px);
+    }
+
+    .back-link i {
+      font-size: 0.85rem;
+      transition: transform 0.25s;
+    }
+
+    .back-link:hover i {
+      transform: translateX(-2px);
+    }
+
+    /* ── Step Track ── */
+    .step-track {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .step-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .step-node .circle {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      display: grid;
+      place-items: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .step-node.active .circle {
+      border-color: var(--emerald);
+      color: var(--emerald);
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.2);
+    }
+
+    .step-node.done .circle {
+      border-color: var(--emerald);
+      background: var(--emerald);
+      color: #022c22;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.2);
+    }
+
+    .step-node .slabel {
+      font-size: 0.62rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+
+    .step-node.active .slabel {
+      color: var(--text-primary);
+    }
+
+    .step-node.done .slabel {
+      color: var(--emerald);
+    }
+
+    .step-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      transform: translateY(-9px);
+      z-index: 1;
+      transition: background 0.3s;
+    }
+
+    .step-line.done {
+      background: var(--emerald);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    /* ── Form elements ── */
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .input-icon-wrap {
+      position: relative;
+    }
+
+    .input-icon-wrap input {
+      width: 100%;
+      padding: 13px 16px 13px 42px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.92rem;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+
+    .input-icon-wrap input[type="password"] {
+      padding-right: 42px;
+    }
+
+    .input-icon-wrap input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .input-icon-wrap input:focus {
+      outline: none;
+      border-color: var(--emerald);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.1), 0 0 20px rgba(52, 211, 153, 0.05);
+    }
+
+    .input-icon-wrap .input-icon {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      font-size: 1.05rem;
+      transition: color 0.3s;
+    }
+
+    .input-icon-wrap input:focus ~ .input-icon {
+      color: var(--emerald);
+    }
+
+    .pw-toggle-btn {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.3s;
+    }
+
+    .pw-toggle-btn:hover {
+      color: var(--text-primary);
+    }
+
+    /* ── Buttons ── */
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 4px;
+      background: var(--emerald-dim);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+    }
+
+    .submit-btn:hover {
+      background: var(--emerald);
+      color: #022c22;
+      box-shadow: 0 4px 20px rgba(52, 211, 153, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .submit-btn:hover::before {
+      transform: translateX(100%);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-outline {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius);
+      background: transparent;
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--emerald);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .btn-outline:hover {
+      background: rgba(52, 211, 153, 0.05);
+      border-color: var(--emerald);
+      box-shadow: 0 0 20px rgba(52, 211, 153, 0.1);
+      transform: translateY(-1px);
+    }
+
+    /* ── Alerts ── */
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 0.82rem;
+      margin-bottom: 24px;
+      line-height: 1.5;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .alert i {
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    .alert-success {
+      background: rgba(52, 211, 153, 0.08);
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      color: #6ee7b7;
+    }
+
+    /* ── Step 2 Specific ── */
+    .success-orb {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(52, 211, 153, 0.05);
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 1.2rem;
+      font-size: 1.5rem;
+      color: var(--emerald);
+      box-shadow: 0 0 20px rgba(52, 211, 153, 0.1);
+    }
+
+    /* ── Step 3: Password strength & requirements ── */
+    .pw-strength {
+      display: flex;
+      gap: 4px;
+      margin: 8px 0 12px;
+    }
+
+    .pw-strength span {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.05);
+      transition: background 0.3s;
+    }
+
+    .pw-strength.s1 span:nth-child(1) { background: #ef4444; }
+    .pw-strength.s2 span:nth-child(-n+2) { background: #f59e0b; }
+    .pw-strength.s3 span:nth-child(-n+3) { background: #3b82f6; }
+    .pw-strength.s4 span { background: var(--emerald); }
+
+    .pw-req {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin: 4px 0;
+      transition: color 0.25s;
+    }
+
+    .pw-req i {
+      font-size: 0.75rem;
+      transition: all 0.25s;
+    }
+
+    .pw-req.ok {
+      color: var(--emerald);
+    }
+
+    /* ── Dev Mode Box ── */
+    .dev-box {
+      background: rgba(52, 211, 153, 0.03);
+      border: 1px dashed rgba(52, 211, 153, 0.2);
+      border-radius: var(--radius);
+      padding: 16px;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .dev-box strong {
+      color: var(--emerald);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .dev-box a {
+      color: #6ee7b7;
+      word-break: break-all;
+      text-decoration: underline;
+    }
+
+    .dev-box .dev-note {
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-size: 0.7rem;
+    }
+
+    .card-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      .brand { display: none; }
+      .card { max-width: 420px; }
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 32px 24px; border-radius: 16px; }
+    }
   </style>
 </head>
 <body>
-<canvas id="nano-canvas"></canvas>
-<div class="login-shell">
+<canvas id="particle-canvas"></canvas>
 
-  <div class="nano-brand">
-    <div class="scan-lines"></div>
-    <div class="light-sweep"></div>
-    <div class="hex-grid">
-      <svg viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs><pattern id="hex" width="60" height="52" patternUnits="userSpaceOnUse" patternTransform="scale(1.5)">
-          <polygon points="30,1 58,16 58,46 30,61 2,46 2,16" fill="none" stroke="rgba(94,203,0,0.18)" stroke-width="0.8"/>
-        </pattern></defs>
-        <rect width="100%" height="100%" fill="url(#hex)"/>
-        <polygon points="90,53 118,68 118,98 90,113 62,98 62,68" fill="rgba(94,203,0,0.06)" stroke="rgba(94,203,0,0.4)" stroke-width="1">
-          <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite"/>
-        </polygon>
-        <polygon points="300,131 328,146 328,176 300,191 272,176 272,146" fill="rgba(94,203,0,0.04)" stroke="rgba(94,203,0,0.35)" stroke-width="1">
-          <animate attributeName="opacity" values="1;0.2;1" dur="4.5s" repeatCount="indefinite"/>
-        </polygon>
-        <line x1="90" y1="83" x2="300" y2="161" stroke="rgba(94,203,0,0.14)" stroke-width="0.6" stroke-dasharray="4,6">
-          <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="3s" repeatCount="indefinite"/>
-        </line>
-      </svg>
-    </div>
-    <div class="nano-particles">
-      <div class="particle"></div><div class="particle"></div><div class="particle"></div>
-      <div class="particle"></div><div class="particle"></div><div class="particle"></div>
-      <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
-    </div>
-    <div class="brand-top">
-      <div class="nano-logo-wrap">
-        <div class="nano-logo-img"><img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="Logo SENA"></div>
-        <div class="nano-logo-text">
-          <span class="abbr">SENA</span>
-          <span class="full">Servicio Nacional de Aprendizaje</span>
+<div class="shell">
+
+  <!-- Left: Branding -->
+  <div class="brand">
+    <div>
+      <div class="brand-logo">
+        <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA">
+        <span>Sena Colombia</span>
+      </div>
+      <h1>Gestión de<br>Proyectos <em>Formativos</em></h1>
+      <p>Plataforma institucional para el seguimiento integral de fichas, instructores, aprendices y proyectos de formación.</p>
+
+      <div class="brand-features">
+        <div class="feat">
+          <div class="feat-icon">📋</div>
+          Gestión de fichas y programas de formación
         </div>
-      </div>
-      <div class="nano-title">
-        <span class="accent">// Seguridad &middot; Acceso</span>
-        Recupera el<br>acceso a tu<br>cuenta
-      </div>
-      <div class="nano-subtitle-box">
-        <p class="nano-desc">
-          Restablece tu contrasena de forma <strong>segura</strong>.
-          El enlace de recuperacion expira en <strong><?= TOKEN_TTL_MIN ?> minutos</strong>
-          y es de un <strong>solo uso</strong>.
-        </p>
-      </div>
-    </div>
-    <div class="brand-center">
-      <div class="nano-orb-wrap">
-        <div class="nano-orb">
-          <div class="orbit-ring"></div><div class="orbit-ring"></div><div class="orbit-ring"></div>
-          <div class="orb-inner">
-            <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA" class="orb-center-img">
-          </div>
+        <div class="feat">
+          <div class="feat-icon">👥</div>
+          Seguimiento de instructores y aprendices
+        </div>
+        <div class="feat">
+          <div class="feat-icon">📊</div>
+          Reportes y análisis en tiempo real
         </div>
       </div>
     </div>
-    <div class="brand-footer">
-      <div class="nano-footer-text">&copy; <?= date('Y') ?> Servicio Nacional de Aprendizaje &middot; Colombia</div>
-      <div class="system-status"><span class="status-dot"></span>Sistema de Seguimiento de Proyectos Formativos</div>
-    </div>
+    <div class="brand-footer">© <?= date('Y') ?> Servicio Nacional de Aprendizaje · Colombia</div>
   </div>
 
-  <div class="nano-form-panel">
-    <div class="nano-form">
+  <!-- Right: Form -->
+  <div class="form-side">
+    <div class="card">
 
-      <a href="login.php" class="back-link"><i class="bi bi-arrow-left"></i> Volver al inicio de sesion</a>
+      <a href="login.php" class="back-link"><i class="bi bi-arrow-left"></i> Volver a iniciar sesión</a>
 
       <div class="step-track">
         <div class="step-node <?= $step >= 1 ? ($step > 1 ? 'done' : 'active') : '' ?>">
@@ -369,113 +916,284 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
         </div>
       </div>
 
-      <div class="nano-divider"></div>
+      <div class="divider"></div>
 
       <?php if (!empty($errors)): ?>
-        <div class="nano-alert danger" role="alert">
+        <div class="alert alert-error" role="alert">
           <i class="bi bi-shield-exclamation"></i>
-          <div><?php foreach ($errors as $err): ?><div><?= htmlspecialchars($err) ?></div><?php endforeach; ?></div>
+          <div>
+            <?php foreach ($errors as $err): ?>
+              <div><?= htmlspecialchars($err) ?></div>
+            <?php endforeach; ?>
+          </div>
         </div>
       <?php endif; ?>
 
       <?php if ($step === 1): ?>
         <div style="margin-bottom:1.4rem;">
-          <h2 style="font-size:1.35rem;margin-bottom:.25rem;color:var(--nano-text);">Restablecer <span style="color:var(--g1);">contrasena</span></h2>
-          <p style="font-size:.76rem;font-family:var(--mono);color:var(--nano-muted);">// Ingresa tu correo institucional para recibir el enlace</p>
+          <h2 style="font-size:1.35rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Restablecer contraseña</h2>
+          <p style="font-size:0.82rem;color:var(--text-muted);">Ingresa tu correo institucional para recibir el enlace de recuperación.</p>
         </div>
+
         <form method="POST" action="recover.php" id="recover-form">
           <input type="hidden" name="action" value="request">
-          <div class="nano-field">
-            <div class="nano-label"><span>Correo institucional</span></div>
-            <div class="nano-input-wrap">
-              <input type="email" name="email" id="recover-email" class="nano-input"
+          <div class="field">
+            <label for="recover-email">Correo institucional</label>
+            <div class="input-icon-wrap">
+              <input type="email" name="email" id="recover-email"
                      placeholder="usuario@sena.edu.co"
                      value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                      required autofocus>
-              <i class="bi bi-envelope-fill nano-input-icon"></i>
+              <i class="bi bi-envelope-fill input-icon"></i>
             </div>
           </div>
-          <button type="submit" id="recover-submit" class="nano-btn">
-            <i class="bi bi-send-fill"></i> Enviar enlace de recuperacion <i class="bi bi-arrow-right"></i>
+          <button type="submit" id="recover-submit" class="submit-btn">
+            <i class="bi bi-send-fill"></i> Enviar enlace de recuperación
           </button>
         </form>
 
       <?php elseif ($step === 2): ?>
-        <div style="text-align:center;padding:.5rem 0 1.4rem;">
+        <div style="text-align:center;padding:0.5rem 0 1.4rem;">
           <div class="success-orb"><i class="bi bi-envelope-check-fill"></i></div>
-          <h2 style="font-size:1.4rem;margin-bottom:.55rem;">Revisa tu <span style="color:var(--g1);">correo</span></h2>
-          <p style="font-size:.84rem;color:var(--nano-muted);font-family:var(--mono);line-height:1.75;">
-            Si el correo existe en el sistema, recibiras<br>un enlace para restablecer tu contrasena.<br>
-            <span style="color:var(--nano-soft);">Expira en <?= TOKEN_TTL_MIN ?> minutos.</span>
+          <h2 style="font-size:1.35rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">Revisa tu correo</h2>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.75;margin-bottom:12px;">
+            Si el correo electrónico existe en el sistema, recibirás un enlace seguro para restablecer tu contraseña.
+          </p>
+          <p style="font-size:0.78rem;color:var(--text-muted);">
+            El enlace de recuperación expira en <?= TOKEN_TTL_MIN ?> minutos.
           </p>
         </div>
+
         <?php if (DEV_MODE && !empty($dev_link)): ?>
           <div class="dev-box">
-            <strong><i class="bi bi-code-slash"></i> DEV_MODE - Enlace de prueba:</strong>
+            <strong><i class="bi bi-code-slash"></i> MODO DESARROLLO - Enlace de prueba:</strong>
             <a href="<?= htmlspecialchars($dev_link) ?>"><?= htmlspecialchars($dev_link) ?></a>
-            <div class="dev-note">Tambien guardado en <code>/logs/password_resets.log</code></div>
+            <div class="dev-note">También guardado en <code>/logs/password_resets.log</code></div>
           </div>
         <?php endif; ?>
-        <a href="login.php" class="nano-btn-outline"><i class="bi bi-box-arrow-in-right"></i> Volver al inicio de sesion</a>
+
+        <a href="login.php" class="btn-outline"><i class="bi bi-box-arrow-in-right"></i> Volver a iniciar sesión</a>
 
       <?php elseif ($step === 3): ?>
         <div style="margin-bottom:1.4rem;">
-          <h2 style="font-size:1.35rem;margin-bottom:.25rem;color:var(--nano-text);">Nueva <span style="color:var(--g1);">contrasena</span></h2>
-          <p style="font-size:.76rem;font-family:var(--mono);color:var(--nano-muted);">// Define una contrasena segura para tu cuenta</p>
+          <h2 style="font-size:1.35rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Nueva contraseña</h2>
+          <p style="font-size:0.82rem;color:var(--text-muted);">Define una contraseña segura para tu cuenta institucional.</p>
         </div>
+
         <form method="POST" action="recover.php" id="reset-form">
           <input type="hidden" name="action" value="reset">
           <input type="hidden" name="token" value="<?= htmlspecialchars($token_url) ?>">
-          <div class="nano-field">
-            <div class="nano-label"><span>Nueva contrasena</span></div>
-            <div class="nano-input-wrap">
-              <input type="password" name="password" id="pw-new" class="nano-input"
-                     data-pw-strength placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required minlength="8">
-              <i class="bi bi-lock-fill nano-input-icon"></i>
+
+          <div class="field">
+            <label for="pw-new">Nueva contraseña</label>
+            <div class="input-icon-wrap">
+              <input type="password" name="password" id="pw-new"
+                     placeholder="••••••••" required minlength="8">
+              <i class="bi bi-lock-fill input-icon"></i>
               <button type="button" class="pw-toggle-btn" data-pw-toggle="#pw-new"><i class="bi bi-eye"></i></button>
             </div>
-            <div class="pw-strength-nano" id="pw-bar"><span></span><span></span><span></span><span></span></div>
-            <div>
-              <div class="pw-req-nano" data-req="len"><i class="bi bi-circle"></i> Minimo 8 caracteres</div>
-              <div class="pw-req-nano" data-req="letter"><i class="bi bi-circle"></i> Contiene letras</div>
-              <div class="pw-req-nano" data-req="num"><i class="bi bi-circle"></i> Contiene numeros</div>
-              <div class="pw-req-nano" data-req="upper"><i class="bi bi-circle"></i> Una mayuscula (recomendado)</div>
+            <div class="pw-strength" id="pw-bar"><span></span><span></span><span></span><span></span></div>
+            <div style="margin-top: 8px;">
+              <div class="pw-req" data-req="len"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
+              <div class="pw-req" data-req="letter"><i class="bi bi-circle"></i> Contiene letras</div>
+              <div class="pw-req" data-req="num"><i class="bi bi-circle"></i> Contiene números</div>
+              <div class="pw-req" data-req="upper"><i class="bi bi-circle"></i> Una mayúscula (recomendado)</div>
             </div>
           </div>
-          <div class="nano-field">
-            <div class="nano-label"><span>Confirmar contrasena</span></div>
-            <div class="nano-input-wrap">
-              <input type="password" name="password_confirm" id="pw-confirm" class="nano-input"
-                     placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required minlength="8">
-              <i class="bi bi-shield-lock-fill nano-input-icon"></i>
+
+          <div class="field">
+            <label for="pw-confirm">Confirmar contraseña</label>
+            <div class="input-icon-wrap">
+              <input type="password" name="password_confirm" id="pw-confirm"
+                     placeholder="••••••••" required minlength="8">
+              <i class="bi bi-shield-lock-fill input-icon"></i>
               <button type="button" class="pw-toggle-btn" data-pw-toggle="#pw-confirm"><i class="bi bi-eye"></i></button>
             </div>
           </div>
-          <button type="submit" id="reset-submit" class="nano-btn">
-            <i class="bi bi-shield-check-fill"></i> Guardar nueva contrasena <i class="bi bi-arrow-right"></i>
+
+          <button type="submit" id="reset-submit" class="submit-btn">
+            <i class="bi bi-shield-check-fill"></i> Guardar nueva contraseña
           </button>
         </form>
       <?php endif; ?>
 
-      <div class="form-nano-footer" style="margin-top:1.25rem;">
-        <button type="button" class="theme-btn" onclick="toggleTheme()" aria-label="Cambiar tema"><i class="bi bi-moon-stars" id="theme-icon"></i></button>
-        <span class="nano-copyright">SENA &middot; Sistema Institucional &middot; <?= date('Y') ?></span>
+      <div class="card-footer">
+        © <?= date('Y') ?> Servicio Nacional de Aprendizaje · Colombia
       </div>
+
     </div>
   </div>
+
 </div>
 
 <script>
-document.querySelectorAll('[data-pw-toggle]').forEach(btn=>{btn.addEventListener('click',()=>{const inp=document.querySelector(btn.dataset.pwToggle),icon=btn.querySelector('i');if(!inp)return;inp.type=inp.type==='password'?'text':'password';icon.classList.toggle('bi-eye',inp.type==='password');icon.classList.toggle('bi-eye-slash',inp.type!=='password');});});
-function toggleTheme(){const r=document.documentElement,i=document.getElementById('theme-icon'),d=r.dataset.theme==='dark';r.dataset.theme=d?'light':'dark';i.className=d?'bi bi-sun-fill':'bi bi-moon-stars';localStorage.setItem('sena_theme',r.dataset.theme);}
-(function(){const s=localStorage.getItem('sena_theme');if(s){document.documentElement.dataset.theme=s;const i=document.getElementById('theme-icon');if(i)i.className=s==='dark'?'bi bi-moon-stars':'bi bi-sun-fill';}})();
-const pwInput=document.getElementById('pw-new'),pwBar=document.getElementById('pw-bar'),pwConf=document.getElementById('pw-confirm');
-if(pwInput){pwInput.addEventListener('input',()=>{const v=pwInput.value,r={len:v.length>=8,letter:/[A-Za-z]/.test(v),num:/[0-9]/.test(v),upper:/[A-Z]/.test(v)};document.querySelectorAll('.pw-req-nano').forEach(el=>{const ok=r[el.dataset.req];el.classList.toggle('ok',ok);el.querySelector('i').className=ok?'bi bi-check-circle-fill':'bi bi-circle';});if(pwBar)pwBar.className='pw-strength-nano'+(Object.values(r).filter(Boolean).length?` s${Object.values(r).filter(Boolean).length}`:'');});}
-if(pwConf&&pwInput){pwConf.addEventListener('input',()=>{const m=pwConf.value&&pwConf.value!==pwInput.value;pwConf.style.borderColor=m?'rgba(220,50,40,.6)':'';pwConf.style.boxShadow=m?'0 0 0 3px rgba(220,50,40,.12)':'';});}
-['recover-form','reset-form'].forEach(id=>{document.getElementById(id)?.addEventListener('submit',function(){const btn=this.querySelector('[type="submit"]');if(btn&&!btn.disabled){btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation:spin .7s linear infinite"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/></svg> Procesando...';btn.disabled=true;}});});
-document.querySelectorAll('.nano-btn').forEach(btn=>{btn.addEventListener('click',function(e){if(this.disabled)return;const r=this.getBoundingClientRect(),s=Math.max(r.width,r.height)*2,rp=document.createElement('span');rp.style.cssText='position:absolute;border-radius:50%;pointer-events:none;width:'+s+'px;height:'+s+'px;left:'+(e.clientX-r.left-s/2)+'px;top:'+(e.clientY-r.top-s/2)+'px;background:rgba(255,255,255,.22);transform:scale(0);animation:ripple-anim .6s ease-out forwards;';this.appendChild(rp);setTimeout(()=>rp.remove(),700);});});
-(function(){const canvas=document.getElementById('nano-canvas');if(!canvas)return;const ctx=canvas.getContext('2d');let W,H,nodes=[],mouse={x:-999,y:-999},animId;const G='94,203,0';function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}function mk(){return{x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.45,vy:(Math.random()-.5)*.45,r:Math.random()*1.8+.5,phi:Math.random()*Math.PI*2};}function init(){nodes=[];const n=Math.min(65,Math.floor(W*H/15000));for(let i=0;i<n;i++)nodes.push(mk());}function draw(){ctx.clearRect(0,0,W,H);const mD=150,md2=180;for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const d=Math.hypot(nodes[i].x-nodes[j].x,nodes[i].y-nodes[j].y);if(d<mD){ctx.beginPath();ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.strokeStyle='rgba('+G+','+(1-d/mD)*.4+')';ctx.lineWidth=.7;ctx.stroke();}}nodes.forEach(n=>{n.phi+=.012;const g=Math.sin(n.phi)*.35+.55,dx=n.x-mouse.x,dy=n.y-mouse.y,md=Math.hypot(dx,dy);if(md<md2&&md>0){const f=(1-md/md2)*.6;n.vx+=(dx/md)*f;n.vy+=(dy/md)*f;}n.vx*=.97;n.vy*=.97;ctx.beginPath();ctx.arc(n.x,n.y,n.r*(md<md2?1+(1-md/md2)*1.5:1),0,Math.PI*2);ctx.fillStyle='rgba('+G+','+g+')';ctx.shadowBlur=md<md2?18:9;ctx.shadowColor='rgba('+G+',.7)';ctx.fill();ctx.shadowBlur=0;n.x+=n.vx;n.y+=n.vy;if(n.x<0||n.x>W)n.vx*=-1;if(n.y<0||n.y>H)n.vy*=-1;});animId=requestAnimationFrame(draw);}window.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});window.addEventListener('mouseleave',()=>{mouse.x=-999;mouse.y=-999;});window.addEventListener('click',e=>{for(let i=0;i<6;i++){const n=mk();n.x=e.clientX;n.y=e.clientY;const a=(Math.PI*2/6)*i;n.vx=Math.cos(a)*2.5;n.vy=Math.sin(a)*2.5;nodes.push(n);if(nodes.length>100)nodes.shift();}});resize();init();draw();window.addEventListener('resize',()=>{cancelAnimationFrame(animId);resize();init();draw();});})();
-(function(){const card=document.querySelector('.nano-form'),panel=document.querySelector('.nano-form-panel');if(!card||!panel)return;let tick=false;panel.addEventListener('mousemove',e=>{if(!tick){requestAnimationFrame(()=>{const r=card.getBoundingClientRect(),dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2);card.style.transform='perspective(900px) rotateY('+(dx*5)+'deg) rotateX('+(-dy*4)+'deg) translateZ(4px)';tick=false;});tick=true;}});panel.addEventListener('mouseleave',()=>{card.style.transform='';card.style.transition='transform .6s cubic-bezier(0.22,1,0.36,1)';setTimeout(()=>{card.style.transition='';},620);});})();
+// Toggle Password Visibility
+document.querySelectorAll('[data-pw-toggle]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inp = document.querySelector(btn.dataset.pwToggle);
+    const icon = btn.querySelector('i');
+    if (!inp) return;
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    icon.classList.toggle('bi-eye', inp.type === 'password');
+    icon.classList.toggle('bi-eye-slash', inp.type !== 'password');
+  });
+});
+
+// Password Strength Checker
+const pwInput = document.getElementById('pw-new');
+const pwBar = document.getElementById('pw-bar');
+const pwConf = document.getElementById('pw-confirm');
+
+if (pwInput) {
+  pwInput.addEventListener('input', () => {
+    const v = pwInput.value;
+    const r = {
+      len: v.length >= 8,
+      letter: /[A-Za-z]/.test(v),
+      num: /[0-9]/.test(v),
+      upper: /[A-Z]/.test(v)
+    };
+
+    document.querySelectorAll('.pw-req').forEach(el => {
+      const ok = r[el.dataset.req];
+      el.classList.toggle('ok', ok);
+      el.querySelector('i').className = ok ? 'bi bi-check-circle-fill' : 'bi bi-circle';
+    });
+
+    if (pwBar) {
+      const score = Object.values(r).filter(Boolean).length;
+      pwBar.className = 'pw-strength' + (score ? ` s${score}` : '');
+    }
+  });
+}
+
+if (pwConf && pwInput) {
+  pwConf.addEventListener('input', () => {
+    const mismatch = pwConf.value && pwConf.value !== pwInput.value;
+    pwConf.style.borderColor = mismatch ? 'rgba(239, 68, 68, 0.6)' : '';
+    pwConf.style.boxShadow = mismatch ? '0 0 0 3px rgba(239, 68, 68, 0.12)' : '';
+  });
+}
+
+// Button loading state spinners
+['recover-form', 'reset-form'].forEach(id => {
+  document.getElementById(id)?.addEventListener('submit', function() {
+    const btn = this.querySelector('[type="submit"]');
+    if (btn && !btn.disabled) {
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation:spin .7s linear infinite; margin-right:8px;"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/></svg> Procesando...';
+      btn.disabled = true;
+    }
+  });
+});
+
+// Add CSS keyframe animation for spinner
+const style = document.createElement('style');
+style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+document.head.appendChild(style);
+
+// Particle Canvas Animation
+(function() {
+  var canvas = document.getElementById('particle-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var W, H, nodes = [], mouse = { x: -999, y: -999 }, animId;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function mkNode() {
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.4,
+      phi: Math.random() * Math.PI * 2
+    };
+  }
+
+  function initNodes() {
+    nodes = [];
+    var count = Math.min(70, Math.floor(W * H / 18000));
+    for (var i = 0; i < count; i++) nodes.push(mkNode());
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    var maxD = 140, mouseD = 160;
+
+    for (var i = 0; i < nodes.length; i++) {
+      for (var j = i + 1; j < nodes.length; j++) {
+        var dx = nodes[i].x - nodes[j].x;
+        var dy = nodes[i].y - nodes[j].y;
+        var d = Math.hypot(dx, dy);
+        if (d < maxD) {
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = 'rgba(52,211,153,' + ((1 - d / maxD) * 0.2) + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    for (var k = 0; k < nodes.length; k++) {
+      var n = nodes[k];
+      n.phi += 0.01;
+      var glow = Math.sin(n.phi) * 0.3 + 0.5;
+
+      var mdx = n.x - mouse.x, mdy = n.y - mouse.y;
+      var md = Math.hypot(mdx, mdy);
+      if (md < mouseD && md > 0) {
+        var force = (1 - md / mouseD) * 0.4;
+        n.vx += (mdx / md) * force;
+        n.vy += (mdy / md) * force;
+      }
+      n.vx *= 0.97;
+      n.vy *= 0.97;
+
+      ctx.beginPath();
+      var radius = n.r * (md < mouseD ? 1 + (1 - md / mouseD) * 0.8 : 1);
+      ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(52,211,153,' + glow + ')';
+      ctx.shadowBlur = md < mouseD ? 12 : 6;
+      ctx.shadowColor = 'rgba(52,211,153,0.4)';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x < 0 || n.x > W) n.vx *= -1;
+      if (n.y < 0 || n.y > H) n.vy *= -1;
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('mousemove', function(e) { mouse.x = e.clientX; mouse.y = e.clientY; });
+  window.addEventListener('mouseleave', function() { mouse.x = -999; mouse.y = -999; });
+
+  window.addEventListener('click', function(e) {
+    for (var i = 0; i < 4; i++) {
+      var n = mkNode();
+      n.x = e.clientX; n.y = e.clientY;
+      var angle = (Math.PI * 2 / 4) * i;
+      n.vx = Math.cos(angle) * 1.5;
+      n.vy = Math.sin(angle) * 1.5;
+      nodes.push(n);
+      if (nodes.length > 100) nodes.shift();
+    }
+  });
+
+  resize(); initNodes(); draw();
+  window.addEventListener('resize', function() {
+    cancelAnimationFrame(animId);
+    resize(); initNodes(); draw();
+  });
+})();
 </script>
 </body>
 </html>

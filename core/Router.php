@@ -36,13 +36,6 @@ class Router {
                 $controllerClass = $route['controller'];
                 $actionName = $route['action'];
 
-                // Incluir archivo de controlador si no se está usando autoloading completo
-                $className = str_replace('Core\\Controllers\\', '', $controllerClass);
-                $controllerFile = __DIR__ . '/controllers/' . $className . '.php';
-                if (file_exists($controllerFile)) {
-                    require_once $controllerFile;
-                }
-
                 if (class_exists($controllerClass)) {
                     $controller = new $controllerClass();
                     if (method_exists($controller, $actionName)) {

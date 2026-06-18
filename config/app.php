@@ -21,4 +21,5 @@ define('ROL_APRENDIZ', 'aprendiz');
 
 // Modo desarrollo: muestra el enlace de recuperación en pantalla.
 // Cambiar a false antes de desplegar en producción.
-define('DEV_MODE', true);
+define('DEV_MODE', filter_var(getenv('DEV_MODE') !== false ? getenv('DEV_MODE') : 'true', FILTER_VALIDATE_BOOLEAN));
+

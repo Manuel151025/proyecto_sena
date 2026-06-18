@@ -16,4 +16,8 @@ require_once __DIR__ . '/header.php';
     </section>
   </main>
 </div>
+<?php if (getCurrentRole() === ROL_COORDINADOR): ?>
+  <?php require_once __DIR__ . '/../components/modal_crear_usuario.php'; ?>
+  <?php require_once __DIR__ . '/../components/modal_editar_usuario.php'; ?>
+<?php endif; ?>
 <?php require_once __DIR__ . '/footer.php'; ?>

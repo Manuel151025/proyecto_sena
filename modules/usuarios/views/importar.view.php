@@ -7,7 +7,7 @@
 <div class="alert-flat <?= htmlspecialchars($tipo_mensaje) ?> mb-3">
   <i class="bi bi-check-circle"></i>
   <div><?= htmlspecialchars($mensaje) ?></div>
-  <br><a href="<?= MODULES_PATH ?>/usuarios/">Volver a la lista →</a>
+  <br><a href="<?= APP_URL ?>/index.php/usuarios">Volver a la lista →</a>
 </div>
 <?php endif; ?>
 
@@ -41,7 +41,7 @@
 
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i> Subir e Importar</button>
-            <a href="<?= MODULES_PATH ?>/usuarios/" class="btn btn-soft">Cancelar</a>
+            <a href="<?= APP_URL ?>/index.php/usuarios" class="btn btn-soft">Cancelar</a>
           </div>
         </form>
       </div>

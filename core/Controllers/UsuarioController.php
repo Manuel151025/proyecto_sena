@@ -7,13 +7,11 @@ use Core\Models\UsuarioModel;
 use Core\XlsxParser;
 use Exception;
 
-require_once __DIR__ . '/../XlsxParser.php';
-
 class UsuarioController {
     private UsuarioModel $usuarioModel;
 
-    public function __construct() {
-        $this->usuarioModel = new UsuarioModel();
+    public function __construct(?UsuarioModel $usuarioModel = null) {
+        $this->usuarioModel = $usuarioModel ?? new UsuarioModel();
     }
 
     /**
@@ -81,6 +79,7 @@ class UsuarioController {
         $tipo_mensaje = '';
         $errors = [];
         $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
@@ -100,6 +99,11 @@ class UsuarioController {
             if (empty($errors)) {
                 try {
                     if ($this->usuarioModel->create($data)) {
+                        if ($isAjax) {
+                            header('Content-Type: application/json');
+                            echo json_encode(['status' => 'success', 'message' => 'Usuario creado correctamente']);
+                            exit;
+                        }
                         $mensaje = 'Usuario creado correctamente';
                         $tipo_mensaje = 'success';
                         $_POST = []; // Limpiar formulario
@@ -107,6 +111,12 @@ class UsuarioController {
                 } catch (Exception $e) {
                     $errors[] = $e->getMessage();
                 }
+            }
+
+            if ($isAjax && !empty($errors)) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'errors' => $errors]);
+                exit;
             }
         }
 
@@ -118,25 +128,47 @@ class UsuarioController {
     /**
      * Orquesta la vista de editar usuario y maneja la petición POST de actualización.
      */
-    public function edit(int $id): void {
+    public function edit(?int $id = null): void {
         global $app_included;
+
+        if ($id === null) {
+            $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+        }
 
         $mensaje = '';
         $tipo_mensaje = '';
         $errors = [];
         $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
         // Cargar datos actuales
         $usuario = null;
         try {
             $usuario = $this->usuarioModel->findById($id);
             if (!$usuario) {
-                // Podríamos redirigir o mostrar un error si el usuario no existe
-                header('Location: ' . APP_URL . '/modules/usuarios/');
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => 'Usuario no encontrado']);
+                    exit;
+                }
+                // Redirigir si el usuario no existe
+                header('Location: ' . APP_URL . '/index.php/usuarios');
                 exit;
             }
         } catch (Exception $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                exit;
+            }
             $errors[] = $e->getMessage();
+        }
+
+        // Si es una petición GET por AJAX, devolver los datos del usuario en JSON
+        if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'data' => $usuario]);
+            exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $usuario) {
@@ -161,6 +193,11 @@ class UsuarioController {
             if (empty($errors)) {
                 try {
                     if ($this->usuarioModel->update($id, $data)) {
+                        if ($isAjax) {
+                            header('Content-Type: application/json');
+                            echo json_encode(['status' => 'success', 'message' => 'Usuario actualizado correctamente']);
+                            exit;
+                        }
                         $mensaje = 'Usuario actualizado correctamente';
                         $tipo_mensaje = 'success';
                         // Recargar el usuario con los datos actualizados para mostrar en la vista
@@ -169,6 +206,12 @@ class UsuarioController {
                 } catch (Exception $e) {
                     $errors[] = $e->getMessage();
                 }
+            }
+
+            if ($isAjax && !empty($errors)) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'errors' => $errors]);
+                exit;
             }
         }
 
