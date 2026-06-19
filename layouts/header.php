@@ -42,6 +42,26 @@ declare(strict_types=1);
   // Establecer la cookie inmediatamente (cubre recargas y navegaciones directas)
   document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
 
+  // Migración de cookies de biometría a localStorage
+  var cookies = document.cookie.split(';');
+  var bioEmail = '', bioToken = '';
+  for (var i = 0; i < cookies.length; i++) {
+    var c = cookies[i].trim();
+    if (c.indexOf('sena_bio_email=') === 0) {
+      bioEmail = decodeURIComponent(c.substring('sena_bio_email='.length));
+    }
+    if (c.indexOf('sena_bio_token=') === 0) {
+      bioToken = decodeURIComponent(c.substring('sena_bio_token='.length));
+    }
+  }
+  if (bioEmail && bioToken) {
+    localStorage.setItem('sena_bio_email', bioEmail);
+    localStorage.setItem('sena_bio_token', bioToken);
+    // Borrar cookies expirándolas
+    document.cookie = 'sena_bio_email=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'sena_bio_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  }
+
   // JIT antes de cualquier clic en enlace
   document.addEventListener('click', function (e) {
     var a = e.target.closest('a[href]');
