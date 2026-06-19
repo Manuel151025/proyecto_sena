@@ -201,7 +201,15 @@ function validateCsrfToken(?string $token): bool {
     if ($token === null || $token === '') {
         return false;
     }
-    $expected = $_SESSION['tabs'][getTabId()]['csrf_token'] ?? null;
+    $tabId = getTabId();
+    $expected = $_SESSION['tabs'][$tabId]['csrf_token'] ?? null;
+    
+    // Fallback: Si no hay token generado para esta pestaña en particular (ej: primera carga),
+    // validamos contra el token por defecto de la sesión para evitar el error 403.
+    if (empty($expected) && $tabId !== 'default') {
+        $expected = $_SESSION['tabs']['default']['csrf_token'] ?? null;
+    }
+    
     if (empty($expected)) {
         return false;
     }
