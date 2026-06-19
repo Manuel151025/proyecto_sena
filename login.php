@@ -78,6 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons for modern inputs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   
   <!-- PWA Manifest & Meta Tags -->
   <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
@@ -279,6 +281,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       border-radius: 20px;
       padding: 48px 40px;
       transition: border-color 0.5s ease, box-shadow 0.5s ease;
+      position: relative;
+      overflow: hidden;
     }
 
     .card:hover {
@@ -286,9 +290,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       box-shadow: 0 0 60px rgba(52, 211, 153, 0.04);
     }
 
+    /* ── Card Banner ── */
+    .card-banner {
+      background: linear-gradient(135deg, rgba(57, 169, 0, 0.15), rgba(10, 15, 13, 0.95));
+      border-bottom: 2px solid #39A900;
+      padding: 22px 24px;
+      margin: -48px -40px 30px -40px;
+      border-top-left-radius: 19px;
+      border-top-right-radius: 19px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .card-banner img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 8px rgba(57, 169, 0, 0.4));
+    }
+
+    .banner-text h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.05em;
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    .banner-text p {
+      font-size: 0.68rem;
+      color: #39A900;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 2px 0 0 0;
+      line-height: 1.2;
+    }
+
     .card-header {
       text-align: center;
-      margin-bottom: 36px;
+      margin-bottom: 30px;
     }
 
     .card-header h2 {
@@ -301,6 +344,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     .card-header p {
       font-size: 0.82rem;
       color: var(--text-muted);
+    }
+
+    /* ── Input Icons & Group ── */
+    .input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .input-group i.input-icon {
+      position: absolute;
+      left: 16px;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      transition: color 0.3s ease;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .input-group input {
+      padding-left: 46px !important;
+      padding-right: 44px !important;
+      height: 48px;
+    }
+
+    .input-group input:focus ~ i.input-icon {
+      color: var(--emerald);
+    }
+
+    /* ── Toggle Password Button ── */
+    .toggle-password {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 8px;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.3s ease;
+      z-index: 10;
+    }
+
+    .toggle-password:hover {
+      color: var(--emerald);
     }
 
     /* ── Form ── */
@@ -431,6 +523,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
 
     @media (max-width: 480px) {
       .card { padding: 36px 24px; border-radius: 16px; }
+      .card-banner {
+         margin: -36px -24px 24px -24px;
+         border-top-left-radius: 15px;
+         border-top-right-radius: 15px;
+         padding: 18px 20px;
+      }
     }
 
     .field input:disabled {
@@ -482,6 +580,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       });
     });
   }
+
+  // Toggle de visibilidad de contraseña
+  window.addEventListener('DOMContentLoaded', function() {
+    var toggleBtn = document.getElementById('toggle-pw-btn');
+    var pwInput = document.getElementById('pw-login');
+    var toggleIcon = document.getElementById('toggle-pw-icon');
+    if (toggleBtn && pwInput && toggleIcon) {
+      toggleBtn.addEventListener('click', function() {
+        if (pwInput.type === 'password') {
+          pwInput.type = 'text';
+          toggleIcon.classList.remove('bi-eye');
+          toggleIcon.classList.add('bi-eye-slash');
+          toggleBtn.setAttribute('aria-label', 'Ocultar contraseña');
+        } else {
+          pwInput.type = 'password';
+          toggleIcon.classList.remove('bi-eye-slash');
+          toggleIcon.classList.add('bi-eye');
+          toggleBtn.setAttribute('aria-label', 'Mostrar contraseña');
+        }
+      });
+    }
+  });
 })();
 </script>
 
@@ -518,6 +638,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
   <!-- Right: Form -->
   <div class="form-side">
     <div class="card">
+      <div class="card-banner">
+        <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA Logo">
+        <div class="banner-text">
+          <h3>SENA</h3>
+          <p>Servicio Nacional de Aprendizaje</p>
+        </div>
+      </div>
       <div class="card-header">
         <h2>Iniciar Sesión</h2>
         <p>Ingresa con tu cuenta institucional</p>
@@ -534,11 +661,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
         <?= csrfField() ?>
         <div class="field">
           <label for="login-email">Correo institucional</label>
-          <input type="email" name="email" id="login-email" placeholder="usuario@sena.edu.co" autocomplete="email" required <?= $isBlocked ? 'disabled' : '' ?>>
+          <div class="input-group">
+            <input type="email" name="email" id="login-email" placeholder="usuario@sena.edu.co" autocomplete="email" required <?= $isBlocked ? 'disabled' : '' ?>>
+            <i class="bi bi-envelope input-icon"></i>
+          </div>
         </div>
         <div class="field">
           <label for="pw-login">Contraseña</label>
-          <input type="password" name="password" id="pw-login" placeholder="••••••••" autocomplete="current-password" required <?= $isBlocked ? 'disabled' : '' ?>>
+          <div class="input-group">
+            <input type="password" name="password" id="pw-login" placeholder="••••••••" autocomplete="current-password" required <?= $isBlocked ? 'disabled' : '' ?>>
+            <i class="bi bi-lock input-icon"></i>
+            <button type="button" class="toggle-password" id="toggle-pw-btn" aria-label="Mostrar contraseña">
+              <i class="bi bi-eye" id="toggle-pw-icon"></i>
+            </button>
+          </div>
         </div>
         <button type="submit" class="submit-btn" <?= $isBlocked ? 'disabled' : '' ?>><?= $isBlocked ? 'Acceso Bloqueado' : 'Ingresar al sistema' ?></button>
       </form>

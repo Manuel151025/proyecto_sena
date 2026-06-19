@@ -12,6 +12,14 @@ ini_set('session.use_only_cookies', '1');
 ini_set('session.cookie_httponly', '1');
 ini_set('session.cookie_samesite', 'Lax');
 
+// Habilitar cookie segura en conexiones HTTPS (incluyendo detrás de proxy inverso)
+if (
+    (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === 1)) ||
+    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+) {
+    ini_set('session.cookie_secure', '1');
+}
+
 session_start();
 
 require_once __DIR__ . '/config.php';
