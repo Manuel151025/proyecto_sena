@@ -1,4 +1,4 @@
-const CACHE_NAME = "sena-cache-v1";
+const CACHE_NAME = "sena-cache-v2";
 const ASSETS_TO_CACHE = [
   "./assets/css/theme.css",
   "./assets/css/picker.css",
