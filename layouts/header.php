@@ -239,14 +239,22 @@ declare(strict_types=1);
       clearBioCookies();
     }
 
-    document.getElementById('bio-opt-out').addEventListener('click', closePrompt);
+    document.getElementById('bio-opt-out').addEventListener('click', function() {
+      localStorage.setItem('sena_bio_dismissed', '1');
+      closePrompt();
+    });
     document.getElementById('bio-opt-in').addEventListener('click', function() {
       registerBiometricCredential(email, token, closePrompt);
     });
   }
 
   if (bioEmail && bioToken) {
-    if (window.PublicKeyCredential) {
+    var alreadyLinked = localStorage.getItem('sena_bio_cred_id');
+    var isDismissed = localStorage.getItem('sena_bio_dismissed');
+
+    if (alreadyLinked || isDismissed) {
+      clearBioCookies();
+    } else if (window.PublicKeyCredential) {
       PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
         .then(function(available) {
           if (available) {
