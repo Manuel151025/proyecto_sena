@@ -12,6 +12,7 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="formEditarUsuario" novalidate>
+        <?= csrfField() ?>
         <input type="hidden" name="id" id="edit-id">
         <div class="modal-body p-0">
           <div class="row g-0">

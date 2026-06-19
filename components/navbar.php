@@ -123,7 +123,7 @@ $tipoIconos = [
     fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'action=marcar_leida&id=' + encodeURIComponent(id) + '&_tab=' + encodeURIComponent(window.__tabId || 'default')
+      body: 'action=marcar_leida&id=' + encodeURIComponent(id) + '&_tab=' + encodeURIComponent(window.__tabId || 'default') + '&csrf_token=' + encodeURIComponent('<?= getCsrfToken() ?>')
     });
 
     // Eliminar visualmente
@@ -136,7 +136,7 @@ $tipoIconos = [
     fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'action=marcar_todas&_tab=' + encodeURIComponent(window.__tabId || 'default')
+      body: 'action=marcar_todas&_tab=' + encodeURIComponent(window.__tabId || 'default') + '&csrf_token=' + encodeURIComponent('<?= getCsrfToken() ?>')
     }).then(() => {
       listContainer.innerHTML = '<div class="text-center text-muted py-4" id="notifEmpty"><i class="bi bi-bell-slash fs-2 d-block mb-2"></i>No tienes notificaciones nuevas</div>';
       updateBadgeCount(0, true);

@@ -124,6 +124,7 @@ declare(strict_types=1);
               </button>
               <form method="POST" class="d-inline"
                     onsubmit="return confirm('¿Eliminar la competencia <?= htmlspecialchars(addslashes($comp['nombre'])) ?>? Esta acción no se puede deshacer.')">
+                <?= csrfField() ?>
                 <input type="hidden" name="action" value="eliminar">
                 <input type="hidden" name="id" value="<?= $comp['id'] ?>">
                 <button type="submit" class="btn btn-sm btn-soft text-danger">
@@ -158,6 +159,7 @@ declare(strict_types=1);
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="editar">
         <input type="hidden" name="id" id="edit_id">
         <div class="modal-body">
@@ -229,6 +231,7 @@ function abrirModalEditar(id, programaId, codigo, nombre, descripcion, horas, es
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="crear">
         <div class="modal-body">
           <div class="mb-3">

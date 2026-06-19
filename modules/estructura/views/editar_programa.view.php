@@ -42,6 +42,7 @@ declare(strict_types=1);
     <div class="card border-0 shadow-sm">
       <div class="card-body p-4">
         <form method="POST">
+          <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label fw-bold">Nombre del Programa</label>
             <input type="text" name="nombre" class="form-control" placeholder="Ej: Tecnólogo en Análisis y Desarrollo de Software" value="<?= htmlspecialchars($programa['nombre']) ?>" required maxlength="200">

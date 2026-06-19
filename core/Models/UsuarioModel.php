@@ -4,10 +4,11 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
+use Core\Interfaces\UsuarioRepositoryInterface;
 use PDO;
 use Exception;
 
-class UsuarioModel {
+class UsuarioModel implements UsuarioRepositoryInterface {
     private PDO $db;
 
     public function __construct(?PDO $db = null) {

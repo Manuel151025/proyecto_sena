@@ -38,6 +38,13 @@ if (isset($_SESSION['_flash_success'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
+    // Validar token CSRF
+    $csrfToken = $_POST['csrf_token'] ?? '';
+    if (!validateCsrfToken($csrfToken)) {
+        http_response_code(403);
+        die('Error 403: Solicitud rechazada por validación de seguridad (Token CSRF inválido o ausente).');
+    }
+
     $email    = $_POST['email']    ?? '';
     $password = $_POST['password'] ?? '';
 
@@ -490,6 +497,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       <?php endif; ?>
 
       <form method="post" autocomplete="on">
+        <?= csrfField() ?>
         <div class="field">
           <label for="login-email">Correo institucional</label>
           <input type="email" name="email" id="login-email" placeholder="usuario@sena.edu.co" autocomplete="email" required <?= $isBlocked ? 'disabled' : '' ?>>

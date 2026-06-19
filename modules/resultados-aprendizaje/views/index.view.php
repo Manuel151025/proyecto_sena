@@ -65,6 +65,7 @@ declare(strict_types=1);
                   </button>
                   <form method="POST" class="d-inline"
                         onsubmit="return confirm('¿Eliminar este RAP? Esta acción no se puede deshacer.')">
+                    <?= csrfField() ?>
                     <input type="hidden" name="action" value="eliminar_rap">
                     <input type="hidden" name="id" value="<?= $rap['id'] ?>">
                     <button type="submit" class="btn btn-sm btn-soft py-0 px-1 text-danger" style="font-size:.75rem;">
@@ -104,6 +105,7 @@ declare(strict_types=1);
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="editar_rap">
         <input type="hidden" name="id" id="edit_rap_id">
         <div class="modal-body">
@@ -155,6 +157,7 @@ function abrirModalEditarRAP(id, competenciaId, codigo, denominacion) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="crear_rap">
         <div class="modal-body">
           <div class="mb-3">

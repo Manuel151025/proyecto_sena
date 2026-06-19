@@ -191,6 +191,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="matricular">
         <div class="modal-body">
           <div class="row g-3 mb-3">
@@ -288,6 +289,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST" enctype="multipart/form-data">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="cargar_csv">
         <div class="modal-body">
           <p class="text-muted small mb-3">
@@ -340,6 +342,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="editar_matricula">
         <input type="hidden" name="aprendiz_id" id="edit_aprendiz_id">
         <div class="modal-body">
@@ -439,6 +442,7 @@
 <?php endif; ?>
 
 <form id="formEliminarMatricula" method="POST" style="display:none;">
+  <?= csrfField() ?>
   <input type="hidden" name="action" value="eliminar_matricula">
   <input type="hidden" name="aprendiz_id" id="eliminar_aprendiz_id">
 </form>

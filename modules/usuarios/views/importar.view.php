@@ -33,6 +33,7 @@
     <div class="card">
       <div class="card-body">
         <form method="POST" enctype="multipart/form-data">
+          <?= csrfField() ?>
           <div class="mb-4">
             <label class="form-label d-block">Archivo Excel / CSV</label>
             <input type="file" name="archivo_csv" class="form-control" accept=".csv, .xlsx, .xls" required>

@@ -27,6 +27,7 @@
     <div class="card">
       <div class="card-body">
         <form method="POST">
+          <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label">Nombre completo</label>
             <input type="text" name="nombre" class="form-control" placeholder="Ej: Carlos Andrés Martínez" value="<?= htmlspecialchars($_POST['nombre'] ?? '') ?>" required>

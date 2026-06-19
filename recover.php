@@ -73,6 +73,7 @@ function build_reset_link(string $token): string {
 // =====================================================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'request') {
+    requireCsrf();
 
     $email = trim($_POST['email'] ?? '');
 
@@ -144,6 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reque
 // =====================================================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset') {
+    requireCsrf();
 
     $token_plain = $_POST['token'] ?? '';
     $password    = $_POST['password'] ?? '';
@@ -936,6 +938,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
         </div>
 
         <form method="POST" action="recover.php" id="recover-form">
+          <?= csrfField() ?>
           <input type="hidden" name="action" value="request">
           <div class="field">
             <label for="recover-email">Correo institucional</label>
@@ -981,6 +984,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
         </div>
 
         <form method="POST" action="recover.php" id="reset-form">
+          <?= csrfField() ?>
           <input type="hidden" name="action" value="reset">
           <input type="hidden" name="token" value="<?= htmlspecialchars($token_url) ?>">
 
