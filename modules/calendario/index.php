@@ -120,7 +120,7 @@ $apiUrl = APP_URL . '/modules/calendario/api_events.php';
     --fc-button-text-color: var(--text);
 }
 .fc .fc-toolbar-title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text);
 }
@@ -205,6 +205,65 @@ $apiUrl = APP_URL . '/modules/calendario/api_events.php';
     font-size: .82rem; color: var(--text-muted); margin-bottom: .35rem;
 }
 #cal-modal .meta-row strong { color: var(--text); white-space: nowrap; }
+
+/* ── Adaptabilidad Móvil (Responsive CSS overrides) ── */
+@media (max-width: 768px) {
+    .cal-card {
+        padding: 0.75rem;
+    }
+    .fc .fc-toolbar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.75rem;
+    }
+    /* Reordenar barra de herramientas: Título arriba, luego controles de navegación y vistas */
+    .fc .fc-toolbar-chunk:nth-child(2) {
+        order: 1;
+        text-align: center;
+    }
+    .fc .fc-toolbar-chunk:nth-child(1) {
+        order: 2;
+        display: flex;
+        justify-content: center;
+    }
+    .fc .fc-toolbar-chunk:nth-child(3) {
+        order: 3;
+        display: flex;
+        justify-content: center;
+    }
+    .fc .fc-toolbar-title {
+        font-size: 1.05rem !important;
+    }
+    .fc .fc-button {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+    }
+    .cal-legend {
+        gap: 0.4rem;
+    }
+    .cal-legend-item {
+        font-size: 0.72rem;
+        padding: 0.2rem 0.5rem;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+}
+
+@media (max-width: 576px) {
+    .cal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .cal-header h1 {
+        font-size: 1.3rem;
+    }
+    .cal-header .role-badge {
+        padding: 0.25rem 0.65rem;
+        font-size: 0.75rem;
+    }
+}
 </style>
 
 <div class="cal-wrap">
