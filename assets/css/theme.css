@@ -684,3 +684,12 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 [data-theme="dark"] .dropdown-link.active {
   color: #79d24a !important;
 }
+
+/* ============================================================
+   UTILIDADES DE ANCHO RESPONSIVAS (Faltantes en Bootstrap 5)
+   ============================================================ */
+@media (min-width: 576px) {
+  .w-sm-auto {
+    width: auto !important;
+  }
+}
