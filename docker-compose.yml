@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: sena_app_manuel
+    restart: always
+    ports:
+      - "8090:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    container_name: sena_db_manuel
+    restart: always
+    environment:
+      MYSQL_DATABASE: sena_seguimiento
+      MYSQL_USER: sena_user
+      MYSQL_PASSWORD: sena_password
+      MYSQL_ROOT_PASSWORD: sena_root_password
+    volumes:
+      - sena_db_data:/var/lib/mysql
+      # Importación automática de la base de datos al iniciar por primera vez
+      - ./sena_seguimiento.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  sena_db_data:
