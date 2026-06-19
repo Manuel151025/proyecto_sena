@@ -33,6 +33,11 @@ class Router {
 
         foreach ($this->routes as $route) {
             if ($route['method'] === $method && $route['path'] === $path) {
+                // Validar token CSRF de forma global en peticiones POST
+                if ($method === 'POST') {
+                    requireCsrf();
+                }
+
                 $controllerClass = $route['controller'];
                 $actionName = $route['action'];
 

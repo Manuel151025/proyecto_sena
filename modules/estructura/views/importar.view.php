@@ -47,6 +47,7 @@ declare(strict_types=1);
       </div>
       <div class="card-body p-4">
         <form method="POST" enctype="multipart/form-data" id="uploadForm">
+          <?= csrfField() ?>
           
           <!-- Estructura Curricular -->
           <div class="mb-4">
@@ -187,10 +188,12 @@ function updateFilename(inputId, nameId) {
       <div class="fw-semibold text-muted"><i class="bi bi-layers me-2"></i>Estado: Esperando confirmación de escritura</div>
       <div class="d-flex gap-2">
         <form method="POST" style="display:inline;">
+          <?= csrfField() ?>
           <input type="hidden" name="action" value="cancelar">
           <button type="submit" class="btn btn-soft px-4"><i class="bi bi-trash me-2"></i>Cancelar</button>
         </form>
         <form method="POST" style="display:inline;">
+          <?= csrfField() ?>
           <input type="hidden" name="action" value="confirmar">
           <button type="submit" class="btn btn-primary px-5 fw-bold"><i class="bi bi-check-all me-2"></i>Confirmar e Importar</button>
         </form>

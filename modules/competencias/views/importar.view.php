@@ -33,6 +33,7 @@ declare(strict_types=1);
       <div class="card-body">
         <h5 class="fw-bold text-dark mb-3"><i class="bi bi-upload text-success me-2"></i>Cargar Plantilla</h5>
         <form method="POST" enctype="multipart/form-data">
+          <?= csrfField() ?>
           <div class="mb-4">
             <label class="form-label text-muted small fw-semibold">Selecciona el archivo (.xlsx o .csv)</label>
             <input type="file" name="archivo_competencias" class="form-control" accept=".xlsx, .csv" required>

@@ -3,23 +3,58 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\BaseController;
+use Core\Interfaces\UsuarioRepositoryInterface;
 use Core\Models\UsuarioModel;
 use Core\XlsxParser;
 use Exception;
 
-class UsuarioController {
-    private UsuarioModel $usuarioModel;
+class UsuarioController extends BaseController {
+    private UsuarioRepositoryInterface $usuarioModel;
 
-    public function __construct(?UsuarioModel $usuarioModel = null) {
+    public function __construct(?UsuarioRepositoryInterface $usuarioModel = null) {
+        parent::__construct();
+        // Exigir sesión y rol de coordinador para todo este controlador
+        requireRole(ROL_COORDINADOR);
         $this->usuarioModel = $usuarioModel ?? new UsuarioModel();
+    }
+
+    /**
+     * Valida los datos de un usuario. (Cumple SRP: Single Responsibility Principle)
+     */
+    private function validateUser(array $data, bool $isEdit): array {
+        $errors = [];
+        if (empty($data['nombre'])) {
+            $errors[] = 'El nombre es requerido';
+        }
+        if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Email inválido';
+        }
+        
+        if ($isEdit) {
+            if (!empty($data['password']) && strlen($data['password']) < 6) {
+                $errors[] = 'Si deseas cambiar la contraseña, debe tener al menos 6 caracteres';
+            }
+            if (!in_array($data['estado'], ['activo', 'inactivo', 'bloqueado'])) {
+                $errors[] = 'Estado inválido';
+            }
+        } else {
+            if (strlen($data['password']) < 6) {
+                $errors[] = 'La contraseña debe tener al menos 6 caracteres';
+            }
+        }
+
+        if (!in_array($data['rol'], ['coordinador', 'instructor', 'aprendiz'])) {
+            $errors[] = 'Rol inválido';
+        }
+
+        return $errors;
     }
 
     /**
      * Orquesta la vista principal de listar usuarios y maneja acciones simples como eliminar.
      */
     public function index(): void {
-        global $app_included;
-
         $mensaje = '';
         $tipo_mensaje = '';
 
@@ -59,22 +94,23 @@ class UsuarioController {
             'bloqueado' => ['Bloqueado', 'danger']
         ];
 
-        // Preparar las variables requeridas por el layout global
-        $pageTitle = 'Usuarios · SENA';
-        // Ajustar ruta relativa en base al entry point actual (modules/usuarios/index.php)
-        $contentView = __DIR__ . '/../../modules/usuarios/views/index.view.php';
-        
-        // Incluir el layout global. Al ser incluido dentro de este método,
-        // tendrá acceso a $usuarios, $roles_label, $estados_label, $mensaje, etc.
-        require_once __DIR__ . '/../../layouts/app.php';
+        $this->render(
+            BASE_PATH . 'modules/usuarios/views/index.view.php',
+            [
+                'mensaje' => $mensaje,
+                'tipo_mensaje' => $tipo_mensaje,
+                'usuarios' => $usuarios,
+                'roles_label' => $roles_label,
+                'estados_label' => $estados_label
+            ],
+            'Usuarios · SENA'
+        );
     }
 
     /**
      * Orquesta la vista de crear usuario y maneja la petición POST de creación.
      */
     public function create(): void {
-        global $app_included;
-
         $mensaje = '';
         $tipo_mensaje = '';
         $errors = [];
@@ -90,19 +126,14 @@ class UsuarioController {
                 'avatar_color' => $_POST['avatar_color'] ?? '#39A900'
             ];
 
-            // Validaciones
-            if (empty($data['nombre'])) $errors[] = 'El nombre es requerido';
-            if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Email inválido';
-            if (strlen($data['password']) < 6) $errors[] = 'La contraseña debe tener al menos 6 caracteres';
-            if (!in_array($data['rol'], ['coordinador', 'instructor', 'aprendiz'])) $errors[] = 'Rol inválido';
+            // Validar usando el método extraído
+            $errors = $this->validateUser($data, false);
 
             if (empty($errors)) {
                 try {
                     if ($this->usuarioModel->create($data)) {
                         if ($isAjax) {
-                            header('Content-Type: application/json');
-                            echo json_encode(['status' => 'success', 'message' => 'Usuario creado correctamente']);
-                            exit;
+                            $this->json(['status' => 'success', 'message' => 'Usuario creado correctamente']);
                         }
                         $mensaje = 'Usuario creado correctamente';
                         $tipo_mensaje = 'success';
@@ -114,23 +145,26 @@ class UsuarioController {
             }
 
             if ($isAjax && !empty($errors)) {
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'errors' => $errors]);
-                exit;
+                $this->json(['status' => 'error', 'errors' => $errors]);
             }
         }
 
-        $pageTitle = 'Crear Usuario · SENA';
-        $contentView = __DIR__ . '/../../modules/usuarios/views/crear.view.php';
-        require_once __DIR__ . '/../../layouts/app.php';
+        $this->render(
+            BASE_PATH . 'modules/usuarios/views/crear.view.php',
+            [
+                'mensaje' => $mensaje,
+                'tipo_mensaje' => $tipo_mensaje,
+                'errors' => $errors,
+                'colors' => $colors
+            ],
+            'Crear Usuario · SENA'
+        );
     }
 
     /**
      * Orquesta la vista de editar usuario y maneja la petición POST de actualización.
      */
     public function edit(?int $id = null): void {
-        global $app_included;
-
         if ($id === null) {
             $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
         }
@@ -147,28 +181,20 @@ class UsuarioController {
             $usuario = $this->usuarioModel->findById($id);
             if (!$usuario) {
                 if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode(['status' => 'error', 'message' => 'Usuario no encontrado']);
-                    exit;
+                    $this->json(['status' => 'error', 'message' => 'Usuario no encontrado']);
                 }
-                // Redirigir si el usuario no existe
-                header('Location: ' . APP_URL . '/index.php/usuarios');
-                exit;
+                $this->redirect(APP_URL . '/index.php/usuarios');
             }
         } catch (Exception $e) {
             if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-                exit;
+                $this->json(['status' => 'error', 'message' => $e->getMessage()]);
             }
             $errors[] = $e->getMessage();
         }
 
         // Si es una petición GET por AJAX, devolver los datos del usuario en JSON
         if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'GET') {
-            header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'data' => $usuario]);
-            exit;
+            $this->json(['status' => 'success', 'data' => $usuario]);
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $usuario) {
@@ -181,22 +207,14 @@ class UsuarioController {
                 'avatar_color' => $_POST['avatar_color'] ?? '#39A900'
             ];
 
-            // Validaciones
-            if (empty($data['nombre'])) $errors[] = 'El nombre es requerido';
-            if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Email inválido';
-            if (!empty($data['password']) && strlen($data['password']) < 6) {
-                $errors[] = 'Si deseas cambiar la contraseña, debe tener al menos 6 caracteres';
-            }
-            if (!in_array($data['rol'], ['coordinador', 'instructor', 'aprendiz'])) $errors[] = 'Rol inválido';
-            if (!in_array($data['estado'], ['activo', 'inactivo', 'bloqueado'])) $errors[] = 'Estado inválido';
+            // Validar usando el método extraído
+            $errors = $this->validateUser($data, true);
 
             if (empty($errors)) {
                 try {
                     if ($this->usuarioModel->update($id, $data)) {
                         if ($isAjax) {
-                            header('Content-Type: application/json');
-                            echo json_encode(['status' => 'success', 'message' => 'Usuario actualizado correctamente']);
-                            exit;
+                            $this->json(['status' => 'success', 'message' => 'Usuario actualizado correctamente']);
                         }
                         $mensaje = 'Usuario actualizado correctamente';
                         $tipo_mensaje = 'success';
@@ -209,23 +227,27 @@ class UsuarioController {
             }
 
             if ($isAjax && !empty($errors)) {
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'errors' => $errors]);
-                exit;
+                $this->json(['status' => 'error', 'errors' => $errors]);
             }
         }
 
-        $pageTitle = 'Editar Usuario · SENA';
-        $contentView = __DIR__ . '/../../modules/usuarios/views/editar.view.php';
-        require_once __DIR__ . '/../../layouts/app.php';
+        $this->render(
+            BASE_PATH . 'modules/usuarios/views/editar.view.php',
+            [
+                'mensaje' => $mensaje,
+                'tipo_mensaje' => $tipo_mensaje,
+                'errors' => $errors,
+                'colors' => $colors,
+                'usuario' => $usuario
+            ],
+            'Editar Usuario · SENA'
+        );
     }
 
     /**
      * Orquesta la vista de importación masiva y procesa el archivo CSV/XLSX.
      */
     public function import(): void {
-        global $app_included;
-
         $mensaje = '';
         $tipo_mensaje = '';
         $errors = [];
@@ -246,7 +268,6 @@ class UsuarioController {
                     if ($fileExtension === 'csv') {
                         $handle = fopen($fileTmpPath, 'r');
                         if ($handle !== false) {
-                            // Detectar delimitador si es punto y coma o coma
                             $firstLine = fgets($handle);
                             $separator = (strpos($firstLine, ';') !== false) ? ';' : ',';
                             rewind($handle);
@@ -270,15 +291,13 @@ class UsuarioController {
                         if (count($rows) <= 1) {
                             $errors[] = 'El archivo está vacío o solo contiene la cabecera.';
                         } else {
-                            // Ignorar la cabecera
                             array_shift($rows);
                             
-                            $linea = 2; // Empezamos en la línea 2
+                            $linea = 2;
                             $usersData = [];
                             $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
                             
                             foreach ($rows as $data) {
-                                // Omitir filas vacías
                                 if (empty($data) || (empty($data[0]) && empty($data[1]) && empty($data[2]))) {
                                     $linea++;
                                     continue;
@@ -306,7 +325,6 @@ class UsuarioController {
                                 }
 
                                 if (empty($rowErrors)) {
-                                    // Contraseña genérica por defecto acordada: Sena2026
                                     $usersData[] = [
                                         'nombre' => $nombre,
                                         'email' => $email,
@@ -342,8 +360,15 @@ class UsuarioController {
             }
         }
 
-        $pageTitle = 'Importar Usuarios · SENA';
-        $contentView = __DIR__ . '/../../modules/usuarios/views/importar.view.php';
-        require_once __DIR__ . '/../../layouts/app.php';
+        $this->render(
+            BASE_PATH . 'modules/usuarios/views/importar.view.php',
+            [
+                'mensaje' => $mensaje,
+                'tipo_mensaje' => $tipo_mensaje,
+                'errors' => $errors,
+                'resultados' => $resultados
+            ],
+            'Importar Usuarios · SENA'
+        );
     }
 }

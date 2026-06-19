@@ -51,6 +51,7 @@
 </div>
 
 <form id="deleteForm" method="POST" style="display:none;">
+  <?= csrfField() ?>
   <input type="hidden" name="action" value="delete">
   <input type="hidden" name="id" id="deleteId">
 </form>

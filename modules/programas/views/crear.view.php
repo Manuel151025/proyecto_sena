@@ -34,6 +34,7 @@ declare(strict_types=1);
     <div class="card">
       <div class="card-body">
         <form method="POST">
+          <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label">Nombre del Programa</label>
             <input type="text" name="nombre" class="form-control" placeholder="Ej: Análisis y Desarrollo de Software" value="<?= htmlspecialchars($valores['nombre'] ?? '') ?>" required>

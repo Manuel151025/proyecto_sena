@@ -176,6 +176,7 @@ declare(strict_types=1);
 </div>
 
 <form id="formEliminar" method="POST" style="display:none;">
+  <?= csrfField() ?>
   <input type="hidden" name="action" id="actionEliminar">
   <input type="hidden" name="id" id="idEliminar">
 </form>
