@@ -171,13 +171,13 @@ try {
 }
 
 ?>
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
   <div>
-    <h1>Hola, <?= $nombreUsuario ?> 👋</h1>
+    <h1 class="mb-1">Hola, <?= $nombreUsuario ?> 👋</h1>
     <p class="text-muted mb-0">Resumen institucional de seguimiento académico.</p>
   </div>
-  <div class="d-flex gap-2">
-    <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo Usuario</a>
+  <div class="w-100 w-sm-auto">
+    <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i> Nuevo Usuario</a>
   </div>
 </div>
 
@@ -306,15 +306,15 @@ try {
           <span><i class="bi bi-exclamation-triangle text-danger me-2"></i>Alertas críticas — Fichas con cumplimiento menor al 60%</span>
           <a href="<?= MODULES_PATH ?>/fichas/" class="small text-danger fw-semibold">Ver todas</a>
         </div>
-        <div class="table-wrap" style="border:0;border-radius:0;background:transparent;">
+        <div class="table-responsive" style="border:0;border-radius:0;background:transparent; -webkit-overflow-scrolling: touch;">
           <table class="table mb-0">
             <thead>
               <tr>
                 <th>Ficha</th>
-                <th>Programa</th>
-                <th>Instructor</th>
+                <th class="d-none d-sm-table-cell">Programa</th>
+                <th class="d-none d-md-table-cell">Instructor</th>
                 <th>Cumplimiento</th>
-                <th>Estado</th>
+                <th class="d-none d-sm-table-cell">Estado</th>
                 <th></th>
               </tr>
             </thead>
@@ -322,8 +322,8 @@ try {
               <?php foreach ($fichasCriticas as $ficha): ?>
               <tr style="background:var(--danger-bg)">
                 <td><strong>#<?= htmlspecialchars($ficha['numero_ficha']) ?></strong></td>
-                <td><?= htmlspecialchars($ficha['programa']) ?></td>
-                <td><?= htmlspecialchars($ficha['instructor']) ?></td>
+                <td class="d-none d-sm-table-cell"><?= htmlspecialchars($ficha['programa']) ?></td>
+                <td class="d-none d-md-table-cell"><?= htmlspecialchars($ficha['instructor']) ?></td>
                 <td>
                   <div class="d-flex align-items-center gap-2">
                     <div class="progress-flat danger" style="width:120px">
@@ -332,7 +332,7 @@ try {
                     <span class="text-danger fw-semibold"><?= round((float)$ficha['cumplimiento_porcentaje'], 1) ?>%</span>
                   </div>
                 </td>
-                <td><span class="badge-soft danger"><?= htmlspecialchars($ficha['estado']) ?></span></td>
+                <td class="d-none d-sm-table-cell"><span class="badge-soft danger"><?= htmlspecialchars($ficha['estado']) ?></span></td>
                 <td><a href="<?= MODULES_PATH ?>/fichas/ver.php?id=<?= $ficha['id'] ?>" class="btn btn-sm btn-soft">Ver</a></td>
               </tr>
               <?php endforeach; ?>
@@ -374,9 +374,9 @@ try {
 
 
 <div class="row g-3">
-  <div class="col-md-4"><a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-soft w-100 py-3"><i class="bi bi-journal-bookmark me-2"></i>Gestionar Fichas</a></div>
-  <div class="col-md-4"><a href="<?= APP_URL ?>/index.php/programas" class="btn btn-soft w-100 py-3"><i class="bi bi-briefcase me-2"></i>Ver Programas</a></div>
-  <div class="col-md-4"><a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary w-100 py-3"><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</a></div>
+  <div class="col-12 col-md-4"><a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-soft w-100 py-3"><i class="bi bi-journal-bookmark me-2"></i>Gestionar Fichas</a></div>
+  <div class="col-12 col-md-4"><a href="<?= APP_URL ?>/index.php/programas" class="btn btn-soft w-100 py-3"><i class="bi bi-briefcase me-2"></i>Ver Programas</a></div>
+  <div class="col-12 col-md-4"><a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary w-100 py-3"><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</a></div>
 </div>
 
 <script>
@@ -623,7 +623,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         position: 'left',
                         beginAtZero: true, 
                         max: 100, 
-                        title: { display: true, text: 'Cumplimiento (%)', font: { weight: 'bold' } },
+                        title: { display: true, text: 'Cumplimiento (%)', font: { weight: 'bold', size: window.innerWidth < 576 ? 10 : 12 } },
+                        ticks: { font: { size: window.innerWidth < 576 ? 9 : 11 } },
                         grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false } 
                     },
                     y1: {
@@ -631,13 +632,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         display: true,
                         position: 'right',
                         beginAtZero: true,
-                        title: { display: true, text: 'N° Aprendices', font: { weight: 'bold' }, color: '#3B82F6' },
+                        title: { display: true, text: 'N° Aprendices', font: { weight: 'bold', size: window.innerWidth < 576 ? 10 : 12 }, color: '#3B82F6' },
                         grid: { drawOnChartArea: false, drawBorder: false },
-                        ticks: { color: '#3B82F6' }
+                        ticks: { color: '#3B82F6', font: { size: window.innerWidth < 576 ? 9 : 11 } }
                     },
                     x: { 
                         grid: { display: false, drawBorder: false },
-                        ticks: { font: { weight: '500' } }
+                        ticks: { 
+                            font: { 
+                                weight: '500',
+                                size: window.innerWidth < 576 ? 9 : 11
+                            },
+                            autoSkip: true,
+                            maxTicksLimit: window.innerWidth < 576 ? 4 : 10,
+                            maxRotation: 45,
+                            minRotation: window.innerWidth < 576 ? 45 : 0
+                        }
                     }
                 },
                 interaction: { intersect: false, mode: 'index' },
@@ -683,7 +693,15 @@ document.addEventListener('DOMContentLoaded', function() {
             options: { 
                 cutout: '75%', 
                 plugins: { 
-                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' } },
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { 
+                            padding: window.innerWidth < 576 ? 10 : 20, 
+                            usePointStyle: true, 
+                            pointStyle: 'circle',
+                            font: { size: window.innerWidth < 576 ? 10 : 12 }
+                        } 
+                    },
                     tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 12, cornerRadius: 8 }
                 } 
             }
@@ -727,14 +745,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         max: 100,
                         ticks: {
                             callback: function(value) { return value + '%'; },
-                            font: { family: "'Inter', sans-serif" }
+                            font: { family: "'Inter', sans-serif", size: window.innerWidth < 576 ? 9 : 11 }
                         },
                         grid: { color: 'rgba(0,0,0,0.05)' }
                     },
                     y: {
                         grid: { display: false },
                         ticks: {
-                            font: { family: "'Inter', sans-serif", weight: '500' }
+                            font: { family: "'Inter', sans-serif", weight: '500', size: window.innerWidth < 576 ? 9 : 11 }
                         }
                     }
                 },
@@ -786,11 +804,33 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 scales: {
-                    x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } }
+                    x: { 
+                        stacked: true, 
+                        grid: { display: false },
+                        ticks: { 
+                            font: { family: "'Inter', sans-serif", size: window.innerWidth < 576 ? 9 : 11 },
+                            autoSkip: true,
+                            maxTicksLimit: window.innerWidth < 576 ? 4 : 10,
+                            maxRotation: 45,
+                            minRotation: window.innerWidth < 576 ? 45 : 0
+                        }
+                    },
+                    y: { 
+                        stacked: true, 
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: { 
+                            font: { family: "'Inter', sans-serif", size: window.innerWidth < 576 ? 9 : 11 }
+                        }
+                    }
                 },
                 plugins: {
-                    legend: { position: 'bottom', labels: { boxWidth: 12 } },
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { 
+                            boxWidth: 12, 
+                            font: { size: window.innerWidth < 576 ? 10 : 12 } 
+                        } 
+                    },
                     tooltip: { mode: 'index', backgroundColor: 'rgba(0,0,0,0.8)' }
                 }
             }
