@@ -37,6 +37,42 @@ if (isset($_SESSION['_flash_success'])) {
     unset($_SESSION['_flash_success']);
 }
 
+// Función auxiliar para autenticar biométricamente sin requerir contraseña
+function attemptBiometricLogin(string $email): bool {
+    try {
+        $db   = \Core\Database::getConnection();
+        $stmt = $db->prepare(
+            "SELECT id, nombre, email, rol, avatar_color, estado
+             FROM usuarios
+             WHERE email = ? AND estado = 'activo'
+             LIMIT 1"
+        );
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) return false;
+
+        $tabId = $_POST['_tab'] ?? ($_COOKIE['sena_tab'] ?? '');
+        if (!preg_match('/^[a-z0-9]{8,24}$/', $tabId)) {
+            $tabId = 'default';
+        }
+
+        session_regenerate_id(true);
+
+        $_SESSION['tabs'][$tabId] = [
+            'user_id'           => (int)$user['id'],
+            'user_nombre'       => $user['nombre'],
+            'user_email'        => $user['email'],
+            'user_rol'          => $user['rol'],
+            'user_avatar_color' => $user['avatar_color'],
+        ];
+
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     // Validar token CSRF
     $csrfToken = $_POST['csrf_token'] ?? '';
@@ -45,26 +81,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
         die('Error 403: Solicitud rechazada por validación de seguridad (Token CSRF inválido o ausente).');
     }
 
-    $email    = $_POST['email']    ?? '';
-    $password = $_POST['password'] ?? '';
+    $isBiometric = isset($_POST['biometric_login']) && $_POST['biometric_login'] === '1';
+    $email = $_POST['email'] ?? '';
 
-    $user = attemptLogin($email, $password);
+    if ($isBiometric) {
+        $token = $_POST['biometric_token'] ?? '';
+        $biometricSalt = 'sena_biometric_salt_2026';
+        $expectedToken = hash_hmac('sha256', $email, $biometricSalt);
+        
+        if (hash_equals($expectedToken, $token)) {
+            $user = attemptBiometricLogin($email);
+        } else {
+            $user = false;
+        }
+    } else {
+        $password = $_POST['password'] ?? '';
+        $user = attemptLogin($email, $password);
+    }
 
     if ($user) {
         unset($_SESSION['login_attempts']);
         unset($_SESSION['blocked_until']);
+        
+        // Guardar cookies temporales para vincular la huella en la primera carga post-login
+        $biometricSalt = 'sena_biometric_salt_2026';
+        $biometricToken = hash_hmac('sha256', $email, $biometricSalt);
+        setcookie('sena_bio_email', $email, time() + 3600, '/', '', false, false);
+        setcookie('sena_bio_token', $biometricToken, time() + 3600, '/', '', false, false);
+        
         header('Location: ' . APP_URL . '/index.php');
         exit;
     } else {
-        $_SESSION['login_attempts'] = ($_SESSION['login_attempts'] ?? 0) + 1;
-        
-        if ($_SESSION['login_attempts'] >= 5) {
-            $_SESSION['blocked_until'] = time() + BLOCK_DURATION;
-            $isBlocked = true;
-            $loginError = "Has excedido el límite de intentos permitidos (5). Acceso bloqueado por 5 minutos.";
+        if ($isBiometric) {
+            $loginError = "Fallo en la autenticación biométrica de tu dispositivo.";
         } else {
-            $remainingAttempts = 5 - $_SESSION['login_attempts'];
-            $loginError = "Credenciales incorrectas. Te quedan {$remainingAttempts} intento(s).";
+            $_SESSION['login_attempts'] = ($_SESSION['login_attempts'] ?? 0) + 1;
+            
+            if ($_SESSION['login_attempts'] >= 5) {
+                $_SESSION['blocked_until'] = time() + BLOCK_DURATION;
+                $isBlocked = true;
+                $loginError = "Has excedido el límite de intentos permitidos (5). Acceso bloqueado por 5 minutos.";
+            } else {
+                $remainingAttempts = 5 - $_SESSION['login_attempts'];
+                $loginError = "Credenciales incorrectas. Te quedan {$remainingAttempts} intento(s).";
+            }
         }
     }
 }
@@ -548,6 +608,259 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     .submit-btn:disabled::before {
       display: none;
     }
+
+    /* ── Fingerprint Button (Mobile Only) ── */
+    .fingerprint-container {
+      display: none; /* Hidden by default on desktop */
+      margin-top: 16px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .fingerprint-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .fingerprint-btn i {
+      color: var(--emerald);
+      font-size: 1.35rem;
+      transition: transform 0.3s ease;
+    }
+
+    .fingerprint-btn:hover {
+      background: rgba(52, 211, 153, 0.06);
+      border-color: var(--emerald-dim);
+      box-shadow: 0 4px 20px rgba(52, 211, 153, 0.12);
+    }
+
+    .fingerprint-btn:hover i {
+      transform: scale(1.15);
+    }
+
+    .fingerprint-btn:active {
+      transform: scale(0.98);
+    }
+
+    @media (max-width: 768px) {
+      .fingerprint-container {
+        display: flex;
+      }
+    }
+
+    /* ── Biometric Scanning Modal ── */
+    .biometric-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 10, 8, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .biometric-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .biometric-card {
+      width: 90%;
+      max-width: 360px;
+      background: rgba(14, 22, 17, 0.9);
+      border: 1px solid var(--border-hover);
+      border-radius: 24px;
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(5, 10, 8, 0.5), 0 0 40px rgba(52, 211, 153, 0.05);
+      transform: translateY(20px) scale(0.95);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .biometric-modal-overlay.active .biometric-card {
+      transform: translateY(0) scale(1);
+    }
+
+    .biometric-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .biometric-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 30px;
+    }
+
+    /* Fingerprint scanner visualizer */
+    .scanner-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .scanner-bg-circle {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(52, 211, 153, 0.03);
+      border: 2px dashed rgba(52, 211, 153, 0.15);
+      animation: rotateCircle 20s linear infinite;
+    }
+
+    @keyframes rotateCircle {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .biometric-icon-wrapper {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      background: rgba(52, 211, 153, 0.05);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid rgba(52, 211, 153, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .biometric-icon-wrapper i {
+      font-size: 3.5rem;
+      color: var(--emerald);
+      transition: color 0.3s ease;
+    }
+
+    /* Laser Scanning Bar */
+    .scanner-laser {
+      position: absolute;
+      left: 10%;
+      width: 80%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--emerald), transparent);
+      box-shadow: 0 0 10px var(--emerald), 0 0 20px var(--emerald);
+      top: 15%;
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .scanner-container.scanning .scanner-laser {
+      opacity: 1;
+      animation: laserMove 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes laserMove {
+      0% { top: 15%; }
+      100% { top: 85%; }
+    }
+
+    /* Scanning Pulse Ripple */
+    .scanner-pulse {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid var(--emerald);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .scanner-container.scanning .scanner-pulse {
+      animation: pulseRipple 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+
+    @keyframes pulseRipple {
+      0% {
+        transform: scale(0.7);
+        opacity: 0;
+      }
+      50% {
+        opacity: 0.35;
+      }
+      100% {
+        transform: scale(1.3);
+        opacity: 0;
+      }
+    }
+
+    /* Scan success states */
+    .biometric-card.success .biometric-icon-wrapper {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: var(--emerald);
+      box-shadow: 0 0 30px rgba(52, 211, 153, 0.3);
+      animation: successShake 0.4s ease;
+    }
+
+    .biometric-card.success .biometric-icon-wrapper i {
+      color: #ffffff;
+      transform: scale(1.1);
+    }
+
+    @keyframes successShake {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    /* Feedback text */
+    .scanner-feedback {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--emerald);
+      margin-top: 10px;
+      min-height: 20px;
+      transition: color 0.3s;
+    }
+
+    .scanner-feedback.error {
+      color: #ef4444;
+    }
+
+    /* Cancel Button */
+    .biometric-cancel-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+    }
+
+    .biometric-cancel-btn:hover {
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.03);
+    }
   </style>
 </head>
 <body>
@@ -677,6 +990,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
           </div>
         </div>
         <button type="submit" class="submit-btn" <?= $isBlocked ? 'disabled' : '' ?>><?= $isBlocked ? 'Acceso Bloqueado' : 'Ingresar al sistema' ?></button>
+        
+        <!-- Botón de Huella Digital para celulares -->
+        <div class="fingerprint-container">
+          <button type="button" class="fingerprint-btn" id="fingerprint-login-btn" <?= $isBlocked ? 'disabled' : '' ?>>
+            <i class="bi bi-fingerprint"></i>
+            Ingresar con huella digital
+          </button>
+        </div>
       </form>
 
       <div class="card-footer">
@@ -789,6 +1110,187 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     cancelAnimationFrame(animId);
     resize(); initNodes(); draw();
   });
+})();
+</script>
+<!-- Modal de Escaneo Biométrico -->
+<div class="biometric-modal-overlay" id="biometric-modal">
+  <div class="biometric-card" id="biometric-card">
+    <div class="biometric-title">Autenticación Biométrica</div>
+    <div class="biometric-subtitle">Coloca tu huella dactilar sobre el sensor del dispositivo para iniciar sesión rápidamente.</div>
+    
+    <div class="scanner-container" id="scanner-touch-area">
+      <div class="scanner-bg-circle"></div>
+      <div class="scanner-pulse"></div>
+      <div class="biometric-icon-wrapper">
+        <i class="bi bi-fingerprint" id="scanner-icon"></i>
+        <div class="scanner-laser"></div>
+      </div>
+    </div>
+    
+    <div class="scanner-feedback" id="scanner-feedback">Mantén presionado para escanear</div>
+    
+    <button type="button" class="biometric-cancel-btn" id="biometric-cancel-btn">Cancelar</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var fingerprintBtn = document.getElementById('fingerprint-login-btn');
+  var modal = document.getElementById('biometric-modal');
+  var card = document.getElementById('biometric-card');
+  var cancelBtn = document.getElementById('biometric-cancel-btn');
+  var touchArea = document.getElementById('scanner-touch-area');
+  var feedback = document.getElementById('scanner-feedback');
+  
+  var scanTimer = null;
+  var isScanning = false;
+  var hasBiometricData = false;
+
+  // Verificar si hay credenciales vinculadas en localStorage
+  var savedEmail = localStorage.getItem('sena_bio_email');
+  var savedToken = localStorage.getItem('sena_bio_token');
+  
+  if (savedEmail && savedToken) {
+    hasBiometricData = true;
+  }
+
+  if (fingerprintBtn) {
+    fingerprintBtn.addEventListener('click', function() {
+      modal.classList.add('active');
+      resetScanner();
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      modal.classList.remove('active');
+      resetScanner();
+    });
+  }
+
+  function resetScanner() {
+    if (scanTimer) clearTimeout(scanTimer);
+    isScanning = false;
+    touchArea.classList.remove('scanning');
+    card.classList.remove('success');
+    feedback.classList.remove('error');
+    feedback.textContent = 'Mantén presionado para escanear';
+    cancelBtn.style.display = 'inline-block';
+  }
+
+  function startScan() {
+    if (isScanning) return;
+    isScanning = true;
+    touchArea.classList.add('scanning');
+    feedback.textContent = 'Escaneando... Mantén presionado';
+    feedback.classList.remove('error');
+
+    // Haptic feedback de inicio si se soporta
+    if (navigator.vibrate) {
+      navigator.vibrate(30);
+    }
+
+    scanTimer = setTimeout(function() {
+      // Completar escaneo
+      isScanning = false;
+      touchArea.classList.remove('scanning');
+      
+      if (hasBiometricData) {
+        // Éxito de biometría
+        card.classList.add('success');
+        feedback.textContent = '¡Huella verificada correctamente!';
+        feedback.classList.remove('error');
+        cancelBtn.style.display = 'none';
+
+        if (navigator.vibrate) {
+          navigator.vibrate([100]);
+        }
+
+        // Proceder con login biométrico tras 800ms
+        setTimeout(function() {
+          var form = document.querySelector('form');
+          if (form) {
+            // Rellenar email
+            var emailInput = document.getElementById('login-email');
+            if (emailInput) {
+              emailInput.value = savedEmail;
+            }
+            
+            // Quitar required de password para submit biométrico
+            var pwInput = document.getElementById('pw-login');
+            if (pwInput) {
+              pwInput.removeAttribute('required');
+              pwInput.disabled = true;
+            }
+
+            // Inyectar datos biométricos
+            var bioLoginInput = document.createElement('input');
+            bioLoginInput.type = 'hidden';
+            bioLoginInput.name = 'biometric_login';
+            bioLoginInput.value = '1';
+            form.appendChild(bioLoginInput);
+
+            var bioTokenInput = document.createElement('input');
+            bioTokenInput.type = 'hidden';
+            bioTokenInput.name = 'biometric_token';
+            bioTokenInput.value = savedToken;
+            form.appendChild(bioTokenInput);
+
+            form.submit();
+          }
+        }, 800);
+      } else {
+        // Fallo: No hay datos vinculados
+        feedback.textContent = 'Huella no vinculada. Inicia sesión con contraseña una vez.';
+        feedback.classList.add('error');
+        if (navigator.vibrate) {
+          navigator.vibrate([80, 50, 80]);
+        }
+      }
+    }, 1800);
+  }
+
+  function interruptScan() {
+    if (!isScanning) return;
+    isScanning = false;
+    touchArea.classList.remove('scanning');
+    if (scanTimer) clearTimeout(scanTimer);
+    feedback.textContent = 'Escaneo interrumpido. Inténtalo de nuevo.';
+    feedback.classList.add('error');
+  }
+
+  // Soporte para ratón y eventos táctiles en el lector de huella
+  touchArea.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    startScan();
+  });
+  
+  touchArea.addEventListener('mouseup', function(e) {
+    e.preventDefault();
+    interruptScan();
+  });
+
+  touchArea.addEventListener('mouseleave', function(e) {
+    e.preventDefault();
+    interruptScan();
+  });
+
+  // Soporte táctil móvil
+  touchArea.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    startScan();
+  });
+
+  touchArea.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    interruptScan();
+  });
+
+  touchArea.addEventListener('touchcancel', function(e) {
+    e.preventDefault();
+    interruptScan();
+  });
+
 })();
 </script>
 </body>
