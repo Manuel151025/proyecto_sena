@@ -13,7 +13,6 @@ class UsuarioController extends BaseController {
     private UsuarioRepositoryInterface $usuarioModel;
 
     public function __construct(?UsuarioRepositoryInterface $usuarioModel = null) {
-        parent::__construct();
         // Exigir sesión y rol de coordinador para todo este controlador
         requireRole(ROL_COORDINADOR);
         $this->usuarioModel = $usuarioModel ?? new UsuarioModel();
