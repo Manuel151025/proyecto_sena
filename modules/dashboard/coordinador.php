@@ -176,7 +176,7 @@ try {
     <h1 class="mb-1">Hola, <?= $nombreUsuario ?> 👋</h1>
     <p class="text-muted mb-0">Resumen institucional de seguimiento académico.</p>
   </div>
-  <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary w-100 w-sm-auto"><i class="bi bi-plus-lg me-1"></i> Nuevo Usuario</a>
+  <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary btn-sm w-100 w-sm-auto"><i class="bi bi-plus-lg me-1"></i> Nuevo Usuario</a>
 </div>
 
 <div class="row g-3 mb-4">
