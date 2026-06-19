@@ -261,6 +261,25 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  
+  <!-- PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
+  <meta name="theme-color" content="#39A900">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
+
+  <script>
+    // Registro del Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('<?= APP_URL ?>/sw.js').catch(function (err) {
+          console.error('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

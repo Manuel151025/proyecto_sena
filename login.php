@@ -78,6 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
+  <meta name="theme-color" content="#39A900">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -448,7 +455,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
 <body>
 <canvas id="particle-canvas"></canvas>
 <script>
-(function(){var t=sessionStorage.getItem('sena_tab_id');if(!t){t=Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,6);sessionStorage.setItem('sena_tab_id',t);}window.__tabId=t;document.cookie='sena_tab='+t+'; path=/; SameSite=Lax';document.addEventListener('submit',function(e){document.cookie='sena_tab='+t+'; path=/; SameSite=Lax';if(!e.target.querySelector('input[name="_tab"]')){var inp=document.createElement('input');inp.type='hidden';inp.name='_tab';inp.value=t;e.target.appendChild(inp);}},true);})();
+(function(){
+  var t=sessionStorage.getItem('sena_tab_id');
+  if(!t){
+    t=Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,6);
+    sessionStorage.setItem('sena_tab_id',t);
+  }
+  window.__tabId=t;
+  document.cookie='sena_tab='+t+'; path=/; SameSite=Lax';
+  document.addEventListener('submit',function(e){
+    document.cookie='sena_tab='+t+'; path=/; SameSite=Lax';
+    if(!e.target.querySelector('input[name="_tab"]')){
+      var inp=document.createElement('input');
+      inp.type='hidden';
+      inp.name='_tab';
+      inp.value=t;
+      e.target.appendChild(inp);
+    }
+  },true);
+
+  // Registro del Service Worker para PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('<?= APP_URL ?>/sw.js').catch(function (err) {
+        console.error('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
+})();
 </script>
 
 <div class="shell">

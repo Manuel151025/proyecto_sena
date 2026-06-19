@@ -1,0 +1,19 @@
+{
+  "name": "SENA - Seguimiento de Proyectos",
+  "short_name": "SENA Seguimiento",
+  "description": "Sistema de Seguimiento de Proyectos Formativos SENA",
+  "start_url": "./index.php",
+  "display": "standalone",
+  "background_color": "#0a0f0d",
+  "theme_color": "#39A900",
+  "orientation": "any",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "./assets/img/sena_logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
