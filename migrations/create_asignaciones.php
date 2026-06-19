@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../../../xampp/htdocs/proyecto_sena/includes/config.php';
-require_once __DIR__ . '/../../../../xampp/htdocs/proyecto_sena/core/Database.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../core/Database.php';
 
 use Core\Database;
 
