@@ -497,7 +497,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       width: 100%;
       padding: 14px;
       margin-top: 4px;
-      background: var(--emerald-dim);
+      background: linear-gradient(135deg, var(--emerald-dim) 0%, #047857 100%);
       color: #fff;
       border: none;
       border-radius: var(--radius);
@@ -507,31 +507,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       cursor: pointer;
       position: relative;
       overflow: hidden;
-      transition: all 0.3s ease;
+      z-index: 1;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     .submit-btn::before {
       content: '';
       position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1), transparent);
-      transform: translateX(-100%);
-      transition: transform 0.5s ease;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      z-index: -1;
     }
 
     .submit-btn:hover {
-      background: var(--emerald);
+      background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-dim) 100%);
       color: #022c22;
-      box-shadow: 0 4px 20px rgba(52, 211, 153, 0.3);
-      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(52, 211, 153, 0.35);
+      transform: translateY(-2px);
     }
 
     .submit-btn:hover::before {
-      transform: translateX(100%);
+      animation: sweepSheen 0.65s ease-in-out;
+    }
+
+    @keyframes sweepSheen {
+      0% { left: -100%; }
+      100% { left: 100%; }
     }
 
     .submit-btn:active {
-      transform: translateY(0);
+      transform: translateY(0) scale(0.97);
     }
 
     /* ── Alerts ── */
@@ -632,7 +640,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       align-items: center;
       justify-content: center;
       gap: 10px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .fingerprint-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.15), transparent);
+      z-index: -1;
+    }
+
+    .fingerprint-btn:hover {
+      background: rgba(52, 211, 153, 0.08);
+      border-color: var(--emerald-dim);
+      box-shadow: 0 6px 20px rgba(52, 211, 153, 0.18);
+      transform: translateY(-2px);
+    }
+
+    .fingerprint-btn:hover::before {
+      animation: sweepSheen 0.65s ease-in-out;
+    }
+
+    .fingerprint-btn:active {
+      transform: translateY(0) scale(0.97);
     }
 
     .fingerprint-btn i {
@@ -641,18 +678,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
       transition: transform 0.3s ease;
     }
 
-    .fingerprint-btn:hover {
-      background: rgba(52, 211, 153, 0.06);
-      border-color: var(--emerald-dim);
-      box-shadow: 0 4px 20px rgba(52, 211, 153, 0.12);
-    }
-
     .fingerprint-btn:hover i {
       transform: scale(1.15);
-    }
-
-    .fingerprint-btn:active {
-      transform: scale(0.98);
     }
 
     @media (max-width: 768px) {
