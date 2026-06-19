@@ -19,6 +19,13 @@ declare(strict_types=1);
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/theme.css">
     <!-- Searchable picker -->
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/picker.css">
+    
+    <!-- PWA Manifest & Meta Tags -->
+    <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
+    <meta name="theme-color" content="#39A900">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
 </head>
 <body>
 <script>
@@ -50,5 +57,14 @@ declare(strict_types=1);
       e.target.appendChild(inp);
     }
   }, true);
+
+  // Registro del Service Worker para PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('<?= APP_URL ?>/sw.js').catch(function (err) {
+        console.error('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
 })();
 </script>
