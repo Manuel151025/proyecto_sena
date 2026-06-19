@@ -1149,15 +1149,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
   // Verificar si hay credenciales vinculadas en localStorage
   var savedEmail = localStorage.getItem('sena_bio_email');
   var savedToken = localStorage.getItem('sena_bio_token');
+  var savedCredId = localStorage.getItem('sena_bio_cred_id');
   
   if (savedEmail && savedToken) {
     hasBiometricData = true;
   }
 
+  function triggerNativeBiometricLogin() {
+    var emailInput = document.getElementById('login-email');
+    var pwInput = document.getElementById('pw-login');
+    
+    var originalBtnHTML = fingerprintBtn.innerHTML;
+    fingerprintBtn.disabled = true;
+    fingerprintBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Esperando huella...';
+
+    var challenge = new Uint8Array(32);
+    window.crypto.getRandomValues(challenge);
+    
+    var credId = Uint8Array.from(atob(savedCredId), function(c) { return c.charCodeAt(0); });
+
+    var options = {
+      publicKey: {
+        challenge: challenge,
+        rpId: window.location.hostname,
+        allowCredentials: [{
+          type: 'public-key',
+          id: credId
+        }],
+        userVerification: "required",
+        timeout: 60000
+      }
+    };
+
+    navigator.credentials.get(options)
+      .then(function(assertion) {
+        if (navigator.vibrate) navigator.vibrate([100]);
+        
+        var form = document.querySelector('form');
+        if (form) {
+          if (emailInput) emailInput.value = savedEmail;
+          if (pwInput) {
+            pwInput.removeAttribute('required');
+            pwInput.disabled = true;
+          }
+          
+          var bioLoginInput = document.createElement('input');
+          bioLoginInput.type = 'hidden';
+          bioLoginInput.name = 'biometric_login';
+          bioLoginInput.value = '1';
+          form.appendChild(bioLoginInput);
+
+          var bioTokenInput = document.createElement('input');
+          bioTokenInput.type = 'hidden';
+          bioTokenInput.name = 'biometric_token';
+          bioTokenInput.value = savedToken;
+          form.appendChild(bioTokenInput);
+
+          form.submit();
+        }
+      })
+      .catch(function(err) {
+        console.error("Biometric authentication failed:", err);
+        fingerprintBtn.disabled = false;
+        fingerprintBtn.innerHTML = originalBtnHTML;
+        
+        if (err.name !== "NotAllowedError") {
+          alert("Error de autenticación biométrica: " + err.message);
+        } else {
+          // El usuario canceló la huella nativa. Damos la opción de abrir el escáner visual.
+          var confirmModal = confirm("¿Deseas iniciar sesión usando el escáner visual alternativo?");
+          if (confirmModal) {
+            modal.classList.add('active');
+            resetScanner();
+          }
+        }
+      });
+  }
+
   if (fingerprintBtn) {
     fingerprintBtn.addEventListener('click', function() {
-      modal.classList.add('active');
-      resetScanner();
+      if (hasBiometricData && window.PublicKeyCredential && savedCredId) {
+        triggerNativeBiometricLogin();
+      } else {
+        modal.classList.add('active');
+        resetScanner();
+      }
     });
   }
 
