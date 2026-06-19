@@ -1155,6 +1155,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
     hasBiometricData = true;
   }
 
+  // Mostrar advertencia si se accede por HTTP en un servidor remoto (bloquea WebAuthn nativo)
+  if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+    var warningDiv = document.createElement('div');
+    warningDiv.style.cssText = 'color: #f59e0b; font-size: 0.72rem; margin-top: 15px; padding: 10px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 8px; line-height: 1.4; text-align: left;';
+    warningDiv.innerHTML = '⚠️ <strong>Conexión insegura (HTTP):</strong> Tu navegador bloquea el lector de huella físico del celular sin SSL. Para usar tu sensor real (bajo la pantalla o botón lateral), debes configurar <strong>HTTPS</strong> en tu VPS.';
+    card.insertBefore(warningDiv, cancelBtn);
+  }
+
   function triggerNativeBiometricLogin() {
     var emailInput = document.getElementById('login-email');
     var pwInput = document.getElementById('pw-login');
