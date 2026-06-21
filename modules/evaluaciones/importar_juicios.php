@@ -833,10 +833,15 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Iniciar Carga Masiva';
                 }
-            } catch(e) {
-                // La respuesta es HTML, probablemente la página completa (modo fallback)
-                // Recargar para mostrar el resultado
-                window.location.reload();
+            } catch(err) {
+                // La respuesta no es JSON válido. Mostramos el error en lugar de recargar silenciosamente.
+                progressDiv.style.display = 'none';
+                errorsDiv.style.display = 'flex';
+                errorsContent.innerHTML = '<strong>Error del servidor al procesar la respuesta:</strong><br>' + 
+                    '<div style="text-align: left; max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; word-break: break-all;">' + 
+                    text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Iniciar Carga Masiva';
             }
         })
         .catch(error => {
