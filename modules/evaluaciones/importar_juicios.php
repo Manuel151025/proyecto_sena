@@ -579,24 +579,6 @@ if (!isset($app_included)) {
   </div>
 </div>
 
-<?php
-$debug_info = "Method: " . $_SERVER['REQUEST_METHOD'];
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $debug_info .= " | Input size: " . strlen(file_get_contents('php://input')) . " bytes";
-    $debug_info .= " | FILES count: " . count($_FILES);
-    if (!empty($_FILES)) {
-        foreach ($_FILES as $key => $file) {
-            $debug_info .= " | File[$key] size: " . $file['size'] . " bytes, error: " . $file['error'];
-        }
-    }
-}
-?>
-<div class="alert alert-info py-2 px-3 mb-4" style="font-size: 0.8rem; border-radius: 8px; border: 1px solid #bde5f8; background-color: #e0f2fe; color: #0369a1;">
-  <strong>Soporte Técnico (Debug):</strong> <?= htmlspecialchars($debug_info) ?> | 
-  post_max_size: <?= ini_get('post_max_size') ?> | 
-  upload_max_filesize: <?= ini_get('upload_max_filesize') ?>
-</div>
-
 <?php if (!empty($errors)): ?>
 <div class="alert-flat danger mb-4">
   <i class="bi bi-exclamation-triangle-fill"></i>
