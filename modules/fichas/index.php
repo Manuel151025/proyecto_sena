@@ -126,7 +126,7 @@ $estados_label = [
 <?php endif; ?>
 
 <div class="toolbar mb-4" style="background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); padding: 1rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
-  <div class="search" style="flex-grow: 1;"><i class="bi bi-search"></i><input class="form-control border-0 bg-transparent" id="searchFichas" placeholder="Buscar ficha o programa..."></div>
+  <div class="search" style="max-width: 360px; flex-grow: 1;"><i class="bi bi-search"></i><input class="form-control border-0 bg-transparent" id="searchFichas" placeholder="Buscar ficha o programa..."></div>
   <select class="form-select border-0 bg-light" id="filterEstado" style="max-width:180px">
     <option value="">Todos los estados</option>
     <option value="planeacion">Planeación</option>
