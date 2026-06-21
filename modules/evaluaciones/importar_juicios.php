@@ -5,8 +5,10 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../core/Database.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 use Core\Database;
+use Shuchkin\SimpleXLS;
 
 requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
 
@@ -113,157 +115,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
     }
 
     if (empty($errors) && $targetXls) {
-        $uploadsDir = realpath(__DIR__ . '/../../uploads');
-        if ($uploadsDir === false) {
-            $uploadsDir = __DIR__ . '/../../uploads';
-        }
-        $targetCsv = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('import_', true) . '.csv';
-        
-        $isWindows = (PHP_OS_FAMILY === 'Windows');
-        
-        if ($isWindows) {
-            // --- WINDOWS: Usar PowerShell + Excel COM ---
-            if (!is_dir('C:\\Windows\\System32\\config\\systemprofile\\Desktop')) {
-                @mkdir('C:\\Windows\\System32\\config\\systemprofile\\Desktop', 0777, true);
-            }
-            if (!is_dir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop')) {
-                @mkdir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop', 0777, true);
-            }
-            $psScript = __DIR__ . '/../../includes/convert_xls.ps1';
-            $xlsPath = realpath($targetXls);
-            $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" . $psScript . "\" \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
-            exec($cmd, $output, $returnCode);
-        } else {
-            // --- LINUX: Usar LibreOffice headless ---
-            $xlsPath = realpath($targetXls);
-            $output = [];
-            
-            // Intentar con libreoffice o soffice
-            $loCmd = '';
-            exec('which libreoffice 2>/dev/null', $loCheck, $loRet);
-            if ($loRet === 0) {
-                $loCmd = 'libreoffice';
-            } else {
-                exec('which soffice 2>/dev/null', $soCheck, $soRet);
-                if ($soRet === 0) {
-                    $loCmd = 'soffice';
-                }
-            }
-            
-            if (empty($loCmd)) {
-                // LibreOffice no encontrado, intentar con ssconvert (gnumeric)
-                exec('which ssconvert 2>/dev/null', $ssCheck, $ssRet);
-                if ($ssRet === 0) {
-                    $cmd = "ssconvert \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
-                    exec($cmd, $output, $returnCode);
-                } else {
-                    // Último recurso: intentar con python3 + xlrd
-                    $pyScript = "import sys; import xlrd; import csv; wb=xlrd.open_workbook(sys.argv[1]); ws=wb.sheet_by_index(0); f=open(sys.argv[2],'w',newline='',encoding='utf-8'); w=csv.writer(f,delimiter=';'); [w.writerow([ws.cell_value(r,c) for c in range(ws.ncols)]) for r in range(ws.nrows)]; f.close()";
-                    $cmd = "python3 -c \"" . $pyScript . "\" \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
-                    exec($cmd, $output, $returnCode);
-                    
-                    if ($returnCode !== 0) {
-                        $errors[] = '<strong>Error:</strong> No se encontró un convertidor de XLS en el servidor. Instala LibreOffice con: <code>sudo apt install libreoffice-calc -y</code>';
-                        $returnCode = 1;
-                    }
-                }
-            } else {
-                // Usar LibreOffice headless para convertir a CSV
-                $tempOutDir = $uploadsDir;
-                $cmd = $loCmd . " --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":44,34,76,1 --outdir \"" . $tempOutDir . "\" \"" . $xlsPath . "\" 2>&1";
-                exec($cmd, $output, $returnCode);
-                
-                // LibreOffice genera el CSV con el mismo nombre que el XLS pero extensión .csv
-                $generatedCsv = $tempOutDir . '/' . pathinfo(basename($xlsPath), PATHINFO_FILENAME) . '.csv';
-                if (file_exists($generatedCsv) && $generatedCsv !== $targetCsv) {
-                    rename($generatedCsv, $targetCsv);
-                }
-            }
-        }
+        // --- LEER XLS DIRECTAMENTE CON PHP (SimpleXLS) ---
+        $xls = SimpleXLS::parseFile($targetXls);
         
         // Limpiar XLS temporal inmediatamente
         if (file_exists($targetXls)) {
             unlink($targetXls);
         }
         
-        if ($returnCode !== 0 || !file_exists($targetCsv)) {
-            $errors[] = 'Error al convertir el archivo Excel en el servidor. Detalles: <pre class="bg-light p-2 rounded small mt-1 text-dark" style="font-family:monospace; font-size:0.8rem; border:1px solid #ddd;">' . htmlspecialchars(implode("\n", $output)) . '</pre>';
+        if (!$xls) {
+            $errors[] = 'Error al leer el archivo Excel: ' . htmlspecialchars(SimpleXLS::parseError());
         } else {
-            // Procesar el CSV
-            $handle = fopen($targetCsv, 'r');
-            if ($handle === false) {
-                $errors[] = 'No se pudo abrir el archivo de intercambio temporal.';
+            $allRows = $xls->rows(0); // Primera hoja
+            
+            if (empty($allRows)) {
+                $errors[] = 'El archivo Excel está vacío o no contiene datos legibles.';
             } else {
-                // Detectar delimitador
-                $firstLine = fgets($handle);
-                $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
-                rewind($handle);
+                try {
+                    $db->beginTransaction();
+                    
+                    $ficha_numero = '';
+                    $programa_codigo = '';
+                    $programa_nombre = '';
+                    $fecha_inicio = null;
+                    $fecha_fin = null;
+                    
+                    $rowNum = 0;
+                    $headers_found = false;
+                    $headers_row_index = -1;
+                    
+                    $stats = [
+                        'ficha_estado' => 'Sin cambios',
+                        'ficha_num' => '',
+                        'programa' => '',
+                        'aprendices_creados' => 0,
+                        'aprendices_actualizados' => 0,
+                        'competencias_creadas' => 0,
+                        'ras_creados' => 0,
+                        'evaluaciones_actualizadas' => 0,
+                        'evaluaciones_creadas' => 0,
+                        'warnings' => []
+                    ];
+                    
+                    $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
+                    $password_hash = password_hash('Sena2026', PASSWORD_DEFAULT);
+                    
+                    // 1. Leer cabecera para metadatos de ficha/programa
+                    foreach ($allRows as $idx => $data) {
+                        $rowNum = $idx + 1; // 1-indexed
                         
-                        try {
-                            $db->beginTransaction();
-                            
-                            $ficha_numero = '';
-                            $programa_codigo = '';
-                            $programa_nombre = '';
-                            $fecha_inicio = null;
-                            $fecha_fin = null;
-                            
-                            $rowNum = 0;
-                            $headers_found = false;
-                            
-                            $stats = [
-                                'ficha_estado' => 'Sin cambios',
-                                'ficha_num' => '',
-                                'programa' => '',
-                                'aprendices_creados' => 0,
-                                'aprendices_actualizados' => 0,
-                                'competencias_creadas' => 0,
-                                'ras_creados' => 0,
-                                'evaluaciones_actualizadas' => 0,
-                                'evaluaciones_creadas' => 0,
-                                'warnings' => []
-                            ];
-                            
-                            $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-                            $password_hash = password_hash('Sena2026', PASSWORD_DEFAULT);
-                            
-                            // 1. Leer cabecera para metadatos de ficha/programa
-                            while (($data = fgetcsv($handle, 2000, $delimiter)) !== false) {
-                                $rowNum++;
-                                
-                                // Sanitizar todas las celdas a UTF-8
-                                foreach ($data as $k => $v) {
-                                    $data[$k] = toUtf8(trim($v));
-                                }
-                                
-                                if ($rowNum === 3) {
-                                    $ficha_numero = $data[2] ?? '';
-                                }
-                                if ($rowNum === 4) {
-                                    $programa_codigo = $data[2] ?? '';
-                                }
-                                if ($rowNum === 6) {
-                                    $programa_nombre = $data[2] ?? '';
-                                }
-                                if ($rowNum === 8) {
-                                    $fecha_inicio_str = $data[2] ?? '';
-                                    if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $fecha_inicio_str, $m)) {
-                                        $fecha_inicio = "{$m[3]}-{$m[2]}-{$m[1]}";
-                                    }
-                                }
-                                if ($rowNum === 9) {
-                                    $fecha_fin_str = $data[2] ?? '';
-                                    if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $fecha_fin_str, $m)) {
-                                        $fecha_fin = "{$m[3]}-{$m[2]}-{$m[1]}";
-                                    }
-                                }
-                                
-                                // Detectar la fila de títulos de columna
-                                if ($rowNum >= 10 && isset($data[0]) && (stripos($data[0], 'Tipo') !== false) && stripos($data[1], 'Documento') !== false) {
-                                    $headers_found = true;
-                                    break;
-                                }
+                        // Sanitizar todas las celdas a UTF-8
+                        foreach ($data as $k => $v) {
+                            $data[$k] = toUtf8(trim((string)$v));
+                        }
+                        
+                        if ($rowNum === 3) {
+                            $ficha_numero = $data[2] ?? '';
+                        }
+                        if ($rowNum === 4) {
+                            $programa_codigo = $data[2] ?? '';
+                        }
+                        if ($rowNum === 6) {
+                            $programa_nombre = $data[2] ?? '';
+                        }
+                        if ($rowNum === 8) {
+                            $fecha_inicio_str = $data[2] ?? '';
+                            if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $fecha_inicio_str, $m)) {
+                                $fecha_inicio = "{$m[3]}-{$m[2]}-{$m[1]}";
                             }
+                        }
+                        if ($rowNum === 9) {
+                            $fecha_fin_str = $data[2] ?? '';
+                            if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $fecha_fin_str, $m)) {
+                                $fecha_fin = "{$m[3]}-{$m[2]}-{$m[1]}";
+                            }
+                        }
+                        
+                        // Detectar la fila de títulos de columna
+                        if ($rowNum >= 10 && isset($data[0]) && (stripos($data[0], 'Tipo') !== false) && stripos($data[1] ?? '', 'Documento') !== false) {
+                            $headers_found = true;
+                            $headers_row_index = $idx;
+                            break;
+                        }
+                    }
                             
                             if (empty($ficha_numero) || empty($programa_codigo)) {
                                 throw new Exception('No se pudo identificar el número de ficha o el código de programa en las cabeceras del archivo.');
@@ -322,12 +256,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                             $ras_cache = []; // codigo_ra => id
                             
                             // 4. Leer registros de aprendices y calificaciones
-                            while (($data = fgetcsv($handle, 2000, $delimiter)) !== false) {
-                                $rowNum++;
+                            $dataStartIndex = $headers_row_index + 1;
+                            for ($ri = $dataStartIndex; $ri < count($allRows); $ri++) {
+                                $data = $allRows[$ri];
+                                $rowNum = $ri + 1;
                                 
                                 // Sanitizar a UTF-8
                                 foreach ($data as $k => $v) {
-                                    $data[$k] = toUtf8(trim($v));
+                                    $data[$k] = toUtf8(trim((string)$v));
                                 }
                                 
                                 if (count($data) < 8 || empty($data[1])) {
@@ -556,20 +492,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                             $import_summary = $stats;
                             $successMessage = "¡Carga masiva finalizada con éxito! Todos los registros fueron procesados.";
                             
-                        } catch (Exception $e) {
-                            $db->rollBack();
-                            $errors[] = 'Error al procesar el contenido de la importación: ' . htmlspecialchars($e->getMessage());
-                        }
-                        
-                        fclose($handle);
-                    }
-                    
-                    // Limpiar CSV temporal
-                    if (file_exists($targetCsv)) {
-                        unlink($targetCsv);
+                    } catch (Exception $e) {
+                        $db->rollBack();
+                        $errors[] = 'Error al procesar el contenido de la importación: ' . htmlspecialchars($e->getMessage());
                     }
                 }
             }
+        }
 
     // Si es AJAX, almacenar resultados en sesión y enviar respuesta JSON
     if ($is_ajax) {
