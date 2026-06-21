@@ -505,9 +505,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                                     $eval_accion = 'Creado';
                                 }
                                 
-                                $stats['detalles'][] = [
-                                    'documento' => $num_doc,
-                                    'nombre' => $nombre_completo,
+                                if (!isset($stats['detalles'][$num_doc])) {
+                                    $stats['detalles'][$num_doc] = [
+                                        'documento' => $num_doc,
+                                        'nombre' => $nombre_completo,
+                                        'juicios' => []
+                                    ];
+                                }
+                                $stats['detalles'][$num_doc]['juicios'][] = [
                                     'ra_codigo' => $raCode,
                                     'concepto' => $concepto,
                                     'eval_accion' => $eval_accion
@@ -671,47 +676,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       </div>
 
-      <div class="table-responsive" style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px;">
-        <table class="table table-hover table-striped align-middle mb-0" id="detailsTable" style="font-size:0.85rem;">
+      <div class="table-responsive" style="max-height: 450px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px;">
+        <table class="table table-hover align-middle mb-0" id="detailsTable" style="font-size:0.85rem;">
           <thead class="table-light sticky-top" style="z-index: 1;">
             <tr>
-              <th>Documento</th>
+              <th style="width: 180px;">Documento</th>
               <th>Aprendiz</th>
-              <th>Código RA</th>
-              <th class="text-center" style="width: 120px;">Juicio</th>
-              <th class="text-center" style="width: 120px;">Acción</th>
+              <th class="text-center" style="width: 150px;">Juicios Procesados</th>
+              <th class="text-center" style="width: 250px;">Resumen de Acciones</th>
+              <th class="text-center" style="width: 100px;">Acción</th>
             </tr>
           </thead>
           <tbody>
-            <?php foreach ($import_summary['detalles'] as $det): 
-              $badgeConcepto = 'bg-secondary text-dark';
-              $textoConcepto = 'Pendiente';
-              if ($det['concepto'] === 'A') {
-                  $badgeConcepto = 'bg-soft success text-success';
-                  $textoConcepto = 'Aprobado';
-              } elseif ($det['concepto'] === 'D') {
-                  $badgeConcepto = 'bg-soft danger text-danger';
-                  $textoConcepto = 'Deficiente';
+            <?php 
+            $apIndex = 0;
+            foreach ($import_summary['detalles'] as $ap): 
+              $apIndex++;
+              $detailsId = "details-" . $apIndex;
+              $iconId = "icon-" . $detailsId;
+              
+              // Contar estados
+              $creados = 0; 
+              $actualizados = 0; 
+              $sin_cambios = 0;
+              foreach ($ap['juicios'] as $j) {
+                  if ($j['eval_accion'] === 'Creado') $creados++;
+                  elseif ($j['eval_accion'] === 'Actualizado') $actualizados++;
+                  else $sin_cambios++;
               }
               
-              $badgeAccion = 'bg-light text-dark';
-              if ($det['eval_accion'] === 'Creado') {
-                  $badgeAccion = 'bg-soft success text-success';
-              } elseif ($det['eval_accion'] === 'Actualizado') {
-                  $badgeAccion = 'bg-soft primary text-primary';
-              } else {
-                  $badgeAccion = 'bg-soft secondary text-secondary';
-              }
+              $resumen_acciones = [];
+              if ($creados > 0) $resumen_acciones[] = "<span class='badge bg-soft success text-success'>$creados Nuevos</span>";
+              if ($actualizados > 0) $resumen_acciones[] = "<span class='badge bg-soft primary text-primary'>$actualizados Act.</span>";
+              if ($sin_cambios > 0) $resumen_acciones[] = "<span class='badge bg-soft secondary text-secondary'>$sin_cambios S/C</span>";
+              
+              $resumenHtml = implode(' ', $resumen_acciones);
             ?>
-            <tr>
-              <td><?= htmlspecialchars($det['documento']) ?></td>
-              <td><strong><?= htmlspecialchars($det['nombre']) ?></strong></td>
-              <td><code class="text-dark bg-light px-1.5 py-0.5 rounded"><?= htmlspecialchars($det['ra_codigo']) ?></code></td>
-              <td class="text-center">
-                <span class="badge <?= $badgeConcepto ?>" style="font-size: 0.75rem; font-weight: 600; padding: 4px 8px;"><?= $textoConcepto ?></span>
+            <tr class="cursor-pointer" onclick="toggleDetails('<?= $detailsId ?>')" data-details-id="<?= $detailsId ?>" style="transition: background-color 0.2s;">
+              <td>
+                <i class="bi bi-chevron-right me-2 text-muted" id="<?= $iconId ?>" style="transition: transform 0.2s; display: inline-block;"></i>
+                <?= htmlspecialchars($ap['documento']) ?>
               </td>
+              <td><strong><?= htmlspecialchars($ap['nombre']) ?></strong></td>
+              <td class="text-center fw-semibold text-dark"><?= count($ap['juicios']) ?> Juicios</td>
+              <td class="text-center"><?= $resumenHtml ?></td>
               <td class="text-center">
-                <span class="badge <?= $badgeAccion ?>" style="font-size: 0.75rem; font-weight: 600; padding: 4px 8px;"><?= htmlspecialchars($det['eval_accion']) ?></span>
+                <button class="btn btn-sm btn-outline-primary py-0.5 px-2" style="font-size: 0.75rem; border-radius: 6px;">
+                  Ver
+                </button>
+              </td>
+            </tr>
+            <tr id="<?= $detailsId ?>" style="display: none; background-color: #f8fafc;">
+              <td colspan="5" class="p-3">
+                <div class="px-4 py-3 border rounded bg-white shadow-sm" style="border-radius: 8px;">
+                  <h6 class="fw-bold mb-3 text-muted" style="font-size: 0.8rem;"><i class="bi bi-journal-check me-2"></i>Detalle de Evaluaciones</h6>
+                  <table class="table table-sm table-bordered mb-0" style="font-size: 0.8rem;">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Código RA (Resultado de Aprendizaje)</th>
+                        <th class="text-center" style="width: 150px;">Juicio</th>
+                        <th class="text-center" style="width: 150px;">Acción de BD</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <?php foreach ($ap['juicios'] as $j): 
+                        $badgeConcepto = 'bg-secondary text-dark';
+                        $textoConcepto = 'Pendiente';
+                        if ($j['concepto'] === 'A') {
+                            $badgeConcepto = 'bg-soft success text-success';
+                            $textoConcepto = 'Aprobado';
+                        } elseif ($j['concepto'] === 'D') {
+                            $badgeConcepto = 'bg-soft danger text-danger';
+                            $textoConcepto = 'Deficiente';
+                        }
+                        
+                        $badgeAccion = 'bg-light text-dark';
+                        if ($j['eval_accion'] === 'Creado') {
+                            $badgeAccion = 'bg-soft success text-success';
+                        } elseif ($j['eval_accion'] === 'Actualizado') {
+                            $badgeAccion = 'bg-soft primary text-primary';
+                        } else {
+                            $badgeAccion = 'bg-soft secondary text-secondary';
+                        }
+                      ?>
+                      <tr>
+                        <td><code class="text-dark bg-light px-1.5 py-0.5 rounded" style="font-size: 0.85rem;"><?= htmlspecialchars($j['ra_codigo']) ?></code></td>
+                        <td class="text-center"><span class="badge <?= $badgeConcepto ?>" style="padding: 4px 8px; font-weight:600;"><?= $textoConcepto ?></span></td>
+                        <td class="text-center"><span class="badge <?= $badgeAccion ?>" style="padding: 4px 8px; font-weight:600;"><?= htmlspecialchars($j['eval_accion']) ?></span></td>
+                      </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
               </td>
             </tr>
             <?php endforeach; ?>
@@ -721,16 +777,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+    function toggleDetails(id) {
+        const row = document.getElementById(id);
+        const icon = document.getElementById('icon-' + id);
+        if (!row || !icon) return;
+        
+        if (row.style.display === 'none') {
+            row.style.display = '';
+            icon.style.transform = 'rotate(90deg)';
+            icon.classList.add('text-primary');
+        } else {
+            row.style.display = 'none';
+            icon.style.transform = 'rotate(0deg)';
+            icon.classList.remove('text-primary');
+        }
+    }
+
     document.getElementById('detailSearchInput')?.addEventListener('keyup', function() {
         const value = this.value.toLowerCase().trim();
-        const rows = document.querySelectorAll('#detailsTable tbody tr');
+        const rows = document.querySelectorAll('#detailsTable tbody tr:not([id^="details-"])');
         rows.forEach(row => {
             const doc = row.cells[0]?.textContent.toLowerCase();
             const name = row.cells[1]?.textContent.toLowerCase();
+            const detailsId = row.getAttribute('data-details-id');
+            const detailsRow = document.getElementById(detailsId);
+            const icon = document.getElementById('icon-' + detailsId);
+            
             if (doc.includes(value) || name.includes(value)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
+                if (detailsRow) {
+                    detailsRow.style.display = 'none';
+                }
+                if (icon) {
+                    icon.style.transform = 'rotate(0deg)';
+                    icon.classList.remove('text-primary');
+                }
             }
         });
     });
