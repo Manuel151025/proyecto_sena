@@ -23,7 +23,12 @@ $successMessage = '';
 $import_summary = null;
 
 // Comprobar si hay resultados de importación almacenados en sesión (de AJAX previo)
-if (isset($_SESSION['import_success'])) {
+$tabId = getTabId();
+if (isset($_SESSION['tabs'][$tabId]['import_success'])) {
+    $successMessage = $_SESSION['tabs'][$tabId]['import_success'];
+    $import_summary = $_SESSION['tabs'][$tabId]['import_summary'] ?? null;
+    unset($_SESSION['tabs'][$tabId]['import_success'], $_SESSION['tabs'][$tabId]['import_summary']);
+} elseif (isset($_SESSION['import_success'])) {
     $successMessage = $_SESSION['import_success'];
     $import_summary = $_SESSION['import_summary'] ?? null;
     unset($_SESSION['import_success'], $_SESSION['import_summary']);
@@ -525,6 +530,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
     // Si es AJAX, almacenar resultados en sesión y enviar respuesta JSON
     if ($is_ajax) {
         if (empty($errors) && $successMessage) {
+            $tabId = getTabId();
+            $_SESSION['tabs'][$tabId]['import_success'] = $successMessage;
+            $_SESSION['tabs'][$tabId]['import_summary'] = $import_summary;
+            
             $_SESSION['import_success'] = $successMessage;
             $_SESSION['import_summary'] = $import_summary;
         }
