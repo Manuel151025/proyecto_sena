@@ -154,7 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                         'ras_creados' => 0,
                         'evaluaciones_actualizadas' => 0,
                         'evaluaciones_creadas' => 0,
-                        'warnings' => []
+                        'warnings' => [],
+                        'detalles' => []
                     ];
                     
                     $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
@@ -456,6 +457,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                                     }
                                 }
                                 
+                                $eval_accion = 'Sin cambios';
                                 if ($eval_db) {
                                     $eval_id = (int)$eval_db['id'];
                                     $concepto_anterior = $eval_db['concepto'];
@@ -476,6 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                                         ");
                                         $stmtHist->execute([$eval_id, $user_id, $concepto_anterior, $concepto]);
                                         $stats['evaluaciones_actualizadas']++;
+                                        $eval_accion = 'Actualizado';
                                     }
                                 } else {
                                     // Insertar evaluación
@@ -485,7 +488,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                                     ");
                                     $stmtInsertEval->execute([$ra_id, $aprendiz_id, $instructor_id, $ficha_id, $concepto, $fecha_eval]);
                                     $stats['evaluaciones_creadas']++;
+                                    $eval_accion = 'Creado';
                                 }
+                                
+                                $stats['detalles'][] = [
+                                    'documento' => $num_doc,
+                                    'nombre' => $nombre_completo,
+                                    'ra_codigo' => $raCode,
+                                    'concepto' => $concepto,
+                                    'eval_accion' => $eval_accion
+                                ];
                             }
                             
                             $db->commit();
@@ -612,6 +624,81 @@ if (!isset($app_included)) {
         </tbody>
       </table>
     </div>
+
+    <?php if (!empty($import_summary['detalles'])): ?>
+    <div class="mt-4 border-top pt-4">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-person-lines-fill me-2 text-primary"></i>Listado Detallado de Juicios Importados</h6>
+        <div class="d-flex align-items-center gap-2">
+          <input type="text" id="detailSearchInput" class="form-control form-control-sm" placeholder="🔍 Buscar aprendiz o documento..." style="max-width: 250px; border-radius: 8px;">
+        </div>
+      </div>
+
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px;">
+        <table class="table table-hover table-striped align-middle mb-0" id="detailsTable" style="font-size:0.85rem;">
+          <thead class="table-light sticky-top" style="z-index: 1;">
+            <tr>
+              <th>Documento</th>
+              <th>Aprendiz</th>
+              <th>Código RA</th>
+              <th class="text-center" style="width: 120px;">Juicio</th>
+              <th class="text-center" style="width: 120px;">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($import_summary['detalles'] as $det): 
+              $badgeConcepto = 'bg-secondary text-dark';
+              $textoConcepto = 'Pendiente';
+              if ($det['concepto'] === 'A') {
+                  $badgeConcepto = 'bg-soft success text-success';
+                  $textoConcepto = 'Aprobado';
+              } elseif ($det['concepto'] === 'D') {
+                  $badgeConcepto = 'bg-soft danger text-danger';
+                  $textoConcepto = 'Deficiente';
+              }
+              
+              $badgeAccion = 'bg-light text-dark';
+              if ($det['eval_accion'] === 'Creado') {
+                  $badgeAccion = 'bg-soft success text-success';
+              } elseif ($det['eval_accion'] === 'Actualizado') {
+                  $badgeAccion = 'bg-soft primary text-primary';
+              } else {
+                  $badgeAccion = 'bg-soft secondary text-secondary';
+              }
+            ?>
+            <tr>
+              <td><?= htmlspecialchars($det['documento']) ?></td>
+              <td><strong><?= htmlspecialchars($det['nombre']) ?></strong></td>
+              <td><code class="text-dark bg-light px-1.5 py-0.5 rounded"><?= htmlspecialchars($det['ra_codigo']) ?></code></td>
+              <td class="text-center">
+                <span class="badge <?= $badgeConcepto ?>" style="font-size: 0.75rem; font-weight: 600; padding: 4px 8px;"><?= $textoConcepto ?></span>
+              </td>
+              <td class="text-center">
+                <span class="badge <?= $badgeAccion ?>" style="font-size: 0.75rem; font-weight: 600; padding: 4px 8px;"><?= htmlspecialchars($det['eval_accion']) ?></span>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+    document.getElementById('detailSearchInput')?.addEventListener('keyup', function() {
+        const value = this.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#detailsTable tbody tr');
+        rows.forEach(row => {
+            const doc = row.cells[0]?.textContent.toLowerCase();
+            const name = row.cells[1]?.textContent.toLowerCase();
+            if (doc.includes(value) || name.includes(value)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    </script>
+    <?php endif; ?>
   </div>
 </div>
 <?php endif; ?>
