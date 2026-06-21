@@ -1,14 +1,9 @@
 {
-    "_readme": [
-        "This file locks the dependencies of your project to a known state",
-        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
-        "This file is @generated automatically"
-    ],
-    "content-hash": "f234b486da4cbbe227c21578d661e1c9",
     "packages": [
         {
             "name": "shuchkin/simplexls",
             "version": "1.0.0",
+            "version_normalized": "1.0.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/shuchkin/simplexls.git",
@@ -24,7 +19,9 @@
                 "ext-mbstring": "*",
                 "php": ">=5.5"
             },
+            "time": "2025-03-03T21:58:30+00:00",
             "type": "library",
+            "installation-source": "dist",
             "autoload": {
                 "classmap": [
                     "src/SimpleXLS.php"
@@ -54,16 +51,9 @@
                 "issues": "https://github.com/shuchkin/simplexls/issues",
                 "source": "https://github.com/shuchkin/simplexls/tree/1.0.0"
             },
-            "time": "2025-03-03T21:58:30+00:00"
+            "install-path": "../shuchkin/simplexls"
         }
     ],
-    "packages-dev": [],
-    "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": {},
-    "prefer-stable": false,
-    "prefer-lowest": false,
-    "platform": {},
-    "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "dev": true,
+    "dev-package-names": []
 }

@@ -2,7 +2,9 @@
     "name": "sena/seguimiento",
     "description": "Sistema de Seguimiento de Proyectos Formativos SENA",
     "type": "project",
-    "require": {},
+    "require": {
+        "shuchkin/simplexls": "^1.0"
+    },
     "autoload": {
         "psr-4": {
             "Core\\": "core/"
