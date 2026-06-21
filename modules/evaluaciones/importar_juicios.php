@@ -119,20 +119,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
         }
         $targetCsv = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('import_', true) . '.csv';
         
-        // Garantizar directorios de perfil de sistema para evitar fallos de Excel COM en Session 0
-        if (!is_dir('C:\\Windows\\System32\\config\\systemprofile\\Desktop')) {
-            @mkdir('C:\\Windows\\System32\\config\\systemprofile\\Desktop', 0777, true);
-        }
-        if (!is_dir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop')) {
-            @mkdir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop', 0777, true);
-        }
-
-        // Ejecutar el script convertidor de PowerShell
-        $psScript = __DIR__ . '/../../includes/convert_xls.ps1';
-        $xlsPath = realpath($targetXls);
+        $isWindows = (PHP_OS_FAMILY === 'Windows');
         
-        $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" . $psScript . "\" \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
-        exec($cmd, $output, $returnCode);
+        if ($isWindows) {
+            // --- WINDOWS: Usar PowerShell + Excel COM ---
+            if (!is_dir('C:\\Windows\\System32\\config\\systemprofile\\Desktop')) {
+                @mkdir('C:\\Windows\\System32\\config\\systemprofile\\Desktop', 0777, true);
+            }
+            if (!is_dir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop')) {
+                @mkdir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop', 0777, true);
+            }
+            $psScript = __DIR__ . '/../../includes/convert_xls.ps1';
+            $xlsPath = realpath($targetXls);
+            $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" . $psScript . "\" \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
+            exec($cmd, $output, $returnCode);
+        } else {
+            // --- LINUX: Usar LibreOffice headless ---
+            $xlsPath = realpath($targetXls);
+            $output = [];
+            
+            // Intentar con libreoffice o soffice
+            $loCmd = '';
+            exec('which libreoffice 2>/dev/null', $loCheck, $loRet);
+            if ($loRet === 0) {
+                $loCmd = 'libreoffice';
+            } else {
+                exec('which soffice 2>/dev/null', $soCheck, $soRet);
+                if ($soRet === 0) {
+                    $loCmd = 'soffice';
+                }
+            }
+            
+            if (empty($loCmd)) {
+                // LibreOffice no encontrado, intentar con ssconvert (gnumeric)
+                exec('which ssconvert 2>/dev/null', $ssCheck, $ssRet);
+                if ($ssRet === 0) {
+                    $cmd = "ssconvert \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
+                    exec($cmd, $output, $returnCode);
+                } else {
+                    // Último recurso: intentar con python3 + xlrd
+                    $pyScript = "import sys; import xlrd; import csv; wb=xlrd.open_workbook(sys.argv[1]); ws=wb.sheet_by_index(0); f=open(sys.argv[2],'w',newline='',encoding='utf-8'); w=csv.writer(f,delimiter=';'); [w.writerow([ws.cell_value(r,c) for c in range(ws.ncols)]) for r in range(ws.nrows)]; f.close()";
+                    $cmd = "python3 -c \"" . $pyScript . "\" \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
+                    exec($cmd, $output, $returnCode);
+                    
+                    if ($returnCode !== 0) {
+                        $errors[] = '<strong>Error:</strong> No se encontró un convertidor de XLS en el servidor. Instala LibreOffice con: <code>sudo apt install libreoffice-calc -y</code>';
+                        $returnCode = 1;
+                    }
+                }
+            } else {
+                // Usar LibreOffice headless para convertir a CSV
+                $tempOutDir = $uploadsDir;
+                $cmd = $loCmd . " --headless --convert-to csv:\"Text - txt - csv (StarCalc)\":44,34,76,1 --outdir \"" . $tempOutDir . "\" \"" . $xlsPath . "\" 2>&1";
+                exec($cmd, $output, $returnCode);
+                
+                // LibreOffice genera el CSV con el mismo nombre que el XLS pero extensión .csv
+                $generatedCsv = $tempOutDir . '/' . pathinfo(basename($xlsPath), PATHINFO_FILENAME) . '.csv';
+                if (file_exists($generatedCsv) && $generatedCsv !== $targetCsv) {
+                    rename($generatedCsv, $targetCsv);
+                }
+            }
+        }
         
         // Limpiar XLS temporal inmediatamente
         if (file_exists($targetXls)) {
