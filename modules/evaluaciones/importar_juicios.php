@@ -10,10 +10,22 @@ use Core\Database;
 
 requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
 
+// Aumentar límites para uploads base64 (33% más grandes que el original)
+@ini_set('post_max_size', '64M');
+@ini_set('upload_max_filesize', '64M');
+@ini_set('memory_limit', '256M');
+
 $db = Database::getConnection();
 $errors = [];
 $successMessage = '';
 $import_summary = null;
+
+// Comprobar si hay resultados de importación almacenados en sesión (de AJAX previo)
+if (isset($_SESSION['import_success'])) {
+    $successMessage = $_SESSION['import_success'];
+    $import_summary = $_SESSION['import_summary'] ?? null;
+    unset($_SESSION['import_success'], $_SESSION['import_summary']);
+}
 
 $user_rol = getCurrentRole();
 $user_id = (int)getCurrentUser()['id'];
@@ -29,113 +41,116 @@ function toUtf8($str) {
 }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
+// Determinar si el envío es via AJAX (base64) o formulario tradicional
+$is_ajax = (!empty($_POST['file_data']) && !empty($_POST['file_name']));
 
-    if ($_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
-        $errors[] = 'Error al subir el archivo Excel.';
-    } else {
-        $tmpName = $_FILES['excel_file']['tmp_name'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_file']))) {
+
+    $targetXls = null;
+    $ext = '';
+    
+    if ($is_ajax) {
+        // --- MODO AJAX: archivo enviado como base64 ---
+        $originalName = $_POST['file_name'];
+        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         
-        // Diagnóstico de archivo temporal al iniciar el script
-        $exists_at_start = file_exists($tmpName);
-        $size_at_start = $exists_at_start ? filesize($tmpName) : -1;
-        $readable_at_start = $exists_at_start ? is_readable($tmpName) : false;
-        $is_uploaded_at_start = is_uploaded_file($tmpName);
-        
-        $originalName = $_FILES['excel_file']['name'];
-        $ext = pathinfo($originalName, PATHINFO_EXTENSION);
-        
-        if (strtolower($ext) !== 'xls') {
+        if ($ext !== 'xls') {
             $errors[] = 'El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).';
-        } elseif (!$exists_at_start) {
-            $errors[] = '<strong>Error de Acceso al Archivo:</strong> El navegador no pudo leer el contenido del archivo original.';
-            $errors[] = 'Esto ocurre cuando el archivo está bloqueado por el sistema en tu computadora, impidiendo que el navegador web (Chrome/Edge) lea sus datos para subirlos. Las causas más comunes son:';
-            $errors[] = '<ul>
-                            <li>El archivo está abierto en <strong>Microsoft Excel</strong> (o hay un proceso oculto de Excel reteniéndolo).</li>
-                            <li>El archivo está sincronizándose en <strong>OneDrive / SharePoint</strong> y se encuentra bloqueado temporalmente.</li>
-                            <li>Tienes el <strong>Panel de Vista Previa</strong> (Preview Pane) activo en el Explorador de Archivos de Windows y tienes seleccionado este archivo, lo cual bloquea su lectura.</li>
-                         </ul>';
-            $errors[] = '<strong>Soluciones rápidas:</strong>
-                         <ol>
-                            <li><strong>La solución definitiva:</strong> Haz una copia del archivo (clic derecho -> Copiar y Pegar en el Escritorio) e intenta subir la copia. Al ser un archivo nuevo, no heredará ningún bloqueo activo.</li>
-                            <li>Cierra Microsoft Excel completamente. Si persiste, abre el Administrador de Tareas (Ctrl+Shift+Esc), busca procesos de "Microsoft Excel" en segundo plano y finalízalos.</li>
-                            <li>Desactiva el panel de vista previa en tu explorador de archivos si lo tienes abierto.</li>
-                         </ol>';
-            
-            // Adjuntar detalle técnico en un bloque colapsable para diagnóstico
-            $errors[] = '<details class="mt-2 text-start"><summary class="text-muted small" style="cursor:pointer; outline:none;">Ver detalle técnico del servidor</summary>' .
-                        '<pre class="bg-light p-2 rounded small mt-1 text-dark" style="font-family:monospace; font-size:0.8rem; border:1px solid #ddd;">' .
-                        "- Origen temporal (tmp_name): " . htmlspecialchars($tmpName ?? 'No definido') . "\n" .
-                        "- Existe al iniciar: NO\n" .
-                        "- Tamaño al iniciar: N/A\n" .
-                        "- Legible al iniciar: NO\n" .
-                        "- Es archivo subido: NO\n" .
-                        "- Error PHP: Ninguno registrado por PHP." .
-                        '</pre></details>';
-        } elseif ($size_at_start === 0) {
-            $errors[] = '<strong>Archivo Vacío (0 bytes):</strong> El archivo recibido en el servidor no tiene contenido.';
-            $errors[] = 'Esto ocurre comúnmente cuando el archivo original está bloqueado por otro programa en tu computadora, haciendo que el navegador envíe un archivo vacío de 0 bytes.';
-            $errors[] = '<strong>Soluciones rápidas:</strong>
-                         <ol>
-                            <li><strong>La solución definitiva:</strong> Haz una copia del archivo (clic derecho -> Copiar y Pegar en el Escritorio) e intenta subir la copia. Esto rompe cualquier bloqueo del sistema.</li>
-                            <li>Cierra Microsoft Excel por completo.</li>
-                            <li>Si el archivo está en OneDrive, espera a que termine de sincronizar o colócalo en una carpeta no sincronizada local.</li>
-                         </ol>';
-            
-            $errors[] = '<details class="mt-2 text-start"><summary class="text-muted small" style="cursor:pointer; outline:none;">Ver detalle técnico del servidor</summary>' .
-                        '<pre class="bg-light p-2 rounded small mt-1 text-dark" style="font-family:monospace; font-size:0.8rem; border:1px solid #ddd;">' .
-                        "- Origen temporal (tmp_name): " . htmlspecialchars($tmpName ?? 'No definido') . "\n" .
-                        "- Existe al iniciar: SÍ\n" .
-                        "- Tamaño al iniciar: 0 bytes\n" .
-                        "- Legible al iniciar: SÍ\n" .
-                        "- Es archivo subido: SÍ\n" .
-                        "- Error PHP: Ninguno registrado por PHP." .
-                        '</pre></details>';
         } else {
-            // Guardar el archivo en el directorio de cargas del servidor (permisos ya reparados)
-            $uploadsDir = realpath(__DIR__ . '/../../uploads');
-            if ($uploadsDir === false) {
-                $uploadsDir = __DIR__ . '/../../uploads'; // Fallback
+            $fileData = base64_decode($_POST['file_data'], true);
+            if ($fileData === false || strlen($fileData) === 0) {
+                $errors[] = 'Error: No se pudo decodificar el contenido del archivo. Intenta de nuevo.';
+            } else {
+                $uploadsDir = realpath(__DIR__ . '/../../uploads');
+                if ($uploadsDir === false) {
+                    $uploadsDir = __DIR__ . '/../../uploads';
+                    if (!is_dir($uploadsDir)) {
+                        @mkdir($uploadsDir, 0777, true);
+                    }
+                }
+                $targetXls = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('import_', true) . '.xls';
+                if (file_put_contents($targetXls, $fileData) === false) {
+                    $errors[] = 'Error al guardar el archivo en el servidor.';
+                    $targetXls = null;
+                }
             }
+        }
+        
+        // Si es AJAX, enviar respuesta JSON
+        if (!empty($errors)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'errors' => $errors]);
+            exit;
+        }
+    } else {
+        // --- MODO TRADICIONAL: formulario multipart ---
+        if ($_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
+            $errors[] = 'Error al subir el archivo. Código: ' . $_FILES['excel_file']['error'];
+        } else {
+            $tmpName = $_FILES['excel_file']['tmp_name'];
+            $originalName = $_FILES['excel_file']['name'];
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
             
-            $targetXls = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('import_', true) . '.xls';
-            $targetCsv = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('import_', true) . '.csv';
-            
-            $moved = move_uploaded_file($tmpName, $targetXls);
-            
-            if ($moved) {
-                // Garantizar directorios de perfil de sistema para evitar fallos de Excel COM en Session 0 (Apache Ejecutado como Servicio)
-                if (!is_dir('C:\\Windows\\System32\\config\\systemprofile\\Desktop')) {
-                    @mkdir('C:\\Windows\\System32\\config\\systemprofile\\Desktop', 0777, true);
+            if ($ext !== 'xls') {
+                $errors[] = 'El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).';
+            } elseif (!file_exists($tmpName) || filesize($tmpName) === 0) {
+                $errors[] = 'Error: El archivo no se recibió correctamente en el servidor. Intenta de nuevo.';
+            } else {
+                $uploadsDir = realpath(__DIR__ . '/../../uploads');
+                if ($uploadsDir === false) {
+                    $uploadsDir = __DIR__ . '/../../uploads';
+                    if (!is_dir($uploadsDir)) {
+                        @mkdir($uploadsDir, 0777, true);
+                    }
                 }
-                if (!is_dir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop')) {
-                    @mkdir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop', 0777, true);
+                $targetXls = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('import_', true) . '.xls';
+                if (!move_uploaded_file($tmpName, $targetXls)) {
+                    $errors[] = 'Error al guardar el archivo en el servidor.';
+                    $targetXls = null;
                 }
+            }
+        }
+    }
 
-                // Ejecutar el script convertidor de PowerShell
-                $psScript = __DIR__ . '/../../includes/convert_xls.ps1';
-                $xlsPath = realpath($targetXls);
-                
-                $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" . $psScript . "\" \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
-                exec($cmd, $output, $returnCode);
-                
-                // Limpiar XLS temporal inmediatamente
-                if (file_exists($targetXls)) {
-                    unlink($targetXls);
-                }
-                
-                if ($returnCode !== 0 || !file_exists($targetCsv)) {
-                    $errors[] = 'Error al convertir el archivo Excel en el servidor. Detalles: <pre class="bg-light p-2 rounded small mt-1 text-dark" style="font-family:monospace; font-size:0.8rem; border:1px solid #ddd;">' . htmlspecialchars(implode("\n", $output)) . '</pre>';
-                } else {
-                    // Procesar el CSV
-                    $handle = fopen($targetCsv, 'r');
-                    if ($handle === false) {
-                        $errors[] = 'No se pudo abrir el archivo de intercambio temporal.';
-                    } else {
-                        // Detectar delimitador
-                        $firstLine = fgets($handle);
-                        $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
-                        rewind($handle);
+    if (empty($errors) && $targetXls) {
+        $uploadsDir = realpath(__DIR__ . '/../../uploads');
+        if ($uploadsDir === false) {
+            $uploadsDir = __DIR__ . '/../../uploads';
+        }
+        $targetCsv = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('import_', true) . '.csv';
+        
+        // Garantizar directorios de perfil de sistema para evitar fallos de Excel COM en Session 0
+        if (!is_dir('C:\\Windows\\System32\\config\\systemprofile\\Desktop')) {
+            @mkdir('C:\\Windows\\System32\\config\\systemprofile\\Desktop', 0777, true);
+        }
+        if (!is_dir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop')) {
+            @mkdir('C:\\Windows\\SysWOW64\\config\\systemprofile\\Desktop', 0777, true);
+        }
+
+        // Ejecutar el script convertidor de PowerShell
+        $psScript = __DIR__ . '/../../includes/convert_xls.ps1';
+        $xlsPath = realpath($targetXls);
+        
+        $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" . $psScript . "\" \"" . $xlsPath . "\" \"" . $targetCsv . "\" 2>&1";
+        exec($cmd, $output, $returnCode);
+        
+        // Limpiar XLS temporal inmediatamente
+        if (file_exists($targetXls)) {
+            unlink($targetXls);
+        }
+        
+        if ($returnCode !== 0 || !file_exists($targetCsv)) {
+            $errors[] = 'Error al convertir el archivo Excel en el servidor. Detalles: <pre class="bg-light p-2 rounded small mt-1 text-dark" style="font-family:monospace; font-size:0.8rem; border:1px solid #ddd;">' . htmlspecialchars(implode("\n", $output)) . '</pre>';
+        } else {
+            // Procesar el CSV
+            $handle = fopen($targetCsv, 'r');
+            if ($handle === false) {
+                $errors[] = 'No se pudo abrir el archivo de intercambio temporal.';
+            } else {
+                // Detectar delimitador
+                $firstLine = fgets($handle);
+                $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+                rewind($handle);
                         
                         try {
                             $db->beginTransaction();
@@ -507,19 +522,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
                         unlink($targetCsv);
                     }
                 }
-            } else {
-                $lastError = error_get_last();
-                $errors[] = 'No se pudo guardar el archivo en el directorio de cargas del servidor.';
-                $errors[] = 'Detalle técnico:';
-                $errors[] = '- Origen temporal (tmp_name): ' . htmlspecialchars($tmpName ?? 'No definido');
-                $errors[] = '- Destino (target_xls): ' . htmlspecialchars($targetXls ?? 'No definido');
-                $errors[] = '- Existe al iniciar: ' . ($exists_at_start ? 'SÍ' : 'NO');
-                $errors[] = '- Tamaño al iniciar: ' . ($size_at_start !== -1 ? $size_at_start . ' bytes' : 'N/A');
-                $errors[] = '- Legible al iniciar: ' . ($readable_at_start ? 'SÍ' : 'NO');
-                $errors[] = '- Es archivo subido: ' . ($is_uploaded_at_start ? 'SÍ' : 'NO');
-                $errors[] = '- Error PHP: ' . htmlspecialchars($lastError['message'] ?? 'Ninguno registrado por PHP.');
             }
+
+    // Si es AJAX, almacenar resultados en sesión y enviar respuesta JSON
+    if ($is_ajax) {
+        if (empty($errors) && $successMessage) {
+            $_SESSION['import_success'] = $successMessage;
+            $_SESSION['import_summary'] = $import_summary;
         }
+        header('Content-Type: application/json');
+        if (!empty($errors)) {
+            echo json_encode(['success' => false, 'errors' => $errors]);
+        } else {
+            echo json_encode([
+                'success' => true,
+                'message' => $successMessage
+            ]);
+        }
+        exit;
     }
 }
 
@@ -629,21 +649,38 @@ if (!isset($app_included)) {
         <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-excel text-primary me-2"></i>Sube tu archivo .xls</h5>
       </div>
       <div class="card-body p-4 pt-0">
-        <form method="POST" enctype="multipart/form-data">
+        <form id="uploadForm" method="POST" enctype="multipart/form-data">
           <p class="text-muted small mb-4">
             Selecciona el archivo binario de Excel (<strong>.xls</strong>) que contiene los juicios evaluativos. El sistema lo convertirá y procesará para crear la ficha, los aprendices, las competencias y todos los juicios de evaluación.
           </p>
           
           <div class="mb-4">
             <label class="form-label text-muted small fw-bold">Archivo Excel (.xls)</label>
-            <input type="file" name="excel_file" class="form-control" accept=".xls" required>
+            <input type="file" id="excelFileInput" name="excel_file" class="form-control" accept=".xls" required>
             <div class="form-text text-muted" style="font-size:0.75rem;">
               * Asegúrate de no alterar el archivo original de juicios evaluativos.
             </div>
           </div>
           
+          <!-- Barra de progreso (oculta inicialmente) -->
+          <div id="uploadProgress" class="mb-3" style="display:none;">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+              <span id="uploadStatusText" class="small text-muted">Leyendo archivo...</span>
+            </div>
+            <div class="progress" style="height: 6px;">
+              <div id="uploadProgressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Contenedor de errores AJAX -->
+          <div id="ajaxErrors" class="alert-flat danger mb-3" style="display:none;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div id="ajaxErrorContent"></div>
+          </div>
+          
           <div class="d-grid">
-            <button type="submit" class="btn btn-primary py-2.5 fw-bold">
+            <button type="submit" id="submitBtn" class="btn btn-primary py-2.5 fw-bold">
               <i class="bi bi-cloud-arrow-up me-2"></i>Iniciar Carga Masiva
             </button>
           </div>
@@ -652,4 +689,113 @@ if (!isset($app_included)) {
     </div>
   </div>
 </div>
+
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('excelFileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Selecciona un archivo primero.');
+        return;
+    }
+    
+    // Validar extensión
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'xls') {
+        alert('El archivo debe tener extensión .xls');
+        return;
+    }
+    
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const statusText = document.getElementById('uploadStatusText');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorsDiv = document.getElementById('ajaxErrors');
+    const errorsContent = document.getElementById('ajaxErrorContent');
+    
+    // Ocultar errores previos
+    errorsDiv.style.display = 'none';
+    
+    // Mostrar progreso
+    progressDiv.style.display = 'block';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
+    statusText.textContent = 'Leyendo archivo...';
+    progressBar.style.width = '10%';
+    
+    // Leer el archivo con FileReader (esto bypassa bloqueos del OS)
+    const reader = new FileReader();
+    
+    reader.onload = function(event) {
+        statusText.textContent = 'Enviando al servidor...';
+        progressBar.style.width = '40%';
+        
+        // Obtener el base64 sin el prefijo "data:..."
+        const base64Data = event.target.result.split(',')[1];
+        
+        // Enviar via fetch como POST con datos base64
+        const formData = new FormData();
+        formData.append('file_data', base64Data);
+        formData.append('file_name', file.name);
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            statusText.textContent = 'Procesando importación...';
+            progressBar.style.width = '80%';
+            return response.text();
+        })
+        .then(text => {
+            // Verificar si es JSON (respuesta AJAX) o HTML (redirect/page)
+            try {
+                const data = JSON.parse(text);
+                progressBar.style.width = '100%';
+                
+                if (data.success) {
+                    statusText.textContent = '¡Importación completada!';
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-success');
+                    // Recargar la página para mostrar el resumen
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    // Mostrar errores
+                    progressDiv.style.display = 'none';
+                    errorsDiv.style.display = 'flex';
+                    errorsContent.innerHTML = data.errors.join('<br>');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Iniciar Carga Masiva';
+                }
+            } catch(e) {
+                // La respuesta es HTML, probablemente la página completa (modo fallback)
+                // Recargar para mostrar el resultado
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            progressDiv.style.display = 'none';
+            errorsDiv.style.display = 'flex';
+            errorsContent.innerHTML = 'Error de conexión: ' + error.message + '<br>Intenta de nuevo.';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Iniciar Carga Masiva';
+        });
+    };
+    
+    reader.onerror = function() {
+        progressDiv.style.display = 'none';
+        errorsDiv.style.display = 'flex';
+        errorsContent.innerHTML = 'Error: No se pudo leer el archivo. Intenta con una copia del archivo.';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Iniciar Carga Masiva';
+    };
+    
+    // Leer como base64 (DataURL)
+    reader.readAsDataURL(file);
+});
+</script>
 <?php endif; ?>
+
