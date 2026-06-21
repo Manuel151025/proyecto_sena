@@ -514,6 +514,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                                 }
                                 $stats['detalles'][$num_doc]['juicios'][] = [
                                     'ra_codigo' => $raCode,
+                                    'ra_denom' => $raDenom,
+                                    'competencia' => $compName . ' (' . $compCode . ')',
                                     'concepto' => $concepto,
                                     'eval_accion' => $eval_accion
                                 ];
@@ -730,12 +732,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <td colspan="5" class="p-3">
                 <div class="px-4 py-3 border rounded bg-white shadow-sm" style="border-radius: 8px;">
                   <h6 class="fw-bold mb-3 text-muted" style="font-size: 0.8rem;"><i class="bi bi-journal-check me-2"></i>Detalle de Evaluaciones</h6>
-                  <table class="table table-sm table-bordered mb-0" style="font-size: 0.8rem;">
+                  <table class="table table-sm table-bordered mb-0 align-middle" style="font-size: 0.8rem;">
                     <thead class="table-light">
                       <tr>
-                        <th>Código RA (Resultado de Aprendizaje)</th>
-                        <th class="text-center" style="width: 150px;">Juicio</th>
-                        <th class="text-center" style="width: 150px;">Acción de BD</th>
+                        <th>Competencia</th>
+                        <th style="width: 120px;">Código RA</th>
+                        <th>Resultado de Aprendizaje (RA)</th>
+                        <th class="text-center" style="width: 120px;">Juicio</th>
+                        <th class="text-center" style="width: 120px;">Acción de BD</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -760,7 +764,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                       ?>
                       <tr>
-                        <td><code class="text-dark bg-light px-1.5 py-0.5 rounded" style="font-size: 0.85rem;"><?= htmlspecialchars($j['ra_codigo']) ?></code></td>
+                        <td style="font-size: 0.75rem; color: #555;"><i class="bi bi-award me-1"></i><?= htmlspecialchars($j['competencia'] ?? '') ?></td>
+                        <td><code class="text-dark bg-light px-1.5 py-0.5 rounded" style="font-size: 0.8rem;"><?= htmlspecialchars($j['ra_codigo']) ?></code></td>
+                        <td style="font-size: 0.75rem;"><?= htmlspecialchars($j['ra_denom'] ?? '') ?></td>
                         <td class="text-center"><span class="badge <?= $badgeConcepto ?>" style="padding: 4px 8px; font-weight:600;"><?= $textoConcepto ?></span></td>
                         <td class="text-center"><span class="badge <?= $badgeAccion ?>" style="padding: 4px 8px; font-weight:600;"><?= htmlspecialchars($j['eval_accion']) ?></span></td>
                       </tr>
