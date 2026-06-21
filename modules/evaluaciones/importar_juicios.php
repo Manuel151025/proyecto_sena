@@ -43,6 +43,12 @@ function toUtf8($str) {
 }
 }
 
+// Detectar si el tamaño del POST superó el límite de PHP (cuando $_POST y $_FILES están vacíos en un POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES)) {
+    $errors[] = 'El tamaño del archivo supera el límite permitido por la configuración de PHP del servidor (post_max_size / upload_max_filesize). Intente con un archivo más pequeño.';
+    @file_put_contents(__DIR__ . '/../../logs/import_errors.log', date('[Y-m-d H:i:s] ') . "POST vacío recibido. Posible exceso de post_max_size en php.ini.\n", FILE_APPEND);
+}
+
 // Determinar si el envío es via AJAX (base64) o formulario tradicional
 $is_ajax = (!empty($_POST['file_data']) && !empty($_POST['file_name']));
 
@@ -124,12 +130,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
         }
         
         if (!$xls) {
-            $errors[] = 'Error al leer el archivo Excel: ' . htmlspecialchars(SimpleXLS::parseError());
+            $xlsErr = (string)SimpleXLS::parseError();
+            $errors[] = 'Error al leer el archivo Excel: ' . htmlspecialchars($xlsErr);
+            @file_put_contents(__DIR__ . '/../../logs/import_errors.log', date('[Y-m-d H:i:s] ') . 'SimpleXLS parseError: ' . $xlsErr . "\n", FILE_APPEND);
         } else {
             $allRows = $xls->rows(0); // Primera hoja
             
             if (empty($allRows)) {
                 $errors[] = 'El archivo Excel está vacío o no contiene datos legibles.';
+                @file_put_contents(__DIR__ . '/../../logs/import_errors.log', date('[Y-m-d H:i:s] ') . "SimpleXLS: rows array is empty.\n", FILE_APPEND);
             } else {
                 try {
                     $db->beginTransaction();
@@ -507,6 +516,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_ajax || isset($_FILES['excel_f
                     } catch (Exception $e) {
                         $db->rollBack();
                         $errors[] = 'Error al procesar el contenido de la importación: ' . htmlspecialchars($e->getMessage());
+                        @file_put_contents(__DIR__ . '/../../logs/import_errors.log', date('[Y-m-d H:i:s] ') . 'Exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
                     }
                 }
             }
