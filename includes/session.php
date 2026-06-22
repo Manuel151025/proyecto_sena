@@ -139,7 +139,7 @@ function requireAuth(): void {
 function requireRole(string ...$roles): void {
     requireAuth();
     if (!in_array(getCurrentRole(), $roles, true)) {
-        header('Location: ' . APP_URL . '/modules/dashboard/' . getCurrentRole() . '.php');
+        header('Location: ' . APP_URL . '/index.php/dashboard');
         exit;
     }
 }
