@@ -5,6 +5,7 @@ namespace Core\Controllers;
 
 use Core\BaseController;
 use Core\Models\DashboardModel;
+use Core\Models\InstructorDashboardModel;
 use Exception;
 
 class DashboardController extends BaseController {
@@ -23,10 +24,32 @@ class DashboardController extends BaseController {
         $role = getCurrentRole();
         $user = getCurrentUser();
 
-        // Si es instructor o aprendiz, delegar temporalmente al panel legacy
+        // Si es instructor, cargar métricas de su panel y renderizar la vista del instructor
         if ($role === ROL_INSTRUCTOR) {
-            $this->redirect(MODULES_PATH . '/dashboard/instructor.php');
+            $instructorModel = new InstructorDashboardModel();
+            $instructorId = (int)$user['id'];
+
+            $kpis = $instructorModel->getKpis($instructorId);
+            $fichasInstructor = $instructorModel->getFichasAsignadas($instructorId);
+            $pendientesPlanes = $instructorModel->getRecentDeficiencies($instructorId, 10);
+            $evalConceptos = $instructorModel->getConceptDistribution($instructorId);
+            $aprendicesSeguimientoLista = $instructorModel->getAprendicesSeguimiento($instructorId);
+
+            $this->render(
+                BASE_PATH . 'modules/dashboard/views/instructor.view.php',
+                [
+                    'nombreUsuario' => htmlspecialchars($user['nombre']),
+                    'kpis' => $kpis,
+                    'fichasInstructor' => $fichasInstructor,
+                    'pendientesPlanes' => $pendientesPlanes,
+                    'evalConceptos' => $evalConceptos,
+                    'aprendicesSeguimientoLista' => $aprendicesSeguimientoLista
+                ],
+                'Dashboard Instructor · SENA'
+            );
+            return;
         }
+
         if ($role === ROL_APRENDIZ) {
             $this->redirect(MODULES_PATH . '/dashboard/aprendiz.php');
         }
