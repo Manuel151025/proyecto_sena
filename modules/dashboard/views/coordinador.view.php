@@ -1,26 +1,26 @@
 <?php
 declare(strict_types=1);
 ?>
-<!-- Hero Banner de Bienvenida Premium -->
-<div class="card border-0 mb-4 shadow-sm text-white overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 16px;">
+<!-- Hero Banner de Bienvenida Premium Compacto -->
+<div class="card border-0 mb-4 shadow-sm text-white overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 12px;">
   <!-- Figuras orgánicas de fondo -->
-  <div class="position-absolute" style="width: 250px; height: 250px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -100px; right: -50px;"></div>
-  <div class="position-absolute" style="width: 180px; height: 180px; background: rgba(255, 255, 255, 0.02); border-radius: 50%; bottom: -60px; right: 120px;"></div>
+  <div class="position-absolute" style="width: 180px; height: 180px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -85px; right: -40px;"></div>
+  <div class="position-absolute" style="width: 120px; height: 120px; background: rgba(255, 255, 255, 0.02); border-radius: 50%; bottom: -45px; right: 90px;"></div>
   
-  <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4 position-relative" style="z-index: 2;">
+  <div class="card-body p-3 p-md-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 position-relative" style="z-index: 2;">
     <div>
-      <span class="badge bg-white text-success fw-bold px-3 py-2 mb-3" style="font-size: 0.72rem; border-radius: 30px; letter-spacing: 0.05em;">PORTAL DE COORDINACIÓN ACADÉMICA</span>
-      <h2 class="display-6 fw-bold mb-2 text-white" style="letter-spacing: -0.02em;">¡Hola, <?= $nombreUsuario ?>! 👋</h2>
-      <p class="mb-0 text-white-50" style="max-width: 580px; font-size: 0.95rem; line-height: 1.6;">
-        Bienvenido al sistema analítico de seguimiento. Monitorea los indicadores clave de cumplimiento, administra las fichas de formación y mantén bajo control las tasas de retención institucional.
+      <span class="badge bg-white text-success fw-bold px-2.5 py-1.5 mb-2" style="font-size: 0.65rem; border-radius: 30px; letter-spacing: 0.05em;">PORTAL DE COORDINACIÓN ACADÉMICA</span>
+      <h3 class="fw-bold mb-1 text-white" style="letter-spacing: -0.01em; font-size: 1.5rem;">¡Hola, <?= $nombreUsuario ?>! 👋</h3>
+      <p class="mb-0 text-white-50" style="max-width: 580px; font-size: 0.88rem; line-height: 1.5;">
+        Monitorea los indicadores de cumplimiento, administra fichas de formación y controla la retención académica.
       </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-light text-dark fw-bold px-4 py-3" style="border-radius: 12px; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-        <i class="bi bi-person-plus-fill me-2"></i> Nuevo Usuario
+      <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-light text-dark fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <i class="bi bi-person-plus-fill me-1"></i> Nuevo Usuario
       </a>
-      <a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-outline-light fw-bold px-4 py-3" style="border-radius: 12px; font-size: 0.88rem; border-width: 1.5px;">
-        <i class="bi bi-folder-fill me-2"></i> Ver Fichas
+      <a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-outline-light fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; border-width: 1.5px;">
+        <i class="bi bi-folder-fill me-1"></i> Ver Fichas
       </a>
     </div>
   </div>
