@@ -10,7 +10,7 @@ $menu = $menuConfig[$role] ?? [];
 $user = getCurrentUser();
 ?>
 <aside class="sidebar">
-  <div class="sidebar-brand">
+  <a href="<?= APP_URL ?>/index.php/dashboard" class="sidebar-brand" style="text-decoration: none; color: inherit; cursor: pointer;">
     <div class="brand-mark" style="background: transparent;">
       <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA Logo" style="width: 38px; height: 38px; object-fit: contain;">
     </div>
@@ -18,7 +18,7 @@ $user = getCurrentUser();
       <strong>SENA</strong>
       <small>Proyecto Formativo</small>
     </div>
-  </div>
+  </a>
   <nav class="sidebar-nav">
     <?php foreach ($menu as $groupName => $group): ?>
       <?php 
