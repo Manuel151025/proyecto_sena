@@ -15,7 +15,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const css = getComputedStyle(document.documentElement);
     const primaryColor = css.getPropertyValue('--sena-primary').trim() || '#39A900';
 
-    // 2. Función reutilizable para crear Sparklines premium e interactivos
+    // 2. Colores dinámicos para gráficos en modo claro/oscuro
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+
+    // Recargar al cambiar tema en caliente para redibujar correctamente
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                location.reload();
+            }
+        });
+    });
+    observer.observe(document.documentElement, { attributes: true });
+
+    // 3. Función reutilizable para crear Sparklines premium e interactivos
     function createSparkline(id, labels, data, color, fillGradStart, isPercentage = false) {
         const canvas = document.getElementById(id);
         if (!canvas) return;
@@ -109,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
         true
     );
 
-    // 3. Plugin personalizado para efecto "Glow" (Neón) en líneas
+    // 4. Plugin personalizado para efecto "Glow" (Neón) en líneas
     const neonGlowPlugin = {
         id: 'neonGlow',
         beforeDatasetsDraw: (chart) => {
@@ -130,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     Chart.register(neonGlowPlugin);
 
-    // 4. Chart Principal: Analítica Avanzada (Mixed Chart)
+    // 5. Chart Principal: Analítica Avanzada (Mixed Chart)
     const chartProgCanvas = document.getElementById('chartProg');
     if (chartProgCanvas) {
         const ctxProg = chartProgCanvas.getContext('2d');
@@ -205,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     legend: { 
                         display: true, 
                         position: 'top', 
-                        labels: { usePointStyle: true, boxWidth: 8, font: { weight: '600' } } 
+                        labels: { color: textColor, usePointStyle: true, boxWidth: 8, font: { weight: '600' } } 
                     },
                     tooltip: { 
                         backgroundColor: 'rgba(15, 23, 42, 0.9)', 
@@ -234,9 +249,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         position: 'left',
                         beginAtZero: true, 
                         max: 100, 
-                        title: { display: true, text: 'Cumplimiento (%)', font: { weight: 'bold', size: window.innerWidth < 576 ? 10 : 12 } },
-                        ticks: { font: { size: window.innerWidth < 576 ? 9 : 11 } },
-                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false } 
+                        title: { display: true, text: 'Cumplimiento (%)', color: textColor, font: { weight: 'bold', size: window.innerWidth < 576 ? 10 : 12 } },
+                        ticks: { color: textColor, font: { size: window.innerWidth < 576 ? 9 : 11 } },
+                        grid: { color: gridColor, drawBorder: false } 
                     },
                     y1: {
                         type: 'linear',
@@ -250,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     x: { 
                         grid: { display: false, drawBorder: false },
                         ticks: { 
+                            color: textColor,
                             font: { 
                                 weight: '500',
                                 size: window.innerWidth < 576 ? 9 : 11
@@ -275,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 5. Chart de estados de fichas (Doughnut)
+    // 6. Chart de estados de fichas (Doughnut)
     const chartPieCanvas = document.getElementById('chartPie');
     if (chartPieCanvas) {
         new Chart(chartPieCanvas, {
@@ -302,6 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     legend: { 
                         position: 'bottom', 
                         labels: { 
+                            color: textColor,
                             padding: window.innerWidth < 576 ? 10 : 20, 
                             usePointStyle: true, 
                             pointStyle: 'circle',
@@ -314,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 6. Gráficos de deserción (Solo si existen los elementos en el DOM)
+    // 7. Gráficos de deserción (Solo si existen los elementos en el DOM)
     const chartDesercionCanvas = document.getElementById('chartDesercionRate');
     if (chartDesercionCanvas && dashboardData.statsProgramas.length > 0) {
         const desercionRates = dashboardData.statsProgramas.map(p => {
@@ -347,14 +364,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         beginAtZero: true,
                         max: 100,
                         ticks: {
+                            color: textColor,
                             callback: function(value) { return value + '%'; },
                             font: { family: "'Inter', sans-serif", size: window.innerWidth < 576 ? 9 : 11 }
                         },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
+                        grid: { color: gridColor }
                     },
                     y: {
                         grid: { display: false },
                         ticks: {
+                            color: textColor,
                             font: { family: "'Inter', sans-serif", weight: '500', size: window.innerWidth < 576 ? 9 : 11 }
                         }
                     }
@@ -412,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         stacked: true, 
                         grid: { display: false },
                         ticks: { 
+                            color: textColor,
                             font: { family: "'Inter', sans-serif", size: window.innerWidth < 576 ? 9 : 11 },
                             autoSkip: true,
                             maxTicksLimit: window.innerWidth < 576 ? 4 : 10,
@@ -421,8 +441,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     y: { 
                         stacked: true, 
-                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        grid: { color: gridColor },
                         ticks: { 
+                            color: textColor,
                             font: { family: "'Inter', sans-serif", size: window.innerWidth < 576 ? 9 : 11 }
                         }
                     }
@@ -431,6 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     legend: { 
                         position: 'bottom', 
                         labels: { 
+                            color: textColor,
                             boxWidth: 12, 
                             font: { size: window.innerWidth < 576 ? 10 : 12 } 
                         } 
@@ -441,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 7. Cargar eventos del calendario de forma asíncrona
+    // 8. Cargar eventos del calendario de forma asíncrona
     const eventsList = document.getElementById('dashboard-events-list');
     if (eventsList) {
         const today = new Date();
