@@ -53,7 +53,19 @@
  
 *{box-sizing:border-box;}
 html,body{height:100%;}
-body{margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  background-image: radial-gradient(circle at 15% 15%, rgba(57, 169, 0, 0.06), transparent 45%),
+                    radial-gradient(circle at 85% 85%, rgba(34, 109, 0, 0.05), transparent 45%),
+                    radial-gradient(circle at 50% 30%, rgba(57, 169, 0, 0.025), transparent 60%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
 a{color:var(--sena-primary-600);text-decoration:none;}
 a:hover{color:var(--sena-primary);}
 h1,h2,h3,h4,h5{font-weight:600;color:var(--text);margin:0 0 .5rem;letter-spacing:-0.01em;}
