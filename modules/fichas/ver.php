@@ -119,7 +119,7 @@ $estados_aprendiz = [
     <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
       <a href="<?= MODULES_PATH ?>/fichas/" class="small"><i class="bi bi-arrow-left"></i> Volver a fichas</a>
     <?php else: ?>
-      <a href="<?= MODULES_PATH ?>/dashboard/aprendiz.php" class="small"><i class="bi bi-arrow-left"></i> Volver al Inicio</a>
+      <a href="<?= APP_URL ?>/index.php/dashboard" class="small"><i class="bi bi-arrow-left"></i> Volver al Inicio</a>
     <?php endif; ?>
     <h1 class="mt-2 mb-1">
       Ficha #<?= htmlspecialchars($ficha['numero_ficha']) ?> 

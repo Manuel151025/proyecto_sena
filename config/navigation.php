@@ -92,7 +92,7 @@ $MENU_CONFIG = [
         'Principal' => [
             'icon' => 'bi bi-grid-1x2',
             'items' => [
-                ['title' => 'Dashboard', 'url' => MODULES_PATH . '/dashboard/aprendiz.php'],
+                ['title' => 'Dashboard', 'url' => APP_URL . '/index.php/dashboard'],
                 ['title' => 'Calendario', 'url' => MODULES_PATH . '/calendario/'],
             ]
         ],
