@@ -41,6 +41,7 @@ class DashboardController extends BaseController {
         $cumplimientoProgramas = $this->dashboardModel->getCumplimientoPorPrograma();
         $statsProgramas = $this->dashboardModel->getStatsProgramasDesercion(5);
         $topInstructores = $this->dashboardModel->getTopInstructores(5);
+        $recentEvaluations = $this->dashboardModel->getRecentEvaluations(5);
 
         // Desestructurar datos para la vista
         $this->render(
@@ -55,6 +56,7 @@ class DashboardController extends BaseController {
                 'cumplimientoProgramas' => $cumplimientoProgramas,
                 'statsProgramas' => $statsProgramas,
                 'topInstructores' => $topInstructores,
+                'recentEvaluations' => $recentEvaluations,
                 'fichasEstadosMap' => $sparklineData['fichas_estados'],
                 'aprendicesEstadosMap' => $sparklineData['aprendices_estados'],
                 'instructoresEstadosMap' => $sparklineData['instructores_estados'],
