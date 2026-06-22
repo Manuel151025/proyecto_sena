@@ -49,3 +49,4 @@ install.php
 # === Otros archivos sensibles o temporales ===
 .vscode/
 settings.json
+scratch/

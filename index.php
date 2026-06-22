@@ -30,10 +30,9 @@ if (strpos($path, $scriptName) === 0) {
 }
 $path = '/' . trim($path, '/');
 
-// Si la ruta está vacía o es la raíz, redirigir al dashboard según el rol
+// Si la ruta está vacía o es la raíz, redirigir al dashboard
 if ($path === '/' || empty($path)) {
-    $rol = getCurrentRole();
-    header("Location: " . APP_URL . "/modules/dashboard/{$rol}.php");
+    header("Location: " . APP_URL . "/index.php/dashboard");
     exit;
 }
 
@@ -83,6 +82,17 @@ $router->add('GET', '/resultados-aprendizaje', 'Core\Controllers\ResultadosApren
 $router->add('POST', '/resultados-aprendizaje', 'Core\Controllers\ResultadosAprendizajeController', 'index');
 $router->add('GET', '/resultados-aprendizaje/importar', 'Core\Controllers\ResultadosAprendizajeController', 'import');
 $router->add('POST', '/resultados-aprendizaje/importar', 'Core\Controllers\ResultadosAprendizajeController', 'import');
+
+// Rutas de Fichas
+$router->add('GET', '/fichas', 'Core\Controllers\FichaController', 'index');
+$router->add('POST', '/fichas', 'Core\Controllers\FichaController', 'index');
+
+// Rutas de Evaluaciones (Juicios)
+$router->add('GET', '/evaluaciones/importar', 'Core\Controllers\EvaluacionController', 'import');
+$router->add('POST', '/evaluaciones/importar', 'Core\Controllers\EvaluacionController', 'import');
+
+// Rutas de Dashboard
+$router->add('GET', '/dashboard', 'Core\Controllers\DashboardController', 'index');
 
 // Despachar la petición
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
