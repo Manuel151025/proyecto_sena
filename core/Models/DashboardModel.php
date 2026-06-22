@@ -222,4 +222,32 @@ class DashboardModel {
 
         return $data;
     }
+
+    /**
+     * Obtiene las últimas evaluaciones registradas en el sistema
+     */
+    public function getRecentEvaluations(int $limit = 5): array {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    e.fecha_evaluacion, 
+                    e.concepto, 
+                    a.nombre as aprendiz, 
+                    r.codigo as rap, 
+                    u.nombre as instructor 
+                FROM evaluaciones e
+                JOIN aprendices a ON e.aprendiz_id = a.id
+                JOIN resultados_aprendizaje r ON e.resultado_aprendizaje_id = r.id
+                LEFT JOIN usuarios u ON e.instructor_id = u.id
+                WHERE e.fecha_evaluacion IS NOT NULL
+                ORDER BY e.fecha_evaluacion DESC
+                LIMIT :limit
+            ");
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            return [];
+        }
+    }
 }

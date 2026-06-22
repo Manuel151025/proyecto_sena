@@ -1,18 +1,32 @@
 <?php
 declare(strict_types=1);
 ?>
-<!-- Encabezado del Dashboard con saludo y acciones rápidas -->
-<div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
-  <div>
-    <h1 class="mb-1 text-gradient fw-bold">Hola, <?= $nombreUsuario ?> 👋</h1>
-    <p class="text-muted mb-0">Resumen institucional y analítica de seguimiento académico regional.</p>
+<!-- Hero Banner de Bienvenida Premium -->
+<div class="card border-0 mb-4 shadow-sm text-white overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 16px;">
+  <!-- Figuras orgánicas de fondo -->
+  <div class="position-absolute" style="width: 250px; height: 250px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -100px; right: -50px;"></div>
+  <div class="position-absolute" style="width: 180px; height: 180px; background: rgba(255, 255, 255, 0.02); border-radius: 50%; bottom: -60px; right: 120px;"></div>
+  
+  <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4 position-relative" style="z-index: 2;">
+    <div>
+      <span class="badge bg-white text-success fw-bold px-3 py-2 mb-3" style="font-size: 0.72rem; border-radius: 30px; letter-spacing: 0.05em;">PORTAL DE COORDINACIÓN ACADÉMICA</span>
+      <h2 class="display-6 fw-bold mb-2 text-white" style="letter-spacing: -0.02em;">¡Hola, <?= $nombreUsuario ?>! 👋</h2>
+      <p class="mb-0 text-white-50" style="max-width: 580px; font-size: 0.95rem; line-height: 1.6;">
+        Bienvenido al sistema analítico de seguimiento. Monitorea los indicadores clave de cumplimiento, administra las fichas de formación y mantén bajo control las tasas de retención institucional.
+      </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-light text-dark fw-bold px-4 py-3" style="border-radius: 12px; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <i class="bi bi-person-plus-fill me-2"></i> Nuevo Usuario
+      </a>
+      <a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-outline-light fw-bold px-4 py-3" style="border-radius: 12px; font-size: 0.88rem; border-width: 1.5px;">
+        <i class="bi bi-folder-fill me-2"></i> Ver Fichas
+      </a>
+    </div>
   </div>
-  <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary btn-sm w-100 w-sm-auto">
-    <i class="bi bi-plus-lg me-1"></i> Nuevo Usuario
-  </a>
 </div>
 
-<!-- Grid de Tarjetas KPI con Minigráficos (Sparklines) interactivos -->
+<!-- Grid de Tarjetas KPI con Minigráficos (Sparklines) -->
 <div class="row g-3 mb-4">
   <!-- Fichas Activas -->
   <div class="col-12 col-sm-6 col-xl-3">
@@ -106,11 +120,11 @@ declare(strict_types=1);
   </div>
 </div>
 
-<!-- Sección Principal: Gráficos y Analítica de Cumplimiento -->
+<!-- Sección Principal: Gráficos de Analítica e Indicadores -->
 <div class="row g-3 mb-4">
   <!-- Gráfico de Dispersión y Volumen por Programa -->
-  <div class="col-lg-7">
-    <div class="card h-100 shadow-sm border-0 bg-elev">
+  <div class="col-lg-8">
+    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius: 12px;">
       <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-0 pt-3 px-4">
         <h5 class="mb-0 fw-semibold text-gradient">Analítica de Cumplimiento vs Volumen</h5>
         <span class="badge-soft primary">Filtro Avanzado</span>
@@ -124,13 +138,13 @@ declare(strict_types=1);
   </div>
 
   <!-- Distribución de Fichas por Estado -->
-  <div class="col-lg-5">
-    <div class="card h-100 shadow-sm border-0 bg-elev">
+  <div class="col-lg-4">
+    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius: 12px;">
       <div class="card-header bg-transparent border-0 pt-3 px-4">
         <h5 class="mb-0 fw-semibold text-gradient">Estado de Fichas</h5>
       </div>
       <div class="card-body px-4 pb-4">
-        <div style="position: relative; height: 200px;">
+        <div style="position: relative; height: 210px;">
           <canvas id="chartPie"></canvas>
         </div>
       </div>
@@ -138,7 +152,7 @@ declare(strict_types=1);
   </div>
 </div>
 
-<!-- Paneles de Analíticas Secundarias y Top Instructores (Solo si hay datos críticos) -->
+<!-- Paneles de Analíticas Secundarias (Solo si hay datos críticos) -->
 <?php if (!empty($fichasCriticas)): ?>
 <div class="row g-3 mb-4">
   <!-- Tasa de Deserción por Programa -->
@@ -199,12 +213,13 @@ declare(strict_types=1);
 </div>
 <?php endif; ?>
 
-<!-- Sección Inferior: Alertas Críticas y Calendario de Eventos -->
+<!-- Sección Inferior: Alertas Críticas, Evaluaciones Recientes y Calendario -->
 <div class="row g-4 mb-4">
-  <!-- Fichas Críticas con cumplimiento menor al 60% -->
+  <!-- Fichas Críticas y Actividad Reciente -->
   <div class="col-lg-8">
+    <!-- 1. Alertas Críticas (o banner de éxito si no hay) -->
     <?php if (!empty($fichasCriticas)): ?>
-      <div class="card h-100 border-0 shadow-sm bg-elev">
+      <div class="card border-0 shadow-sm bg-elev mb-4" style="border-radius: 12px;">
         <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom-0 pt-3 px-4">
           <h5 class="mb-0 fw-semibold text-danger">
             <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Alertas críticas (Cumplimiento < 60%)
@@ -253,7 +268,7 @@ declare(strict_types=1);
       </div>
     <?php else: ?>
       <!-- Tarjeta premium de "Institución al Día" -->
-      <div class="card border-0 h-100 shadow-sm" style="border-left: 5px solid var(--success) !important; border-radius: 12px; background: var(--success-bg);">
+      <div class="card border-0 shadow-sm mb-4" style="border-left: 5px solid var(--success) !important; border-radius: 12px; background: var(--success-bg);">
         <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center h-100">
           <div class="rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 54px; height: 54px; background-color: rgba(46, 139, 31, 0.1); color: var(--success); border: 2px solid rgba(46, 139, 31, 0.2);">
             <i class="bi bi-shield-fill-check" style="font-size: 1.8rem;"></i>
@@ -265,17 +280,63 @@ declare(strict_types=1);
         </div>
       </div>
     <?php endif; ?>
+
+    <!-- 2. Widget de Actividad de Evaluaciones Recientes -->
+    <div class="card border-0 shadow-sm bg-elev" style="border-radius: 12px;">
+      <div class="card-header bg-transparent border-bottom-0 pt-3 px-4">
+        <h5 class="mb-0 fw-semibold text-gradient"><i class="bi bi-clock-history text-primary me-2"></i>Evaluaciones Recientes</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Aprendiz</th>
+                <th>RAP</th>
+                <th>Instructor</th>
+                <th>Concepto</th>
+                <th class="pe-4 text-end">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($recentEvaluations as $eval): ?>
+              <tr>
+                <td class="ps-4"><strong><?= htmlspecialchars($eval['aprendiz']) ?></strong></td>
+                <td><code class="text-primary"><?= htmlspecialchars($eval['rap']) ?></code></td>
+                <td><?= htmlspecialchars($eval['instructor'] ?? 'Sistema') ?></td>
+                <td>
+                  <?php if ($eval['concepto'] === 'aprobado'): ?>
+                    <span class="badge-soft success">Aprobado</span>
+                  <?php elseif ($eval['concepto'] === 'deficiente'): ?>
+                    <span class="badge-soft danger">Deficiente</span>
+                  <?php else: ?>
+                    <span class="badge-soft warning">Pendiente</span>
+                  <?php endif; ?>
+                </td>
+                <td class="pe-4 text-end text-muted small"><?= timeAgo($eval['fecha_evaluacion']) ?></td>
+              </tr>
+              <?php endforeach; ?>
+              <?php if (empty($recentEvaluations)): ?>
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">No se registran evaluaciones recientes en el sistema.</td>
+              </tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Próximos Eventos de Calendario -->
   <div class="col-lg-4">
-    <div class="card h-100 shadow-sm border-0 bg-elev">
+    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius: 12px;">
       <div class="card-header fw-bold d-flex justify-content-between align-items-center bg-transparent border-0 pt-3 px-3">
         <h5 class="mb-0 fw-semibold text-gradient"><i class="bi bi-calendar3 text-primary me-2"></i>Eventos Previstos</h5>
         <a href="<?= APP_URL ?>/modules/calendario/" class="text-primary small fw-semibold" style="font-size: 0.75rem;">Ver todo</a>
       </div>
       <div class="card-body px-3 pb-3 d-flex flex-column">
-        <div id="dashboard-events-list" class="flex-grow-1 overflow-y-auto" style="max-height: 280px;">
+        <div id="dashboard-events-list" class="flex-grow-1 overflow-y-auto" style="max-height: 420px;">
           <div class="text-center py-5 text-muted" id="events-loader">
             <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
             <div class="small">Sincronizando eventos...</div>
@@ -283,25 +344,6 @@ declare(strict_types=1);
         </div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- Accesos directos inferiores de administración -->
-<div class="row g-3">
-  <div class="col-12 col-md-4">
-    <a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-soft w-100 py-3 d-flex align-items-center justify-content-center gap-2">
-      <i class="bi bi-journal-bookmark" style="font-size: 1.2rem;"></i> Gestionar Fichas
-    </a>
-  </div>
-  <div class="col-12 col-md-4">
-    <a href="<?= APP_URL ?>/index.php/programas" class="btn btn-soft w-100 py-3 d-flex align-items-center justify-content-center gap-2">
-      <i class="bi bi-briefcase" style="font-size: 1.2rem;"></i> Ver Programas
-    </a>
-  </div>
-  <div class="col-12 col-md-4">
-    <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-primary w-100 py-3 d-flex align-items-center justify-content-center gap-2">
-      <i class="bi bi-person-plus" style="font-size: 1.2rem;"></i> Crear Usuario
-    </a>
   </div>
 </div>
 
