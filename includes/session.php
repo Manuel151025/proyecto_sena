@@ -208,10 +208,21 @@ function validateCsrfToken(?string $token): bool {
     $tabId = getTabId();
     $expected = $_SESSION['tabs'][$tabId]['csrf_token'] ?? null;
     
-    // Fallback: Si no hay token generado para esta pestaña en particular (ej: primera carga),
-    // validamos contra el token por defecto de la sesión para evitar el error 403.
+    // Fallback 1: Si no hay token en esta pestaña, buscar en 'default'
     if (empty($expected) && $tabId !== 'default') {
         $expected = $_SESSION['tabs']['default']['csrf_token'] ?? null;
+    }
+    
+    // Fallback 2: Buscar a través de TODAS las pestañas en la sesión.
+    // Esto resuelve el error donde al abrir una nueva pestaña, la cookie de la pestaña anterior
+    // hace que el token se asigne a la pestaña vieja en el GET, pero el POST usa un tabId nuevo.
+    if (!empty($token) && isset($_SESSION['tabs'])) {
+        foreach ($_SESSION['tabs'] as $tId => $tabData) {
+            $tabToken = $tabData['csrf_token'] ?? null;
+            if (!empty($tabToken) && hash_equals($tabToken, $token)) {
+                return true;
+            }
+        }
     }
     
     if (empty($expected)) {
