@@ -38,6 +38,7 @@ declare(strict_types=1);
     sessionStorage.setItem('sena_tab_id', t);
   }
   window.__tabId = t;
+  window.__csrfToken = '<?= getCsrfToken() ?>';
 
   // Establecer la cookie inmediatamente (cubre recargas y navegaciones directas)
   document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
@@ -277,13 +278,18 @@ declare(strict_types=1);
     if (a) document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
   }, true);
 
-  // JIT antes de cualquier envío de formulario + inyectar _tab como hidden
+  // JIT antes de cualquier envío de formulario + inyectar _tab y csrf_token como hidden
   document.addEventListener('submit', function (e) {
     document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
     if (!e.target.querySelector('input[name="_tab"]')) {
       var inp = document.createElement('input');
       inp.type = 'hidden'; inp.name = '_tab'; inp.value = t;
       e.target.appendChild(inp);
+    }
+    if (e.target.method && e.target.method.toUpperCase() === 'POST' && !e.target.querySelector('input[name="csrf_token"]')) {
+      var csrfInp = document.createElement('input');
+      csrfInp.type = 'hidden'; csrfInp.name = 'csrf_token'; csrfInp.value = window.__csrfToken || '';
+      e.target.appendChild(csrfInp);
     }
   }, true);
 
