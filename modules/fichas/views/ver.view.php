@@ -1,7 +1,7 @@
-﻿<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
   <div>
     <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
-      <a href="<?= MODULES_PATH ?>/fichas/" class="small"><i class="bi bi-arrow-left"></i> Volver a fichas</a>
+      <a href="<?= APP_URL ?>/index.php/fichas" class="small"><i class="bi bi-arrow-left"></i> Volver a fichas</a>
     <?php else: ?>
       <a href="<?= APP_URL ?>/index.php/dashboard" class="small"><i class="bi bi-arrow-left"></i> Volver al Inicio</a>
     <?php endif; ?>
@@ -17,12 +17,12 @@
   </div>
   <div class="d-flex gap-2">
     <?php if (getCurrentRole() === ROL_COORDINADOR || getCurrentRole() === ROL_INSTRUCTOR): ?>
-      <a href="<?= MODULES_PATH ?>/evaluaciones/index.php?ficha_id=<?= $id ?>" class="btn btn-success">
+      <a href="<?= APP_URL ?>/index.php/evaluaciones?ficha_id=<?= $id ?>" class="btn btn-success">
         <i class="bi bi-clipboard-check me-1"></i>Evaluar Ficha (Juicios)
       </a>
     <?php endif; ?>
     <?php if (getCurrentRole() === ROL_COORDINADOR): ?>
-      <a href="<?= MODULES_PATH ?>/fichas/editar.php?id=<?= $id ?>" class="btn btn-primary">
+      <a href="<?= APP_URL ?>/index.php/fichas/editar?id=<?= $id ?>" class="btn btn-primary">
         <i class="bi bi-pencil me-1"></i>Editar ficha
       </a>
     <?php endif; ?>
@@ -127,7 +127,7 @@
             </td>
             <td class="text-end">
               <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
-              <a href="<?= MODULES_PATH ?>/seguimiento/index.php?ficha_id=<?= $id ?>&ver_aprendiz_id=<?= $aprendiz['id'] ?>" class="btn btn-sm btn-soft">Ver</a>
+              <a href="<?= APP_URL ?>/index.php/seguimiento?ficha_id=<?= $id ?>&ver_aprendiz_id=<?= $aprendiz['id'] ?>" class="btn btn-sm btn-soft">Ver</a>
               <?php else: ?>
               <span class="text-muted">â€”</span>
               <?php endif; ?>

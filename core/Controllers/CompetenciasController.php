@@ -78,9 +78,10 @@ class CompetenciasController extends BaseController {
                             'horas' => $horas,
                             'estado' => $estado
                         ]);
-                        $successMessage = 'Competencia registrada exitosamente.';
+                        setFlashMessage('Competencia registrada exitosamente.', 'success');
+                        $this->redirect(APP_URL . '/index.php/competencias');
                     } catch (Exception $e) {
-                        $errors[] = $e->getMessage();
+                        setFlashMessage($e->getMessage(), 'danger');
                     }
                 }
             }
@@ -135,9 +136,10 @@ class CompetenciasController extends BaseController {
                             'horas' => $horas,
                             'estado' => $estado
                         ]);
-                        $successMessage = 'Competencia actualizada exitosamente.';
+                        setFlashMessage('Competencia actualizada exitosamente.', 'success');
+                        $this->redirect(APP_URL . '/index.php/competencias');
                     } catch (Exception $e) {
-                        $errors[] = $e->getMessage();
+                        setFlashMessage($e->getMessage(), 'danger');
                     }
                 }
             }
@@ -154,9 +156,10 @@ class CompetenciasController extends BaseController {
                 } else {
                     try {
                         $this->competenciasModel->delete($id);
-                        $successMessage = 'Competencia eliminada exitosamente.';
+                        setFlashMessage('Competencia eliminada exitosamente.', 'success');
+                        $this->redirect(APP_URL . '/index.php/competencias');
                     } catch (Exception $e) {
-                        $errors[] = $e->getMessage();
+                        setFlashMessage($e->getMessage(), 'danger');
                     }
                 }
             }
@@ -341,8 +344,8 @@ class CompetenciasController extends BaseController {
                                         $logStmt->execute([(int)getCurrentUser()['id'], "Importó masivamente $importedCount competencias académicas"]);
 
                                         $this->db->commit();
-                                        $successMessage = "Se han importado exitosamente $importedCount competencias académicas.";
-                                        $resultados = $competenciasData;
+                                        setFlashMessage("Se han importado exitosamente $importedCount competencias académicas.", 'success');
+                                        $this->redirect(APP_URL . '/index.php/competencias');
                                     } catch (Exception $e) {
                                         if ($this->db->inTransaction()) {
                                             $this->db->rollBack();

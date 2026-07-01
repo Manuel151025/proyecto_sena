@@ -31,12 +31,11 @@ class ProgramasController extends BaseController {
             try {
                 $id = (int)$_POST['id'];
                 $this->programasModel->delete($id);
-                $mensaje = 'Programa eliminado correctamente';
-                $tipo_mensaje = 'success';
+                setFlashMessage('Programa eliminado correctamente', 'success');
             } catch (Exception $e) {
-                $mensaje = $e->getMessage();
-                $tipo_mensaje = 'danger';
+                setFlashMessage($e->getMessage(), 'danger');
             }
+            $this->redirect(APP_URL . '/index.php/programas');
         }
 
         try {
@@ -120,9 +119,8 @@ class ProgramasController extends BaseController {
                         'duracion_horas' => $duracion_horas,
                         'estado' => $estado
                     ]);
-                    $mensaje = 'Programa creado correctamente';
-                    $tipo_mensaje = 'success';
-                    $_POST = []; // Limpiar formulario
+                    setFlashMessage('Programa creado correctamente', 'success');
+                    $this->redirect(APP_URL . '/index.php/programas');
                 } catch (Exception $e) {
                     $errores[] = $e->getMessage();
                 }
@@ -213,9 +211,8 @@ class ProgramasController extends BaseController {
                         'estado' => $estado
                     ];
                     $this->programasModel->update($id, $data);
-                    $mensaje = 'Programa actualizado correctamente';
-                    $tipo_mensaje = 'success';
-                    $programa = array_merge($programa, $data);
+                    setFlashMessage('Programa actualizado correctamente', 'success');
+                    $this->redirect(APP_URL . '/index.php/programas');
                 } catch (Exception $e) {
                     $errores[] = $e->getMessage();
                 }

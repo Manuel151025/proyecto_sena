@@ -8,7 +8,7 @@ declare(strict_types=1);
     <p class="text-muted mb-0">Carga el reporte de juicios evaluativos desde Excel para registrar notas, fichas y aprendices automáticamente.</p>
   </div>
   <div>
-    <a href="<?= MODULES_PATH ?>/evaluaciones/" class="btn btn-soft">
+    <a href="<?= APP_URL ?>/index.php/evaluaciones" class="btn btn-soft">
       <i class="bi bi-arrow-left me-2"></i>Volver a Evaluaciones
     </a>
   </div>

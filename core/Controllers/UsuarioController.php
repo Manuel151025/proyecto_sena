@@ -85,13 +85,12 @@ class UsuarioController extends BaseController {
             try {
                 $id = (int) $_POST['id'];
                 if ($this->usuarioModel->delete($id)) {
-                    $mensaje = 'Usuario eliminado correctamente';
-                    $tipo_mensaje = 'success';
+                    setFlashMessage('Usuario eliminado correctamente', 'success');
                 }
             } catch (Exception $e) {
-                $mensaje = 'Error al eliminar usuario';
-                $tipo_mensaje = 'danger';
+                setFlashMessage('Error al eliminar usuario', 'danger');
             }
+            $this->redirect(APP_URL . '/index.php/usuarios');
         }
 
         // Obtener la lista de usuarios
@@ -157,9 +156,8 @@ class UsuarioController extends BaseController {
                         if ($isAjax) {
                             $this->json(['status' => 'success', 'message' => 'Usuario creado correctamente']);
                         }
-                        $mensaje = 'Usuario creado correctamente';
-                        $tipo_mensaje = 'success';
-                        $_POST = []; // Limpiar formulario
+                        setFlashMessage('Usuario creado correctamente', 'success');
+                        $this->redirect(APP_URL . '/index.php/usuarios');
                     }
                 } catch (Exception $e) {
                     $errors[] = $e->getMessage();
@@ -238,10 +236,8 @@ class UsuarioController extends BaseController {
                         if ($isAjax) {
                             $this->json(['status' => 'success', 'message' => 'Usuario actualizado correctamente']);
                         }
-                        $mensaje = 'Usuario actualizado correctamente';
-                        $tipo_mensaje = 'success';
-                        // Recargar el usuario con los datos actualizados para mostrar en la vista
-                        $usuario = $this->usuarioModel->findById($id);
+                        setFlashMessage('Usuario actualizado correctamente', 'success');
+                        $this->redirect(APP_URL . '/index.php/usuarios');
                     }
                 } catch (Exception $e) {
                     $errors[] = $e->getMessage();
@@ -364,9 +360,8 @@ class UsuarioController extends BaseController {
                                 if (count($usersData) > 0) {
                                     try {
                                         $count = $this->usuarioModel->createMultiple($usersData);
-                                        $mensaje = "Se han importado exitosamente $count usuarios.";
-                                        $tipo_mensaje = 'success';
-                                        $resultados = $usersData;
+                                        setFlashMessage("Se han importado exitosamente $count usuarios.", 'success');
+                                        $this->redirect(APP_URL . '/index.php/usuarios');
                                     } catch (Exception $e) {
                                         $errors[] = $e->getMessage();
                                     }

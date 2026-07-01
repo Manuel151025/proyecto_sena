@@ -65,9 +65,10 @@ class SeguimientoController extends BaseController {
                                 }
                             }
                             $this->seguimientoModel->registrarEvaluacion($ra_id, $aprendiz_id_p, $ficha_id_p, $concepto, $comentario, $motivo, $user_id);
-                            $successMessage = 'Evaluación académica guardada correctamente.';
+                            setFlashMessage('Evaluación académica guardada correctamente.', 'success');
+                            $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            $errors[] = 'Error al registrar la evaluación: ' . $e->getMessage();
+                            setFlashMessage('Error al registrar la evaluación: ' . $e->getMessage(), 'danger');
                         }
                     }
                 }
@@ -98,9 +99,10 @@ class SeguimientoController extends BaseController {
                                 }
                             }
                             $this->seguimientoModel->agregarRetroalimentacion($aprendiz_id_r, $user_id, $tipo, $contenido, $privada);
-                            $successMessage = 'Observación registrada exitosamente.';
+                            setFlashMessage('Observación registrada exitosamente.', 'success');
+                            $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            $errors[] = 'Error al registrar observación: ' . $e->getMessage();
+                            setFlashMessage('Error al registrar observación: ' . $e->getMessage(), 'danger');
                         }
                     }
                 }

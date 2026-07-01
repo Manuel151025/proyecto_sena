@@ -87,4 +87,30 @@ class ProyectosModel {
             ")->fetchAll(PDO::FETCH_ASSOC);
         }
     }
+
+    public function getAll(): array {
+        return $this->getProyectos(ROL_COORDINADOR, 0);
+    }
+
+    public function findById(int $id): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM proyectos WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function delete(int $id): void {
+        $this->eliminarProyecto($id);
+    }
+
+    public function update(int $id, array $data): void {
+        $this->editarProyecto(
+            $id,
+            $data['nombre'] ?? '',
+            $data['codigo'] ?? '',
+            $data['objetivo'] ?? '',
+            $data['descripcion'] ?? '',
+            $data['estado'] ?? 'activo'
+        );
+    }
 }

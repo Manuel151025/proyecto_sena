@@ -94,7 +94,8 @@ class EvidenciasController extends BaseController {
                     if (empty($errors)) {
                         try {
                             $this->evidenciasModel->guardarEvidencia($aprendiz_id, $ficha_id, $titulo, $descripcion, $archivo_url, $tipo_archivo, $tamanio_kb, $user_id);
-                            $successMessage = 'Evidencia enviada correctamente. Su instructor será notificado.';
+                            setFlashMessage('Evidencia enviada correctamente. Su instructor será notificado.', 'success');
+                            $this->redirect(APP_URL . '/index.php/evidencias');
                         } catch (Exception $e) {
                             $errors[] = 'Error al enviar la evidencia: ' . $e->getMessage();
                         }
@@ -137,7 +138,8 @@ class EvidenciasController extends BaseController {
                                 }
 
                                 $this->evidenciasModel->calificarEvidencia($evidencia, $estado_evidencia, $concepto_db, $comentario, $tipo_retro, $user_id);
-                                $successMessage = 'Evidencia calificada y retroalimentación registrada con éxito.';
+                                setFlashMessage('Evidencia calificada y retroalimentación registrada con éxito.', 'success');
+                                $this->redirect(APP_URL . '/index.php/evidencias');
                             } else {
                                 $errors[] = 'Evidencia no encontrada.';
                             }

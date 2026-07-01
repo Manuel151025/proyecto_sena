@@ -70,9 +70,10 @@ class ResultadosAprendizajeController extends BaseController {
                             'codigo' => $codigo,
                             'denominacion' => $denominacion
                         ], $userId);
-                        $successMessage = 'Resultado de Aprendizaje (RAP) registrado exitosamente.';
+                        setFlashMessage('Resultado de Aprendizaje (RAP) registrado exitosamente.', 'success');
+                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                     } catch (Exception $e) {
-                        $errors[] = 'Error al registrar RAP: ' . $e->getMessage();
+                        setFlashMessage('Error al registrar RAP: ' . $e->getMessage(), 'danger');
                     }
                 }
             }
@@ -113,9 +114,10 @@ class ResultadosAprendizajeController extends BaseController {
                             'codigo' => $codigo,
                             'denominacion' => $denominacion
                         ], $userId);
-                        $successMessage = 'Resultado de Aprendizaje actualizado exitosamente.';
+                        setFlashMessage('Resultado de Aprendizaje actualizado exitosamente.', 'success');
+                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                     } catch (Exception $e) {
-                        $errors[] = 'Error al actualizar RAP: ' . $e->getMessage();
+                        setFlashMessage('Error al actualizar RAP: ' . $e->getMessage(), 'danger');
                     }
                 }
             }
@@ -132,9 +134,10 @@ class ResultadosAprendizajeController extends BaseController {
                 } else {
                     try {
                         $this->resultadosModel->delete($id, $userId);
-                        $successMessage = 'Resultado de Aprendizaje eliminado exitosamente.';
+                        setFlashMessage('Resultado de Aprendizaje eliminado exitosamente.', 'success');
+                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                     } catch (Exception $e) {
-                        $errors[] = $e->getMessage();
+                        setFlashMessage($e->getMessage(), 'danger');
                     }
                 }
             }
@@ -287,8 +290,8 @@ class ResultadosAprendizajeController extends BaseController {
                                         ]);
 
                                         $this->db->commit();
-                                        $successMessage = "Se han importado exitosamente $importedCount Resultados de Aprendizaje.";
-                                        $resultados = $rapsData;
+                                        setFlashMessage("Se han importado exitosamente $importedCount Resultados de Aprendizaje.", 'success');
+                                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                                     } catch (Exception $e) {
                                         if ($this->db->inTransaction()) {
                                             $this->db->rollBack();

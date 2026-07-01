@@ -7,7 +7,7 @@
 <div class="alert-flat <?= $tipo_mensaje ?> mb-3">
   <i class="bi bi-check-circle"></i>
   <div><?= htmlspecialchars($mensaje) ?></div>
-  <br><a href="<?= MODULES_PATH ?>/fichas/">Volver a fichas â†’</a>
+  <br><a href="<?= APP_URL ?>/index.php/fichas">Volver a fichas â†’</a>
 </div>
 <?php endif; ?>
 
@@ -104,7 +104,7 @@
 
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary"><?= $id && $ficha ? 'Guardar Cambios' : 'Crear Ficha' ?></button>
-            <a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-soft">Cancelar</a>
+            <a href="<?= APP_URL ?>/index.php/fichas" class="btn btn-soft">Cancelar</a>
           </div>
         </form>
       </div>

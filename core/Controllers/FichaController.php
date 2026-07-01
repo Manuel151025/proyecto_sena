@@ -39,20 +39,18 @@ class FichaController extends BaseController {
             try {
                 $id = (int) $_POST['id'];
                 if ($this->fichaModel->delete($id)) {
-                    $mensaje = 'Ficha eliminada correctamente';
-                    $tipo_mensaje = 'success';
+                    setFlashMessage('Ficha eliminada correctamente', 'success');
                 }
             } catch (PDOException $e) {
                 if ($e->getCode() === '23000') {
-                    $mensaje = 'No se puede eliminar la ficha porque tiene aprendices matriculados, actividades, o evaluaciones registradas.';
+                    setFlashMessage('No se puede eliminar la ficha porque tiene aprendices matriculados, actividades, o evaluaciones registradas.', 'danger');
                 } else {
-                    $mensaje = 'Error de base de datos al eliminar la ficha: ' . $e->getMessage();
+                    setFlashMessage('Error de base de datos al eliminar la ficha: ' . $e->getMessage(), 'danger');
                 }
-                $tipo_mensaje = 'danger';
             } catch (Exception $e) {
-                $mensaje = 'Error al eliminar la ficha: ' . $e->getMessage();
-                $tipo_mensaje = 'danger';
+                setFlashMessage('Error al eliminar la ficha: ' . $e->getMessage(), 'danger');
             }
+            $this->redirect(APP_URL . '/index.php/fichas');
         }
 
         // Obtener fichas con información de programa e instructor
@@ -243,18 +241,13 @@ class FichaController extends BaseController {
                 try {
                     if ($id > 0) {
                         $this->fichaModel->updateFicha($id, $numero_ficha, $proyecto_id, $programa_id, $instructor_id, $estado, $cantidad_aprendices, $fecha_inicio, $fecha_fin, $cumplimiento_porcentaje);
-                        $mensaje = 'Ficha actualizada correctamente';
+                        setFlashMessage('Ficha actualizada correctamente', 'success');
                     } else {
                         $coordinador_id = getCurrentUser()['id'];
                         $this->fichaModel->createFicha($numero_ficha, $proyecto_id, $programa_id, $instructor_id, $coordinador_id, $estado, $cantidad_aprendices, $fecha_inicio, $fecha_fin, $cumplimiento_porcentaje);
-                        $mensaje = 'Ficha creada correctamente';
+                        setFlashMessage('Ficha creada correctamente', 'success');
                     }
-                    $tipo_mensaje = 'success';
-                    $_POST = [];
-                    // Reload ficha info if editing
-                    if ($id > 0) {
-                        $ficha = $this->fichaModel->getFichaParaEditar($id);
-                    }
+                    $this->redirect(APP_URL . '/index.php/fichas');
                 } catch (Exception $e) {
                     if (strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), '1062') !== false) {
                         $errors[] = 'Este número de ficha ya existe';

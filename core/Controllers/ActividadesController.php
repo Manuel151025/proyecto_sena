@@ -61,12 +61,12 @@ class ActividadesController extends BaseController {
                                 'descripcion' => $descripcion,
                                 'fecha_inicio' => $fecha_inicio,
                                 'fecha_fin' => $fecha_fin,
-                                'responsable_id' => $responsable_id,
                                 'estado' => $estado
                             ], $user_id);
-                            $successMessage = 'Actividad académica registrada exitosamente.';
+                            setFlashMessage('Actividad académica registrada exitosamente.', 'success');
+                            $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            $errors[] = $e->getMessage();
+                            setFlashMessage($e->getMessage(), 'danger');
                         }
                     }
                 } else {
@@ -103,12 +103,12 @@ class ActividadesController extends BaseController {
                                 'fecha_inicio' => $fecha_inicio,
                                 'fecha_fin' => $fecha_fin,
                                 'responsable_id' => $responsable_id,
-                                'estado' => $estado,
                                 'cumplimiento_porcentaje' => $cumplimiento
                             ], $user_id);
-                            $successMessage = 'Actividad actualizada exitosamente.';
+                            setFlashMessage('Actividad actualizada exitosamente.', 'success');
+                            $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            $errors[] = $e->getMessage();
+                            setFlashMessage($e->getMessage(), 'danger');
                         }
                     }
                 }
@@ -122,9 +122,10 @@ class ActividadesController extends BaseController {
                     } else {
                         try {
                             $this->actividadesModel->delete($id, $user_id);
-                            $successMessage = 'Actividad eliminada exitosamente.';
+                            setFlashMessage('Actividad eliminada exitosamente.', 'success');
+                            $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            $errors[] = $e->getMessage();
+                            setFlashMessage($e->getMessage(), 'danger');
                         }
                     }
                 }
