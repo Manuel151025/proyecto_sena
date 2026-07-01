@@ -213,7 +213,15 @@ document.addEventListener('DOMContentLoaded', () => {
           'X-Requested-With': 'XMLHttpRequest'
         }
       })
-      .then(res => res.json())
+      .then(async res => {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          return res.json();
+        } else {
+          const text = await res.text();
+          throw new Error("Respuesta no JSON: " + text.substring(0, 200));
+        }
+      })
       .then(data => {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Crear Usuario';
@@ -264,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Crear Usuario';
         alertContainer.className = 'alert-flat danger mb-3';
-        alertContainer.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger me-2" style="font-size:1.15rem;"></i><div>Error en la conexión con el servidor.</div>';
+        alertContainer.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger me-2" style="font-size:1.15rem;"></i><div>Error: ' + err.message + '</div>';
         alertContainer.style.display = 'flex';
         console.error(err);
       });
