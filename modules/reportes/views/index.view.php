@@ -1,4 +1,4 @@
-﻿?>
+?>
 
 <div class="mb-4">
   <h1 class="mb-1">Centro de Reportes</h1>
@@ -52,6 +52,7 @@
         <h5 class="fw-bold text-dark">Evaluaciones por Ficha</h5>
         <p class="text-muted small">Detalle de todos los juicios evaluativos (A/D) para cada aprendiz de una ficha especÃ­fica.</p>
         <form method="POST">
+          <?= csrfField() ?>
           <input type="hidden" name="export" value="evaluaciones_ficha">
           <div class="mb-3">
             <select name="ficha_id" class="form-select form-select-sm" required
@@ -84,6 +85,7 @@
         <h5 class="fw-bold text-dark">Cumplimiento por Instructor LÃ­der</h5>
         <p class="text-muted small">Cantidad de RAs evaluados vs faltantes agrupados por instructor lÃ­der y ficha asignada.</p>
         <form method="POST">
+          <?= csrfField() ?>
           <input type="hidden" name="export" value="cumplimiento_instructor">
           <div class="d-flex gap-2 mt-4">
             <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
@@ -102,6 +104,7 @@
         <h5 class="fw-bold text-dark">Cumplimiento por Competencia</h5>
         <p class="text-muted small">Porcentaje de aprobaciÃ³n por cada competencia y programa formativo a nivel institucional.</p>
         <form method="POST">
+          <?= csrfField() ?>
           <input type="hidden" name="export" value="cumplimiento_competencia">
           <div class="d-flex gap-2 mt-4">
             <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
@@ -120,6 +123,7 @@
         <h5 class="fw-bold text-dark">Historial de Cambios (Trazabilidad)</h5>
         <p class="text-muted small">Registro de todos los cambios de concepto evaluativo con fecha, responsable y motivo (RNF02).</p>
         <form method="POST">
+          <?= csrfField() ?>
           <input type="hidden" name="export" value="historial_cambios">
           <div class="d-flex gap-2 mt-4">
             <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>

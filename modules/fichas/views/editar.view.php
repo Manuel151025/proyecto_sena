@@ -1,4 +1,4 @@
-﻿<div class="mb-3">
+<div class="mb-3">
   <h1><?= $id && $ficha ? 'Editar Ficha' : 'Crear Nueva Ficha' ?></h1>
   <p class="text-muted mb-0"><?= $id && $ficha ? 'Modifica los datos de la ficha' : 'Completa el formulario para registrar una nueva ficha de formaciÃ³n' ?>.</p>
 </div>
@@ -28,6 +28,7 @@
     <div class="card">
       <div class="card-body">
         <form method="POST">
+          <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label">NÃºmero de Ficha</label>
             <input type="text" name="numero_ficha" class="form-control" placeholder="Ej: 2845671" value="<?= htmlspecialchars($ficha['numero_ficha'] ?? $_POST['numero_ficha'] ?? '') ?>" required>

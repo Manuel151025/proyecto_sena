@@ -65,6 +65,7 @@
               <i class="bi bi-pencil"></i>
             </button>
             <form method="POST" style="display:inline;">
+              <?= csrfField() ?>
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="id" value="<?= $proj['id'] ?>">
               <button type="submit" class="btn btn-soft text-danger px-3" style="border-radius: 8px;"
@@ -93,6 +94,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="editar">
         <input type="hidden" name="id" id="edit_id">
         <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
@@ -152,6 +154,7 @@ function abrirModalEditarProyecto(id, nombre, codigo, objetivo, descripcion, est
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="crear">
         <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
           <h5 class="modal-title"><i class="bi bi-kanban me-2"></i>Nuevo Proyecto Formativo</h5>

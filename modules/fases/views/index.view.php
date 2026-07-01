@@ -1,4 +1,4 @@
-﻿
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="mb-1">Fases del Proyecto Formativo</h1>
@@ -116,6 +116,7 @@
               </button>
               <form method="POST" class="d-inline"
                     onsubmit="return confirm('Â¿Eliminar la fase <?= htmlspecialchars(addslashes($fase['nombre'])) ?>?')">
+                <?= csrfField() ?>
                 <input type="hidden" name="action" value="eliminar">
                 <input type="hidden" name="id" value="<?= $fase['id'] ?>">
                 <button type="submit" class="btn btn-sm btn-soft text-danger px-3">
@@ -151,6 +152,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="editar">
         <input type="hidden" name="id" id="edit_fase_id">
         <div class="modal-body p-4">
@@ -226,6 +228,7 @@ function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fech
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="crear">
         <input type="hidden" name="proyecto_id" value="<?= $selected_proyecto_id ?>">
         <div class="modal-body p-4">
