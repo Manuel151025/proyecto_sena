@@ -37,23 +37,23 @@ declare(strict_types=1);
           <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label">Nombre del Programa</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej: Análisis y Desarrollo de Software" value="<?= htmlspecialchars($valores['nombre'] ?? '') ?>" required>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Análisis y Desarrollo de Software" value="<?= htmlspecialchars($valores['nombre'] ?? '') ?>" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label">Código</label>
-              <input type="text" name="codigo" class="form-control" placeholder="Ej: ADSO" value="<?= htmlspecialchars($valores['codigo'] ?? '') ?>" required>
+              <input type="text" name="codigo" class="form-control" placeholder="Ej: ADSO" value="<?= htmlspecialchars($valores['codigo'] ?? '') ?>" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()" required>
             </div>
             <div class="col-md-6">
               <label class="form-label">Duración (horas)</label>
-              <input type="number" name="duracion_horas" class="form-control" placeholder="Ej: 2880" value="<?= htmlspecialchars((string)($valores['duracion_horas'] ?? '')) ?>" required>
+              <input type="number" name="duracion_horas" class="form-control" placeholder="Ej: 2880" value="<?= htmlspecialchars((string)($valores['duracion_horas'] ?? '')) ?>" min="1" max="99999" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
             </div>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Descripción</label>
-            <textarea name="descripcion" class="form-control" rows="4" placeholder="Describe el programa de formación..."><?= htmlspecialchars($valores['descripcion'] ?? '') ?></textarea>
+            <textarea name="descripcion" class="form-control" rows="4" placeholder="Describe el programa de formación..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"><?= htmlspecialchars($valores['descripcion'] ?? '') ?></textarea>
           </div>
 
           <div class="mb-3">

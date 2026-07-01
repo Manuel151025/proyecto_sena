@@ -27,8 +27,25 @@ class ConfiguracionController extends BaseController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             requireCsrf();
-            // This is just a stub for now, as the original code didn't save these to DB
-            $successMessage = 'Configuración guardada exitosamente en el sistema.';
+
+            if (mb_strlen($system_title, 'UTF-8') < 3 || mb_strlen($system_title, 'UTF-8') > 100) {
+                $errors[] = 'El nombre del sistema debe tener entre 3 y 100 caracteres.';
+            }
+            if (mb_strlen($regional, 'UTF-8') < 3 || mb_strlen($regional, 'UTF-8') > 100) {
+                $errors[] = 'La regional debe tener entre 3 y 100 caracteres.';
+            }
+            if (mb_strlen($smtp_server, 'UTF-8') < 3 || mb_strlen($smtp_server, 'UTF-8') > 100) {
+                $errors[] = 'El servidor SMTP debe tener entre 3 y 100 caracteres.';
+            }
+
+            $system_title = strip_tags($system_title);
+            $regional = strip_tags($regional);
+            $smtp_server = strip_tags($smtp_server);
+
+            if (empty($errors)) {
+                // This is just a stub for now, as the original code didn't save these to DB
+                $successMessage = 'Configuración guardada exitosamente en el sistema.';
+            }
         }
 
         $this->render(

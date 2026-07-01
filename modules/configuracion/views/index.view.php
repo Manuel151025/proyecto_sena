@@ -20,12 +20,12 @@
           
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Nombre del Sistema</label>
-            <input type="text" name="system_title" class="form-control" value="<?= htmlspecialchars($system_title) ?>" required>
+            <input type="text" name="system_title" class="form-control" value="<?= htmlspecialchars($system_title) ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]/g, '')" required>
           </div>
 
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Regional / Centro de FormaciÃ³n</label>
-            <input type="text" name="regional" class="form-control" value="<?= htmlspecialchars($regional) ?>" required>
+            <input type="text" name="regional" class="form-control" value="<?= htmlspecialchars($regional) ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
           </div>
 
           <div class="row g-3 mb-4">
@@ -39,7 +39,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Servidor SMTP de Correo Institucional</label>
-              <input type="text" name="smtp_server" class="form-control" value="<?= htmlspecialchars($smtp_server) ?>" required>
+              <input type="text" name="smtp_server" class="form-control" value="<?= htmlspecialchars($smtp_server) ?>" minlength="3" maxlength="100" pattern="^[a-zA-Z0-9.\-]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9.\-]/g, '')" required>
             </div>
           </div>
 

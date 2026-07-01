@@ -44,8 +44,26 @@ class FasesController extends BaseController {
                     $estado = $_POST['estado'] ?? 'planeada';
 
                     if ($proyecto_id <= 0) $errors[] = 'Debe seleccionar un proyecto.';
-                    if ($numero_fase <= 0) $errors[] = 'El número de fase debe ser mayor a 0.';
-                    if (empty($nombre)) $errors[] = 'El nombre de la fase es obligatorio.';
+                    if ($numero_fase <= 0 || $numero_fase > 99) $errors[] = 'El número de fase debe estar entre 1 y 99.';
+                    if (empty($nombre)) {
+                        $errors[] = 'El nombre de la fase es obligatorio.';
+                    } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
+                        $errors[] = 'El nombre no puede exceder los 100 caracteres.';
+                    } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                        $errors[] = 'El nombre contiene caracteres no permitidos.';
+                    }
+                    if (mb_strlen($descripcion, 'UTF-8') > 1000) {
+                        $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
+                    }
+                    $descripcion = strip_tags($descripcion);
+                    if ($cumplimiento < 0 || $cumplimiento > 100) $errors[] = 'El cumplimiento debe estar entre 0 y 100%.';
+                    if (!in_array($estado, ['planeada', 'en_ejecucion', 'completada'])) $errors[] = 'Estado inválido.';
+                    
+                    if ($fecha_inicio && !strtotime($fecha_inicio)) $errors[] = 'Fecha de inicio inválida.';
+                    if ($fecha_fin && !strtotime($fecha_fin)) $errors[] = 'Fecha de fin inválida.';
+                    if ($fecha_inicio && $fecha_fin && strtotime($fecha_inicio) > strtotime($fecha_fin)) {
+                        $errors[] = 'La fecha de inicio no puede ser mayor a la fecha de fin.';
+                    }
 
                     if (empty($errors)) {
                         try {
@@ -72,8 +90,26 @@ class FasesController extends BaseController {
                     $estado       = $_POST['estado'] ?? 'planeada';
 
                     if ($id <= 0)          $errors[] = 'Fase no válida.';
-                    if ($numero_fase <= 0) $errors[] = 'El número de fase debe ser mayor a 0.';
-                    if (empty($nombre))    $errors[] = 'El nombre de la fase es obligatorio.';
+                    if ($numero_fase <= 0 || $numero_fase > 99) $errors[] = 'El número de fase debe estar entre 1 y 99.';
+                    if (empty($nombre)) {
+                        $errors[] = 'El nombre de la fase es obligatorio.';
+                    } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
+                        $errors[] = 'El nombre no puede exceder los 100 caracteres.';
+                    } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                        $errors[] = 'El nombre contiene caracteres no permitidos.';
+                    }
+                    if (mb_strlen($descripcion, 'UTF-8') > 1000) {
+                        $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
+                    }
+                    $descripcion = strip_tags($descripcion);
+                    if ($cumplimiento < 0 || $cumplimiento > 100) $errors[] = 'El cumplimiento debe estar entre 0 y 100%.';
+                    if (!in_array($estado, ['planeada', 'en_ejecucion', 'completada'])) $errors[] = 'Estado inválido.';
+                    
+                    if ($fecha_inicio && !strtotime($fecha_inicio)) $errors[] = 'Fecha de inicio inválida.';
+                    if ($fecha_fin && !strtotime($fecha_fin)) $errors[] = 'Fecha de fin inválida.';
+                    if ($fecha_inicio && $fecha_fin && strtotime($fecha_inicio) > strtotime($fecha_fin)) {
+                        $errors[] = 'La fecha de inicio no puede ser mayor a la fecha de fin.';
+                    }
 
                     if (empty($errors)) {
                         try {

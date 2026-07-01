@@ -104,19 +104,19 @@
         <div class="modal-body p-4">
           <div class="mb-3">
             <label class="form-label fw-semibold">Nombre del Proyecto <span class="text-danger">*</span></label>
-            <input type="text" name="nombre" id="edit_nombre" class="form-control" required>
+            <input type="text" name="nombre" id="edit_nombre" class="form-control" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-semibold">CÃ³digo <span class="text-danger">*</span></label>
-            <input type="text" name="codigo" id="edit_codigo" class="form-control" required>
+            <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+            <input type="text" name="codigo" id="edit_codigo" class="form-control" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()" required>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Objetivo</label>
-            <textarea name="objetivo" id="edit_objetivo" class="form-control" rows="2"></textarea>
+            <textarea name="objetivo" id="edit_objetivo" class="form-control" rows="2" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-semibold">DescripciÃ³n</label>
-            <textarea name="descripcion" id="edit_descripcion" class="form-control" rows="2"></textarea>
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea name="descripcion" id="edit_descripcion" class="form-control" rows="2" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-0">
             <label class="form-label fw-semibold">Estado</label>
@@ -163,19 +163,19 @@ function abrirModalEditarProyecto(id, nombre, codigo, objetivo, descripcion, est
         <div class="modal-body p-4">
           <div class="mb-3">
             <label class="form-label fw-semibold">Nombre del Proyecto <span class="text-danger">*</span></label>
-            <input type="text" name="nombre" class="form-control" required placeholder="Ej: Sistema de GestiÃ³n de Inventarios Web">
+            <input type="text" name="nombre" class="form-control" required placeholder="Ej: Sistema de Gestión de Inventarios Web" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')">
           </div>
           <div class="mb-3">
-            <label class="form-label fw-semibold">CÃ³digo <span class="text-danger">*</span></label>
-            <input type="text" name="codigo" class="form-control" required placeholder="Ej: PF-ADSO-02">
+            <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+            <input type="text" name="codigo" class="form-control" required placeholder="Ej: PF-ADSO-02" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()">
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Objetivo</label>
-            <textarea name="objetivo" class="form-control" rows="2" placeholder="Objetivo general del proyecto formativo"></textarea>
+            <textarea name="objetivo" class="form-control" rows="2" placeholder="Objetivo general del proyecto formativo" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-0">
-            <label class="form-label fw-semibold">DescripciÃ³n</label>
-            <textarea name="descripcion" class="form-control" rows="2" placeholder="DescripciÃ³n ampliada del proyecto"></textarea>
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="2" placeholder="Descripción ampliada del proyecto" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
         </div>
         <div class="modal-footer border-0 px-4 pb-4">

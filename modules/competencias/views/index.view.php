@@ -176,20 +176,20 @@ declare(strict_types=1);
           <div class="row g-3 mb-3">
             <div class="col-md-8">
               <label class="form-label text-muted small fw-semibold">Código</label>
-              <input type="text" name="codigo" id="edit_codigo" class="form-control" required>
+              <input type="text" name="codigo" id="edit_codigo" class="form-control" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()" required>
             </div>
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold">Horas</label>
-              <input type="number" name="horas" id="edit_horas" class="form-control" min="1" required>
+              <input type="number" name="horas" id="edit_horas" class="form-control" min="1" max="99999" oninput="this.value=this.value.replace(/[^0-9]/g, '')" required>
             </div>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Nombre de Competencia</label>
-            <input type="text" name="nombre" id="edit_nombre" class="form-control" required>
+            <input type="text" name="nombre" id="edit_nombre" class="form-control" maxlength="255" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Descripción (Opcional)</label>
-            <textarea name="descripcion" id="edit_descripcion" class="form-control" rows="3"></textarea>
+            <textarea name="descripcion" id="edit_descripcion" class="form-control" rows="3" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Estado</label>
@@ -248,20 +248,20 @@ function abrirModalEditar(id, programaId, codigo, nombre, descripcion, horas, es
           <div class="row g-3 mb-3">
             <div class="col-md-8">
               <label class="form-label text-muted small fw-semibold">Código</label>
-              <input type="text" name="codigo" class="form-control" placeholder="Ej. 220501096" required>
+              <input type="text" name="codigo" class="form-control" placeholder="Ej. 220501096" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()" required>
             </div>
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold">Horas</label>
-              <input type="number" name="horas" class="form-control" placeholder="Horas" min="1" required>
+              <input type="number" name="horas" class="form-control" placeholder="Horas" min="1" max="99999" oninput="this.value=this.value.replace(/[^0-9]/g, '')" required>
             </div>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Nombre de Competencia</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej. Diseñar la estructura de datos..." required>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej. Diseñar la estructura de datos..." maxlength="255" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Descripción (Opcional)</label>
-            <textarea name="descripcion" class="form-control" rows="3" placeholder="Detalles de la competencia..."></textarea>
+            <textarea name="descripcion" class="form-control" rows="3" placeholder="Detalles de la competencia..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Estado</label>

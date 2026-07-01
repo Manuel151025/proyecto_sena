@@ -121,11 +121,11 @@ declare(strict_types=1);
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Código del RAP</label>
-            <input type="text" name="codigo" id="edit_rap_codigo" class="form-control" required>
+            <input type="text" name="codigo" id="edit_rap_codigo" class="form-control" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-\s]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-\s]/g, '').toUpperCase()" required>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Denominación del Resultado de Aprendizaje</label>
-            <textarea name="denominacion" id="edit_rap_denominacion" class="form-control" rows="4" required></textarea>
+            <textarea name="denominacion" id="edit_rap_denominacion" class="form-control" rows="4" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
           </div>
         </div>
         <div class="modal-footer border-top-0 pt-0">
@@ -177,11 +177,11 @@ function abrirModalEditarRAP(id, competenciaId, codigo, denominacion) {
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Código del RAP (ej: RAP 1, RAP-02)</label>
-            <input type="text" name="codigo" class="form-control" placeholder="Ej. RAP 1" required>
+            <input type="text" name="codigo" class="form-control" placeholder="Ej. RAP 1" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-\s]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-\s]/g, '').toUpperCase()" required>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Denominación del Resultado de Aprendizaje</label>
-            <textarea name="denominacion" class="form-control" rows="4" placeholder="Describa el resultado de aprendizaje..." required></textarea>
+            <textarea name="denominacion" class="form-control" rows="4" placeholder="Describa el resultado de aprendizaje..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
           </div>
         </div>
         <div class="modal-footer border-top-0 pt-0">

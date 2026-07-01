@@ -45,6 +45,16 @@ class SeguimientoController extends BaseController {
                     $comentario    = trim($_POST['comentario'] ?? '');
                     $motivo        = trim($_POST['motivo'] ?? '');
 
+                    if (mb_strlen($comentario, 'UTF-8') > 1000) {
+                        $errors[] = 'El comentario no puede exceder los 1000 caracteres.';
+                    }
+                    $comentario = strip_tags($comentario);
+
+                    if (mb_strlen($motivo, 'UTF-8') > 255) {
+                        $errors[] = 'El motivo no puede exceder los 255 caracteres.';
+                    }
+                    $motivo = strip_tags($motivo);
+
                     if ($ra_id <= 0 || $aprendiz_id_p <= 0 || $ficha_id_p <= 0) {
                         $errors[] = 'Datos de evaluación incompletos.';
                     } else {
@@ -71,7 +81,14 @@ class SeguimientoController extends BaseController {
                     $privada       = isset($_POST['privada']) ? 1 : 0;
 
                     if ($aprendiz_id_r <= 0) $errors[] = 'Seleccione un aprendiz válido.';
-                    if (empty($contenido))   $errors[] = 'El detalle del seguimiento es obligatorio.';
+                    if (empty($contenido)) {
+                        $errors[] = 'El detalle del seguimiento es obligatorio.';
+                    } elseif (mb_strlen($contenido, 'UTF-8') < 10) {
+                        $errors[] = 'El contenido debe tener al menos 10 caracteres.';
+                    } elseif (mb_strlen($contenido, 'UTF-8') > 2000) {
+                        $errors[] = 'El contenido no puede exceder los 2000 caracteres.';
+                    }
+                    $contenido = strip_tags($contenido);
 
                     if (empty($errors)) {
                         try {

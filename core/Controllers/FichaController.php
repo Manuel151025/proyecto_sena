@@ -210,12 +210,34 @@ class FichaController extends BaseController {
             $fecha_fin = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
             $cumplimiento_porcentaje = (float) ($_POST['cumplimiento_porcentaje'] ?? 0);
 
-            if (empty($numero_ficha)) $errors[] = 'El número de ficha es requerido';
+            if (empty($numero_ficha)) {
+                $errors[] = 'El número de ficha es requerido';
+            } elseif (mb_strlen($numero_ficha, 'UTF-8') > 20) {
+                $errors[] = 'El número de ficha no puede exceder los 20 caracteres';
+            } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $numero_ficha)) {
+                $errors[] = 'El número de ficha contiene caracteres no permitidos';
+            }
+
             if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa';
             if ($instructor_id <= 0) $errors[] = 'Debe seleccionar un instructor';
             if (!in_array($estado, ['planeacion', 'induccion', 'ejecucion', 'cierre'])) $errors[] = 'Estado inválido';
-            if ($cantidad_aprendices < 0) $errors[] = 'La cantidad de aprendices no puede ser negativa';
-            if ($cumplimiento_porcentaje < 0 || $cumplimiento_porcentaje > 100) $errors[] = 'El cumplimiento debe estar entre 0 y 100%';
+            
+            if ($cantidad_aprendices < 0 || $cantidad_aprendices > 999) {
+                $errors[] = 'La cantidad de aprendices debe estar entre 0 y 999';
+            }
+            if ($cumplimiento_porcentaje < 0 || $cumplimiento_porcentaje > 100) {
+                $errors[] = 'El cumplimiento debe estar entre 0 y 100%';
+            }
+
+            if ($fecha_inicio && !strtotime($fecha_inicio)) {
+                $errors[] = 'La fecha de inicio no es válida';
+            }
+            if ($fecha_fin && !strtotime($fecha_fin)) {
+                $errors[] = 'La fecha de fin no es válida';
+            }
+            if ($fecha_inicio && $fecha_fin && strtotime($fecha_inicio) > strtotime($fecha_fin)) {
+                $errors[] = 'La fecha de inicio no puede ser posterior a la fecha de fin';
+            }
 
             if (empty($errors)) {
                 try {

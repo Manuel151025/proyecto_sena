@@ -55,7 +55,18 @@ class EvidenciasController extends BaseController {
                     $titulo      = trim($_POST['titulo'] ?? '');
                     $descripcion = trim($_POST['descripcion'] ?? '');
 
-                    if (empty($titulo)) $errors[] = 'El título de la evidencia es obligatorio.';
+                    if (empty($titulo)) {
+                        $errors[] = 'El título de la evidencia es obligatorio.';
+                    } elseif (mb_strlen($titulo, 'UTF-8') > 100) {
+                        $errors[] = 'El título no puede exceder los 100 caracteres.';
+                    } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $titulo)) {
+                        $errors[] = 'El título contiene caracteres no permitidos.';
+                    }
+
+                    if (mb_strlen($descripcion, 'UTF-8') > 1000) {
+                        $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
+                    }
+                    $descripcion = strip_tags($descripcion);
 
                     $archivo_url = null;
                     $tipo_archivo = null;
@@ -106,6 +117,11 @@ class EvidenciasController extends BaseController {
                     };
                     $tipo_retro = ($concepto_form === 'aprobado') ? 'fortaleza' : 'aspecto_mejorar';
                     $comentario = trim($_POST['comentario'] ?? '');
+
+                    if (mb_strlen($comentario, 'UTF-8') > 1000) {
+                        $errors[] = 'El comentario no puede exceder los 1000 caracteres.';
+                    }
+                    $comentario = strip_tags($comentario);
 
                     if ($evidencia_id <= 0) $errors[] = 'Evidencia no válida.';
 

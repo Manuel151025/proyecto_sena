@@ -50,7 +50,7 @@
               <label class="form-label">Nombres y apellidos</label>
               <input type="text" name="nombre" class="form-control"
                      value="<?= htmlspecialchars($user['nombre']) ?>"
-                     minlength="3" maxlength="150" required>
+                     minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
             </div>
             <div class="col-md-6">
               <label class="form-label">Correo institucional</label>

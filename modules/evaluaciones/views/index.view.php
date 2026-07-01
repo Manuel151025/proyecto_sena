@@ -1,4 +1,4 @@
-﻿
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="mb-1">Juicios de EvaluaciÃ³n</h1>
@@ -225,12 +225,12 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-semibold">Comentario / RetroalimentaciÃ³n</label>
-            <textarea name="comentario" id="evalComentario" class="form-control" rows="3" placeholder="Escriba su observaciÃ³n sobre el desempeÃ±o del aprendiz..."></textarea>
+            <label class="form-label fw-semibold">Comentario / Retroalimentación</label>
+            <textarea name="comentario" id="evalComentario" class="form-control" rows="3" placeholder="Escriba su observación sobre el desempeño del aprendiz..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-0" id="div_eval_motivo" style="display:none;">
             <label class="form-label fw-semibold text-danger">Motivo del cambio *</label>
-            <input type="text" name="motivo" id="eval_motivo" class="form-control" placeholder="Ej: Plan de mejoramiento completado">
+            <input type="text" name="motivo" id="eval_motivo" class="form-control" placeholder="Ej: Plan de mejoramiento completado" maxlength="255" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')">
           </div>
         </div>
         <div class="modal-footer border-0 px-4 pb-4">

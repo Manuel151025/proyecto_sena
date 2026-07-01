@@ -38,6 +38,23 @@ class ProyectosController extends BaseController {
                     if (empty($nombre) || empty($codigo)) {
                         throw new Exception('El nombre y código son obligatorios.');
                     }
+                    if (mb_strlen($nombre, 'UTF-8') > 100) {
+                        throw new Exception('El nombre no puede exceder los 100 caracteres.');
+                    }
+                    if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                        throw new Exception('El nombre contiene caracteres no permitidos.');
+                    }
+                    if (mb_strlen($codigo, 'UTF-8') > 20) {
+                        throw new Exception('El código no puede exceder los 20 caracteres.');
+                    }
+                    if (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
+                        throw new Exception('El código solo puede contener letras, números y guiones.');
+                    }
+                    if (mb_strlen($objetivo, 'UTF-8') > 1000 || mb_strlen($descripcion, 'UTF-8') > 1000) {
+                        throw new Exception('El objetivo y la descripción no pueden exceder los 1000 caracteres.');
+                    }
+                    $objetivo = strip_tags($objetivo);
+                    $descripcion = strip_tags($descripcion);
 
                     $this->proyectosModel->crearProyecto($nombre, $codigo, $objetivo, $descripcion);
                     $success = 'Proyecto formativo creado exitosamente.';
@@ -65,6 +82,26 @@ class ProyectosController extends BaseController {
 
                     if (empty($nombre) || empty($codigo)) {
                         throw new Exception('El nombre y código son obligatorios.');
+                    }
+                    if (mb_strlen($nombre, 'UTF-8') > 100) {
+                        throw new Exception('El nombre no puede exceder los 100 caracteres.');
+                    }
+                    if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                        throw new Exception('El nombre contiene caracteres no permitidos.');
+                    }
+                    if (mb_strlen($codigo, 'UTF-8') > 20) {
+                        throw new Exception('El código no puede exceder los 20 caracteres.');
+                    }
+                    if (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
+                        throw new Exception('El código solo puede contener letras, números y guiones.');
+                    }
+                    if (mb_strlen($objetivo, 'UTF-8') > 1000 || mb_strlen($descripcion, 'UTF-8') > 1000) {
+                        throw new Exception('El objetivo y la descripción no pueden exceder los 1000 caracteres.');
+                    }
+                    $objetivo = strip_tags($objetivo);
+                    $descripcion = strip_tags($descripcion);
+                    if (!in_array($estado, ['activo', 'inactivo', 'finalizado'])) {
+                        throw new Exception('Estado inválido.');
                     }
 
                     $this->proyectosModel->editarProyecto($id, $nombre, $codigo, $objetivo, $descripcion, $estado);

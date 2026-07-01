@@ -36,12 +36,14 @@ class PerfilController extends BaseController {
                 $nombre = trim($_POST['nombre'] ?? '');
                 $color  = trim($_POST['avatar_color'] ?? '');
 
-                if (mb_strlen($nombre) < 3) {
+                if (mb_strlen($nombre, 'UTF-8') < 3) {
                     $errors[] = 'El nombre debe tener al menos 3 caracteres.';
+                } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
+                    $errors[] = 'El nombre no puede exceder los 100 caracteres.';
+                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/', $nombre)) {
+                    $errors[] = 'El nombre solo puede contener letras y espacios.';
                 }
-                if (mb_strlen($nombre) > 150) {
-                    $errors[] = 'El nombre no puede exceder 150 caracteres.';
-                }
+                $nombre = strip_tags($nombre);
                 if (!in_array($color, $colores_validos, true)) {
                     $errors[] = 'Color de avatar no válido.';
                 }
