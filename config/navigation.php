@@ -9,7 +9,7 @@ $MENU_CONFIG = [
             'icon' => 'bi bi-grid-1x2',
             'items' => [
                 ['title' => 'Dashboard', 'url' => APP_URL . '/index.php/dashboard'],
-                ['title' => 'Calendario', 'url' => MODULES_PATH . '/calendario/'],
+                ['title' => 'Calendario', 'url' => APP_URL . '/index.php/calendario'],
                 ['title' => 'Usuarios', 'url' => APP_URL . '/index.php/usuarios'],
             ]
         ],
@@ -19,13 +19,13 @@ $MENU_CONFIG = [
                 ['title' => 'Estructura Curricular', 'url' => APP_URL . '/index.php/estructura'],
                 ['title' => 'Fichas de Formación', 'url' => MODULES_PATH . '/fichas/'],
                 ['title' => 'Matrículas', 'url' => APP_URL . '/index.php/matriculas'],
-                ['title' => 'Asignaciones', 'url' => MODULES_PATH . '/asignaciones/'],
+                ['title' => 'Asignar Instructores', 'url' => APP_URL . '/index.php/asignaciones'],
             ]
         ],
         'Proyectos Formativos' => [
             'icon' => 'bi bi-kanban',
             'items' => [
-                ['title' => 'Proyectos', 'url' => MODULES_PATH . '/proyectos/'],
+                ['title' => 'Proyectos', 'url' => APP_URL . '/index.php/proyectos'],
                 ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
                 ['title' => 'Seguimiento', 'url' => APP_URL . '/index.php/seguimiento'],
             ]
@@ -42,9 +42,9 @@ $MENU_CONFIG = [
         'Sistema' => [
             'icon' => 'bi bi-gear',
             'items' => [
-                ['title' => 'Reportes', 'url' => MODULES_PATH . '/reportes/'],
-                ['title' => 'Configuración', 'url' => MODULES_PATH . '/configuracion/'],
-                ['title' => 'Auditoría de Logs', 'url' => MODULES_PATH . '/logs/'],
+                ['title' => 'Reportes', 'url' => APP_URL . '/index.php/reportes'],
+                ['title' => 'Configuración', 'url' => APP_URL . '/index.php/configuracion'],
+                ['title' => 'Auditoría de Logs', 'url' => APP_URL . '/index.php/logs'],
             ]
         ],
     ],
@@ -54,7 +54,7 @@ $MENU_CONFIG = [
             'icon' => 'bi bi-grid-1x2',
             'items' => [
                 ['title' => 'Dashboard', 'url' => APP_URL . '/index.php/dashboard'],
-                ['title' => 'Calendario', 'url' => MODULES_PATH . '/calendario/'],
+                ['title' => 'Calendario', 'url' => APP_URL . '/index.php/calendario'],
             ]
         ],
         'Mis Fichas' => [
@@ -67,7 +67,7 @@ $MENU_CONFIG = [
         'Proyectos' => [
             'icon' => 'bi bi-kanban',
             'items' => [
-                ['title' => 'Proyectos', 'url' => MODULES_PATH . '/proyectos/'],
+                ['title' => 'Proyectos', 'url' => APP_URL . '/index.php/proyectos'],
                 ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
                 ['title' => 'Seguimiento', 'url' => APP_URL . '/index.php/seguimiento'],
             ]
@@ -84,7 +84,7 @@ $MENU_CONFIG = [
         'Otros' => [
             'icon' => 'bi bi-gear',
             'items' => [
-                ['title' => 'Reportes', 'url' => MODULES_PATH . '/reportes/'],
+                ['title' => 'Reportes', 'url' => APP_URL . '/index.php/reportes'],
             ]
         ],
     ],
@@ -93,7 +93,7 @@ $MENU_CONFIG = [
             'icon' => 'bi bi-grid-1x2',
             'items' => [
                 ['title' => 'Dashboard', 'url' => APP_URL . '/index.php/dashboard'],
-                ['title' => 'Calendario', 'url' => MODULES_PATH . '/calendario/'],
+                ['title' => 'Calendario', 'url' => APP_URL . '/index.php/calendario'],
             ]
         ],
         'Mi Formación' => [

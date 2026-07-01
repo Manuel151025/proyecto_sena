@@ -96,7 +96,7 @@ $tipoIconos = [
       </button>
       <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="margin-top:10px">
         <li><h6 class="dropdown-header"><?= htmlspecialchars($user['nombre']) ?></h6></li>
-        <li><a class="dropdown-item" href="<?= MODULES_PATH ?>/perfil/"><i class="bi bi-person me-2"></i>Mi perfil</a></li>
+        <li><a class="dropdown-item" href="<?= APP_URL ?>/index.php/perfil"><i class="bi bi-person me-2"></i>Mi perfil</a></li>
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item text-danger" href="<?= APP_URL ?>/includes/auth.php?action=logout"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</a></li>
       </ul>

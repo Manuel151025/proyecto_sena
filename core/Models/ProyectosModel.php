@@ -14,101 +14,77 @@ class ProyectosModel {
         $this->db = $db ?? Database::getConnection();
     }
 
-    /**
-     * Obtiene todos los proyectos formativos con el conteo de sus fases.
-     */
-    public function getAll(): array {
-        try {
+    public function crearProyecto(string $nombre, string $codigo, string $objetivo, string $descripcion): void {
+        $stmt = $this->db->prepare("INSERT INTO proyectos (nombre, codigo, objetivo, descripcion) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$nombre, $codigo, $objetivo, $descripcion]);
+    }
+
+    public function eliminarProyecto(int $id): void {
+        $stmt = $this->db->prepare("DELETE FROM proyectos WHERE id = ?");
+        $stmt->execute([$id]);
+    }
+
+    public function editarProyecto(int $id, string $nombre, string $codigo, string $objetivo, string $descripcion, string $estado): void {
+        $stmt = $this->db->prepare("
+            UPDATE proyectos SET nombre=?, codigo=?, objetivo=?, descripcion=?, estado=?
+            WHERE id=?
+        ");
+        $stmt->execute([$nombre, $codigo, $objetivo, $descripcion, $estado, $id]);
+    }
+
+    public function getProyectos(int $user_rol, int $user_id): array {
+        if ($user_rol === ROL_APRENDIZ) {
             $stmt = $this->db->prepare("
-                SELECT pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.descripcion, pr.estado, pr.fecha_creacion,
-                       COUNT(f.id) as total_fases
+                SELECT 
+                    pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
+                    COUNT(DISTINCT f.id) as total_fichas,
+                    SUM(f.cantidad_aprendices) as total_aprendices,
+                    COUNT(DISTINCT fp.id) as total_fases,
+                    SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
+                    AVG(fp.cumplimiento_porcentaje) as avance_promedio
                 FROM proyectos pr
-                LEFT JOIN fases_proyecto f ON f.proyecto_id = pr.id
-                GROUP BY pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.descripcion, pr.estado, pr.fecha_creacion
-                ORDER BY pr.nombre ASC
+                JOIN fichas f ON f.proyecto_id = pr.id
+                JOIN aprendices ap ON ap.ficha_id = f.id
+                LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
+                WHERE ap.usuario_id = ?
+                GROUP BY pr.id
+                ORDER BY pr.nombre
             ");
-            $stmt->execute();
+            $stmt->execute([$user_id]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            throw new Exception("Error al obtener todos los proyectos: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Obtiene un proyecto formativo específico por su ID.
-     */
-    public function findById(int $id): ?array {
-        try {
-            $stmt = $this->db->prepare("SELECT * FROM proyectos WHERE id = ? LIMIT 1");
-            $stmt->execute([$id]);
-            $proj = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $proj ?: null;
-        } catch (Exception $e) {
-            throw new Exception("Error al buscar el proyecto: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Registra un nuevo proyecto formativo.
-     */
-    public function create(array $data): bool {
-        try {
+        } elseif ($user_rol === ROL_INSTRUCTOR) {
             $stmt = $this->db->prepare("
-                INSERT INTO proyectos (nombre, codigo, objetivo, descripcion, estado)
-                VALUES (?, ?, ?, ?, ?)
+                SELECT 
+                    pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
+                    COUNT(DISTINCT f.id) as total_fichas,
+                    SUM(f.cantidad_aprendices) as total_aprendices,
+                    COUNT(DISTINCT fp.id) as total_fases,
+                    SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
+                    AVG(fp.cumplimiento_porcentaje) as avance_promedio
+                FROM proyectos pr
+                JOIN fichas f ON f.proyecto_id = pr.id
+                LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
+                WHERE f.instructor_id = ?
+                GROUP BY pr.id
+                ORDER BY pr.nombre
             ");
-            return $stmt->execute([
-                $data['nombre'],
-                $data['codigo'],
-                $data['objetivo'] ?? null,
-                $data['descripcion'] ?? null,
-                $data['estado'] ?? 'activo'
-            ]);
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                throw new Exception("El código de proyecto ya existe.");
-            }
-            throw new Exception("Error al registrar el proyecto: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Actualiza un proyecto formativo existente.
-     */
-    public function update(int $id, array $data): bool {
-        try {
-            $stmt = $this->db->prepare("
-                UPDATE proyectos
-                SET nombre = ?, codigo = ?, objetivo = ?, descripcion = ?, estado = ?, fecha_actualizacion = NOW()
-                WHERE id = ?
-            ");
-            return $stmt->execute([
-                $data['nombre'],
-                $data['codigo'],
-                $data['objetivo'] ?? null,
-                $data['descripcion'] ?? null,
-                $data['estado'],
-                $id
-            ]);
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                throw new Exception("El código ingresado ya está registrado para otro proyecto.");
-            }
-            throw new Exception("Error al actualizar el proyecto: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Elimina un proyecto formativo.
-     */
-    public function delete(int $id): bool {
-        try {
-            $stmt = $this->db->prepare("DELETE FROM proyectos WHERE id = ?");
-            return $stmt->execute([$id]);
-        } catch (\PDOException $e) {
-            throw new Exception("Error de base de datos al eliminar el proyecto: " . $e->getMessage());
-        } catch (Exception $e) {
-            throw new Exception("Error al eliminar el proyecto: " . $e->getMessage());
+            $stmt->execute([$user_id]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            return $this->db->query("
+                SELECT 
+                    pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
+                    COUNT(DISTINCT f.id) as total_fichas,
+                    SUM(f.cantidad_aprendices) as total_aprendices,
+                    COUNT(DISTINCT fp.id) as total_fases,
+                    SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
+                    AVG(fp.cumplimiento_porcentaje) as avance_promedio
+                FROM proyectos pr
+                LEFT JOIN fichas f ON f.proyecto_id = pr.id
+                LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
+                GROUP BY pr.id
+                ORDER BY pr.nombre
+            ")->fetchAll(PDO::FETCH_ASSOC);
         }
     }
 }
