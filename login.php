@@ -1139,38 +1139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
   });
 })();
 </script>
-<!-- Modal de Escaneo Biométrico -->
-<div class="biometric-modal-overlay" id="biometric-modal">
-  <div class="biometric-card" id="biometric-card">
-    <div class="biometric-title">Autenticación Biométrica</div>
-    <div class="biometric-subtitle">Coloca tu huella dactilar sobre el sensor del dispositivo para iniciar sesión rápidamente.</div>
-    
-    <div class="scanner-container" id="scanner-touch-area">
-      <div class="scanner-bg-circle"></div>
-      <div class="scanner-pulse"></div>
-      <div class="biometric-icon-wrapper">
-        <i class="bi bi-fingerprint" id="scanner-icon"></i>
-        <div class="scanner-laser"></div>
-      </div>
-    </div>
-    
-    <div class="scanner-feedback" id="scanner-feedback">Mantén presionado para escanear</div>
-    
-    <button type="button" class="biometric-cancel-btn" id="biometric-cancel-btn">Cancelar</button>
-  </div>
-</div>
 
 <script>
 (function() {
   var fingerprintBtn = document.getElementById('fingerprint-login-btn');
-  var modal = document.getElementById('biometric-modal');
-  var card = document.getElementById('biometric-card');
-  var cancelBtn = document.getElementById('biometric-cancel-btn');
-  var touchArea = document.getElementById('scanner-touch-area');
-  var feedback = document.getElementById('scanner-feedback');
   
-  var scanTimer = null;
-  var isScanning = false;
   var hasBiometricData = false;
 
   // Verificar si hay credenciales vinculadas en localStorage
@@ -1178,16 +1151,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
   var savedToken = localStorage.getItem('sena_bio_token');
   var savedCredId = localStorage.getItem('sena_bio_cred_id');
   
-  if (savedEmail && savedToken) {
+  if (savedEmail && savedToken && savedCredId) {
     hasBiometricData = true;
-  }
-
-  // Mostrar advertencia si se accede por HTTP en un servidor remoto (bloquea WebAuthn nativo)
-  if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-    var warningDiv = document.createElement('div');
-    warningDiv.style.cssText = 'color: #f59e0b; font-size: 0.72rem; margin-top: 15px; padding: 10px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 8px; line-height: 1.4; text-align: left;';
-    warningDiv.innerHTML = '⚠️ <strong>Conexión insegura (HTTP):</strong> Tu navegador bloquea el lector de huella físico del celular sin SSL. Para usar tu sensor real (bajo la pantalla o botón lateral), debes configurar <strong>HTTPS</strong> en tu VPS.';
-    card.insertBefore(warningDiv, cancelBtn);
   }
 
   function triggerNativeBiometricLogin() {
@@ -1251,156 +1216,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
         if (err.name !== "NotAllowedError") {
           alert("Error de autenticación biométrica: " + err.message);
         } else {
-          // El usuario canceló la huella nativa. Damos la opción de abrir el escáner visual.
-          var confirmModal = confirm("¿Deseas iniciar sesión usando el escáner visual alternativo?");
-          if (confirmModal) {
-            modal.classList.add('active');
-            resetScanner();
-          }
+          alert("Autenticación biométrica cancelada. Por favor ingresa usando tu correo y contraseña.");
         }
       });
   }
 
   if (fingerprintBtn) {
-    fingerprintBtn.addEventListener('click', function() {
-      if (hasBiometricData && window.PublicKeyCredential && savedCredId) {
-        triggerNativeBiometricLogin();
-      } else {
-        modal.classList.add('active');
-        resetScanner();
-      }
-    });
-  }
-
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', function() {
-      modal.classList.remove('active');
-      resetScanner();
-    });
-  }
-
-  function resetScanner() {
-    if (scanTimer) clearTimeout(scanTimer);
-    isScanning = false;
-    touchArea.classList.remove('scanning');
-    card.classList.remove('success');
-    feedback.classList.remove('error');
-    feedback.textContent = 'Mantén presionado para escanear';
-    cancelBtn.style.display = 'inline-block';
-  }
-
-  function startScan() {
-    if (isScanning) return;
-    isScanning = true;
-    touchArea.classList.add('scanning');
-    feedback.textContent = 'Escaneando... Mantén presionado';
-    feedback.classList.remove('error');
-
-    // Haptic feedback de inicio si se soporta
-    if (navigator.vibrate) {
-      navigator.vibrate(30);
+    if (!hasBiometricData) {
+      fingerprintBtn.disabled = true;
+      fingerprintBtn.innerHTML = '<i class="bi bi-info-circle"></i> Huella no vinculada';
+      fingerprintBtn.title = 'Inicia sesión una vez con contraseña para vincular tu huella.';
+    } else {
+      fingerprintBtn.addEventListener('click', function() {
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+          alert("Por razones de seguridad, la autenticación biométrica física requiere una conexión HTTPS segura.");
+          return;
+        }
+        if (window.PublicKeyCredential) {
+          triggerNativeBiometricLogin();
+        } else {
+          alert("Tu navegador o dispositivo no soporta la autenticación biométrica estándar (WebAuthn).");
+        }
+      });
     }
-
-    scanTimer = setTimeout(function() {
-      // Completar escaneo
-      isScanning = false;
-      touchArea.classList.remove('scanning');
-      
-      if (hasBiometricData) {
-        // Éxito de biometría
-        card.classList.add('success');
-        feedback.textContent = '¡Huella verificada correctamente!';
-        feedback.classList.remove('error');
-        cancelBtn.style.display = 'none';
-
-        if (navigator.vibrate) {
-          navigator.vibrate([100]);
-        }
-
-        // Proceder con login biométrico tras 800ms
-        setTimeout(function() {
-          var form = document.querySelector('form');
-          if (form) {
-            // Rellenar email
-            var emailInput = document.getElementById('login-email');
-            if (emailInput) {
-              emailInput.value = savedEmail;
-            }
-            
-            // Quitar required de password para submit biométrico
-            var pwInput = document.getElementById('pw-login');
-            if (pwInput) {
-              pwInput.removeAttribute('required');
-              pwInput.disabled = true;
-            }
-
-            // Inyectar datos biométricos
-            var bioLoginInput = document.createElement('input');
-            bioLoginInput.type = 'hidden';
-            bioLoginInput.name = 'biometric_login';
-            bioLoginInput.value = '1';
-            form.appendChild(bioLoginInput);
-
-            var bioTokenInput = document.createElement('input');
-            bioTokenInput.type = 'hidden';
-            bioTokenInput.name = 'biometric_token';
-            bioTokenInput.value = savedToken;
-            form.appendChild(bioTokenInput);
-
-            form.submit();
-          }
-        }, 800);
-      } else {
-        // Fallo: No hay datos vinculados
-        feedback.textContent = 'Huella no vinculada. Inicia sesión con contraseña una vez.';
-        feedback.classList.add('error');
-        if (navigator.vibrate) {
-          navigator.vibrate([80, 50, 80]);
-        }
-      }
-    }, 1800);
   }
-
-  function interruptScan() {
-    if (!isScanning) return;
-    isScanning = false;
-    touchArea.classList.remove('scanning');
-    if (scanTimer) clearTimeout(scanTimer);
-    feedback.textContent = 'Escaneo interrumpido. Inténtalo de nuevo.';
-    feedback.classList.add('error');
-  }
-
-  // Soporte para ratón y eventos táctiles en el lector de huella
-  touchArea.addEventListener('mousedown', function(e) {
-    e.preventDefault();
-    startScan();
-  });
-  
-  touchArea.addEventListener('mouseup', function(e) {
-    e.preventDefault();
-    interruptScan();
-  });
-
-  touchArea.addEventListener('mouseleave', function(e) {
-    e.preventDefault();
-    interruptScan();
-  });
-
-  // Soporte táctil móvil
-  touchArea.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    startScan();
-  });
-
-  touchArea.addEventListener('touchend', function(e) {
-    e.preventDefault();
-    interruptScan();
-  });
-
-  touchArea.addEventListener('touchcancel', function(e) {
-    e.preventDefault();
-    interruptScan();
-  });
 
 })();
 </script>
