@@ -22,17 +22,17 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
 
               <div class="mb-3">
                 <label for="modal-nombre" class="form-label fw-semibold">Nombre completo</label>
-                <input type="text" id="modal-nombre" name="nombre" class="form-control form-control-custom" placeholder="Ej: Carlos Andrés Martínez" required>
+                <input type="text" id="modal-nombre" name="nombre" class="form-control form-control-custom" placeholder="Ej: Carlos Andrés Martínez" maxlength="60" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
               </div>
 
               <div class="mb-3">
                 <label for="modal-email" class="form-label fw-semibold">Email institucional</label>
-                <input type="email" id="modal-email" name="email" class="form-control form-control-custom" placeholder="usuario@sena.edu.co" required>
+                <input type="email" id="modal-email" name="email" class="form-control form-control-custom" placeholder="usuario@sena.edu.co" maxlength="100" required>
               </div>
 
               <div class="mb-3">
                 <label for="modal-password" class="form-label fw-semibold">Contraseña</label>
-                <input type="password" id="modal-password" name="password" class="form-control form-control-custom" placeholder="Mínimo 6 caracteres" required>
+                <input type="password" id="modal-password" name="password" class="form-control form-control-custom" placeholder="Mínimo 6 caracteres" maxlength="60" minlength="6" required>
               </div>
 
               <div class="mb-3">

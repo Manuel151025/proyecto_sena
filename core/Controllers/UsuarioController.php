@@ -23,16 +23,35 @@ class UsuarioController extends BaseController {
      */
     private function validateUser(array $data, bool $isEdit): array {
         $errors = [];
+        
+        // Validación de Nombre
         if (empty($data['nombre'])) {
             $errors[] = 'El nombre es requerido';
+        } else {
+            if (mb_strlen($data['nombre'], 'UTF-8') > 60) {
+                $errors[] = 'El nombre no puede exceder los 60 caracteres';
+            }
+            if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u', $data['nombre'])) {
+                $errors[] = 'El nombre solo puede contener letras y espacios';
+            }
         }
+
+        // Validación de Email
         if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Email inválido';
+        } elseif (strlen($data['email']) > 100) {
+            $errors[] = 'El email no puede exceder los 100 caracteres';
         }
         
+        // Validación de Contraseña y Estado
         if ($isEdit) {
-            if (!empty($data['password']) && strlen($data['password']) < 6) {
-                $errors[] = 'Si deseas cambiar la contraseña, debe tener al menos 6 caracteres';
+            if (!empty($data['password'])) {
+                if (strlen($data['password']) < 6) {
+                    $errors[] = 'Si deseas cambiar la contraseña, debe tener al menos 6 caracteres';
+                }
+                if (strlen($data['password']) > 60) {
+                    $errors[] = 'La contraseña no puede exceder los 60 caracteres';
+                }
             }
             if (!in_array($data['estado'], ['activo', 'inactivo', 'bloqueado'])) {
                 $errors[] = 'Estado inválido';
@@ -41,8 +60,12 @@ class UsuarioController extends BaseController {
             if (strlen($data['password']) < 6) {
                 $errors[] = 'La contraseña debe tener al menos 6 caracteres';
             }
+            if (strlen($data['password']) > 60) {
+                $errors[] = 'La contraseña no puede exceder los 60 caracteres';
+            }
         }
 
+        // Validación de Rol
         if (!in_array($data['rol'], ['coordinador', 'instructor', 'aprendiz'])) {
             $errors[] = 'Rol inválido';
         }
