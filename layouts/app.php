@@ -9,6 +9,19 @@ require_once __DIR__ . '/header.php';
     <?php require_once __DIR__ . '/../components/navbar.php'; ?>
     <section class="content">
       <?php
+      $flashMessages = getFlashMessages();
+      foreach ($flashMessages as $flash):
+          $icon = 'bi-info-circle';
+          if ($flash['tipo'] === 'success') $icon = 'bi-check-circle';
+          if ($flash['tipo'] === 'danger') $icon = 'bi-exclamation-circle';
+          if ($flash['tipo'] === 'warning') $icon = 'bi-exclamation-triangle';
+      ?>
+      <div class="alert-flat <?= htmlspecialchars($flash['tipo']) ?> mb-3">
+        <i class="bi <?= $icon ?>"></i>
+        <div><?= htmlspecialchars($flash['mensaje']) ?></div>
+      </div>
+      <?php endforeach; ?>
+      <?php
       if (isset($contentView) && file_exists($contentView)) {
           require $contentView;
       }

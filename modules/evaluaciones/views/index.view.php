@@ -12,7 +12,7 @@
   </div>
   <?php if ($user_rol !== ROL_APRENDIZ): ?>
   <div>
-    <a href="<?= MODULES_PATH ?>/evaluaciones/importar_juicios.php" class="btn btn-primary">
+    <a href="<?= APP_URL ?>/index.php/evaluaciones/importar" class="btn btn-primary">
       <i class="bi bi-file-earmark-excel me-1"></i> Importar Juicios Evaluativos
     </a>
   </div>

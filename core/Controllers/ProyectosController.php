@@ -57,19 +57,21 @@ class ProyectosController extends BaseController {
                     $descripcion = strip_tags($descripcion);
 
                     $this->proyectosModel->crearProyecto($nombre, $codigo, $objetivo, $descripcion);
-                    $success = 'Proyecto formativo creado exitosamente.';
+                    setFlashMessage('Proyecto formativo creado exitosamente.', 'success');
+                    $this->redirect(APP_URL . '/index.php/proyectos');
                 } catch (Exception $e) {
-                    $errors[] = 'Error: ' . $e->getMessage();
+                    setFlashMessage('Error: ' . $e->getMessage(), 'danger');
                 }
             }
             if ($_POST['action'] === 'delete' && $user_rol === ROL_COORDINADOR) {
                 try {
                     $id = (int)$_POST['id'];
                     $this->proyectosModel->eliminarProyecto($id);
-                    $success = 'Proyecto eliminado correctamente.';
+                    setFlashMessage('Proyecto eliminado correctamente.', 'success');
                 } catch (Exception $e) {
-                    $errors[] = 'No se puede eliminar: el proyecto tiene fichas o fases asociadas.';
+                    setFlashMessage('No se puede eliminar: el proyecto tiene fichas o fases asociadas.', 'danger');
                 }
+                $this->redirect(APP_URL . '/index.php/proyectos');
             }
             if ($_POST['action'] === 'editar' && $user_rol === ROL_COORDINADOR) {
                 try {
@@ -105,9 +107,10 @@ class ProyectosController extends BaseController {
                     }
 
                     $this->proyectosModel->editarProyecto($id, $nombre, $codigo, $objetivo, $descripcion, $estado);
-                    $success = 'Proyecto actualizado correctamente.';
+                    setFlashMessage('Proyecto actualizado correctamente.', 'success');
+                    $this->redirect(APP_URL . '/index.php/proyectos');
                 } catch (Exception $e) {
-                    $errors[] = 'Error: ' . $e->getMessage();
+                    setFlashMessage('Error: ' . $e->getMessage(), 'danger');
                 }
             }
         }

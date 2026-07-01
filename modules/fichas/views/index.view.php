@@ -9,7 +9,7 @@ declare(strict_types=1);
   </div>
   <?php if($role === ROL_COORDINADOR): ?>
   <div class="d-flex gap-2">
-    <a href="<?= MODULES_PATH ?>/fichas/crear.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva Ficha</a>
+    <a href="<?= APP_URL ?>/index.php/fichas/crear" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva Ficha</a>
   </div>
   <?php endif; ?>
 </div>
@@ -111,9 +111,9 @@ declare(strict_types=1);
       </div>
       <div class="card-footer bg-transparent border-0 px-4 pb-4 pt-0">
         <div class="d-flex gap-2">
-          <a href="<?= MODULES_PATH ?>/fichas/ver.php?id=<?= $ficha['id'] ?>" class="btn btn-primary flex-grow-1 fw-medium" style="border-radius: 8px;">Ir al Panel</a>
+          <a href="<?= APP_URL ?>/index.php/fichas/ver?id=<?= $ficha['id'] ?>" class="btn btn-primary flex-grow-1 fw-medium" style="border-radius: 8px;">Ir al Panel</a>
           <?php if($role === ROL_COORDINADOR): ?>
-          <a href="<?= MODULES_PATH ?>/fichas/editar.php?id=<?= $ficha['id'] ?>" class="btn btn-soft text-primary px-3" style="border-radius: 8px;" title="Editar"><i class="bi bi-pencil-square"></i></a>
+          <a href="<?= APP_URL ?>/index.php/fichas/editar?id=<?= $ficha['id'] ?>" class="btn btn-soft text-primary px-3" style="border-radius: 8px;" title="Editar"><i class="bi bi-pencil-square"></i></a>
           <button type="button" class="btn btn-soft text-danger px-3" style="border-radius: 8px;" onclick="deleteSheet(<?= $ficha['id'] ?>)" title="Eliminar"><i class="bi bi-trash"></i></button>
           <?php endif; ?>
         </div>

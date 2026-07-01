@@ -75,9 +75,10 @@ class EvaluacionesController extends BaseController {
 
                     $this->evaluacionesModel->actualizarEvaluacion($eval_id, $nuevo_concepto, $comentario, $motivo, $user_id, $conceptoAnterior);
 
-                    $successMessage = 'Evaluación actualizada correctamente. Concepto: ' . $nuevo_concepto;
+                    setFlashMessage('Evaluación actualizada correctamente. Concepto: ' . $nuevo_concepto, 'success');
+                    $this->redirect($_SERVER['REQUEST_URI']);
                 } catch (Exception $e) {
-                    $errors[] = 'Error al guardar evaluación: ' . $e->getMessage();
+                    setFlashMessage('Error al guardar evaluación: ' . $e->getMessage(), 'danger');
                 }
             }
         }

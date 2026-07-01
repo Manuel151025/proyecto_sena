@@ -254,6 +254,39 @@ function requireCsrf(): void {
     }
 }
 
+// ---------------------------------------------------------------------------
+// MENSAJES FLASH (POST-REDIRECT-GET)
+// ---------------------------------------------------------------------------
+
+/**
+ * Añade un mensaje flash a la sesión actual (se usará tras un redirect).
+ * 
+ * @param string $mensaje El texto del mensaje.
+ * @param string $tipo_mensaje 'success', 'danger', 'warning', 'info' etc.
+ */
+function setFlashMessage(string $mensaje, string $tipo_mensaje = 'success'): void {
+    $tabId = getTabId();
+    if (!isset($_SESSION['tabs'][$tabId]['flash'])) {
+        $_SESSION['tabs'][$tabId]['flash'] = [];
+    }
+    $_SESSION['tabs'][$tabId]['flash'][] = [
+        'mensaje' => $mensaje,
+        'tipo' => $tipo_mensaje
+    ];
+}
+
+/**
+ * Obtiene los mensajes flash pendientes y los limpia de la sesión.
+ * 
+ * @return array Lista de mensajes con 'mensaje' y 'tipo'
+ */
+function getFlashMessages(): array {
+    $tabId = getTabId();
+    $messages = $_SESSION['tabs'][$tabId]['flash'] ?? [];
+    unset($_SESSION['tabs'][$tabId]['flash']);
+    return $messages;
+}
+
 // Ejecutar validación CSRF de manera global para todas las peticiones POST
 requireCsrf();
 
