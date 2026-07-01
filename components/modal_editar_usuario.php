@@ -23,17 +23,17 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
 
               <div class="mb-3">
                 <label for="edit-nombre" class="form-label fw-semibold">Nombre completo</label>
-                <input type="text" id="edit-nombre" name="nombre" class="form-control form-control-custom" placeholder="Ej: Carlos Andrés Martínez" required>
+                <input type="text" id="edit-nombre" name="nombre" class="form-control form-control-custom" placeholder="Ej: Carlos Andrés Martínez" maxlength="60" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
               </div>
 
               <div class="mb-3">
                 <label for="edit-email" class="form-label fw-semibold">Email institucional</label>
-                <input type="email" id="edit-email" name="email" class="form-control form-control-custom" placeholder="usuario@sena.edu.co" required>
+                <input type="email" id="edit-email" name="email" class="form-control form-control-custom" placeholder="usuario@sena.edu.co" maxlength="100" required>
               </div>
 
               <div class="mb-3">
                 <label for="edit-password" class="form-label fw-semibold">Contraseña (Opcional)</label>
-                <input type="password" id="edit-password" name="password" class="form-control form-control-custom" placeholder="Dejar en blanco para mantener la actual">
+                <input type="password" id="edit-password" name="password" class="form-control form-control-custom" placeholder="Dejar en blanco para mantener la actual" maxlength="60" minlength="6">
                 <small class="text-muted" style="font-size: 0.75rem;">Mínimo 6 caracteres si deseas cambiarla.</small>
               </div>
 
