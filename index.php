@@ -95,6 +95,10 @@ $router->add('POST', '/evaluaciones/importar', 'Core\Controllers\EvaluacionContr
 $router->add('GET', '/actividades', 'Core\Controllers\ActividadesController', 'index');
 $router->add('POST', '/actividades', 'Core\Controllers\ActividadesController', 'index');
 
+// Rutas de Seguimiento
+$router->add('GET', '/seguimiento', 'Core\Controllers\SeguimientoController', 'index');
+$router->add('POST', '/seguimiento', 'Core\Controllers\SeguimientoController', 'index');
+
 // Rutas de Dashboard
 $router->add('GET', '/dashboard', 'Core\Controllers\DashboardController', 'index');
 

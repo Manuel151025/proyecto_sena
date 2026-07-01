@@ -27,7 +27,7 @@ $MENU_CONFIG = [
             'items' => [
                 ['title' => 'Proyectos', 'url' => MODULES_PATH . '/proyectos/'],
                 ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
-                ['title' => 'Seguimiento', 'url' => MODULES_PATH . '/seguimiento/'],
+                ['title' => 'Seguimiento', 'url' => APP_URL . '/index.php/seguimiento'],
             ]
         ],
         'Evaluación y Calidad' => [
@@ -69,7 +69,7 @@ $MENU_CONFIG = [
             'items' => [
                 ['title' => 'Proyectos', 'url' => MODULES_PATH . '/proyectos/'],
                 ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
-                ['title' => 'Seguimiento', 'url' => MODULES_PATH . '/seguimiento/'],
+                ['title' => 'Seguimiento', 'url' => APP_URL . '/index.php/seguimiento'],
             ]
         ],
         'Evaluación' => [
