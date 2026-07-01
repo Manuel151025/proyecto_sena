@@ -26,7 +26,7 @@ $MENU_CONFIG = [
             'icon' => 'bi bi-kanban',
             'items' => [
                 ['title' => 'Proyectos', 'url' => MODULES_PATH . '/proyectos/'],
-                ['title' => 'Actividades', 'url' => MODULES_PATH . '/actividades/'],
+                ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
                 ['title' => 'Seguimiento', 'url' => MODULES_PATH . '/seguimiento/'],
             ]
         ],
@@ -68,7 +68,7 @@ $MENU_CONFIG = [
             'icon' => 'bi bi-kanban',
             'items' => [
                 ['title' => 'Proyectos', 'url' => MODULES_PATH . '/proyectos/'],
-                ['title' => 'Actividades', 'url' => MODULES_PATH . '/actividades/'],
+                ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
                 ['title' => 'Seguimiento', 'url' => MODULES_PATH . '/seguimiento/'],
             ]
         ],
@@ -101,7 +101,7 @@ $MENU_CONFIG = [
             'items' => [
                 ['title' => 'Mi ficha', 'url' => MODULES_PATH . '/fichas/'],
                 ['title' => 'Mi proyecto', 'url' => MODULES_PATH . '/proyectos/'],
-                ['title' => 'Actividades', 'url' => MODULES_PATH . '/actividades/'],
+                ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
             ]
         ],
         'Entregas' => [
