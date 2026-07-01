@@ -86,6 +86,11 @@ $router->add('POST', '/resultados-aprendizaje/importar', 'Core\Controllers\Resul
 // Rutas de Fichas
 $router->add('GET', '/fichas', 'Core\Controllers\FichaController', 'index');
 $router->add('POST', '/fichas', 'Core\Controllers\FichaController', 'index');
+$router->add('GET', '/fichas/ver', 'Core\Controllers\FichaController', 'view');
+$router->add('GET', '/fichas/crear', 'Core\Controllers\FichaController', 'edit');
+$router->add('POST', '/fichas/crear', 'Core\Controllers\FichaController', 'edit');
+$router->add('GET', '/fichas/editar', 'Core\Controllers\FichaController', 'edit');
+$router->add('POST', '/fichas/editar', 'Core\Controllers\FichaController', 'edit');
 
 // Rutas de Evaluaciones (Juicios)
 $router->add('GET', '/evaluaciones/importar', 'Core\Controllers\EvaluacionController', 'import');
@@ -113,6 +118,37 @@ $router->add('GET', '/mejoramiento', 'Core\Controllers\MejoramientoController', 
 // Rutas de Retroalimentacion
 $router->add('GET', '/retroalimentacion', 'Core\Controllers\RetroalimentacionController', 'index');
 $router->add('POST', '/retroalimentacion', 'Core\Controllers\RetroalimentacionController', 'index');
+
+// Rutas de Proyectos
+$router->add('GET', '/proyectos', 'Core\Controllers\ProyectosController', 'index');
+$router->add('POST', '/proyectos', 'Core\Controllers\ProyectosController', 'index');
+
+// Rutas de Fases
+$router->add('GET', '/fases', 'Core\Controllers\FasesController', 'index');
+$router->add('POST', '/fases', 'Core\Controllers\FasesController', 'index');
+
+// Rutas de Asignaciones
+$router->add('GET', '/asignaciones', 'Core\Controllers\AsignacionesController', 'index');
+$router->add('POST', '/asignaciones', 'Core\Controllers\AsignacionesController', 'index');
+
+// Rutas de Reportes
+$router->add('GET', '/reportes', 'Core\Controllers\ReportesController', 'index');
+$router->add('POST', '/reportes', 'Core\Controllers\ReportesController', 'index');
+
+// Rutas de Perfil
+$router->add('GET', '/perfil', 'Core\Controllers\PerfilController', 'index');
+$router->add('POST', '/perfil', 'Core\Controllers\PerfilController', 'index');
+
+// Rutas de Logs
+$router->add('GET', '/logs', 'Core\Controllers\LogsController', 'index');
+
+// Rutas de Configuracion
+$router->add('GET', '/configuracion', 'Core\Controllers\ConfiguracionController', 'index');
+$router->add('POST', '/configuracion', 'Core\Controllers\ConfiguracionController', 'index');
+
+// Rutas de Calendario
+$router->add('GET', '/calendario', 'Core\Controllers\CalendarioController', 'index');
+$router->add('GET', '/calendario/api', 'Core\Controllers\CalendarioController', 'apiEvents');
 
 // Rutas de Dashboard
 $router->add('GET', '/dashboard', 'Core\Controllers\DashboardController', 'index');
