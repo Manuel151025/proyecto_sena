@@ -1,4 +1,4 @@
-﻿
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="mb-1">Asignaciones de Instructores</h1>
@@ -151,6 +151,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="asignar">
         <div class="modal-body">
           <div class="mb-3">
@@ -212,6 +213,7 @@
 <?php endif; ?>
 
 <form id="formEliminarAsignacion" method="POST" style="display:none;">
+    <?= csrfField() ?>
   <input type="hidden" name="action" value="eliminar">
   <input type="hidden" name="asignacion_id" id="eliminar_asignacion_id">
 </form>

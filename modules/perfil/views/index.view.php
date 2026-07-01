@@ -1,4 +1,4 @@
-﻿
+
 <h1 class="mb-1">Mi perfil</h1>
 <p class="text-muted">Actualiza tus datos personales y credenciales de acceso.</p>
 
@@ -42,6 +42,7 @@
         </div>
 
         <form method="POST" action="">
+          <?= csrfField() ?>
           <input type="hidden" name="action" value="update_profile">
 
           <div class="row g-3">
@@ -88,16 +89,17 @@
     </div>
   </div>
 
-  <!-- ===== Cambiar contraseÃ±a ===== -->
+  <!-- ===== Cambiar contraseña ===== -->
   <div class="col-lg-5">
     <div class="card">
-      <div class="card-header">Cambiar contraseÃ±a</div>
+      <div class="card-header">Cambiar contraseña</div>
       <div class="card-body">
         <form method="POST" action="">
+          <?= csrfField() ?>
           <input type="hidden" name="action" value="change_password">
 
           <div class="mb-3">
-            <label class="form-label">ContraseÃ±a actual</label>
+            <label class="form-label">Contraseña actual</label>
             <div class="position-relative">
               <input type="password" name="password_actual" id="pw-cur"
                      class="form-control pe-5" required>

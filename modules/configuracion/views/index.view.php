@@ -1,4 +1,4 @@
-﻿<div class="mb-4">
+<div class="mb-4">
   <h1 class="mb-1">ConfiguraciÃ³n General</h1>
   <p class="text-muted mb-0">Ajusta los parÃ¡metros acadÃ©micos, nombres institucionales y credenciales del sistema.</p>
 </div>
@@ -15,6 +15,7 @@
     <div class="card glass-card border-0 shadow-sm">
       <div class="card-body">
         <form method="POST">
+          <?= csrfField() ?>
           <h5 class="fw-bold text-dark mb-4"><i class="bi bi-gear-fill me-2 text-primary"></i>ParÃ¡metros Institucionales</h5>
           
           <div class="mb-3">

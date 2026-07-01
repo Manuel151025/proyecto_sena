@@ -131,7 +131,8 @@ declare(strict_types=1);
 </div>
 
 <form id="deleteForm" method="POST" style="display:none;">
-  <input type="hidden" name="action" value="delete">
+    <?= csrfField() ?>
+    <input type="hidden" name="action" value="delete">
   <input type="hidden" name="id" id="deleteId">
 </form>
 
