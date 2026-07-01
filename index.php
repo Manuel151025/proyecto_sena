@@ -99,6 +99,21 @@ $router->add('POST', '/actividades', 'Core\Controllers\ActividadesController', '
 $router->add('GET', '/seguimiento', 'Core\Controllers\SeguimientoController', 'index');
 $router->add('POST', '/seguimiento', 'Core\Controllers\SeguimientoController', 'index');
 
+// Rutas de Evaluaciones
+$router->add('GET', '/evaluaciones', 'Core\Controllers\EvaluacionesController', 'index');
+$router->add('POST', '/evaluaciones', 'Core\Controllers\EvaluacionesController', 'index');
+
+// Rutas de Evidencias
+$router->add('GET', '/evidencias', 'Core\Controllers\EvidenciasController', 'index');
+$router->add('POST', '/evidencias', 'Core\Controllers\EvidenciasController', 'index');
+
+// Rutas de Mejoramiento
+$router->add('GET', '/mejoramiento', 'Core\Controllers\MejoramientoController', 'index');
+
+// Rutas de Retroalimentacion
+$router->add('GET', '/retroalimentacion', 'Core\Controllers\RetroalimentacionController', 'index');
+$router->add('POST', '/retroalimentacion', 'Core\Controllers\RetroalimentacionController', 'index');
+
 // Rutas de Dashboard
 $router->add('GET', '/dashboard', 'Core\Controllers\DashboardController', 'index');
 
