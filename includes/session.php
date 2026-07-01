@@ -230,3 +230,6 @@ function requireCsrf(): void {
     }
 }
 
+// Ejecutar validación CSRF de manera global para todas las peticiones POST
+requireCsrf();
+
