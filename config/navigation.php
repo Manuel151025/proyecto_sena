@@ -33,10 +33,10 @@ $MENU_CONFIG = [
         'Evaluación y Calidad' => [
             'icon' => 'bi bi-pencil-square',
             'items' => [
-                ['title' => 'Evaluaciones', 'url' => MODULES_PATH . '/evaluaciones/'],
-                ['title' => 'Evidencias', 'url' => MODULES_PATH . '/evidencias/'],
-                ['title' => 'Retroalimentación', 'url' => MODULES_PATH . '/retroalimentacion/'],
-                ['title' => 'Plan de Mejora', 'url' => MODULES_PATH . '/mejoramiento/'],
+                ['title' => 'Evaluaciones', 'url' => APP_URL . '/index.php/evaluaciones'],
+                ['title' => 'Evidencias', 'url' => APP_URL . '/index.php/evidencias'],
+                ['title' => 'Retroalimentación', 'url' => APP_URL . '/index.php/retroalimentacion'],
+                ['title' => 'Plan de Mejora', 'url' => APP_URL . '/index.php/mejoramiento'],
             ]
         ],
         'Sistema' => [
@@ -75,10 +75,10 @@ $MENU_CONFIG = [
         'Evaluación' => [
             'icon' => 'bi bi-pencil-square',
             'items' => [
-                ['title' => 'Evidencias', 'url' => MODULES_PATH . '/evidencias/'],
-                ['title' => 'Evaluaciones', 'url' => MODULES_PATH . '/evaluaciones/'],
-                ['title' => 'Retroalimentación', 'url' => MODULES_PATH . '/retroalimentacion/'],
-                ['title' => 'Plan mejora', 'url' => MODULES_PATH . '/mejoramiento/'],
+                ['title' => 'Evidencias', 'url' => APP_URL . '/index.php/evidencias'],
+                ['title' => 'Evaluaciones', 'url' => APP_URL . '/index.php/evaluaciones'],
+                ['title' => 'Retroalimentación', 'url' => APP_URL . '/index.php/retroalimentacion'],
+                ['title' => 'Plan mejora', 'url' => APP_URL . '/index.php/mejoramiento'],
             ]
         ],
         'Otros' => [
@@ -107,15 +107,15 @@ $MENU_CONFIG = [
         'Entregas' => [
             'icon' => 'bi bi-file-earmark-arrow-up',
             'items' => [
-                ['title' => 'Mis evidencias', 'url' => MODULES_PATH . '/evidencias/'],
-                ['title' => 'Evaluaciones', 'url' => MODULES_PATH . '/evaluaciones/'],
-                ['title' => 'Retroalimentación', 'url' => MODULES_PATH . '/retroalimentacion/'],
+                ['title' => 'Mis evidencias', 'url' => APP_URL . '/index.php/evidencias'],
+                ['title' => 'Evaluaciones', 'url' => APP_URL . '/index.php/evaluaciones'],
+                ['title' => 'Retroalimentación', 'url' => APP_URL . '/index.php/retroalimentacion'],
             ]
         ],
         'Otros' => [
             'icon' => 'bi bi-gear',
             'items' => [
-                ['title' => 'Plan mejora', 'url' => MODULES_PATH . '/mejoramiento/'],
+                ['title' => 'Plan mejora', 'url' => APP_URL . '/index.php/mejoramiento'],
             ]
         ],
     ],
