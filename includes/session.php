@@ -12,6 +12,10 @@ ini_set('session.use_only_cookies', '1');
 ini_set('session.cookie_httponly', '1');
 ini_set('session.cookie_samesite', 'Lax');
 
+// Asegurar que si estamos en HTTP no se obligue a usar Secure, o la cookie de sesión no viajará.
+$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443;
+ini_set('session.cookie_secure', $isSecure ? '1' : '0');
+
 session_start();
 
 require_once __DIR__ . '/config.php';
