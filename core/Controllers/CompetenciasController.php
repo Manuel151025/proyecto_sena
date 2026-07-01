@@ -44,9 +44,29 @@ class CompetenciasController extends BaseController {
                 $estado = $_POST['estado'] ?? 'activo';
 
                 if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa válido.';
-                if (empty($nombre)) $errors[] = 'El nombre de la competencia es obligatorio.';
-                if (empty($codigo)) $errors[] = 'El código de la competencia es obligatorio.';
-                if ($horas <= 0) $errors[] = 'La duración en horas debe ser mayor a 0.';
+                if (empty($nombre)) {
+                    $errors[] = 'El nombre de la competencia es obligatorio.';
+                } elseif (mb_strlen($nombre, 'UTF-8') > 255) {
+                    $errors[] = 'El nombre no puede exceder los 255 caracteres.';
+                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                    $errors[] = 'El nombre contiene caracteres no permitidos.';
+                }
+                
+                if (empty($codigo)) {
+                    $errors[] = 'El código de la competencia es obligatorio.';
+                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
+                    $errors[] = 'El código no puede exceder los 20 caracteres.';
+                } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
+                    $errors[] = 'El código solo puede contener letras, números y guiones.';
+                }
+
+                if (mb_strlen($descripcion, 'UTF-8') > 1000) {
+                    $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
+                }
+                $descripcion = strip_tags($descripcion);
+                
+                if ($horas <= 0 || $horas > 99999) $errors[] = 'La duración en horas debe estar entre 1 y 99999.';
+                if (!in_array($estado, ['activo', 'inactivo'])) $errors[] = 'Estado inválido.';
 
                 if (empty($errors)) {
                     try {
@@ -81,9 +101,29 @@ class CompetenciasController extends BaseController {
 
                 if ($id <= 0)          $errors[] = 'Competencia no válida.';
                 if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa válido.';
-                if (empty($nombre))    $errors[] = 'El nombre de la competencia es obligatorio.';
-                if (empty($codigo))    $errors[] = 'El código de la competencia es obligatorio.';
-                if ($horas <= 0)       $errors[] = 'La duración en horas debe ser mayor a 0.';
+                if (empty($nombre)) {
+                    $errors[] = 'El nombre de la competencia es obligatorio.';
+                } elseif (mb_strlen($nombre, 'UTF-8') > 255) {
+                    $errors[] = 'El nombre no puede exceder los 255 caracteres.';
+                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                    $errors[] = 'El nombre contiene caracteres no permitidos.';
+                }
+                
+                if (empty($codigo)) {
+                    $errors[] = 'El código de la competencia es obligatorio.';
+                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
+                    $errors[] = 'El código no puede exceder los 20 caracteres.';
+                } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
+                    $errors[] = 'El código solo puede contener letras, números y guiones.';
+                }
+
+                if (mb_strlen($descripcion, 'UTF-8') > 1000) {
+                    $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
+                }
+                $descripcion = strip_tags($descripcion);
+                
+                if ($horas <= 0 || $horas > 99999) $errors[] = 'La duración en horas debe estar entre 1 y 99999.';
+                if (!in_array($estado, ['activo', 'inactivo'])) $errors[] = 'Estado inválido.';
 
                 if (empty($errors)) {
                     try {

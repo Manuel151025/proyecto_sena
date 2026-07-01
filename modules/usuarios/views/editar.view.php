@@ -30,17 +30,17 @@
           <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label">Nombre completo</label>
-            <input type="text" name="nombre" class="form-control" value="<?= htmlspecialchars($_POST['nombre'] ?? $usuario['nombre'] ?? '') ?>" required>
+            <input type="text" name="nombre" class="form-control" value="<?= htmlspecialchars($_POST['nombre'] ?? $usuario['nombre'] ?? '') ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Email institucional</label>
-            <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($_POST['email'] ?? $usuario['email'] ?? '') ?>" required>
+            <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($_POST['email'] ?? $usuario['email'] ?? '') ?>" maxlength="100" required>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Contraseña (Opcional)</label>
-            <input type="password" name="password" class="form-control" placeholder="Déjalo en blanco para mantener la actual">
+            <input type="password" name="password" class="form-control" placeholder="Déjalo en blanco para mantener la actual" minlength="6" maxlength="255">
             <small class="text-muted">Mínimo 6 caracteres si decides cambiarla.</small>
           </div>
 

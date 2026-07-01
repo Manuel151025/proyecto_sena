@@ -1,4 +1,4 @@
-﻿
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="mb-1">Evidencias y Entregables</h1>
@@ -132,12 +132,12 @@
         <input type="hidden" name="action" value="enviar_evidencia">
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">TÃ­tulo de la Entrega</label>
-            <input type="text" name="titulo" class="form-control" placeholder="Ej. SoluciÃ³n del taller de CSS Grid" required>
+            <label class="form-label text-muted small fw-semibold">Título de la Entrega</label>
+            <input type="text" name="titulo" class="form-control" placeholder="Ej. Solución del taller de CSS Grid" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Comentarios / DescripciÃ³n</label>
-            <textarea name="descripcion" class="form-control" rows="3" placeholder="AÃ±ade detalles sobre tu entrega..."></textarea>
+            <label class="form-label text-muted small fw-semibold">Comentarios / Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="3" placeholder="Añade detalles sobre tu entrega..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Archivo adjunto (PDF, ZIP, DOCX, etc.)</label>
@@ -180,9 +180,9 @@
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Comentarios de RetroalimentaciÃ³n</label>
+            <label class="form-label text-muted small fw-semibold">Comentarios de Retroalimentación</label>
             <textarea name="comentario" class="form-control" rows="4"
-                      placeholder="Indica los logros o aspectos a mejorar de la entrega..." required></textarea>
+                      placeholder="Indica los logros o aspectos a mejorar de la entrega..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
           </div>
         </div>
         <div class="modal-footer border-top-0 pt-0">

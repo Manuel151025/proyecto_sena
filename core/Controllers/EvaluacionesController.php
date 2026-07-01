@@ -45,6 +45,16 @@ class EvaluacionesController extends BaseController {
                     $comentario = trim($_POST['comentario'] ?? '');
                     $motivo = trim($_POST['motivo'] ?? '');
 
+                    if (mb_strlen($comentario, 'UTF-8') > 1000) {
+                        throw new Exception('El comentario no puede exceder los 1000 caracteres.');
+                    }
+                    $comentario = strip_tags($comentario);
+
+                    if (mb_strlen($motivo, 'UTF-8') > 255) {
+                        throw new Exception('El motivo no puede exceder los 255 caracteres.');
+                    }
+                    $motivo = strip_tags($motivo);
+
                     if ($eval_id <= 0) {
                         throw new Exception('ID de evaluación inválido.');
                     }

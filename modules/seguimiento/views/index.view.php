@@ -1,4 +1,4 @@
-﻿<div class="mb-4">
+<div class="mb-4">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
       <h1 class="mb-1 text-dark fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>Seguimiento AcadÃ©mico</h1>
@@ -558,12 +558,12 @@
               <div class="mb-3">
                 <label class="form-label text-muted small fw-semibold">Comentarios / Observaciones</label>
                 <textarea name="comentario" id="calif_comentario" class="form-control" rows="3"
-                          placeholder="Describe los puntos a mejorar o felicita al aprendiz..."></textarea>
+                          placeholder="Describe los puntos a mejorar o felicita al aprendiz..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
               </div>
               <div class="mb-3" id="div_calif_motivo" style="display:none;">
                 <label class="form-label text-muted small fw-semibold text-danger">Motivo del cambio *</label>
                 <input type="text" name="motivo" id="calif_motivo" class="form-control" 
-                       placeholder="Ej. Plan de mejoramiento completado">
+                       placeholder="Ej. Plan de mejoramiento completado" maxlength="255" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')">
               </div>
             </div>
             <div class="modal-footer border-top-0 pt-0">
@@ -603,8 +603,8 @@
               </div>
               <div class="mb-3">
                 <label class="form-label text-muted small fw-semibold">Detalle de la ObservaciÃ³n</label>
-                <textarea name="contenido" class="form-control" rows="4"
-                          placeholder="Escribe el comentario acadÃ©mico que quedarÃ¡ en el historial del estudiante..." required></textarea>
+                <textarea name="contenido" class="form-control" rows="4" minlength="10" maxlength="2000" oninput="this.value = this.value.replace(/[<>]/g, '')"
+                          placeholder="Escribe el comentario académico que quedará en el historial del estudiante..." required></textarea>
               </div>
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" name="privada" id="retro_privada" value="1">

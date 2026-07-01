@@ -47,8 +47,21 @@ class ResultadosAprendizajeController extends BaseController {
                 $denominacion = trim($_POST['denominacion'] ?? '');
 
                 if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia válida.';
-                if (empty($codigo)) $errors[] = 'El código del RAP es obligatorio.';
-                if (empty($denominacion)) $errors[] = 'La denominación del RAP es obligatoria.';
+                
+                if (empty($codigo)) {
+                    $errors[] = 'El código del RAP es obligatorio.';
+                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
+                    $errors[] = 'El código no puede exceder los 20 caracteres.';
+                } elseif (!preg_match('/^[a-zA-Z0-9\-\s]+$/', $codigo)) {
+                    $errors[] = 'El código solo puede contener letras, números, espacios y guiones.';
+                }
+
+                if (empty($denominacion)) {
+                    $errors[] = 'La denominación del RAP es obligatoria.';
+                } elseif (mb_strlen($denominacion, 'UTF-8') > 1000) {
+                    $errors[] = 'La denominación no puede exceder los 1000 caracteres.';
+                }
+                $denominacion = strip_tags($denominacion);
 
                 if (empty($errors)) {
                     try {
@@ -77,8 +90,21 @@ class ResultadosAprendizajeController extends BaseController {
 
                 if ($id <= 0)             $errors[] = 'RAP no válido.';
                 if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia válida.';
-                if (empty($codigo))       $errors[] = 'El código del RAP es obligatorio.';
-                if (empty($denominacion)) $errors[] = 'La denominación del RAP es obligatoria.';
+                
+                if (empty($codigo)) {
+                    $errors[] = 'El código del RAP es obligatorio.';
+                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
+                    $errors[] = 'El código no puede exceder los 20 caracteres.';
+                } elseif (!preg_match('/^[a-zA-Z0-9\-\s]+$/', $codigo)) {
+                    $errors[] = 'El código solo puede contener letras, números, espacios y guiones.';
+                }
+
+                if (empty($denominacion)) {
+                    $errors[] = 'La denominación del RAP es obligatoria.';
+                } elseif (mb_strlen($denominacion, 'UTF-8') > 1000) {
+                    $errors[] = 'La denominación no puede exceder los 1000 caracteres.';
+                }
+                $denominacion = strip_tags($denominacion);
 
                 if (empty($errors)) {
                     try {

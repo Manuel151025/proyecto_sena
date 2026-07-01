@@ -42,12 +42,12 @@ class RetroalimentacionController extends BaseController {
             if (!in_array($tipo, $tipos_validos, true)) {
                 $errors[] = 'Tipo de retroalimentación no válido.';
             }
-            if (mb_strlen($contenido) < 10) {
+            if (mb_strlen($contenido, 'UTF-8') < 10) {
                 $errors[] = 'El contenido debe tener al menos 10 caracteres.';
-            }
-            if (mb_strlen($contenido) > 2000) {
+            } elseif (mb_strlen($contenido, 'UTF-8') > 2000) {
                 $errors[] = 'El contenido no puede exceder 2000 caracteres.';
             }
+            $contenido = strip_tags($contenido);
 
             if (empty($errors) && $user_rol === ROL_INSTRUCTOR) {
                 try {

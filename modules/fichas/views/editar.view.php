@@ -30,8 +30,8 @@
         <form method="POST">
           <?= csrfField() ?>
           <div class="mb-3">
-            <label class="form-label">NÃºmero de Ficha</label>
-            <input type="text" name="numero_ficha" class="form-control" placeholder="Ej: 2845671" value="<?= htmlspecialchars($ficha['numero_ficha'] ?? $_POST['numero_ficha'] ?? '') ?>" required>
+            <label class="form-label">Número de Ficha</label>
+            <input type="text" name="numero_ficha" class="form-control" placeholder="Ej: 2845671" value="<?= htmlspecialchars($ficha['numero_ficha'] ?? $_POST['numero_ficha'] ?? '') ?>" maxlength="20" minlength="4" pattern="^[a-zA-Z0-9\-]+$" oninput="this.value=this.value.replace(/[^a-zA-Z0-9\-]/g, '')" required>
           </div>
 
           <div class="mb-3">
@@ -83,7 +83,7 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label">Cantidad de Aprendices</label>
-              <input type="number" name="cantidad_aprendices" class="form-control" min="0" value="<?= htmlspecialchars($ficha['cantidad_aprendices'] ?? $_POST['cantidad_aprendices'] ?? '') ?>">
+              <input type="number" name="cantidad_aprendices" class="form-control" min="0" max="999" oninput="this.value=this.value.replace(/[^0-9]/g, '')" value="<?= htmlspecialchars($ficha['cantidad_aprendices'] ?? $_POST['cantidad_aprendices'] ?? '') ?>">
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Cumplimiento (%)</label>

@@ -82,9 +82,34 @@ class ProgramasController extends BaseController {
             $duracion_horas = (int)($_POST['duracion_horas'] ?? 0);
             $estado = $_POST['estado'] ?? 'activo';
 
-            if (empty($nombre)) $errores[] = 'El nombre es requerido';
-            if (empty($codigo)) $errores[] = 'El código es requerido';
-            if ($duracion_horas <= 0) $errores[] = 'La duración debe ser mayor a 0 horas';
+            if (empty($nombre)) {
+                $errores[] = 'El nombre es requerido';
+            } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
+                $errores[] = 'El nombre no puede exceder los 100 caracteres';
+            } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                $errores[] = 'El nombre contiene caracteres no permitidos';
+            }
+
+            if (empty($codigo)) {
+                $errores[] = 'El código es requerido';
+            } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
+                $errores[] = 'El código no puede exceder los 20 caracteres';
+            } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
+                $errores[] = 'El código solo puede contener letras, números y guiones';
+            }
+
+            if ($duracion_horas <= 0 || $duracion_horas > 99999) {
+                $errores[] = 'La duración debe estar entre 1 y 99999 horas';
+            }
+
+            if (mb_strlen($descripcion, 'UTF-8') > 1000) {
+                $errores[] = 'La descripción no puede exceder los 1000 caracteres';
+            }
+            $descripcion = strip_tags($descripcion);
+
+            if (!in_array($estado, ['activo', 'inactivo', 'archivado'])) {
+                $errores[] = 'Estado inválido';
+            }
 
             if (empty($errores)) {
                 try {
@@ -149,9 +174,34 @@ class ProgramasController extends BaseController {
             $duracion_horas = (int)($_POST['duracion_horas'] ?? 0);
             $estado = $_POST['estado'] ?? 'activo';
 
-            if (empty($nombre)) $errores[] = 'El nombre es requerido';
-            if (empty($codigo)) $errores[] = 'El código es requerido';
-            if ($duracion_horas <= 0) $errores[] = 'La duración debe ser mayor a 0 horas';
+            if (empty($nombre)) {
+                $errores[] = 'El nombre es requerido';
+            } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
+                $errores[] = 'El nombre no puede exceder los 100 caracteres';
+            } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
+                $errores[] = 'El nombre contiene caracteres no permitidos';
+            }
+
+            if (empty($codigo)) {
+                $errores[] = 'El código es requerido';
+            } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
+                $errores[] = 'El código no puede exceder los 20 caracteres';
+            } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
+                $errores[] = 'El código solo puede contener letras, números y guiones';
+            }
+
+            if ($duracion_horas <= 0 || $duracion_horas > 99999) {
+                $errores[] = 'La duración debe estar entre 1 y 99999 horas';
+            }
+
+            if (mb_strlen($descripcion, 'UTF-8') > 1000) {
+                $errores[] = 'La descripción no puede exceder los 1000 caracteres';
+            }
+            $descripcion = strip_tags($descripcion);
+
+            if (!in_array($estado, ['activo', 'inactivo', 'archivado'])) {
+                $errores[] = 'Estado inválido';
+            }
 
             if (empty($errores)) {
                 try {

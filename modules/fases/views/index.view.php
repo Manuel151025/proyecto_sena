@@ -158,17 +158,17 @@
         <div class="modal-body p-4">
           <div class="row g-3 mb-3">
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Fase NÂ°</label>
-              <input type="number" name="numero_fase" id="edit_fase_numero" class="form-control" min="1" required>
+              <label class="form-label text-muted small fw-semibold">Fase N°</label>
+              <input type="number" name="numero_fase" id="edit_fase_numero" class="form-control" min="1" max="99" oninput="this.value=this.value.replace(/[^0-9]/g, '')" required>
             </div>
             <div class="col-md-8">
               <label class="form-label text-muted small fw-semibold">Nombre de la Fase</label>
-              <input type="text" name="nombre" id="edit_fase_nombre" class="form-control" required>
+              <input type="text" name="nombre" id="edit_fase_nombre" class="form-control" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">DescripciÃ³n</label>
-            <textarea name="descripcion" id="edit_fase_descripcion" class="form-control" rows="3"></textarea>
+            <label class="form-label text-muted small fw-semibold">Descripción</label>
+            <textarea name="descripcion" id="edit_fase_descripcion" class="form-control" rows="3" maxlength="1000" oninput="this.value=this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
@@ -183,7 +183,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Cumplimiento (%)</label>
-              <input type="number" name="cumplimiento_porcentaje" id="edit_fase_cumplimiento" class="form-control" min="0" max="100">
+              <input type="number" name="cumplimiento_porcentaje" id="edit_fase_cumplimiento" class="form-control" min="0" max="100" step="0.1">
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Estado</label>
@@ -234,17 +234,17 @@ function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fech
         <div class="modal-body p-4">
           <div class="row g-3 mb-3">
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Fase NÂ°</label>
-              <input type="number" name="numero_fase" class="form-control" placeholder="Ej. 1" min="1" required>
+              <label class="form-label text-muted small fw-semibold">Fase N°</label>
+              <input type="number" name="numero_fase" class="form-control" placeholder="Ej. 1" min="1" max="99" oninput="this.value=this.value.replace(/[^0-9]/g, '')" required>
             </div>
             <div class="col-md-8">
               <label class="form-label text-muted small fw-semibold">Nombre de la Fase</label>
-              <input type="text" name="nombre" class="form-control" placeholder="Ej. Fase de AnÃ¡lisis" required>
+              <input type="text" name="nombre" class="form-control" placeholder="Ej. Fase de Análisis" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">DescripciÃ³n</label>
-            <textarea name="descripcion" class="form-control" rows="3" placeholder="Requerimientos, objetivos..."></textarea>
+            <label class="form-label text-muted small fw-semibold">Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="3" placeholder="Requerimientos, objetivos..." maxlength="1000" oninput="this.value=this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
@@ -259,7 +259,7 @@ function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fech
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Cumplimiento (%)</label>
-              <input type="number" name="cumplimiento_porcentaje" class="form-control" value="0" min="0" max="100">
+              <input type="number" name="cumplimiento_porcentaje" class="form-control" value="0" min="0" max="100" step="0.1">
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Estado Inicial</label>

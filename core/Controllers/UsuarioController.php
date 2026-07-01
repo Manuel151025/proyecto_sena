@@ -28,8 +28,8 @@ class UsuarioController extends BaseController {
         if (empty($data['nombre'])) {
             $errors[] = 'El nombre es requerido';
         } else {
-            if (mb_strlen($data['nombre'], 'UTF-8') > 60) {
-                $errors[] = 'El nombre no puede exceder los 60 caracteres';
+            if (mb_strlen($data['nombre'], 'UTF-8') > 100) {
+                $errors[] = 'El nombre no puede exceder los 100 caracteres';
             }
             if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u', $data['nombre'])) {
                 $errors[] = 'El nombre solo puede contener letras y espacios';
@@ -141,8 +141,8 @@ class UsuarioController extends BaseController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
-                'nombre' => mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8'),
-                'email' => trim($_POST['email'] ?? ''),
+                'nombre' => strip_tags(mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8')),
+                'email' => strip_tags(trim($_POST['email'] ?? '')),
                 'password' => $_POST['password'] ?? '',
                 'rol' => $_POST['rol'] ?? 'aprendiz',
                 'avatar_color' => $_POST['avatar_color'] ?? '#39A900'
@@ -221,8 +221,8 @@ class UsuarioController extends BaseController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $usuario) {
             $data = [
-                'nombre' => mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8'),
-                'email' => trim($_POST['email'] ?? ''),
+                'nombre' => strip_tags(mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8')),
+                'email' => strip_tags(trim($_POST['email'] ?? '')),
                 'password' => $_POST['password'] ?? '', // opcional al editar
                 'rol' => $_POST['rol'] ?? 'aprendiz',
                 'estado' => $_POST['estado'] ?? 'activo',

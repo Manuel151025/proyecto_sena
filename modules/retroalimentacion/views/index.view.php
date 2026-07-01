@@ -1,4 +1,4 @@
-﻿
+
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h1 class="mb-1">RetroalimentaciÃ³n AcadÃ©mica</h1>
@@ -165,7 +165,8 @@
               <label class="form-label">Contenido</label>
               <textarea name="contenido" class="form-control" rows="5"
                         minlength="10" maxlength="2000"
-                        placeholder="Describe la retroalimentaciÃ³n de forma constructiva..."
+                        placeholder="Describe la retroalimentación de forma constructiva..."
+                        oninput="this.value = this.value.replace(/[<>]/g, '')"
                         required></textarea>
               <div class="small text-muted mt-1">Entre 10 y 2000 caracteres.</div>
             </div>

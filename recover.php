@@ -75,10 +75,12 @@ function build_reset_link(string $token): string {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'request') {
     requireCsrf();
 
-    $email = trim($_POST['email'] ?? '');
+    $email = strip_tags(trim($_POST['email'] ?? ''));
 
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Por favor ingresa un correo válido.';
+    } elseif (mb_strlen($email, 'UTF-8') > 100) {
+        $errors[] = 'El correo no puede exceder los 100 caracteres.';
     } else {
         try {
             $db = Database::getConnection();
@@ -153,6 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset
 
     if (strlen($password) < 8) {
         $errors[] = 'La contraseña debe tener al menos 8 caracteres.';
+    } elseif (strlen($password) > 60) {
+        $errors[] = 'La contraseña no puede exceder los 60 caracteres.';
     }
     if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
         $errors[] = 'La contraseña debe contener letras y números.';
@@ -965,7 +969,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
               <input type="email" name="email" id="recover-email"
                      placeholder="usuario@sena.edu.co"
                      value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
-                     required autofocus>
+                     maxlength="100" required autofocus>
               <i class="bi bi-envelope-fill input-icon"></i>
             </div>
           </div>
@@ -1011,7 +1015,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
             <label for="pw-new">Nueva contraseña</label>
             <div class="input-icon-wrap">
               <input type="password" name="password" id="pw-new"
-                     placeholder="••••••••" required minlength="8">
+                     placeholder="••••••••" required minlength="8" maxlength="60">
               <i class="bi bi-lock-fill input-icon"></i>
               <button type="button" class="pw-toggle-btn" data-pw-toggle="#pw-new"><i class="bi bi-eye"></i></button>
             </div>
@@ -1028,7 +1032,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
             <label for="pw-confirm">Confirmar contraseña</label>
             <div class="input-icon-wrap">
               <input type="password" name="password_confirm" id="pw-confirm"
-                     placeholder="••••••••" required minlength="8">
+                     placeholder="••••••••" required minlength="8" maxlength="60">
               <i class="bi bi-shield-lock-fill input-icon"></i>
               <button type="button" class="pw-toggle-btn" data-pw-toggle="#pw-confirm"><i class="bi bi-eye"></i></button>
             </div>

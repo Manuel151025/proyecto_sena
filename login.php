@@ -1002,14 +1002,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
         <div class="field">
           <label for="login-email">Correo institucional</label>
           <div class="input-group">
-            <input type="email" name="email" id="login-email" placeholder="usuario@sena.edu.co" autocomplete="email" required <?= $isBlocked ? 'disabled' : '' ?>>
+            <input type="email" name="email" id="login-email" placeholder="usuario@sena.edu.co" autocomplete="email" maxlength="100" required <?= $isBlocked ? 'disabled' : '' ?>>
             <i class="bi bi-envelope input-icon"></i>
           </div>
         </div>
         <div class="field">
           <label for="pw-login">Contraseña</label>
           <div class="input-group">
-            <input type="password" name="password" id="pw-login" placeholder="••••••••" autocomplete="current-password" required <?= $isBlocked ? 'disabled' : '' ?>>
+            <input type="password" name="password" id="pw-login" placeholder="••••••••" autocomplete="current-password" minlength="6" maxlength="60" required <?= $isBlocked ? 'disabled' : '' ?>>
             <i class="bi bi-lock input-icon"></i>
             <button type="button" class="toggle-password" id="toggle-pw-btn" aria-label="Mostrar contraseña">
               <i class="bi bi-eye" id="toggle-pw-icon"></i>
