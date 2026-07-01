@@ -229,7 +229,16 @@ function requireCsrf(): void {
         $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
         if (!validateCsrfToken($token)) {
             http_response_code(403);
-            die('Error 403: Solicitud rechazada por validación de seguridad (Token CSRF inválido o ausente).');
+            $tabId = getTabId();
+            $debugInfo = "Error 403: Token CSRF inválido o ausente.<br><br><b>Diagnostic Info:</b><br>";
+            $debugInfo .= "POST Token: " . htmlspecialchars($token) . "<br>";
+            $debugInfo .= "Tab ID: " . htmlspecialchars($tabId) . "<br>";
+            $debugInfo .= "Expected Tab Token: " . htmlspecialchars($_SESSION['tabs'][$tabId]['csrf_token'] ?? 'NULL') . "<br>";
+            $debugInfo .= "Expected Default Token: " . htmlspecialchars($_SESSION['tabs']['default']['csrf_token'] ?? 'NULL') . "<br>";
+            $debugInfo .= "Session ID: " . session_id() . "<br>";
+            $debugInfo .= "Has sena_tab cookie: " . (isset($_COOKIE['sena_tab']) ? 'Yes' : 'No') . "<br>";
+            $debugInfo .= "Has PHPSESSID cookie: " . (isset($_COOKIE['PHPSESSID']) ? 'Yes' : 'No') . "<br>";
+            die($debugInfo);
         }
     }
 }
