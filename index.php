@@ -91,6 +91,10 @@ $router->add('POST', '/fichas', 'Core\Controllers\FichaController', 'index');
 $router->add('GET', '/evaluaciones/importar', 'Core\Controllers\EvaluacionController', 'import');
 $router->add('POST', '/evaluaciones/importar', 'Core\Controllers\EvaluacionController', 'import');
 
+// Rutas de Actividades
+$router->add('GET', '/actividades', 'Core\Controllers\ActividadesController', 'index');
+$router->add('POST', '/actividades', 'Core\Controllers\ActividadesController', 'index');
+
 // Rutas de Dashboard
 $router->add('GET', '/dashboard', 'Core\Controllers\DashboardController', 'index');
 
