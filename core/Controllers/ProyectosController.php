@@ -14,13 +14,12 @@ class ProyectosController extends BaseController {
     private ProyectosModel $proyectosModel;
 
     public function __construct(?PDO $db = null, ?ProyectosModel $proyectosModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->proyectosModel = $proyectosModel ?? new ProyectosModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
         $success = '';
         $user_rol = getCurrentRole();

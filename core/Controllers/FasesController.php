@@ -14,13 +14,12 @@ class FasesController extends BaseController {
     private FasesModel $fasesModel;
 
     public function __construct(?PDO $db = null, ?FasesModel $fasesModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->fasesModel = $fasesModel ?? new FasesModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
         $successMessage = '';
         $user_rol = getCurrentRole();

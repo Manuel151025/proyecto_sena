@@ -21,6 +21,7 @@ class ResultadosAprendizajeController extends BaseController {
         ?ResultadosAprendizajeModel $resultadosModel = null,
         ?CompetenciasModel $competenciasModel = null
     ) {
+        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $this->db = $db ?? Database::getConnection();
         $this->resultadosModel = $resultadosModel ?? new ResultadosAprendizajeModel($this->db);
         $this->competenciasModel = $competenciasModel ?? new CompetenciasModel($this->db);
@@ -30,8 +31,6 @@ class ResultadosAprendizajeController extends BaseController {
      * Listado y gestión de Resultados de Aprendizaje (RAP).
      */
     public function index(): void {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-
         $errors = [];
         $successMessage = '';
 
@@ -166,8 +165,6 @@ class ResultadosAprendizajeController extends BaseController {
      * Importación masiva de RAPs.
      */
     public function import(): void {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-
         $errors = [];
         $successMessage = '';
         $resultados = [];

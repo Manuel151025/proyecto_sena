@@ -17,6 +17,8 @@ class CompetenciasController extends BaseController {
     private ProgramasModel $programasModel;
 
     public function __construct(?PDO $db = null, ?CompetenciasModel $competenciasModel = null, ?ProgramasModel $programasModel = null) {
+        // Alcance base para todo el controlador; import() restringe aún más a coordinador.
+        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $this->db = $db ?? Database::getConnection();
         $this->competenciasModel = $competenciasModel ?? new CompetenciasModel($this->db);
         $this->programasModel = $programasModel ?? new ProgramasModel($this->db);
@@ -26,8 +28,6 @@ class CompetenciasController extends BaseController {
      * Gestión y listado de competencias.
      */
     public function index(): void {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-
         $errors = [];
         $successMessage = '';
 

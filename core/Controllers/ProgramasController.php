@@ -14,6 +14,8 @@ class ProgramasController extends BaseController {
     private ProgramasModel $programasModel;
 
     public function __construct(?PDO $db = null, ?ProgramasModel $programasModel = null) {
+        // Alcance base para todo el controlador; create()/edit() restringen a coordinador.
+        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $this->db = $db ?? Database::getConnection();
         $this->programasModel = $programasModel ?? new ProgramasModel($this->db);
     }
@@ -22,8 +24,6 @@ class ProgramasController extends BaseController {
      * Listado de programas.
      */
     public function index(): void {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-
         $mensaje = '';
         $tipo_mensaje = '';
 

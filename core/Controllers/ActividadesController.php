@@ -14,13 +14,12 @@ class ActividadesController extends BaseController {
     private ActividadesModel $actividadesModel;
 
     public function __construct(?PDO $db = null, ?ActividadesModel $actividadesModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->actividadesModel = $actividadesModel ?? new ActividadesModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
         $successMessage = '';
 

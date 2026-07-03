@@ -14,13 +14,12 @@ class EvaluacionesController extends BaseController {
     private EvaluacionesModel $evaluacionesModel;
 
     public function __construct(?PDO $db = null, ?EvaluacionesModel $evaluacionesModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->evaluacionesModel = $evaluacionesModel ?? new EvaluacionesModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
         $successMessage = '';
 

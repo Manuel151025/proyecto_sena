@@ -14,13 +14,12 @@ class ReportesController extends BaseController {
     private ReportesModel $reportesModel;
 
     public function __construct(?PDO $db = null, ?ReportesModel $reportesModel = null) {
+        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $this->db = $db ?? Database::getConnection();
         $this->reportesModel = $reportesModel ?? new ReportesModel($this->db);
     }
 
     public function index(): void {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-
         $errors = [];
         $user_rol = getCurrentRole();
         $user_id = (int)getCurrentUser()['id'];

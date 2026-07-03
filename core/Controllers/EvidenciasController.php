@@ -14,13 +14,12 @@ class EvidenciasController extends BaseController {
     private EvidenciasModel $evidenciasModel;
 
     public function __construct(?PDO $db = null, ?EvidenciasModel $evidenciasModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->evidenciasModel = $evidenciasModel ?? new EvidenciasModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
         $successMessage = '';
 
