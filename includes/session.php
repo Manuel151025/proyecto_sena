@@ -178,6 +178,16 @@ function hasRole(string ...$roles): bool {
     return in_array(getCurrentRole(), $roles, true);
 }
 
+/**
+ * Deniega el acceso al recurso solicitado (ej. el usuario no es dueño
+ * del registro) y redirige a su propio dashboard con un mensaje flash.
+ */
+function denyAccess(string $mensaje = 'No tienes permiso para acceder a este recurso.'): void {
+    setFlashMessage($mensaje, 'danger');
+    header('Location: ' . APP_URL . '/index.php/dashboard');
+    exit;
+}
+
 // ---------------------------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------------------------
