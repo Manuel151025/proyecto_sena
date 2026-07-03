@@ -14,13 +14,12 @@ class RetroalimentacionController extends BaseController {
     private RetroalimentacionModel $retroalimentacionModel;
 
     public function __construct(?PDO $db = null, ?RetroalimentacionModel $retroalimentacionModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->retroalimentacionModel = $retroalimentacionModel ?? new RetroalimentacionModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
         $success = '';
 

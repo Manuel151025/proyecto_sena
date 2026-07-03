@@ -14,13 +14,12 @@ class LogsController extends BaseController {
     private LogsModel $logsModel;
 
     public function __construct(?PDO $db = null, ?LogsModel $logsModel = null) {
+        requireRole(ROL_COORDINADOR);
         $this->db = $db ?? Database::getConnection();
         $this->logsModel = $logsModel ?? new LogsModel($this->db);
     }
 
     public function index(): void {
-        requireRole(ROL_COORDINADOR);
-
         $errors = [];
         $search = trim($_GET['search'] ?? '');
         $filter_accion = $_GET['accion'] ?? '';

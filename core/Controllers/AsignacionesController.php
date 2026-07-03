@@ -14,13 +14,12 @@ class AsignacionesController extends BaseController {
     private AsignacionesModel $asignacionesModel;
 
     public function __construct(?PDO $db = null, ?AsignacionesModel $asignacionesModel = null) {
+        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $this->db = $db ?? Database::getConnection();
         $this->asignacionesModel = $asignacionesModel ?? new AsignacionesModel($this->db);
     }
 
     public function index(): void {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-
         $errors = [];
         $successMessage = '';
         $user_id = (int)getCurrentUser()['id'];

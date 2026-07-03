@@ -14,13 +14,12 @@ class SeguimientoController extends BaseController {
     private SeguimientoModel $seguimientoModel;
 
     public function __construct(?PDO $db = null, ?SeguimientoModel $seguimientoModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->seguimientoModel = $seguimientoModel ?? new SeguimientoModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
         $successMessage = '';
 

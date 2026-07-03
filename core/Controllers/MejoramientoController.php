@@ -14,13 +14,12 @@ class MejoramientoController extends BaseController {
     private MejoramientoModel $mejoramientoModel;
 
     public function __construct(?PDO $db = null, ?MejoramientoModel $mejoramientoModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->mejoramientoModel = $mejoramientoModel ?? new MejoramientoModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $errors = [];
 
         $user_id = (int)getCurrentUser()['id'];

@@ -14,13 +14,12 @@ class PerfilController extends BaseController {
     private PerfilModel $perfilModel;
 
     public function __construct(?PDO $db = null, ?PerfilModel $perfilModel = null) {
+        requireAuth();
         $this->db = $db ?? Database::getConnection();
         $this->perfilModel = $perfilModel ?? new PerfilModel($this->db);
     }
 
     public function index(): void {
-        requireAuth();
-
         $user_id = (int)getCurrentUser()['id'];
         $errors  = [];
         $success = '';

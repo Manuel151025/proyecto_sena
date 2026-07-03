@@ -11,12 +11,11 @@ class ConfiguracionController extends BaseController {
     private PDO $db;
 
     public function __construct(?PDO $db = null) {
+        requireRole(ROL_COORDINADOR);
         $this->db = $db ?? Database::getConnection();
     }
 
     public function index(): void {
-        requireRole(ROL_COORDINADOR);
-
         $errors = [];
         $successMessage = '';
 

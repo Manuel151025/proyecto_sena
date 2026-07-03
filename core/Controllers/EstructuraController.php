@@ -17,6 +17,7 @@ class EstructuraController extends BaseController {
     private ProyectosModel $proyectosModel;
 
     public function __construct(?PDO $db = null, ?ProgramasModel $programasModel = null, ?ProyectosModel $proyectosModel = null) {
+        requireRole(ROL_COORDINADOR);
         $this->db = $db ?? Database::getConnection();
         $this->programasModel = $programasModel ?? new ProgramasModel($this->db);
         $this->proyectosModel = $proyectosModel ?? new ProyectosModel($this->db);
@@ -26,8 +27,6 @@ class EstructuraController extends BaseController {
      * Dashboard general de la estructura curricular.
      */
     public function index(): void {
-        requireRole(ROL_COORDINADOR);
-
         $mensaje = '';
         $tipo_mensaje = '';
 
@@ -96,8 +95,6 @@ class EstructuraController extends BaseController {
      * Edición de un programa formativo.
      */
     public function editPrograma(): void {
-        requireRole(ROL_COORDINADOR);
-
         $id = (int)($_GET['id'] ?? 0);
         $mensaje = '';
         $tipo_mensaje = '';
@@ -173,8 +170,6 @@ class EstructuraController extends BaseController {
      * Edición de un proyecto formativo.
      */
     public function editProyecto(): void {
-        requireRole(ROL_COORDINADOR);
-
         $id = (int)($_GET['id'] ?? 0);
         $mensaje = '';
         $tipo_mensaje = '';
@@ -244,8 +239,6 @@ class EstructuraController extends BaseController {
      * Importador de Estructuras Curriculares desde PDF.
      */
     public function import(): void {
-        requireRole(ROL_COORDINADOR);
-
         $error = '';
         $success = '';
         $preview_mode = false;

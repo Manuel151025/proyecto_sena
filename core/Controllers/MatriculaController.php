@@ -16,15 +16,13 @@ class MatriculaController extends BaseController {
     private AprendizModel $aprendizModel;
 
     public function __construct(?PDO $db = null, ?FichaModel $fichaModel = null, ?AprendizModel $aprendizModel = null) {
+        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $this->db = $db ?? Database::getConnection();
         $this->fichaModel = $fichaModel ?? new FichaModel($this->db);
         $this->aprendizModel = $aprendizModel ?? new AprendizModel($this->db);
     }
 
     public function index(): void {
-        // Exigir sesión y rol
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-
         $db = $this->db;
         $errors = [];
         $successMessage = '';
