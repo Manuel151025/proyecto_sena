@@ -42,7 +42,7 @@
         <td><?= date('d/m/Y', strtotime($usuario['fecha_creacion'])) ?></td>
         <td class="text-end">
           <button type="button" class="btn btn-sm btn-soft" onclick="openEditUserModal(<?= $usuario['id'] ?>)">Editar</button>
-          <button type="button" class="btn btn-sm btn-soft text-danger" onclick="deleteUser(<?= $usuario['id'] ?>)">Eliminar</button>
+          <button type="button" class="btn btn-sm btn-soft text-danger" onclick="deleteUser(<?= $usuario['id'] ?>)">Desactivar</button>
         </td>
       </tr>
       <?php endforeach; ?>

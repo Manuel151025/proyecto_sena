@@ -30,11 +30,16 @@ class UsuarioModel implements UsuarioRepositoryInterface {
     }
 
     /**
-     * Elimina un usuario por su ID.
+     * Desactiva un usuario por su ID (soft-delete).
+     *
+     * No se borra físicamente: tablas como fichas, evaluaciones,
+     * actividades o logs_sistema referencian usuarios.id sin
+     * ON DELETE CASCADE, por lo que un DELETE físico falla en cuanto
+     * el usuario tiene cualquier actividad registrada en el sistema.
      */
     public function delete(int $id): bool {
         try {
-            $stmt = $this->db->prepare("DELETE FROM usuarios WHERE id = ?");
+            $stmt = $this->db->prepare("UPDATE usuarios SET estado = 'inactivo' WHERE id = ?");
             return $stmt->execute([$id]);
         } catch (Exception $e) {
             throw new Exception("Error al eliminar usuario: " . $e->getMessage());

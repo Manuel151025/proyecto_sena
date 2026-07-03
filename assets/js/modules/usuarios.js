@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Función global para eliminar usuarios (llamada desde onclick)
 function deleteUser(id) {
-    if (confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+    if (confirm('¿Estás seguro de que deseas desactivar este usuario? No podrá iniciar sesión, pero sus datos y registros se conservarán.')) {
         document.getElementById('deleteId').value = id;
         document.getElementById('deleteForm').submit();
     }
