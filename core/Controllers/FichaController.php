@@ -122,6 +122,8 @@ class FichaController extends BaseController {
             $ficha = $this->fichaModel->getFichaCompleta($id);
             if (!$ficha) {
                 $errors[] = 'Ficha no encontrada';
+            } elseif ($role === ROL_INSTRUCTOR && (int)$ficha['instructor_id'] !== (int)$user['id']) {
+                denyAccess('No tienes permiso para ver una ficha que no tienes asignada.');
             }
         } catch (Exception $e) {
             $errors[] = 'Error al cargar ficha';
