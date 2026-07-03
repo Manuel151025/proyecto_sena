@@ -10,8 +10,9 @@ logs/*.txt
 !logs/.htaccess
 
 # === Archivos subidos por usuarios ===
-uploads/
+uploads/*
 assets/uploads/
+!uploads/.htaccess
 
 # === Caché y temporales ===
 cache/
