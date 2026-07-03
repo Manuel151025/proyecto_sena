@@ -346,7 +346,7 @@ class UsuarioController extends BaseController {
                                     $usersData[] = [
                                         'nombre' => $nombre,
                                         'email' => $email,
-                                        'password' => 'Sena2026',
+                                        'password' => generateTempPassword(),
                                         'rol' => $rol,
                                         'avatar_color' => $colors[array_rand($colors)]
                                     ];
@@ -360,8 +360,12 @@ class UsuarioController extends BaseController {
                                 if (count($usersData) > 0) {
                                     try {
                                         $count = $this->usuarioModel->createMultiple($usersData);
-                                        setFlashMessage("Se han importado exitosamente $count usuarios.", 'success');
-                                        $this->redirect(APP_URL . '/index.php/usuarios');
+                                        $resultados = array_map(
+                                            fn($u) => ['nombre' => $u['nombre'], 'email' => $u['email'], 'password' => $u['password']],
+                                            $usersData
+                                        );
+                                        $mensaje = "Se importaron $count usuarios correctamente. Copia o comparte estas contraseñas temporales ahora: no volverán a mostrarse.";
+                                        $tipo_mensaje = 'success';
                                     } catch (Exception $e) {
                                         $errors[] = $e->getMessage();
                                     }

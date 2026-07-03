@@ -34,6 +34,31 @@
 </div>
 <?php endif; ?>
 
+<?php if (!empty($passwordResultados)): ?>
+<div class="card mb-3">
+  <div class="card-header">Contraseñas temporales generadas</div>
+  <div class="card-body">
+    <p class="small text-muted mb-2">Cada aprendiz debe cambiar esta contraseña en su primer inicio de sesión. Este listado no se volverá a mostrar.</p>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered mb-0">
+        <thead class="bg-light">
+          <tr><th>Nombre</th><th>Email</th><th>Contraseña temporal</th></tr>
+        </thead>
+        <tbody>
+          <?php foreach ($passwordResultados as $r): ?>
+          <tr>
+            <td><?= htmlspecialchars($r['nombre']) ?></td>
+            <td><?= htmlspecialchars($r['email']) ?></td>
+            <td><code><?= htmlspecialchars($r['password']) ?></code></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- Barra de filtros -->
 <div class="card glass-card mb-4 border-0">
   <div class="card-body">
@@ -318,7 +343,7 @@
             <code>nombre, email, tipo_documento, numero_documento, genero, telefono, ciudad</code>
             <div class="mt-2">
               * El tipo de documento debe ser uno de: <strong>CC, TI, CE, PEP, PA</strong>.<br>
-              * La contraseña por defecto de los nuevos aprendices será <strong>Sena2026</strong>.
+              * Cada aprendiz recibirá una contraseña temporal generada automáticamente y deberá cambiarla en su primer inicio de sesión.
             </div>
           </div>
         </div>

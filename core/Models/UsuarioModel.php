@@ -83,8 +83,8 @@ class UsuarioModel implements UsuarioRepositoryInterface {
     public function createMultiple(array $usersData): int {
         try {
             $this->db->beginTransaction();
-            $stmt = $this->db->prepare("INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado) VALUES (?, ?, ?, ?, ?, 'activo')");
-            
+            $stmt = $this->db->prepare("INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado, debe_cambiar_password) VALUES (?, ?, ?, ?, ?, 'activo', 1)");
+
             $count = 0;
             foreach ($usersData as $data) {
                 $stmt->execute([

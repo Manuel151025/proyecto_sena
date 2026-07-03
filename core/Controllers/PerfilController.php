@@ -88,6 +88,7 @@ class PerfilController extends BaseController {
                             $errors[] = 'La contraseña actual es incorrecta.';
                         } else {
                             $this->perfilModel->changePassword($user_id, $nueva);
+                            $_SESSION['tabs'][getTabId()]['debe_cambiar_password'] = false;
                             $success = 'Contraseña actualizada correctamente.';
                         }
                     } catch (Exception $e) {
@@ -113,7 +114,8 @@ class PerfilController extends BaseController {
                 'errors' => $errors,
                 'success' => $success,
                 'user' => $user,
-                'colores_validos' => $colores_validos
+                'colores_validos' => $colores_validos,
+                'debeCambiarPassword' => (bool)(tabData()['debe_cambiar_password'] ?? false),
             ],
             'Mi Perfil · SENA'
         );

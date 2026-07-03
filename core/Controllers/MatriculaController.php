@@ -28,6 +28,7 @@ class MatriculaController extends BaseController {
         $db = $this->db;
         $errors = [];
         $successMessage = '';
+        $passwordResultados = [];
 
         // 1. PROCESAR ACCIONES (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -57,8 +58,13 @@ class MatriculaController extends BaseController {
                     if (empty($data['numero_documento'])) throw new Exception('El número de documento es obligatorio.');
                     if ($data['ficha_id'] <= 0) throw new Exception('Debe seleccionar una ficha de formación.');
 
-                    $this->aprendizModel->matricular($data, (int)getCurrentUser()['id']);
-                    $successMessage = 'Aprendiz matriculado exitosamente.';
+                    $resultMatricula = $this->aprendizModel->matricular($data, (int)getCurrentUser()['id']);
+                    $passwordResultados[] = [
+                        'nombre' => $data['nombre'],
+                        'email' => $data['email'],
+                        'password' => $resultMatricula['temp_password'],
+                    ];
+                    $successMessage = 'Aprendiz matriculado exitosamente. Su contraseña temporal aparece abajo: cópiala ahora, no volverá a mostrarse.';
 
                 } elseif ($action === 'editar_matricula') {
                     if (!hasRole(ROL_COORDINADOR)) {
@@ -127,7 +133,7 @@ class MatriculaController extends BaseController {
                     $warnings = [];
                     $rowNum = 0;
                     $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-                    $password_hash = password_hash('Sena2026', PASSWORD_DEFAULT);
+                    $csvPasswordResultados = [];
 
                     try {
                         $db->beginTransaction();
@@ -183,12 +189,15 @@ class MatriculaController extends BaseController {
 
                             // 1. Crear el usuario
                             $avatar_color = $colors[array_rand($colors)];
+                            $temp_password = generateTempPassword();
+                            $password_hash = password_hash($temp_password, PASSWORD_DEFAULT);
                             $stmt = $db->prepare("
-                                INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado)
-                                VALUES (?, ?, ?, 'aprendiz', ?, 'activo')
+                                INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado, debe_cambiar_password)
+                                VALUES (?, ?, ?, 'aprendiz', ?, 'activo', 1)
                             ");
                             $stmt->execute([$nombre, $email, $password_hash, $avatar_color]);
                             $usuario_id = (int)$db->lastInsertId();
+                            $csvPasswordResultados[] = ['nombre' => $nombre, 'email' => $email, 'password' => $temp_password];
 
                             // 2. Crear aprendiz
                             $stmt = $db->prepare("
@@ -213,7 +222,8 @@ class MatriculaController extends BaseController {
 
                         if ($successCount > 0) {
                             $db->commit();
-                            $successMessage = "Se matricularon exitosamente $successCount aprendices y se inicializaron sus evaluaciones.";
+                            $passwordResultados = array_merge($passwordResultados, $csvPasswordResultados);
+                            $successMessage = "Se matricularon exitosamente $successCount aprendices y se inicializaron sus evaluaciones. Sus contraseñas temporales aparecen abajo: cópialas ahora, no volverán a mostrarse.";
                             if (!empty($warnings)) {
                                 $successMessage .= "<br><strong>Nota:</strong> Se omitieron algunas filas:<br>" . implode("<br>", array_slice($warnings, 0, 10));
                             }
@@ -292,7 +302,8 @@ class MatriculaController extends BaseController {
                 'filter_estado' => $filter_estado,
                 'estados_label' => $estados_label,
                 'successMessage' => $successMessage,
-                'errors' => $errors
+                'errors' => $errors,
+                'passwordResultados' => $passwordResultados
             ],
             'Gestión de Matrículas · SENA'
         );

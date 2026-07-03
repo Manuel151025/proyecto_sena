@@ -44,7 +44,7 @@ class PerfilModel {
         $nuevo_hash = password_hash($nueva, PASSWORD_DEFAULT);
         $stmt = $this->db->prepare("
             UPDATE usuarios
-            SET password = ?, fecha_actualizacion = NOW()
+            SET password = ?, debe_cambiar_password = 0, fecha_actualizacion = NOW()
             WHERE id = ?
         ");
         $stmt->execute([$nuevo_hash, $user_id]);

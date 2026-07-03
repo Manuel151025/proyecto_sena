@@ -81,6 +81,22 @@ function sanitize(string $str): string {
 }
 
 /**
+ * Genera una contraseña temporal aleatoria y fácil de transcribir
+ * (sin caracteres ambiguos como 0/O o 1/l/I), para cuentas creadas
+ * manualmente o por importación masiva. El usuario debe cambiarla
+ * en su primer inicio de sesión (ver `debe_cambiar_password`).
+ */
+function generateTempPassword(int $length = 10): string {
+    $chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    $password = '';
+    $max = strlen($chars) - 1;
+    for ($i = 0; $i < $length; $i++) {
+        $password .= $chars[random_int(0, $max)];
+    }
+    return $password;
+}
+
+/**
  * Inicializa los registros de evaluación en estado 'pendiente'
  * para todos los Resultados de Aprendizaje (RAs) del programa de la ficha
  * asociada a un aprendiz.
