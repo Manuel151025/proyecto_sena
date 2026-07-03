@@ -296,9 +296,17 @@ class CompetenciasController extends BaseController {
                                 }
                                 if (empty($comp_code)) {
                                     $rowErrors[] = "Línea $linea: El código de competencia está vacío.";
+                                } elseif (mb_strlen($comp_code, 'UTF-8') > 20) {
+                                    $rowErrors[] = "Línea $linea: El código de competencia no puede exceder los 20 caracteres.";
+                                } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $comp_code)) {
+                                    $rowErrors[] = "Línea $linea: El código de competencia '$comp_code' contiene caracteres no permitidos.";
                                 }
                                 if (empty($comp_name)) {
                                     $rowErrors[] = "Línea $linea: El nombre de la competencia está vacío.";
+                                } elseif (mb_strlen($comp_name, 'UTF-8') > 255) {
+                                    $rowErrors[] = "Línea $linea: El nombre de la competencia no puede exceder los 255 caracteres.";
+                                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $comp_name)) {
+                                    $rowErrors[] = "Línea $linea: El nombre de la competencia '$comp_name' contiene caracteres no permitidos.";
                                 }
                                 if ($horas <= 0) {
                                     $rowErrors[] = "Línea $linea: Las horas deben ser un número positivo mayor que cero.";

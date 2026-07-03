@@ -334,9 +334,15 @@ class UsuarioController extends BaseController {
                                 $rowErrors = [];
                                 if (empty($nombre)) {
                                     $rowErrors[] = "Línea $linea: El nombre está vacío.";
+                                } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
+                                    $rowErrors[] = "Línea $linea: El nombre no puede exceder los 100 caracteres.";
+                                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u', $nombre)) {
+                                    $rowErrors[] = "Línea $linea: El nombre '$nombre' contiene caracteres no permitidos.";
                                 }
                                 if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                                     $rowErrors[] = "Línea $linea: Email '$email' inválido.";
+                                } elseif (strlen($email) > 100) {
+                                    $rowErrors[] = "Línea $linea: El email no puede exceder los 100 caracteres.";
                                 }
                                 if (!in_array($rol, ['coordinador', 'instructor', 'aprendiz'])) {
                                     $rowErrors[] = "Línea $linea: Rol '$rol' inválido. Debe ser coordinador, instructor o aprendiz.";
