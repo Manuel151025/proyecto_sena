@@ -200,10 +200,18 @@ class AprendizModel {
                 $aprendizId
             ]);
 
-            // 3. Si cambió de ficha, actualizar los contadores
+            // 3. Si cambió de ficha, actualizar los contadores y sincronizar el
+            //    ficha_id denormalizado de sus evaluaciones/evidencias existentes
+            //    (de lo contrario quedan con el ficha_id viejo y, por ejemplo,
+            //    recalificar un RA ya evaluado deja de encontrar la fila y viola
+            //    la restricción UNIQUE(resultado_aprendizaje_id, aprendiz_id) al
+            //    intentar insertarla de nuevo).
             if ($old_ficha_id !== (int)$data['ficha_id']) {
                 $db->prepare("UPDATE fichas SET cantidad_aprendices = GREATEST(0, cantidad_aprendices - 1) WHERE id = ?")->execute([$old_ficha_id]);
                 $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$data['ficha_id']]);
+
+                $db->prepare("UPDATE evaluaciones SET ficha_id = ? WHERE aprendiz_id = ?")->execute([$data['ficha_id'], $aprendizId]);
+                $db->prepare("UPDATE evidencias SET ficha_id = ? WHERE aprendiz_id = ?")->execute([$data['ficha_id'], $aprendizId]);
             }
 
             // 4. Registrar log
