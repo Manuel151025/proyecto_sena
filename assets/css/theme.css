@@ -29,6 +29,7 @@
   --shadow-md: 0 4px 14px rgba(15,30,22,0.06);
   --sidebar-w: 64px;
   --sidebar-w-collapsed: 64px;
+  --sidebar-w-expanded: 220px;
   --navbar-h: 60px;
   --font-sans: 'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
 }
@@ -529,9 +530,75 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .pw-strength.s4 span{background:var(--success);}
  
 @media(max-width:768px){
-  .app-shell{grid-template-columns:var(--sidebar-w-collapsed) 1fr;}
-  .sidebar-link:hover span{display:none!important;}
-  .sidebar-link:hover{border-radius:var(--radius)!important;box-shadow:none!important;}
+  /* En mobile no hay :hover, así que el rail de solo-íconos con
+     tooltip/submenú flotante (pensado para escritorio) es inutilizable:
+     el nombre de cada opción y los grupos con submenú nunca se ven.
+     Un sidebar de ancho fijo tampoco cabe al lado del contenido en una
+     pantalla angosta, así que se convierte en un panel deslizable
+     (off-canvas): oculto por defecto, el contenido usa todo el ancho.
+     El botón de alternar (oculto en escritorio a propósito, ver línea
+     ~353) lo abre/cierra reutilizando el mismo toggleSidebar() y la
+     clase .collapsed que ya existían para el colapso de escritorio. */
+  .app-shell{grid-template-columns:1fr;}
+
+  .sidebar{
+    position:fixed;
+    top:0;
+    left:0;
+    width:min(80vw, var(--sidebar-w-expanded));
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    box-shadow:8px 0 24px rgba(0,0,0,.25);
+  }
+  .app-shell.collapsed .sidebar{
+    transform:translateX(0);
+  }
+
+  /* !important necesario: @media(max-height:750px) (más abajo en este
+     archivo) fija .sidebar-link{height:38px;margin:16px 0} con la misma
+     especificidad y, al venir despues, gana en telefonos de poca altura
+     — dejaba el contenedor de cada grupo con submenú sin espacio real
+     para sus enlaces, superponiendolos con el siguiente ítem del menú. */
+  .sidebar-link{justify-content:flex-start;padding:0 .9rem;margin:4px 0 !important;}
+
+  .sidebar-link span{
+    position:static;
+    opacity:1;
+    transform:none;
+    box-shadow:none;
+    background:transparent;
+    color:inherit;
+    padding:0 0 0 .75rem;
+    pointer-events:none;
+  }
+
+  /* Grupos con submenú (sidebar-dropdown): sin :hover no hay forma de
+     revelarlos, así que se muestran expandidos en el flujo normal. */
+  .sidebar-dropdown{
+    flex-direction:column;
+    align-items:stretch;
+    height:auto !important;
+    cursor:default;
+  }
+  .sidebar-dropdown > i{
+    align-self:flex-start;
+    margin-bottom:.35rem;
+  }
+  .dropdown-menu-custom{
+    position:static !important;
+    display:flex !important;
+    opacity:1 !important;
+    transform:none !important;
+    box-shadow:none !important;
+    background:transparent !important;
+    border:none !important;
+    padding:0 0 0 .5rem !important;
+    min-width:0;
+    width:100%;
+  }
+
+  .navbar-top .toggle-sidebar{display:inline-flex!important;}
+
   .content{padding:16px;}
   .phases{grid-template-columns:1fr 1fr;}
   .concept-toggle{grid-template-columns:1fr;}
