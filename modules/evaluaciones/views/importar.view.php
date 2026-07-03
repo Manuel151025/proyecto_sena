@@ -86,6 +86,29 @@ declare(strict_types=1);
       </table>
     </div>
 
+    <?php if (!empty($import_summary['credenciales_generadas'])): ?>
+    <div class="mt-4 border-top pt-4">
+      <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-key-fill me-2 text-primary"></i>Contraseñas temporales generadas</h6>
+      <p class="text-muted small mb-2">Estos aprendices no existían en el sistema y se crearon con una contraseña temporal. Cada uno debe cambiarla en su primer inicio de sesión. Este listado no se volverá a mostrar.</p>
+      <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+        <table class="table table-sm table-bordered mb-0" style="font-size:0.85rem;">
+          <thead class="table-light sticky-top">
+            <tr><th>Nombre</th><th>Email</th><th>Contraseña temporal</th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($import_summary['credenciales_generadas'] as $c): ?>
+            <tr>
+              <td><?= htmlspecialchars($c['nombre']) ?></td>
+              <td><?= htmlspecialchars($c['email']) ?></td>
+              <td><code><?= htmlspecialchars($c['password']) ?></code></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <?php if (!empty($import_summary['detalles'])): ?>
     <div class="mt-4 border-top pt-4">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">

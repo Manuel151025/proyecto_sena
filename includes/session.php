@@ -100,7 +100,7 @@ function validateSession(): void {
     require_once __DIR__ . '/../core/Database.php';
     try {
         $db   = Core\Database::getConnection();
-        $stmt = $db->prepare("SELECT rol, estado FROM usuarios WHERE id = ? LIMIT 1");
+        $stmt = $db->prepare("SELECT rol, estado, debe_cambiar_password FROM usuarios WHERE id = ? LIMIT 1");
         $stmt->execute([$uid]);
         $row  = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -116,9 +116,31 @@ function validateSession(): void {
             $_SESSION['tabs'][getTabId()]['user_rol'] = $row['rol'];
         }
 
+        $_SESSION['tabs'][getTabId()]['debe_cambiar_password'] = (bool)$row['debe_cambiar_password'];
+
     } catch (Throwable $e) {
         // En fallo de BD se continúa con los datos de sesión existentes
     }
+}
+
+/**
+ * Si la cuenta tiene una contraseña temporal pendiente de cambio, obliga a
+ * pasar por "Mi Perfil" antes de usar el resto del sistema.
+ */
+function requirePasswordChangeIfPending(): void {
+    if (empty(tabData()['debe_cambiar_password'])) {
+        return;
+    }
+
+    $isLogout = isset($_GET['action']) && $_GET['action'] === 'logout';
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    if ($isLogout || strpos($uri, '/perfil') !== false) {
+        return;
+    }
+
+    setFlashMessage('Debes cambiar tu contraseña temporal antes de continuar.', 'warning');
+    header('Location: ' . APP_URL . '/index.php/perfil');
+    exit;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +156,7 @@ function requireAuth(): void {
         exit;
     }
     validateSession();
+    requirePasswordChangeIfPending();
 }
 
 /**

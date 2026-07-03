@@ -104,11 +104,11 @@ class JuiciosImportService {
                 'evaluaciones_actualizadas' => 0,
                 'evaluaciones_creadas' => 0,
                 'warnings' => [],
-                'detalles' => []
+                'detalles' => [],
+                'credenciales_generadas' => []
             ];
 
             $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-            $password_hash = password_hash('Sena2026', PASSWORD_DEFAULT);
 
             // 1. Leer cabecera para metadatos de ficha/programa
             foreach ($allRows as $idx => $data) {
@@ -241,12 +241,14 @@ class JuiciosImportService {
                         $usuario_id = (int)$usuario_id;
                     } else {
                         $avatar_color = $colors[array_rand($colors)];
+                        $temp_password = generateTempPassword();
                         $stmtInsertUsr = $this->db->prepare("
-                            INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado)
-                            VALUES (?, ?, ?, 'aprendiz', ?, 'activo')
+                            INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado, debe_cambiar_password)
+                            VALUES (?, ?, ?, 'aprendiz', ?, 'activo', 1)
                         ");
-                        $stmtInsertUsr->execute([$nombre_completo, $email, $password_hash, $avatar_color]);
+                        $stmtInsertUsr->execute([$nombre_completo, $email, password_hash($temp_password, PASSWORD_DEFAULT), $avatar_color]);
                         $usuario_id = (int)$this->db->lastInsertId();
+                        $stats['credenciales_generadas'][] = ['nombre' => $nombre_completo, 'email' => $email, 'password' => $temp_password];
                     }
 
                     $stmt = $this->db->prepare("SELECT id FROM aprendices WHERE numero_documento = ?");

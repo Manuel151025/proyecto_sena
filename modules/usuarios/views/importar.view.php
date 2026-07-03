@@ -7,7 +7,34 @@
 <div class="alert-flat <?= htmlspecialchars($tipo_mensaje) ?> mb-3">
   <i class="bi bi-check-circle"></i>
   <div><?= htmlspecialchars($mensaje) ?></div>
-  <br><a href="<?= APP_URL ?>/index.php/usuarios">Volver a la lista →</a>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($resultados)): ?>
+<div class="card mb-3">
+  <div class="card-header">Contraseñas temporales generadas</div>
+  <div class="card-body">
+    <p class="small text-muted">Cada usuario debe cambiar esta contraseña en su primer inicio de sesión. Este listado no se volverá a mostrar.</p>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered mb-0">
+        <thead class="bg-light">
+          <tr><th>Nombre</th><th>Email</th><th>Contraseña temporal</th></tr>
+        </thead>
+        <tbody>
+          <?php foreach ($resultados as $r): ?>
+          <tr>
+            <td><?= htmlspecialchars($r['nombre']) ?></td>
+            <td><?= htmlspecialchars($r['email']) ?></td>
+            <td><code><?= htmlspecialchars($r['password']) ?></code></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer">
+    <a href="<?= APP_URL ?>/index.php/usuarios" class="btn btn-primary btn-sm">Volver a la lista →</a>
+  </div>
 </div>
 <?php endif; ?>
 
@@ -82,7 +109,7 @@
         <ul class="small text-muted mb-0">
           <li><strong>Formato:</strong> Se recomienda usar <code>.xlsx</code> para evitar problemas de codificación de caracteres.</li>
           <li><strong>Rol:</strong> Solo se admiten los valores <code>aprendiz</code>, <code>instructor</code> o <code>coordinador</code>.</li>
-          <li><strong>Contraseña:</strong> Todos los usuarios importados masivamente tendrán la contraseña por defecto: <code>Sena2026</code></li>
+          <li><strong>Contraseña:</strong> Cada usuario importado recibe una contraseña temporal aleatoria (se muestra una sola vez al finalizar) y debe cambiarla en su primer inicio de sesión.</li>
           <li><strong>Colores:</strong> El avatar se asignará de forma aleatoria automáticamente.</li>
         </ul>
       </div>

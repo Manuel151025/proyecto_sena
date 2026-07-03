@@ -2,6 +2,13 @@
 <h1 class="mb-1">Mi perfil</h1>
 <p class="text-muted">Actualiza tus datos personales y credenciales de acceso.</p>
 
+<?php if (!empty($debeCambiarPassword)): ?>
+  <div class="alert-flat warning mb-3">
+    <i class="bi bi-shield-exclamation"></i>
+    <div>Tu cuenta tiene una contraseña temporal. Debes establecer una nueva contraseña antes de continuar usando el sistema.</div>
+  </div>
+<?php endif; ?>
+
 <?php if (!empty($success)): ?>
   <div class="alert-flat success mb-3">
     <i class="bi bi-check-circle"></i>

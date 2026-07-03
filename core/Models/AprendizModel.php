@@ -64,8 +64,10 @@ class AprendizModel {
 
     /**
      * Enroll a new apprentice (Transaction: User + Apprentice + Evaluations + Ficha count)
+     *
+     * @return array{id:int, temp_password:string}
      */
-    public function matricular(array $data, int $createdByUserId): int {
+    public function matricular(array $data, int $createdByUserId): array {
         $db = $this->db;
         
         // Validar duplicados
@@ -87,11 +89,12 @@ class AprendizModel {
             // 1. Crear el usuario
             $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
             $avatar_color = $colors[array_rand($colors)];
-            $password_hash = password_hash('Sena2026', PASSWORD_DEFAULT);
-            
+            $temp_password = generateTempPassword();
+            $password_hash = password_hash($temp_password, PASSWORD_DEFAULT);
+
             $stmt = $db->prepare("
-                INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado)
-                VALUES (?, ?, ?, 'aprendiz', ?, 'activo')
+                INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado, debe_cambiar_password)
+                VALUES (?, ?, ?, 'aprendiz', ?, 'activo', 1)
             ");
             $stmt->execute([$data['nombre'], $data['email'], $password_hash, $avatar_color]);
             $usuario_id = (int)$db->lastInsertId();
@@ -130,7 +133,7 @@ class AprendizModel {
             $stmtLog->execute([$createdByUserId, $new_aprendiz_id, "Matriculó al aprendiz {$data['nombre']} en ficha ID {$data['ficha_id']}"]);
 
             $db->commit();
-            return $new_aprendiz_id;
+            return ['id' => $new_aprendiz_id, 'temp_password' => $temp_password];
         } catch (Exception $e) {
             if ($db->inTransaction()) {
                 $db->rollBack();
