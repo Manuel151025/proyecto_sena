@@ -132,16 +132,16 @@
         <input type="hidden" name="action" value="enviar_evidencia">
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Título de la Entrega</label>
-            <input type="text" name="titulo" class="form-control" placeholder="Ej. Solución del taller de CSS Grid" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
+            <label class="form-label text-muted small fw-semibold" for="ev-titulo">Título de la Entrega</label>
+            <input type="text" id="ev-titulo" name="titulo" class="form-control" placeholder="Ej. Solución del taller de CSS Grid" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Comentarios / Descripción</label>
-            <textarea name="descripcion" class="form-control" rows="3" placeholder="Añade detalles sobre tu entrega..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
+            <label class="form-label text-muted small fw-semibold" for="ev-descripcion">Comentarios / Descripción</label>
+            <textarea id="ev-descripcion" name="descripcion" class="form-control" rows="3" placeholder="Añade detalles sobre tu entrega..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Archivo adjunto (PDF, ZIP, DOCX, etc.)</label>
-            <input type="file" name="archivo" class="form-control" required>
+            <label class="form-label text-muted small fw-semibold" for="ev-archivo">Archivo adjunto (PDF, ZIP, DOCX, etc.)</label>
+            <input type="file" id="ev-archivo" name="archivo" class="form-control" required>
           </div>
         </div>
         <div class="modal-footer border-top-0 pt-0">
@@ -172,16 +172,16 @@
             <div class="fw-bold" id="calificar_titulo">Ninguna</div>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Concepto Evaluativo</label>
-            <select name="concepto" class="form-select" required>
+            <label class="form-label text-muted small fw-semibold" for="calificar-concepto">Concepto Evaluativo</label>
+            <select id="calificar-concepto" name="concepto" class="form-select" required>
               <option value="aprobado">Aprobado (A)</option>
               <option value="en_proceso">En Proceso (D)</option>
               <option value="no_aplica">No Aplica</option>
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Comentarios de Retroalimentación</label>
-            <textarea name="comentario" class="form-control" rows="4"
+            <label class="form-label text-muted small fw-semibold" for="calificar-comentario">Comentarios de Retroalimentación</label>
+            <textarea id="calificar-comentario" name="comentario" class="form-control" rows="4"
                       placeholder="Indica los logros o aspectos a mejorar de la entrega..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
           </div>
         </div>

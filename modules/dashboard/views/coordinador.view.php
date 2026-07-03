@@ -45,7 +45,7 @@ declare(strict_types=1);
         </div>
       </div>
       <div class="sparkline-container">
-        <canvas id="sparkFichas"></canvas>
+        <canvas id="sparkFichas" role="img" aria-label="Minigráfico de tendencia de fichas activas, valor actual: <?= $fichasActivas ?>"></canvas>
       </div>
     </div>
   </div>
@@ -67,7 +67,7 @@ declare(strict_types=1);
         </div>
       </div>
       <div class="sparkline-container">
-        <canvas id="sparkAprendices"></canvas>
+        <canvas id="sparkAprendices" role="img" aria-label="Minigráfico de tendencia de aprendices matriculados, valor actual: <?= $aprendicesMatriculados ?>"></canvas>
       </div>
     </div>
   </div>
@@ -89,7 +89,7 @@ declare(strict_types=1);
         </div>
       </div>
       <div class="sparkline-container">
-        <canvas id="sparkInstructores"></canvas>
+        <canvas id="sparkInstructores" role="img" aria-label="Minigráfico de tendencia de instructores activos, valor actual: <?= $instructoresActivos ?>"></canvas>
       </div>
     </div>
   </div>
@@ -114,7 +114,7 @@ declare(strict_types=1);
         </div>
       </div>
       <div class="sparkline-container">
-        <canvas id="sparkRetencion"></canvas>
+        <canvas id="sparkRetencion" role="img" aria-label="Minigráfico de tendencia de retención académica promedio, valor actual: <?= $retencioPromedio ?>%"></canvas>
       </div>
     </div>
   </div>
@@ -131,7 +131,7 @@ declare(strict_types=1);
       </div>
       <div class="card-body px-4 pb-4">
         <div style="position: relative; height: 280px;">
-          <canvas id="chartProg"></canvas>
+          <canvas id="chartProg" role="img" aria-label="Gráfico de dispersión: cumplimiento académico frente al volumen de aprendices por programa de formación"></canvas>
         </div>
       </div>
     </div>
@@ -145,7 +145,7 @@ declare(strict_types=1);
       </div>
       <div class="card-body px-4 pb-4">
         <div style="position: relative; height: 210px;">
-          <canvas id="chartPie"></canvas>
+          <canvas id="chartPie" role="img" aria-label="Gráfico circular: distribución de fichas de formación por estado"></canvas>
         </div>
       </div>
     </div>
@@ -163,7 +163,7 @@ declare(strict_types=1);
       </div>
       <div class="card-body px-3 pb-3">
         <div style="position: relative; height: 220px;">
-          <canvas id="chartDesercionRate"></canvas>
+          <canvas id="chartDesercionRate" role="img" aria-label="Gráfico de barras: tasa de deserción por programa de formación"></canvas>
         </div>
       </div>
     </div>
@@ -177,7 +177,7 @@ declare(strict_types=1);
       </div>
       <div class="card-body px-3 pb-3">
         <div style="position: relative; height: 220px;">
-          <canvas id="chartRetencion"></canvas>
+          <canvas id="chartRetencion" role="img" aria-label="Gráfico comparativo: retención académica frente a tasa de deserción por programa"></canvas>
         </div>
       </div>
     </div>
