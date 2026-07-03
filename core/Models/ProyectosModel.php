@@ -32,7 +32,7 @@ class ProyectosModel {
         $stmt->execute([$nombre, $codigo, $objetivo, $descripcion, $estado, $id]);
     }
 
-    public function getProyectos(int $user_rol, int $user_id): array {
+    public function getProyectos(string $user_rol, int $user_id): array {
         if ($user_rol === ROL_APRENDIZ) {
             $stmt = $this->db->prepare("
                 SELECT 
