@@ -87,6 +87,9 @@ class CompetenciasModel {
                 $data['estado'] ?? 'activo'
             ]);
         } catch (Exception $e) {
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                throw new Exception("Ya existe una competencia registrada con el código '{$data['codigo']}'.");
+            }
             throw new Exception("Error al registrar competencia: " . $e->getMessage());
         }
     }
@@ -111,6 +114,9 @@ class CompetenciasModel {
                 $id
             ]);
         } catch (Exception $e) {
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                throw new Exception("Ya existe otra competencia registrada con el código '{$data['codigo']}'.");
+            }
             throw new Exception("Error al actualizar competencia: " . $e->getMessage());
         }
     }

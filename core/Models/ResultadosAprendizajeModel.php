@@ -77,6 +77,9 @@ class ResultadosAprendizajeModel {
 
             return $result;
         } catch (Exception $e) {
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                throw new Exception("Ya existe un RAP registrado con el código '{$data['codigo']}'.");
+            }
             throw new Exception("Error al registrar RAP: " . $e->getMessage());
         }
     }
@@ -113,6 +116,9 @@ class ResultadosAprendizajeModel {
 
             return $result;
         } catch (Exception $e) {
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                throw new Exception("Ya existe otro RAP registrado con el código '{$data['codigo']}'.");
+            }
             throw new Exception("Error al actualizar RAP: " . $e->getMessage());
         }
     }
