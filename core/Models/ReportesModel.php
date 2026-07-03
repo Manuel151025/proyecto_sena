@@ -192,7 +192,7 @@ class ReportesModel {
 
     public function getReportCumplimientoInstructor(int $user_id, string $user_rol): array {
         $sql = "
-            SELECT ui.nombre as instructor, f.numero_ficha, p.nombre as programa,
+            SELECT ui.nombre as instructor, f.numero_ficha, p.nombre as programa, c.nombre as competencia,
                    COUNT(e.id) as total_ra,
                    SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
                    SUM(CASE WHEN e.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
@@ -202,21 +202,40 @@ class ReportesModel {
             JOIN fichas f ON e.ficha_id = f.id
             JOIN programas p ON f.programa_id = p.id
             JOIN usuarios ui ON f.instructor_id = ui.id
+            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
+            JOIN competencias c ON ra.competencia_id = c.id
+            JOIN aprendices ap ON e.aprendiz_id = ap.id
         ";
         $params = [];
         if ($user_rol === ROL_INSTRUCTOR) {
-            $sql .= " WHERE (f.instructor_id = ? OR EXISTS (
-                SELECT 1 FROM asignaciones asg 
-                WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
-            ) OR EXISTS (
-                SELECT 1 FROM aprendices ap 
-                WHERE ap.ficha_id = f.id AND ap.instructor_seguimiento_id = ?
-            ))";
+            // Misma regla de alcance por competencia usada en el resto de reportes:
+            // agregar solo las evaluaciones de la(s) competencia(s) que este instructor
+            // realmente tiene asignadas, no todas las de la ficha.
+            $sql .= " WHERE (
+                EXISTS (
+                    SELECT 1 FROM asignaciones asg
+                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
+                )
+                OR
+                (
+                    f.instructor_id = ?
+                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND NOT EXISTS (
+                        SELECT 1 FROM asignaciones asg
+                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
+                    )
+                )
+                OR
+                (
+                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND ap.instructor_seguimiento_id = ?
+                )
+            )";
             $params[] = $user_id;
             $params[] = $user_id;
             $params[] = $user_id;
         }
-        $sql .= " GROUP BY ui.id, f.id ORDER BY ui.nombre, f.numero_ficha";
+        $sql .= " GROUP BY ui.id, f.id, c.id ORDER BY ui.nombre, f.numero_ficha, c.nombre";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_NUM);
