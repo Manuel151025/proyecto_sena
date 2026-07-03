@@ -36,7 +36,7 @@ class RetroalimentacionModel {
         $stmt->execute([$aprendiz_post, $user_id, $tipo, $contenido, $privada]);
     }
 
-    public function getFeedbacks(int $user_rol, int $user_id, int $aprendiz_id): array {
+    public function getFeedbacks(string $user_rol, int $user_id, int $aprendiz_id): array {
         if ($user_rol === ROL_APRENDIZ) {
             $stmt = $this->db->prepare("
                 SELECT r.*, u_inst.nombre as instructor_nombre, u_inst.avatar_color as inst_color
@@ -71,7 +71,7 @@ class RetroalimentacionModel {
         }
     }
 
-    public function getAprendicesDisponibles(int $user_rol, int $user_id): array {
+    public function getAprendicesDisponibles(string $user_rol, int $user_id): array {
         if ($user_rol === ROL_INSTRUCTOR) {
             $stmt = $this->db->prepare("
                 SELECT ap.id, u.nombre, f.numero_ficha,

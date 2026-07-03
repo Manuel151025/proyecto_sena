@@ -20,7 +20,7 @@ class MejoramientoModel {
         return (int)($stmt->fetchColumn() ?: 0);
     }
 
-    public function getPlanesMejoramiento(int $user_rol, int $user_id, int $aprendiz_id): array {
+    public function getPlanesMejoramiento(string $user_rol, int $user_id, int $aprendiz_id): array {
         if ($user_rol === ROL_APRENDIZ) {
             $stmt = $this->db->prepare("
                 SELECT eval.id,
