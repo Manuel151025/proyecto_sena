@@ -48,7 +48,7 @@ class ReportesController extends BaseController {
                         $filename = "evaluaciones_ficha_{$ficha_id}_" . date('Ymd');
                         break;
                     case 'cumplimiento_instructor':
-                        $headers = ['Instructor Líder', 'Ficha', 'Programa', 'Total RAs', 'Aprobados (A)', 'No Aprobados (D)', 'Pendientes', '% Cumplimiento'];
+                        $headers = ['Instructor Líder', 'Ficha', 'Programa', 'Competencia', 'Total RAs', 'Aprobados (A)', 'No Aprobados (D)', 'Pendientes', '% Cumplimiento'];
                         $data = $this->reportesModel->getReportCumplimientoInstructor($user_id, $user_rol);
                         $filename = "cumplimiento_instructor_" . date('Ymd');
                         break;
@@ -90,7 +90,7 @@ class ReportesController extends BaseController {
                                 if ($cell === 'A') $class = ' class="alert-dia"';
                                 elseif ($cell === 'D') $class = ' class="alert-critico"';
                                 else $class = ' class="alert-riesgo"';
-                            } elseif (($type === 'cumplimiento_instructor' && $colIdx === 7) || ($type === 'cumplimiento_competencia' && $colIdx === 6)) {
+                            } elseif (($type === 'cumplimiento_instructor' && $colIdx === 8) || ($type === 'cumplimiento_competencia' && $colIdx === 6)) {
                                 $val = (float)$cell;
                                 if ($val >= 80) $class = ' class="alert-dia"';
                                 elseif ($val >= 60) $class = ' class="alert-riesgo"';
