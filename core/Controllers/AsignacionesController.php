@@ -44,7 +44,8 @@ class AsignacionesController extends BaseController {
                                 $errors[] = 'Ya existe un instructor asignado a esta competencia en esta ficha. Elimine la asignación previa primero.';
                             } else {
                                 $this->asignacionesModel->crearAsignacion($ficha_id, $competencia_id, $instructor_id, $user_id);
-                                $successMessage = 'Instructor asignado exitosamente a la competencia.';
+                                setFlashMessage('Instructor asignado exitosamente a la competencia.', 'success');
+                                $this->redirect(APP_URL . '/index.php/asignaciones');
                             }
                         } catch (Exception $e) {
                             $errors[] = 'Error al realizar la asignación: ' . $e->getMessage();
@@ -57,7 +58,8 @@ class AsignacionesController extends BaseController {
                     } else {
                         try {
                             $this->asignacionesModel->eliminarAsignacion($asignacion_id, $user_id);
-                            $successMessage = 'Asignación eliminada exitosamente.';
+                            setFlashMessage('Asignación eliminada exitosamente.', 'success');
+                            $this->redirect(APP_URL . '/index.php/asignaciones');
                         } catch (Exception $e) {
                             $errors[] = 'Error al eliminar la asignación: ' . $e->getMessage();
                         }

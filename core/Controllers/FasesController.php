@@ -67,8 +67,8 @@ class FasesController extends BaseController {
                     if (empty($errors)) {
                         try {
                             $this->fasesModel->crearFase($proyecto_id, $numero_fase, $nombre, $descripcion, $fecha_inicio, $fecha_fin, $cumplimiento, $estado);
-                            $successMessage = 'Fase de proyecto registrada exitosamente.';
-                            $selected_proyecto_id = $proyecto_id;
+                            setFlashMessage('Fase de proyecto registrada exitosamente.', 'success');
+                            $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $proyecto_id);
                         } catch (Exception $e) {
                             $errors[] = 'Error al registrar la fase: ' . $e->getMessage();
                         }
@@ -113,7 +113,8 @@ class FasesController extends BaseController {
                     if (empty($errors)) {
                         try {
                             $this->fasesModel->editarFase($id, $numero_fase, $nombre, $descripcion, $fecha_inicio, $fecha_fin, $cumplimiento, $estado);
-                            $successMessage = 'Fase actualizada exitosamente.';
+                            setFlashMessage('Fase actualizada exitosamente.', 'success');
+                            $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $selected_proyecto_id);
                         } catch (Exception $e) {
                             $errors[] = 'Error al actualizar la fase: ' . $e->getMessage();
                         }
@@ -130,7 +131,8 @@ class FasesController extends BaseController {
                     } else {
                         try {
                             $this->fasesModel->eliminarFase($id);
-                            $successMessage = 'Fase eliminada exitosamente.';
+                            setFlashMessage('Fase eliminada exitosamente.', 'success');
+                            $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $selected_proyecto_id);
                         } catch (Exception $e) {
                             $errors[] = 'No se puede eliminar: la fase tiene registros asociados.';
                         }

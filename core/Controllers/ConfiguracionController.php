@@ -43,7 +43,8 @@ class ConfiguracionController extends BaseController {
 
             if (empty($errors)) {
                 // This is just a stub for now, as the original code didn't save these to DB
-                $successMessage = 'Configuración guardada exitosamente en el sistema.';
+                setFlashMessage('Configuración guardada exitosamente en el sistema.', 'success');
+                $this->redirect(APP_URL . '/index.php/configuracion');
             }
         }
 
