@@ -28,6 +28,16 @@ class MatriculaController extends BaseController {
         $successMessage = '';
         $passwordResultados = [];
 
+        // Recuperar resultados de matrícula/CSV guardados en sesión tras el
+        // redirect (PRG): las contraseñas temporales solo se pueden mostrar
+        // una vez y no caben en un mensaje flash simple.
+        $tabId = getTabId();
+        if (isset($_SESSION['tabs'][$tabId]['matricula_success'])) {
+            $successMessage = $_SESSION['tabs'][$tabId]['matricula_success'];
+            $passwordResultados = $_SESSION['tabs'][$tabId]['matricula_passwords'] ?? [];
+            unset($_SESSION['tabs'][$tabId]['matricula_success'], $_SESSION['tabs'][$tabId]['matricula_passwords']);
+        }
+
         // 1. PROCESAR ACCIONES (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $action = $_POST['action'];
@@ -57,12 +67,13 @@ class MatriculaController extends BaseController {
                     if ($data['ficha_id'] <= 0) throw new Exception('Debe seleccionar una ficha de formación.');
 
                     $resultMatricula = $this->aprendizModel->matricular($data, (int)getCurrentUser()['id']);
-                    $passwordResultados[] = [
+                    $_SESSION['tabs'][$tabId]['matricula_success'] = 'Aprendiz matriculado exitosamente. Su contraseña temporal aparece abajo: cópiala ahora, no volverá a mostrarse.';
+                    $_SESSION['tabs'][$tabId]['matricula_passwords'] = [[
                         'nombre' => $data['nombre'],
                         'email' => $data['email'],
                         'password' => $resultMatricula['temp_password'],
-                    ];
-                    $successMessage = 'Aprendiz matriculado exitosamente. Su contraseña temporal aparece abajo: cópiala ahora, no volverá a mostrarse.';
+                    ]];
+                    $this->redirect(APP_URL . '/index.php/matriculas');
 
                 } elseif ($action === 'editar_matricula') {
                     if (!hasRole(ROL_COORDINADOR)) {
@@ -91,7 +102,8 @@ class MatriculaController extends BaseController {
                     if ($data['ficha_id'] <= 0) throw new Exception('Debe seleccionar una ficha de formación.');
 
                     $this->aprendizModel->editarMatricula($aprendiz_id, $data, (int)getCurrentUser()['id']);
-                    $successMessage = 'Matrícula y datos del aprendiz actualizados exitosamente.';
+                    setFlashMessage('Matrícula y datos del aprendiz actualizados exitosamente.', 'success');
+                    $this->redirect(APP_URL . '/index.php/matriculas');
 
                 } elseif ($action === 'eliminar_matricula') {
                     if (!hasRole(ROL_COORDINADOR)) {
@@ -102,7 +114,8 @@ class MatriculaController extends BaseController {
                     if ($aprendiz_id <= 0) throw new Exception('Aprendiz no válido.');
 
                     $this->aprendizModel->eliminar($aprendiz_id, (int)getCurrentUser()['id']);
-                    $successMessage = 'Matrícula eliminada exitosamente.';
+                    setFlashMessage('Matrícula eliminada exitosamente.', 'success');
+                    $this->redirect(APP_URL . '/index.php/matriculas');
 
                 } elseif ($action === 'cargar_csv') {
                     if (!hasRole(ROL_COORDINADOR)) {
@@ -220,11 +233,13 @@ class MatriculaController extends BaseController {
 
                         if ($successCount > 0) {
                             $db->commit();
-                            $passwordResultados = array_merge($passwordResultados, $csvPasswordResultados);
-                            $successMessage = "Se matricularon exitosamente $successCount aprendices y se inicializaron sus evaluaciones. Sus contraseñas temporales aparecen abajo: cópialas ahora, no volverán a mostrarse.";
+                            $csvSuccessMessage = "Se matricularon exitosamente $successCount aprendices y se inicializaron sus evaluaciones. Sus contraseñas temporales aparecen abajo: cópialas ahora, no volverán a mostrarse.";
                             if (!empty($warnings)) {
-                                $successMessage .= "<br><strong>Nota:</strong> Se omitieron algunas filas:<br>" . implode("<br>", array_slice($warnings, 0, 10));
+                                $csvSuccessMessage .= "<br><strong>Nota:</strong> Se omitieron algunas filas:<br>" . implode("<br>", array_slice($warnings, 0, 10));
                             }
+                            $_SESSION['tabs'][$tabId]['matricula_success'] = $csvSuccessMessage;
+                            $_SESSION['tabs'][$tabId]['matricula_passwords'] = $csvPasswordResultados;
+                            $this->redirect(APP_URL . '/index.php/matriculas');
                         } else {
                             $db->rollBack();
                             throw new Exception("No se matriculó ningún aprendiz. Revise los errores:<br>" . implode("<br>", $warnings));
