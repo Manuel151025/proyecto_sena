@@ -107,7 +107,7 @@
             <td>
               <div class="d-flex align-items-center gap-2">
                 <div class="avatar" style="width:36px; height:36px; font-size:0.9rem; background:<?= htmlspecialchars($asg['avatar_color']) ?>">
-                  <?= strtoupper(substr($asg['instructor_nombre'], 0, 2)) ?>
+                  <?= htmlspecialchars(strtoupper(substr($asg['instructor_nombre'], 0, 2))) ?>
                 </div>
                 <div>
                   <h6 class="mb-0 fw-semibold"><?= htmlspecialchars($asg['instructor_nombre']) ?></h6>
@@ -120,7 +120,7 @@
             </td>
             <?php if (hasRole(ROL_COORDINADOR)): ?>
             <td class="pe-4 text-end">
-              <button class="btn btn-sm btn-soft text-danger" onclick="confirmarEliminarAsignacion(<?= $asg['id'] ?>, <?= json_encode($asg['instructor_nombre']) ?>, <?= json_encode($asg['competencia_codigo']) ?>)">
+              <button class="btn btn-sm btn-soft text-danger" onclick="confirmarEliminarAsignacion(<?= (int)$asg['id'] ?>, <?= htmlspecialchars(json_encode($asg['instructor_nombre']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($asg['competencia_codigo']), ENT_QUOTES, 'UTF-8') ?>)">
                 <i class="bi bi-trash me-1"></i> Quitar
               </button>
             </td>

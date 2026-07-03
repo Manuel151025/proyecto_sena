@@ -58,9 +58,9 @@ declare(strict_types=1);
                 <div class="d-flex gap-1 flex-shrink-0">
                   <button class="btn btn-sm btn-soft py-0 px-1" style="font-size:.75rem;"
                     onclick="abrirModalEditarRAP(
-                      <?= $rap['id'] ?>, <?= $comp['id'] ?>,
-                      <?= json_encode($rap['codigo']) ?>,
-                      <?= json_encode($rap['denominacion']) ?>)">
+                      <?= (int)$rap['id'] ?>, <?= (int)$comp['id'] ?>,
+                      <?= htmlspecialchars(json_encode($rap['codigo']), ENT_QUOTES, 'UTF-8') ?>,
+                      <?= htmlspecialchars(json_encode($rap['denominacion']), ENT_QUOTES, 'UTF-8') ?>)">
                     <i class="bi bi-pencil"></i>
                   </button>
                   <form method="POST" class="d-inline"

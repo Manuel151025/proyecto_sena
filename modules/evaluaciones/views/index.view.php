@@ -170,7 +170,7 @@
                 <i class="bi bi-pencil-square me-1"></i>Evaluar
               </button>
               <?php endif; ?>
-              <button class="btn btn-sm btn-soft" onclick="alert(<?= json_encode('RetroalimentaciÃ³n:\n\n' . ($eval['comentario'] ?: 'Sin comentarios.')) ?>)">
+              <button class="btn btn-sm btn-soft" onclick="alert(<?= htmlspecialchars(json_encode('Retroalimentación:\n\n' . ($eval['comentario'] ?: 'Sin comentarios.')), ENT_QUOTES, 'UTF-8') ?>)">
                 <i class="bi bi-chat-left-dots"></i>
               </button>
             </td>

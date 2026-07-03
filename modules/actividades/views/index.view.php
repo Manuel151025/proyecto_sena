@@ -126,10 +126,10 @@
             <div class="d-flex gap-1">
               <button class="btn btn-sm btn-soft"
                 onclick="abrirModalEditarActividad(
-                  <?= $act['id'] ?>, <?= $act['ficha_id'] ?>, <?= $act['competencia_id'] ?? 0 ?>,
-                  <?= json_encode($act['nombre']) ?>, <?= json_encode($act['descripcion'] ?? '') ?>,
-                  <?= json_encode($act['fecha_inicio'] ?? '') ?>, <?= json_encode($act['fecha_fin'] ?? '') ?>,
-                  <?= $act['responsable_id'] ?? 0 ?>, <?= json_encode($act['estado']) ?>,
+                  <?= (int)$act['id'] ?>, <?= (int)$act['ficha_id'] ?>, <?= (int)($act['competencia_id'] ?? 0) ?>,
+                  <?= htmlspecialchars(json_encode($act['nombre']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($act['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
+                  <?= htmlspecialchars(json_encode($act['fecha_inicio'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($act['fecha_fin'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
+                  <?= (int)($act['responsable_id'] ?? 0) ?>, <?= htmlspecialchars(json_encode($act['estado']), ENT_QUOTES, 'UTF-8') ?>,
                   <?= (float)$act['cumplimiento_porcentaje'] ?>)">
                 <i class="bi bi-pencil"></i>
               </button>

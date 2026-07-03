@@ -89,16 +89,16 @@
                 <td class="pe-4 text-end">
                   <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR]) && $ev['estado'] === 'enviada'): ?>
                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalCalificar"
-                            onclick="prepararCalificacion(<?= $ev['id'] ?>, <?= json_encode($ev['titulo']) ?>)">
+                            onclick="prepararCalificacion(<?= (int)$ev['id'] ?>, <?= htmlspecialchars(json_encode($ev['titulo']), ENT_QUOTES, 'UTF-8') ?>)">
                       <i class="bi bi-pencil-square me-1"></i>Calificar
                     </button>
                   <?php elseif (!empty($ev['retroalimentacion'])): ?>
                     <button class="btn btn-sm btn-soft"
-                            onclick="alert(<?= json_encode('RetroalimentaciÃ³n del Instructor:\n\n' . $ev['retroalimentacion']) ?>)">
+                            onclick="alert(<?= htmlspecialchars(json_encode('Retroalimentación del Instructor:\n\n' . $ev['retroalimentacion']), ENT_QUOTES, 'UTF-8') ?>)">
                       <i class="bi bi-chat-left-text me-1"></i>Ver Retro
                     </button>
                   <?php else: ?>
-                    <span class="text-muted small">Sin revisiÃ³n</span>
+                    <span class="text-muted small">Sin revisión</span>
                   <?php endif; ?>
                 </td>
               </tr>
