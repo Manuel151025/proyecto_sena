@@ -2,7 +2,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="mb-1">Fases del Proyecto Formativo</h1>
-    <p class="text-muted mb-0">Monitorea y planea el progreso del proyecto de formaciÃ³n estructurado en fases consecutivas.</p>
+    <p class="text-muted mb-0">Monitorea y planea el progreso del proyecto de formación estructurado en fases consecutivas.</p>
   </div>
   <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrear">
@@ -22,7 +22,7 @@
 <?php endif; ?>
 
 <?php if ($user_rol !== ROL_APRENDIZ): ?>
-<!-- SelecciÃ³n de Proyecto -->
+<!-- Selección de Proyecto -->
 <div class="card glass-card mb-4 border-0">
   <div class="card-body">
     <form method="GET" class="row g-3 align-items-end">
@@ -31,11 +31,11 @@
         <select name="proyecto_id" class="form-select" onchange="this.form.submit()"
                 data-picker
                 data-picker-label="Seleccionar proyecto"
-                data-picker-placeholder="CÃ³digo o nombre del proyecto...">
+                data-picker-placeholder="Código o nombre del proyecto...">
           <?php foreach ($proyectos as $p): ?>
             <option value="<?= $p['id'] ?>" <?= $selected_proyecto_id === (int)$p['id'] ? 'selected' : '' ?>
                     data-search="<?= htmlspecialchars($p['codigo'] . ' ' . $p['nombre']) ?>">
-              <?= htmlspecialchars($p['codigo']) ?> â€” <?= htmlspecialchars($p['nombre']) ?>
+              <?= htmlspecialchars($p['codigo']) ?> — <?= htmlspecialchars($p['nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -83,7 +83,7 @@
           </div>
           <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($fase['nombre']) ?></h5>
           <p class="card-text text-muted small flex-grow-1">
-            <?= htmlspecialchars($fase['descripcion'] ?: 'Sin descripciÃ³n.') ?>
+            <?= htmlspecialchars($fase['descripcion'] ?: 'Sin descripción.') ?>
           </p>
 
           <div class="p-2 rounded mb-3" style="background: rgba(0,0,0,0.02); font-size: 0.8rem;">
@@ -115,7 +115,7 @@
                 <i class="bi bi-pencil me-1"></i>Editar
               </button>
               <form method="POST" class="d-inline"
-                    onsubmit="return confirm('Â¿Eliminar la fase <?= htmlspecialchars(addslashes($fase['nombre'])) ?>?')">
+                    onsubmit="return confirm('¿Eliminar la fase <?= htmlspecialchars(addslashes($fase['nombre'])) ?>?')">
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="eliminar">
                 <input type="hidden" name="id" value="<?= $fase['id'] ?>">
@@ -189,7 +189,7 @@
               <label class="form-label text-muted small fw-semibold">Estado</label>
               <select name="estado" id="edit_fase_estado" class="form-select">
                 <option value="planeada">Planeada</option>
-                <option value="en_ejecucion">En EjecuciÃ³n</option>
+                <option value="en_ejecucion">En Ejecución</option>
                 <option value="completada">Completada</option>
               </select>
             </div>
@@ -265,7 +265,7 @@ function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fech
               <label class="form-label text-muted small fw-semibold">Estado Inicial</label>
               <select name="estado" class="form-select">
                 <option value="planeada">Planeada</option>
-                <option value="en_ejecucion">En EjecuciÃ³n</option>
+                <option value="en_ejecucion">En Ejecución</option>
                 <option value="completada">Completada</option>
               </select>
             </div>

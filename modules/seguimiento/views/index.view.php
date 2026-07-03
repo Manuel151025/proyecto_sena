@@ -1,8 +1,8 @@
 <div class="mb-4">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-      <h1 class="mb-1 text-dark fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>Seguimiento AcadÃ©mico</h1>
-      <p class="text-muted mb-0">Control del avance formativo, cumplimiento de resultados de aprendizaje y nivelaciÃ³n de competencias.</p>
+      <h1 class="mb-1 text-dark fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>Seguimiento Académico</h1>
+      <p class="text-muted mb-0">Control del avance formativo, cumplimiento de resultados de aprendizaje y nivelación de competencias.</p>
     </div>
 
     <?php if ($user_rol !== ROL_APRENDIZ && !empty($fichas)): ?>
@@ -12,7 +12,7 @@
                 onchange="this.form.submit()" style="min-width: 250px;">
           <?php foreach ($fichas as $f): ?>
             <option value="<?= $f['id'] ?>" <?= $f['id'] == $selected_ficha_id ? 'selected' : '' ?>>
-              #<?= htmlspecialchars($f['numero_ficha']) ?> â€” <?= htmlspecialchars(substr($f['programa'], 0, 30)) ?>
+              #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars(substr($f['programa'], 0, 30)) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -54,8 +54,8 @@
   <?php if (!$mi_perfil): ?>
     <div class="text-center py-5 glass-card rounded">
       <i class="bi bi-person-x d-block mb-3 text-muted" style="font-size:3rem;"></i>
-      <h4 class="fw-bold">Sin MatrÃ­cula Asignada</h4>
-      <p class="text-muted">No apareces registrado en ninguna ficha de formaciÃ³n. Contacta con el coordinador de tu centro.</p>
+      <h4 class="fw-bold">Sin Matrícula Asignada</h4>
+      <p class="text-muted">No apareces registrado en ninguna ficha de formación. Contacta con el coordinador de tu centro.</p>
     </div>
   <?php else: ?>
     <!-- Tarjeta de perfil -->
@@ -73,11 +73,11 @@
             <span class="badge bg-soft primary me-2">Ficha #<?= htmlspecialchars($mi_perfil['numero_ficha']) ?></span>
             <span class="text-muted small me-2"><?= htmlspecialchars($mi_perfil['programa_nombre']) ?></span>
             <?php if ($mi_perfil['aprendiz_estado'] === 'etapa_practica'): ?>
-              <span class="badge bg-primary text-white">Etapa PrÃ¡ctica</span>
+              <span class="badge bg-primary text-white">Etapa Práctica</span>
             <?php endif; ?>
           </div>
           <div class="col-12 col-md-4 text-md-end">
-            <div class="text-muted small">Instructor LÃ­der:</div>
+            <div class="text-muted small">Instructor Líder:</div>
             <div class="fw-bold text-dark"><?= htmlspecialchars($mi_perfil['instructor_nombre'] ?: 'No asignado') ?></div>
             <?php if ($mi_perfil['instructor_seguimiento_nombre']): ?>
               <div class="text-muted small mt-1">Instructor de Seguimiento:</div>
@@ -106,7 +106,7 @@
         <div class="card glass-card border-0 p-3 shadow-sm h-100">
           <div class="d-flex align-items-center justify-content-between">
             <div>
-              <small class="text-muted fw-semibold d-block mb-1">Avance AcadÃ©mico</small>
+              <small class="text-muted fw-semibold d-block mb-1">Avance Académico</small>
               <h3 class="fw-bold mb-0 text-primary"><?= $progreso ?>%</h3>
             </div>
             <div class="rounded-circle p-3" style="background:rgba(var(--bs-primary-rgb),.1)">
@@ -123,7 +123,7 @@
         <div class="card glass-card border-0 p-3 shadow-sm h-100 border-start border-danger border-4">
           <div class="d-flex align-items-center justify-content-between">
             <div>
-              <small class="text-muted fw-semibold d-block mb-1">Pendientes / NivelaciÃ³n</small>
+              <small class="text-muted fw-semibold d-block mb-1">Pendientes / Nivelación</small>
               <h3 class="fw-bold mb-0 text-danger"><?= $en_proceso ?></h3>
             </div>
             <div class="rounded-circle p-3" style="background:rgba(239,68,68,.1)">
@@ -191,14 +191,14 @@
                       </td>
                       <td>
                         <span class="badge bg-light text-dark font-monospace" style="max-width:250px;white-space:normal;">
-                          <?= htmlspecialchars($act['competencia_codigo'] ?: 'N/A') ?> â€” <?= htmlspecialchars(substr($act['competencia_nombre'] ?: 'General', 0, 40)) ?>
+                          <?= htmlspecialchars($act['competencia_codigo'] ?: 'N/A') ?> — <?= htmlspecialchars(substr($act['competencia_nombre'] ?: 'General', 0, 40)) ?>
                         </span>
                       </td>
                       <td>
                         <small class="fw-semibold text-muted"><?= htmlspecialchars($act['instructor_nombre'] ?: 'Pendiente') ?></small>
                       </td>
                       <td>
-                        <small class="text-muted"><?= $act['fecha_evaluacion'] ? date('d/m/Y', strtotime($act['fecha_evaluacion'])) : 'â€”' ?></small>
+                        <small class="text-muted"><?= $act['fecha_evaluacion'] ? date('d/m/Y', strtotime($act['fecha_evaluacion'])) : '—' ?></small>
                       </td>
                       <td class="pe-4 text-center">
                         <span class="badge-soft <?= $cl[1] ?>"
@@ -219,7 +219,7 @@
                     <tr>
                       <td colspan="5" class="text-center py-5 text-muted">
                         <i class="bi bi-inbox d-block mb-2" style="font-size:2rem;opacity:.5;"></i>
-                        AÃºn no se han registrado resultados de aprendizaje para tu programa.
+                        Aún no se han registrado resultados de aprendizaje para tu programa.
                       </td>
                     </tr>
                   <?php endif; ?>
@@ -228,10 +228,10 @@
             </div>
           </div>
 
-          <!-- TAB: Historial retroalimentaciÃ³n -->
+          <!-- TAB: Historial retroalimentación -->
           <div class="tab-pane fade" id="feedback" role="tabpanel">
             <?php foreach ($mis_retroalimentaciones as $retro): ?>
-              <?php $fi = $feedback_iconos[$retro['tipo']] ?? ['bi bi-info-circle-fill text-info', 'ObservaciÃ³n', 'info']; ?>
+              <?php $fi = $feedback_iconos[$retro['tipo']] ?? ['bi bi-info-circle-fill text-info', 'Observación', 'info']; ?>
               <div class="p-3 mb-3 border rounded shadow-sm bg-white" style="border-left:5px solid var(--bs-<?= $fi[2] ?>) !important;">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <div class="d-flex align-items-center gap-2">
@@ -268,7 +268,7 @@
     <div class="text-center py-5 glass-card rounded">
       <i class="bi bi-folder-x d-block mb-3 text-muted" style="font-size:3rem;"></i>
       <h4 class="fw-bold">No hay Fichas Disponibles</h4>
-      <p class="text-muted">No tienes fichas de formaciÃ³n asignadas o creadas para realizar seguimiento acadÃ©mico.</p>
+      <p class="text-muted">No tienes fichas de formación asignadas o creadas para realizar seguimiento académico.</p>
     </div>
   <?php else: ?>
     <!-- KPI de la ficha -->
@@ -278,7 +278,7 @@
           <div>
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
               <div>
-                <span class="badge bg-soft primary mb-2">Ficha AcadÃ©mica</span>
+                <span class="badge bg-soft primary mb-2">Ficha Académica</span>
                 <h3 class="fw-bold text-dark mb-1">Ficha #<?= htmlspecialchars($ficha_detalle['numero_ficha']) ?></h3>
                 <h5 class="text-muted"><?= htmlspecialchars($ficha_detalle['programa_nombre']) ?></h5>
               </div>
@@ -286,7 +286,7 @@
             </div>
             <div class="row g-3 mt-3">
               <div class="col-sm-6">
-                <small class="text-muted d-block">Instructor LÃ­der:</small>
+                <small class="text-muted d-block">Instructor Líder:</small>
                 <strong><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($ficha_detalle['instructor_nombre'] ?: 'Sin asignar') ?></strong>
               </div>
               <div class="col-sm-6">
@@ -331,7 +331,7 @@
                 }
               ?>
               <div>
-                <small class="text-muted d-block fw-semibold">Casos CrÃ­ticos</small>
+                <small class="text-muted d-block fw-semibold">Casos Críticos</small>
                 <h2 class="fw-bold text-danger mb-0"><?= $criticos ?></h2>
               </div>
               <div class="rounded-circle p-3" style="background:rgba(239,68,68,.1)">
@@ -343,12 +343,12 @@
       </div>
     </div>
 
-    <!-- Tabla de aprendices con sus estadÃ­sticas -->
+    <!-- Tabla de aprendices con sus estadísticas -->
     <div class="card glass-card border-0 shadow-sm">
       <div class="card-header border-bottom-0 bg-transparent p-4 pb-2">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
           <div>
-            <h4 class="fw-bold text-dark mb-1">Rendimiento AcadÃ©mico por Aprendiz</h4>
+            <h4 class="fw-bold text-dark mb-1">Rendimiento Académico por Aprendiz</h4>
             <p class="text-muted small mb-0">Monitorea el avance por resultados de aprendizaje e interviene oportunamente.</p>
           </div>
           <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -361,9 +361,9 @@
             
             <div class="btn-group shadow-sm" role="group">
               <button type="button" class="btn btn-sm btn-outline-secondary active btn-alerta-filtro" data-filtro="todos">Todos</button>
-              <button type="button" class="btn btn-sm btn-outline-danger btn-alerta-filtro" data-filtro="danger">CrÃ­ticos</button>
+              <button type="button" class="btn btn-sm btn-outline-danger btn-alerta-filtro" data-filtro="danger">Críticos</button>
               <button type="button" class="btn btn-sm btn-outline-warning btn-alerta-filtro" data-filtro="warning">Riesgo</button>
-              <button type="button" class="btn btn-sm btn-outline-success btn-alerta-filtro" data-filtro="success">Al DÃ­a</button>
+              <button type="button" class="btn btn-sm btn-outline-success btn-alerta-filtro" data-filtro="success">Al Día</button>
             </div>
 
             <button type="button" id="btn_exportar_excel" class="btn btn-sm btn-soft text-primary">
@@ -393,9 +393,9 @@
                   $aprobadas_ap = (int)$ap['aprobadas'];
                   $en_proc      = (int)$ap['en_proceso'];
                   $prog         = $total_act > 0 ? round(($aprobadas_ap / $total_act) * 100) : 0;
-                  if ($prog < 60 || $en_proc > 2)       { $alerta_label = 'CrÃ­tico'; $alerta_class = 'danger'; }
+                  if ($prog < 60 || $en_proc > 2)       { $alerta_label = 'Crítico'; $alerta_class = 'danger'; }
                   elseif ($prog < 80 || $en_proc > 0)   { $alerta_label = 'Riesgo';  $alerta_class = 'warning'; }
-                  else                                   { $alerta_label = 'Al DÃ­a';  $alerta_class = 'success'; }
+                  else                                   { $alerta_label = 'Al Día';  $alerta_class = 'success'; }
                 ?>
                 <tr class="aprendiz-fila" 
                     data-search="<?= htmlspecialchars(strtolower($ap['aprendiz_nombre'] . ' ' . $ap['numero_documento']), ENT_QUOTES, 'UTF-8') ?>"
@@ -410,7 +410,7 @@
                         <div class="d-flex align-items-center gap-2">
                           <h6 class="mb-0 fw-semibold"><?= htmlspecialchars($ap['aprendiz_nombre']) ?></h6>
                           <?php if ($ap['aprendiz_estado'] === 'etapa_practica'): ?>
-                            <span class="badge bg-primary bg-opacity-10 text-primary small py-0 px-2 rounded">Etapa PrÃ¡ctica</span>
+                            <span class="badge bg-primary bg-opacity-10 text-primary small py-0 px-2 rounded">Etapa Práctica</span>
                           <?php endif; ?>
                         </div>
                         <small class="text-muted font-monospace"><?= htmlspecialchars($ap['tipo_documento']) ?> <?= htmlspecialchars($ap['numero_documento']) ?></small>
@@ -437,13 +437,13 @@
                   <td class="pe-4 text-end">
                     <button class="btn btn-sm btn-soft me-1"
                             onclick="abrirModalDetalle(<?= $ap['aprendiz_id'] ?>, <?= htmlspecialchars(json_encode($ap['aprendiz_nombre']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($ap['aprendiz_email']), ENT_QUOTES, 'UTF-8') ?>)"
-                            title="Ver Detalle AcadÃ©mico">
+                            title="Ver Detalle Académico">
                       <i class="bi bi-eye"></i> Detalle
                     </button>
                     <button class="btn btn-sm btn-soft btn-outline-info"
                             onclick="abrirModalRetroalimentacion(<?= $ap['aprendiz_id'] ?>, <?= htmlspecialchars(json_encode($ap['aprendiz_nombre']), ENT_QUOTES, 'UTF-8') ?>)"
                             title="Registrar Nota de Seguimiento">
-                      <i class="bi bi-chat-dots"></i> ObservaciÃ³n
+                      <i class="bi bi-chat-dots"></i> Observación
                     </button>
                   </td>
                 </tr>
@@ -462,14 +462,14 @@
       </div>
     </div>
 
-    <!-- MODAL: Detalle acadÃ©mico del aprendiz -->
+    <!-- MODAL: Detalle académico del aprendiz -->
     <div class="modal fade" id="modalDetalleAprendiz" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content glass-card border-0" style="background:rgba(255,255,255,.99);backdrop-filter:blur(25px);">
           <div class="modal-header border-bottom-0 pb-0">
             <div>
               <h5 class="modal-title fw-bold text-dark">
-                <i class="bi bi-person-check text-primary me-2"></i>Seguimiento AcadÃ©mico Individual
+                <i class="bi bi-person-check text-primary me-2"></i>Seguimiento Académico Individual
               </h5>
               <small class="text-muted d-block" id="detalle_aprendiz_subtitulo"></small>
             </div>
@@ -484,7 +484,7 @@
               </li>
               <li class="nav-item flex-fill text-center">
                 <button class="nav-link w-100 py-2 fw-semibold" data-bs-toggle="pill" data-bs-target="#pills-feedback" type="button">
-                  <i class="bi bi-chat-right-text me-1"></i>Anotaciones &amp; BitÃ¡cora
+                  <i class="bi bi-chat-right-text me-1"></i>Anotaciones &amp; Bitácora
                 </button>
               </li>
             </ul>
@@ -508,7 +508,7 @@
                         <th>Resultado de Aprendizaje</th>
                         <th>Competencia</th>
                         <th>Estado Actual</th>
-                        <th class="text-end">CalificaciÃ³n</th>
+                        <th class="text-end">Calificación</th>
                       </tr>
                     </thead>
                     <tbody id="lista_actividades_detalle"></tbody>
@@ -527,13 +527,13 @@
       </div>
     </div>
 
-    <!-- MODAL: Registrar evaluaciÃ³n por RA -->
+    <!-- MODAL: Registrar evaluación por RA -->
     <div class="modal fade" id="modalCalificarActividad" tabindex="-1" aria-hidden="true" style="z-index:1060;">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg border-0 bg-white">
           <div class="modal-header border-bottom-0 pb-0">
             <h5 class="modal-title fw-bold">
-              <i class="bi bi-clipboard-check text-primary me-2"></i>Registrar EvaluaciÃ³n
+              <i class="bi bi-clipboard-check text-primary me-2"></i>Registrar Evaluación
             </h5>
             <button type="button" class="btn-close" onclick="cerrarModalCalificar()"></button>
           </div>
@@ -568,20 +568,20 @@
             </div>
             <div class="modal-footer border-top-0 pt-0">
               <button type="button" class="btn btn-soft" onclick="cerrarModalCalificar()">Cancelar</button>
-              <button type="submit" class="btn btn-primary">Guardar EvaluaciÃ³n</button>
+              <button type="submit" class="btn btn-primary">Guardar Evaluación</button>
             </div>
           </form>
         </div>
       </div>
     </div>
 
-    <!-- MODAL: AnotaciÃ³n de retroalimentaciÃ³n -->
+    <!-- MODAL: Anotación de retroalimentación -->
     <div class="modal fade" id="modalRetroalimentacion" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content glass-card border-0" style="background:rgba(255,255,255,.99);backdrop-filter:blur(25px);">
           <div class="modal-header border-bottom-0 pb-0">
             <h5 class="modal-title fw-bold text-dark">
-              <i class="bi bi-chat-text text-primary me-2"></i>AnotaciÃ³n de Seguimiento
+              <i class="bi bi-chat-text text-primary me-2"></i>Anotación de Seguimiento
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -590,19 +590,19 @@
             <input type="hidden" name="aprendiz_id" id="retro_aprendiz_id">
             <div class="modal-body">
               <div class="mb-3 bg-light p-3 rounded">
-                <small class="text-muted d-block">Registrar observaciÃ³n para:</small>
+                <small class="text-muted d-block">Registrar observación para:</small>
                 <strong class="text-dark" id="retro_aprendiz_nombre"></strong>
               </div>
               <div class="mb-3">
                 <label class="form-label text-muted small fw-semibold">Tipo de Nota</label>
                 <select name="tipo" class="form-select" required>
-                  <option value="recomendacion">ðŸ’¡ RecomendaciÃ³n / Sugerencia</option>
-                  <option value="fortaleza">â­ Fortaleza / FelicitaciÃ³n</option>
-                  <option value="aspecto_mejorar">âš ï¸ Aspecto a Mejorar (Alerta)</option>
+                  <option value="recomendacion">💡 Recomendación / Sugerencia</option>
+                  <option value="fortaleza">⭐ Fortaleza / Felicitación</option>
+                  <option value="aspecto_mejorar">⚠️ Aspecto a Mejorar (Alerta)</option>
                 </select>
               </div>
               <div class="mb-3">
-                <label class="form-label text-muted small fw-semibold">Detalle de la ObservaciÃ³n</label>
+                <label class="form-label text-muted small fw-semibold">Detalle de la Observación</label>
                 <textarea name="contenido" class="form-control" rows="4" minlength="10" maxlength="2000" oninput="this.value = this.value.replace(/[<>]/g, '')"
                           placeholder="Escribe el comentario académico que quedará en el historial del estudiante..." required></textarea>
               </div>
@@ -631,7 +631,7 @@
     const aprendicesStats          = <?= json_encode($aprendices_stats) ?>;
     const fichaDetalle             = <?= json_encode($ficha_detalle) ?>;
 
-    // Map para pasar datos al modal de calificaciÃ³n sin inyecciÃ³n HTML
+    // Map para pasar datos al modal de calificación sin inyección HTML
     const calificarData = {};
 
     let modalDetalle, modalCalificar, modalRetro;
@@ -686,7 +686,7 @@
             
             const printWindow = window.open('', '_blank', 'width=900,height=800');
             if (!printWindow) {
-                alert('El navegador bloqueÃ³ la ventana emergente. Por favor, permita las ventanas emergentes para este sitio.');
+                alert('El navegador bloqueó la ventana emergente. Por favor, permita las ventanas emergentes para este sitio.');
                 return;
             }
             
@@ -700,7 +700,7 @@
                         <td style="text-align: center; font-weight: bold; width: 5%;">${idx + 1}</td>
                         <td style="width: 25%; font-family: monospace; font-size: 0.85rem;">${esc(ev.ra_codigo)}</td>
                         <td style="width: 45%;">${esc(ev.ra_nombre)}</td>
-                        <td style="width: 25%; font-size: 0.85rem; font-style: italic; color: #555;">${esc(ev.comentario || 'Pendiente de nivelaciÃ³n')}</td>
+                        <td style="width: 25%; font-size: 0.85rem; font-style: italic; color: #555;">${esc(ev.comentario || 'Pendiente de nivelación')}</td>
                     </tr>
                 `;
             });
@@ -715,7 +715,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Plan de Mejoramiento AcadÃ©mico - Ficha #${fichaNum}</title>
+    <title>Plan de Mejoramiento Académico - Ficha #${fichaNum}</title>
     <style>
         @page {
             size: letter;
@@ -914,7 +914,7 @@
 </head>
 <body>
     <div class="no-print" style="padding: 10px; background-color: #f0f4f7; border-bottom: 1px solid #ddd; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: #00324D; font-weight: bold;">Vista Previa de ImpresiÃ³n - Formato Plan de Mejoramiento</span>
+        <span style="color: #00324D; font-weight: bold;">Vista Previa de Impresión - Formato Plan de Mejoramiento</span>
         <button class="btn-print-action" onclick="window.print()">Imprimir Plan de Mejoramiento</button>
     </div>
 
@@ -924,18 +924,18 @@
                 <div class="logo-sena"></div>
             </td>
             <td class="header-title">
-                Proceso de GestiÃ³n de FormaciÃ³n Profesional Integral<br>
-                <span style="font-size: 0.85rem; font-weight: normal;">Plan de Mejoramiento AcadÃ©mico</span>
+                Proceso de Gestión de Formación Profesional Integral<br>
+                <span style="font-size: 0.85rem; font-weight: normal;">Plan de Mejoramiento Académico</span>
             </td>
             <td class="header-meta">
-                <strong>CÃ³digo:</strong> F-GFPI-19<br>
-                <strong>VersiÃ³n:</strong> 1<br>
+                <strong>Código:</strong> F-GFPI-19<br>
+                <strong>Versión:</strong> 1<br>
                 <strong>Fecha:</strong> ${fechaFormateada}
             </td>
         </tr>
     </table>
 
-    <div class="section-title">1. InformaciÃ³n General del Aprendiz y del Programa</div>
+    <div class="section-title">1. Información General del Aprendiz y del Programa</div>
     <table class="info-grid">
         <tr>
             <td class="label">Nombre del Aprendiz</td>
@@ -944,21 +944,21 @@
             <td>${esc(ap.tipo_documento)} ${esc(ap.numero_documento)}</td>
         </tr>
         <tr>
-            <td class="label">Programa de FormaciÃ³n</td>
+            <td class="label">Programa de Formación</td>
             <td>${programaNombre}</td>
-            <td class="label">NÃºmero de Ficha</td>
+            <td class="label">Número de Ficha</td>
             <td><strong>#${fichaNum}</strong></td>
         </tr>
         <tr>
-            <td class="label">Instructor LÃ­der</td>
+            <td class="label">Instructor Líder</td>
             <td>${instructorNombre}</td>
-            <td class="label">Coordinador AcadÃ©mico</td>
+            <td class="label">Coordinador Académico</td>
             <td>${coordinadorNombre}</td>
         </tr>
         <tr>
-            <td class="label">Correo ElectrÃ³nico</td>
+            <td class="label">Correo Electrónico</td>
             <td>${esc(ap.aprendiz_email)}</td>
-            <td class="label">TelÃ©fono / Celular</td>
+            <td class="label">Teléfono / Celular</td>
             <td>${esc(ap.telefono || 'No registrado')}</td>
         </tr>
     </table>
@@ -968,8 +968,8 @@
         <thead>
             <tr>
                 <th style="width: 5%; text-align: center;">Item</th>
-                <th style="width: 25%;">CÃ³digo RA</th>
-                <th style="width: 45%;">DescripciÃ³n del Resultado de Aprendizaje</th>
+                <th style="width: 25%;">Código RA</th>
+                <th style="width: 45%;">Descripción del Resultado de Aprendizaje</th>
                 <th style="width: 25%;">Observaciones del Instructor</th>
             </tr>
         </thead>
@@ -978,23 +978,23 @@
         </tbody>
     </table>
 
-    <div class="section-title">3. DiagnÃ³stico AcadÃ©mico y JustificaciÃ³n del Plan</div>
+    <div class="section-title">3. Diagnóstico Académico y Justificación del Plan</div>
     <div class="text-box text-box-fill">
-        El aprendiz presenta rezago o no ha alcanzado las evidencias correspondientes a los resultados de aprendizaje descritos en la secciÃ³n anterior. Es necesario implementar actividades de nivelaciÃ³n para asegurar el cumplimiento del perfil de egreso del programa.
+        El aprendiz presenta rezago o no ha alcanzado las evidencias correspondientes a los resultados de aprendizaje descritos en la sección anterior. Es necesario implementar actividades de nivelación para asegurar el cumplimiento del perfil de egreso del programa.
     </div>
 
     <div class="section-title">4. Actividades de Aprendizaje a Desarrollar (A concertar con el Instructor)</div>
     <div class="text-box" style="min-height: 100px;">
-        1. PresentaciÃ³n de las evidencias de producto y desempeÃ±o pendientes detalladas por el instructor.<br>
-        2. SustentaciÃ³n presencial o virtual del componente tÃ©cnico asociado a los resultados evaluados con D.<br>
-        3. Desarrollo de talleres prÃ¡cticos complementarios.<br>
+        1. Presentación de las evidencias de producto y desempeño pendientes detalladas por el instructor.<br>
+        2. Sustentación presencial o virtual del componente técnico asociado a los resultados evaluados con D.<br>
+        3. Desarrollo de talleres prácticos complementarios.<br>
         <br>
-        <strong>Fecha LÃ­mite de Entrega:</strong> ____________________________
+        <strong>Fecha Límite de Entrega:</strong> ____________________________
     </div>
 
     <div class="section-title">5. Compromisos del Aprendiz</div>
     <div class="text-box" style="min-height: 80px; font-style: italic;">
-        Yo, <strong>${esc(ap.aprendiz_nombre)}</strong>, identificado con documento nÃºmero <strong>${esc(ap.numero_documento)}</strong>, me comprometo a desarrollar y entregar en las fechas y condiciones establecidas en este documento las actividades de nivelaciÃ³n propuestas, entendiendo que el incumplimiento del presente plan de mejoramiento darÃ¡ lugar a los trÃ¡mites disciplinarios y acadÃ©micos establecidos en el Reglamento del Aprendiz SENA.
+        Yo, <strong>${esc(ap.aprendiz_nombre)}</strong>, identificado con documento número <strong>${esc(ap.numero_documento)}</strong>, me comprometo a desarrollar y entregar en las fechas y condiciones establecidas en este documento las actividades de nivelación propuestas, entendiendo que el incumplimiento del presente plan de mejoramiento dará lugar a los trámites disciplinarios y académicos establecidos en el Reglamento del Aprendiz SENA.
     </div>
 
     <table class="signatures-container">
@@ -1009,20 +1009,20 @@
                 <div class="signature-line"></div>
                 <div class="signature-title">${instructorNombre}</div>
                 <div class="signature-subtitle">Firma del Instructor</div>
-                <div class="signature-subtitle">Gestor AcadÃ©mico</div>
+                <div class="signature-subtitle">Gestor Académico</div>
             </td>
             <td>
                 <div class="signature-line"></div>
                 <div class="signature-title">${coordinadorNombre}</div>
                 <div class="signature-subtitle">Firma Coordinador</div>
-                <div class="signature-subtitle">Centro de FormaciÃ³n</div>
+                <div class="signature-subtitle">Centro de Formación</div>
             </td>
         </tr>
     </table>
 
     <div class="footer-note">
-        Servicio Nacional de Aprendizaje SENA - DirecciÃ³n de FormaciÃ³n Profesional - Formato Plan de Mejoramiento AcadÃ©mico<br>
-        Copia controlada - Proceso de GestiÃ³n de FormaciÃ³n
+        Servicio Nacional de Aprendizaje SENA - Dirección de Formación Profesional - Formato Plan de Mejoramiento Académico<br>
+        Copia controlada - Proceso de Gestión de Formación
     </div>
 </body>
 </html>
@@ -1047,10 +1047,10 @@
                 const prog = total > 0 ? Math.round((aprobadas / total) * 100) : 0;
                 
                 let alertaClass = 'alert-dia';
-                let alertaText = 'Al DÃ­a';
+                let alertaText = 'Al Día';
                 if (prog < 60 || en_proceso > 2) {
                     alertaClass = 'alert-critico';
-                    alertaText = 'CrÃ­tico';
+                    alertaText = 'Crítico';
                 } else if (prog < 80 || en_proceso > 0) {
                     alertaClass = 'alert-riesgo';
                     alertaText = 'Riesgo';
@@ -1104,7 +1104,7 @@
 <body>
     <table>
         <tr>
-            <td colspan="8" class="title-header" style="border: none; padding: 10px 0;">REPORTE DE SEGUIMIENTO ACADÃ‰MICO - SENA</td>
+            <td colspan="8" class="title-header" style="border: none; padding: 10px 0;">REPORTE DE SEGUIMIENTO ACADÉMICO - SENA</td>
         </tr>
         <tr>
             <td colspan="8" class="sub-header" style="border: none; padding-bottom: 20px;">
@@ -1114,7 +1114,7 @@
         <thead>
             <tr>
                 <th>Tipo Documento</th>
-                <th>NÃºmero Documento</th>
+                <th>Número Documento</th>
                 <th>Nombre Aprendiz</th>
                 <th>Total RAs</th>
                 <th>Aprobados (A)</th>
@@ -1188,7 +1188,7 @@
                       </td>
                       <td>
                         <span class="badge bg-light text-dark font-monospace" style="max-width:250px;white-space:normal;">
-                          ${esc(ev.competencia_codigo || 'N/A')} â€” ${esc((ev.competencia_nombre || 'General').substring(0,40))}
+                          ${esc(ev.competencia_codigo || 'N/A')} — ${esc((ev.competencia_nombre || 'General').substring(0,40))}
                         </span>
                       </td>
                       <td>
@@ -1225,7 +1225,7 @@
             container.innerHTML = '<div class="text-center py-4 text-muted">Sin notas de seguimiento registradas.</div>';
         } else {
             retros.forEach(r => {
-                const fi = feedbackIconos[r.tipo] || ['bi bi-info-circle-fill text-info', 'ObservaciÃ³n', 'info'];
+                const fi = feedbackIconos[r.tipo] || ['bi bi-info-circle-fill text-info', 'Observación', 'info'];
                 const privBadge = r.privada == 1
                     ? '<span class="badge bg-danger ms-2"><i class="bi bi-eye-slash-fill me-1"></i>Privado</span>'
                     : '';
@@ -1282,7 +1282,7 @@
         modalCalificar.show();
     }
 
-    // Toggle visual del campo motivo segÃºn el cambio de concepto
+    // Toggle visual del campo motivo según el cambio de concepto
     document.getElementById('calif_concepto')?.addEventListener('change', function() {
         const divMotivo = document.getElementById('div_calif_motivo');
         const inputMotivo = document.getElementById('calif_motivo');
@@ -1302,7 +1302,7 @@
         }
     });
 
-    // Validar motivo en el envÃ­o
+    // Validar motivo en el envío
     document.getElementById('modalCalificarActividad')?.querySelector('form')?.addEventListener('submit', function(e) {
         const mapRev = { 'aprobado': 'A', 'en_proceso': 'D', 'no_aplica': 'pendiente' };
         const nuevoConcepto = mapRev[document.getElementById('calif_concepto').value] || 'pendiente';
@@ -1310,7 +1310,7 @@
         
         if (originalConceptoSeguimiento !== 'pendiente' && originalConceptoSeguimiento !== nuevoConcepto && !motivo) {
             e.preventDefault();
-            alert('Debes ingresar el motivo del cambio de calificaciÃ³n (ej. Plan de mejoramiento completado).');
+            alert('Debes ingresar el motivo del cambio de calificación (ej. Plan de mejoramiento completado).');
         }
     });
 

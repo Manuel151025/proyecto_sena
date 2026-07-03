@@ -1,12 +1,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
-    <h1 class="mb-1">Juicios de EvaluaciÃ³n</h1>
+    <h1 class="mb-1">Juicios de Evaluación</h1>
     <p class="text-muted mb-0">
       <?php if ($user_rol === ROL_APRENDIZ): ?>
-        Consulta el estado de tus Resultados de Aprendizaje (RA) evaluados con conceptos A (Aprobado) y D (AÃºn no competente).
+        Consulta el estado de tus Resultados de Aprendizaje (RA) evaluados con conceptos A (Aprobado) y D (Aún no competente).
       <?php else: ?>
-        Gestiona los juicios evaluativos por Resultado de Aprendizaje. Los conceptos vÃ¡lidos son <strong>A</strong> (Aprobado) y <strong>D</strong> (AÃºn no competente).
+        Gestiona los juicios evaluativos por Resultado de Aprendizaje. Los conceptos válidos son <strong>A</strong> (Aprobado) y <strong>D</strong> (Aún no competente).
       <?php endif; ?>
     </p>
   </div>
@@ -37,7 +37,7 @@
 </div>
 <?php endif; ?>
 
-<!-- KPIs de EvaluaciÃ³n -->
+<!-- KPIs de Evaluación -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="kpi" style="border-left: 4px solid var(--sena-primary);">
@@ -82,7 +82,7 @@
         <label class="form-label text-muted small">Buscar Aprendiz / RA</label>
         <div class="input-group">
           <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre o cÃ³digo RA..." value="<?= htmlspecialchars($search) ?>">
+          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre o código RA..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>
       <div class="col-md-3">
@@ -150,7 +150,7 @@
               <small class="fw-medium text-muted"><?= htmlspecialchars($eval['competencia_nombre']) ?></small>
             </td>
             <td>
-              <span class="small"><?= $eval['fecha_evaluacion'] ? date('d/m/Y', strtotime($eval['fecha_evaluacion'])) : 'â€”' ?></span>
+              <span class="small"><?= $eval['fecha_evaluacion'] ? date('d/m/Y', strtotime($eval['fecha_evaluacion'])) : '—' ?></span>
             </td>
             <td>
               <span class="badge-soft <?= $conceptos_label[$eval['concepto']][1] ?>">
@@ -205,11 +205,11 @@
         <div class="modal-body p-4">
           <div class="mb-3">
             <div class="text-muted small text-uppercase">Resultado de Aprendizaje</div>
-            <div class="fw-bold" id="evalRA">â€”</div>
+            <div class="fw-bold" id="evalRA">—</div>
           </div>
           <div class="mb-3">
             <div class="text-muted small text-uppercase">Aprendiz</div>
-            <div class="fw-semibold" id="evalAprendiz">â€”</div>
+            <div class="fw-semibold" id="evalAprendiz">—</div>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Concepto Evaluativo <span class="text-danger">*</span></label>
@@ -235,7 +235,7 @@
         </div>
         <div class="modal-footer border-0 px-4 pb-4">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Guardar EvaluaciÃ³n</button>
+          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Guardar Evaluación</button>
         </div>
       </form>
     </div>
@@ -244,13 +244,13 @@
 <?php endif; ?>
 
 <script>
-// Poblar modal usando el evento de Bootstrap (mÃ©todo fiable)
+// Poblar modal usando el evento de Bootstrap (método fiable)
 const modalEvaluar = document.getElementById('modalEvaluar');
 let originalConcepto = '';
 
 if (modalEvaluar) {
   modalEvaluar.addEventListener('show.bs.modal', function(event) {
-    const btn = event.relatedTarget; // botÃ³n que disparÃ³ el modal
+    const btn = event.relatedTarget; // botón que disparó el modal
     if (!btn) return;
 
     const evalId    = btn.dataset.evalId;
@@ -287,13 +287,13 @@ if (modalEvaluar) {
       }
     });
 
-    console.log('[Eval] Modal abierto para evaluaciÃ³n ID:', evalId, '| concepto actual:', concepto);
+    console.log('[Eval] Modal abierto para evaluación ID:', evalId, '| concepto actual:', concepto);
   });
 
-  // Toggle visual del campo motivo segÃºn el concepto seleccionado
+  // Toggle visual del campo motivo según el concepto seleccionado
   document.querySelectorAll('.concepto-radio').forEach(label => {
     label.addEventListener('click', function() {
-      // Toggle de active class se maneja mÃ¡s abajo, aquÃ­ detectamos el radio de este label
+      // Toggle de active class se maneja más abajo, aquí detectamos el radio de este label
       setTimeout(() => {
         const radio = this.querySelector('input[type="radio"]');
         if (!radio) return;
@@ -324,7 +324,7 @@ if (modalEvaluar) {
 
     if (!id || id <= 0) {
       e.preventDefault();
-      alert('Error: ID de evaluaciÃ³n no cargado. Cierra el modal y haz clic en Evaluar nuevamente.');
+      alert('Error: ID de evaluación no cargado. Cierra el modal y haz clic en Evaluar nuevamente.');
       return;
     }
     if (!concepto) {
@@ -335,11 +335,11 @@ if (modalEvaluar) {
 
     if (originalConcepto && originalConcepto !== 'pendiente' && originalConcepto !== concepto.value && !motivo) {
       e.preventDefault();
-      alert('Debes ingresar el motivo del cambio de calificaciÃ³n (ej. Plan de mejoramiento completado).');
+      alert('Debes ingresar el motivo del cambio de calificación (ej. Plan de mejoramiento completado).');
       return;
     }
 
-    console.log('[Eval] Enviando evaluaciÃ³n ID:', id, '| nuevo concepto:', concepto.value);
+    console.log('[Eval] Enviando evaluación ID:', id, '| nuevo concepto:', concepto.value);
   });
 }
 

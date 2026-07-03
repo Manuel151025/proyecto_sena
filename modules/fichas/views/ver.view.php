@@ -10,8 +10,8 @@
       <span class="badge-soft <?= $estados_label[$ficha['estado']][1] ?> ms-2"><?= $estados_label[$ficha['estado']][0] ?></span>
     </h1>
     <p class="text-muted mb-0">
-      <?= htmlspecialchars($ficha['programa']) ?> Â· 
-      Instructor LÃ­der: <?= htmlspecialchars($ficha['instructor']) ?> Â· 
+      <?= htmlspecialchars($ficha['programa']) ?> · 
+      Instructor Líder: <?= htmlspecialchars($ficha['instructor']) ?> · 
       <?= $ficha['cantidad_aprendices'] ?> aprendices
     </p>
   </div>
@@ -32,7 +32,7 @@
 <ul class="nav nav-tabs mb-3" role="tablist">
   <li class="nav-item">
     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tInfo">
-      <i class="bi bi-info-circle me-1"></i>InformaciÃ³n general
+      <i class="bi bi-info-circle me-1"></i>Información general
     </button>
   </li>
   <li class="nav-item">
@@ -52,7 +52,7 @@
             <div class="fw-semibold"><?= htmlspecialchars($ficha['programa']) ?></div>
           </div>
           <div class="col-md-4">
-            <small class="text-muted">Instructor LÃ­der</small>
+            <small class="text-muted">Instructor Líder</small>
             <div class="fw-semibold"><?= htmlspecialchars($ficha['instructor']) ?></div>
           </div>
           <div class="col-md-4">
@@ -122,14 +122,14 @@
               <?php if ($aprendiz['instructor_seguimiento_nombre']): ?>
                 <span class="small text-muted"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($aprendiz['instructor_seguimiento_nombre']) ?></span>
               <?php else: ?>
-                <span class="small text-muted italic">â€”</span>
+                <span class="small text-muted italic">—</span>
               <?php endif; ?>
             </td>
             <td class="text-end">
               <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
               <a href="<?= APP_URL ?>/index.php/seguimiento?ficha_id=<?= $id ?>&ver_aprendiz_id=<?= $aprendiz['id'] ?>" class="btn btn-sm btn-soft">Ver</a>
               <?php else: ?>
-              <span class="text-muted">â€”</span>
+              <span class="text-muted">—</span>
               <?php endif; ?>
             </td>
           </tr>
@@ -150,6 +150,6 @@
     <?php else: ?>
     <div class="alert-flat info">
       <i class="bi bi-info-circle"></i>
-      <div>No hay aprendices matriculados en esta ficha aÃºn.</div>
+      <div>No hay aprendices matriculados en esta ficha aún.</div>
     </div>
     <?php endif; ?>

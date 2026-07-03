@@ -43,7 +43,7 @@
             <div class="fw-semibold"><?= htmlspecialchars($user['nombre']) ?></div>
             <div class="small text-muted">
               Miembro desde
-              <?= !empty($user['fecha_creacion']) ? date('M Y', strtotime($user['fecha_creacion'])) : 'â€”' ?>
+              <?= !empty($user['fecha_creacion']) ? date('M Y', strtotime($user['fecha_creacion'])) : '—' ?>
             </div>
           </div>
         </div>
@@ -118,25 +118,25 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Nueva contraseÃ±a</label>
+            <label class="form-label">Nueva contraseña</label>
             <input type="password" name="password_nueva" class="form-control"
                    data-pw-strength required minlength="8">
             <div class="pw-strength mt-2"><span></span><span></span><span></span><span></span></div>
             <div class="mt-2">
-              <div class="pw-req" data-req="len"><i class="bi bi-circle"></i> MÃ­nimo 8 caracteres</div>
+              <div class="pw-req" data-req="len"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
               <div class="pw-req" data-req="letter"><i class="bi bi-circle"></i> Contiene letras</div>
-              <div class="pw-req" data-req="num"><i class="bi bi-circle"></i> Contiene nÃºmeros</div>
+              <div class="pw-req" data-req="num"><i class="bi bi-circle"></i> Contiene números</div>
             </div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Confirmar nueva contraseÃ±a</label>
+            <label class="form-label">Confirmar nueva contraseña</label>
             <input type="password" name="password_confirmar" class="form-control"
                    required minlength="8">
           </div>
 
           <button type="submit" class="btn btn-primary w-100">
-            <i class="bi bi-shield-check me-1"></i>Actualizar contraseÃ±a
+            <i class="bi bi-shield-check me-1"></i>Actualizar contraseña
           </button>
         </form>
       </div>

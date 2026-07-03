@@ -1,18 +1,18 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h1 class="mb-1">RetroalimentaciÃ³n AcadÃ©mica</h1>
+    <h1 class="mb-1">Retroalimentación Académica</h1>
     <p class="text-muted mb-0">
       <?php if ($user_rol === ROL_APRENDIZ): ?>
         Revisa los comentarios, recomendaciones y fortalezas indicadas por tus instructores.
       <?php else: ?>
-        Gestiona y registra retroalimentaciÃ³n para los aprendices.
+        Gestiona y registra retroalimentación para los aprendices.
       <?php endif; ?>
     </p>
   </div>
   <?php if ($user_rol !== ROL_APRENDIZ): ?>
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaRetro">
-      <i class="bi bi-plus-lg me-1"></i> Nueva retroalimentaciÃ³n
+      <i class="bi bi-plus-lg me-1"></i> Nueva retroalimentación
     </button>
   <?php endif; ?>
 </div>
@@ -37,7 +37,7 @@
 
 <div class="row g-3">
   <?php foreach ($feedbacks as $fb): ?>
-    <?php $meta = $tipos_label[$fb['tipo']] ?? ['â€”','secondary','bi-chat']; ?>
+    <?php $meta = $tipos_label[$fb['tipo']] ?? ['—','secondary','bi-chat']; ?>
     <div class="col-md-6 col-lg-4">
       <div class="card glass-card h-100 border-0 shadow-sm">
         <div class="card-body d-flex flex-column">
@@ -88,16 +88,16 @@
     <div class="col-12 text-center py-5 text-muted">
       <i class="bi bi-chat-left-text d-block mb-2" style="font-size:3rem;opacity:.3"></i>
       <?php if ($user_rol === ROL_APRENDIZ): ?>
-        AÃºn no has recibido retroalimentaciones.
+        Aún no has recibido retroalimentaciones.
       <?php else: ?>
-        No has registrado retroalimentaciones todavÃ­a. Usa el botÃ³n
-        <strong>Nueva retroalimentaciÃ³n</strong> arriba para crear la primera.
+        No has registrado retroalimentaciones todavía. Usa el botón
+        <strong>Nueva retroalimentación</strong> arriba para crear la primera.
       <?php endif; ?>
     </div>
   <?php endif; ?>
 </div>
 
-<!-- ===== Modal: nueva retroalimentaciÃ³n ===== -->
+<!-- ===== Modal: nueva retroalimentación ===== -->
 <?php if ($user_rol !== ROL_APRENDIZ): ?>
 <div class="modal fade" id="modalNuevaRetro" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -106,7 +106,7 @@
         <input type="hidden" name="action" value="create_feedback">
 
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-chat-left-quote me-2"></i>Nueva retroalimentaciÃ³n</h5>
+          <h5 class="modal-title"><i class="bi bi-chat-left-quote me-2"></i>Nueva retroalimentación</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
 
@@ -117,7 +117,7 @@
               <i class="bi bi-exclamation-circle"></i>
               <div>
                 <?php if ($user_rol === ROL_INSTRUCTOR): ?>
-                  No tienes aprendices matriculados en tus fichas. Cuando se te asignen, podrÃ¡s registrar retroalimentaciÃ³n.
+                  No tienes aprendices matriculados en tus fichas. Cuando se te asignen, podrás registrar retroalimentación.
                 <?php else: ?>
                   No hay aprendices matriculados en el sistema.
                 <?php endif; ?>
@@ -136,8 +136,8 @@
                   <option value="<?= (int)$ap['id'] ?>"
                           data-search="<?= htmlspecialchars(($ap['numero_documento'] ?? '') . ' ' . ($ap['numero_ficha'] ?? '')) ?>">
                     <?= htmlspecialchars($ap['nombre']) ?>
-                    <?= !empty($ap['numero_documento']) ? ' â€” ' . htmlspecialchars($ap['tipo_documento'] ?? 'CC') . ' ' . htmlspecialchars($ap['numero_documento']) : '' ?>
-                    <?= !empty($ap['numero_ficha']) ? ' Â· Ficha #' . htmlspecialchars($ap['numero_ficha']) : '' ?>
+                    <?= !empty($ap['numero_documento']) ? ' — ' . htmlspecialchars($ap['tipo_documento'] ?? 'CC') . ' ' . htmlspecialchars($ap['numero_documento']) : '' ?>
+                    <?= !empty($ap['numero_ficha']) ? ' · Ficha #' . htmlspecialchars($ap['numero_ficha']) : '' ?>
                   </option>
                 <?php endforeach; ?>
               </select>
@@ -175,7 +175,7 @@
               <input class="form-check-input" type="checkbox" name="privada" id="chkPrivada" value="1">
               <label class="form-check-label" for="chkPrivada">
                 <i class="bi bi-lock-fill me-1"></i>
-                Privada (el aprendiz no la verÃ¡; solo instructores y coordinadores)
+                Privada (el aprendiz no la verá; solo instructores y coordinadores)
               </label>
             </div>
 

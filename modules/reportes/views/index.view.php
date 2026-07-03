@@ -50,7 +50,7 @@
       <div class="card-body p-4">
         <div class="mb-3"><i class="bi bi-folder2-open text-primary" style="font-size: 2.5rem;"></i></div>
         <h5 class="fw-bold text-dark">Evaluaciones por Ficha</h5>
-        <p class="text-muted small">Detalle de todos los juicios evaluativos (A/D) para cada aprendiz de una ficha especÃ­fica.</p>
+        <p class="text-muted small">Detalle de todos los juicios evaluativos (A/D) para cada aprendiz de una ficha específica.</p>
         <form method="POST">
           <?= csrfField() ?>
           <input type="hidden" name="export" value="evaluaciones_ficha">
@@ -58,12 +58,12 @@
             <select name="ficha_id" class="form-select form-select-sm" required
                     data-picker
                     data-picker-label="Seleccionar ficha"
-                    data-picker-placeholder="NÃºmero de ficha o programa...">
+                    data-picker-placeholder="Número de ficha o programa...">
               <option value="">Seleccionar ficha...</option>
               <?php foreach ($fichas as $f): ?>
               <option value="<?= $f['id'] ?>"
                       data-search="<?= htmlspecialchars($f['numero_ficha'] . ' ' . $f['programa']) ?>">
-                Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> â€” <?= htmlspecialchars($f['programa']) ?>
+                Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa']) ?>
               </option>
               <?php endforeach; ?>
             </select>
@@ -82,8 +82,8 @@
     <div class="card glass-card h-100 border-0 shadow-sm" style="border-top: 4px solid #3b82f6; border-radius: 12px;">
       <div class="card-body p-4">
         <div class="mb-3"><i class="bi bi-person-workspace" style="font-size: 2.5rem; color: #3b82f6;"></i></div>
-        <h5 class="fw-bold text-dark">Cumplimiento por Instructor LÃ­der</h5>
-        <p class="text-muted small">Cantidad de RAs evaluados vs faltantes agrupados por instructor lÃ­der y ficha asignada.</p>
+        <h5 class="fw-bold text-dark">Cumplimiento por Instructor Líder</h5>
+        <p class="text-muted small">Cantidad de RAs evaluados vs faltantes agrupados por instructor líder y ficha asignada.</p>
         <form method="POST">
           <?= csrfField() ?>
           <input type="hidden" name="export" value="cumplimiento_instructor">
@@ -102,7 +102,7 @@
       <div class="card-body p-4">
         <div class="mb-3"><i class="bi bi-diagram-3" style="font-size: 2.5rem; color: #22c55e;"></i></div>
         <h5 class="fw-bold text-dark">Cumplimiento por Competencia</h5>
-        <p class="text-muted small">Porcentaje de aprobaciÃ³n por cada competencia y programa formativo a nivel institucional.</p>
+        <p class="text-muted small">Porcentaje de aprobación por cada competencia y programa formativo a nivel institucional.</p>
         <form method="POST">
           <?= csrfField() ?>
           <input type="hidden" name="export" value="cumplimiento_competencia">
@@ -135,9 +135,9 @@
   </div>
 </div>
 
-<!-- BotÃ³n imprimir para PDF -->
+<!-- Botón imprimir para PDF -->
 <div class="card glass-card border-0 mt-4 p-4 text-center" style="border-radius: 12px;">
   <h5 class="fw-bold mb-2"><i class="bi bi-printer me-2"></i>Exportar a PDF</h5>
-  <p class="text-muted small mb-3">Utiliza la funciÃ³n de impresiÃ³n del navegador (Ctrl+P) y selecciona "Guardar como PDF" para generar reportes en formato PDF directamente desde cualquier vista del sistema.</p>
+  <p class="text-muted small mb-3">Utiliza la función de impresión del navegador (Ctrl+P) y selecciona "Guardar como PDF" para generar reportes en formato PDF directamente desde cualquier vista del sistema.</p>
   <button onclick="window.print()" class="btn btn-outline-dark px-5"><i class="bi bi-file-earmark-pdf me-2"></i>Imprimir / Guardar como PDF</button>
 </div>

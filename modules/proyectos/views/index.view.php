@@ -1,7 +1,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h1 class="mb-1">Proyectos Formativos</h1>
-    <p class="text-muted mb-0">Cada proyecto integra las competencias y resultados de aprendizaje de un programa de formaciÃ³n.</p>
+    <p class="text-muted mb-0">Cada proyecto integra las competencias y resultados de aprendizaje de un programa de formación.</p>
   </div>
   <?php if ($user_rol === ROL_COORDINADOR): ?>
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrear">
@@ -69,7 +69,7 @@
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="id" value="<?= $proj['id'] ?>">
               <button type="submit" class="btn btn-soft text-danger px-3" style="border-radius: 8px;"
-                onclick="return confirm('Â¿Eliminar el proyecto <?= htmlspecialchars(addslashes($proj['nombre'])) ?>?')">
+                onclick="return confirm('¿Eliminar el proyecto <?= htmlspecialchars(addslashes($proj['nombre'])) ?>?')">
                 <i class="bi bi-trash"></i>
               </button>
             </form>

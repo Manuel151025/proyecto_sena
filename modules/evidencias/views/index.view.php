@@ -4,7 +4,7 @@
     <h1 class="mb-1">Evidencias y Entregables</h1>
     <p class="text-muted mb-0">
       <?php if ($user_rol === ROL_APRENDIZ): ?>
-        EnvÃ­a tus trabajos prÃ¡cticos y consulta las valoraciones de tu instructor.
+        Envía tus trabajos prácticos y consulta las valoraciones de tu instructor.
       <?php else: ?>
         Revisa, retroalimenta y califica las evidencias enviadas por los aprendices.
       <?php endif; ?>
@@ -44,12 +44,12 @@
           <table class="table mb-0 align-middle">
             <thead class="table-light-head" style="background: rgba(0,0,0,0.03);">
               <tr>
-                <th class="ps-4">TÃ­tulo / Entrega</th>
+                <th class="ps-4">Título / Entrega</th>
                 <?php if ($user_rol !== ROL_APRENDIZ): ?>
                   <th>Aprendiz / Ficha</th>
                 <?php endif; ?>
                 <th>Resultado de Aprendizaje</th>
-                <th>Fecha de EnvÃ­o</th>
+                <th>Fecha de Envío</th>
                 <th>Estado</th>
                 <th class="pe-4 text-end">Acciones</th>
               </tr>
@@ -60,7 +60,7 @@
                 <td class="ps-4">
                   <div class="fw-semibold text-dark"><?= htmlspecialchars($ev['titulo']) ?></div>
                   <small class="text-muted d-block text-truncate" style="max-width:300px;">
-                    <?= htmlspecialchars($ev['descripcion'] ?: 'Sin descripciÃ³n') ?>
+                    <?= htmlspecialchars($ev['descripcion'] ?: 'Sin descripción') ?>
                   </small>
                   <?php if (!empty($ev['archivo_url'])): ?>
                     <a href="<?= APP_URL . '/' . htmlspecialchars($ev['archivo_url']) ?>" target="_blank" class="small text-primary text-decoration-none">
@@ -107,7 +107,7 @@
               <tr>
                 <td colspan="6" class="text-center py-5 text-muted">
                   <i class="bi bi-file-earmark-arrow-up d-block mb-2" style="font-size:2rem; opacity:0.5;"></i>
-                  No se han registrado entregas de evidencias todavÃ­a.
+                  No se han registrado entregas de evidencias todavía.
                 </td>
               </tr>
               <?php endif; ?>
@@ -187,7 +187,7 @@
         </div>
         <div class="modal-footer border-top-0 pt-0">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Registrar CalificaciÃ³n</button>
+          <button type="submit" class="btn btn-primary">Registrar Calificación</button>
         </div>
       </form>
     </div>
