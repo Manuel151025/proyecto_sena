@@ -4,14 +4,17 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
+use Core\Services\InstructorAccessService;
 use PDO;
 use Exception;
 
 class RetroalimentacionModel {
     private PDO $db;
+    private InstructorAccessService $accessService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
+        $this->accessService = new InstructorAccessService($this->db);
     }
 
     public function getAprendizId(int $user_id): int {
@@ -21,15 +24,7 @@ class RetroalimentacionModel {
     }
 
     public function checkPermisoInstructor(int $aprendiz_post, int $user_id): bool {
-        $stmt = $this->db->prepare("
-            SELECT 1
-            FROM aprendices ap
-            JOIN fichas f ON ap.ficha_id = f.id
-            WHERE ap.id = ? AND f.instructor_id = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$aprendiz_post, $user_id]);
-        return (bool)$stmt->fetchColumn();
+        return $this->accessService->tieneAccesoAprendiz($aprendiz_post, $user_id);
     }
 
     public function guardarRetroalimentacion(int $aprendiz_post, int $user_id, string $tipo, string $contenido, int $privada): void {

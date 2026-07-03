@@ -4,52 +4,21 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
+use Core\Services\InstructorAccessService;
 use PDO;
 use Exception;
 
 class SeguimientoModel {
     private PDO $db;
+    private InstructorAccessService $accessService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
+        $this->accessService = new InstructorAccessService($this->db);
     }
 
     public function checkInstructorPermission(int $ra_id, int $aprendiz_id_p, int $ficha_id_p, int $user_id): bool {
-        $stmtRA = $this->db->prepare("SELECT competencia_id FROM resultados_aprendizaje WHERE id = ?");
-        $stmtRA->execute([$ra_id]);
-        $competencia_id = (int)($stmtRA->fetchColumn() ?: 0);
-
-        $stmtAuth = $this->db->prepare("
-            SELECT 1 FROM fichas f
-            JOIN resultados_aprendizaje ra ON ra.id = ?
-            JOIN competencias c ON ra.competencia_id = c.id
-            JOIN aprendices ap ON ap.id = ?
-            WHERE f.id = ? AND (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg
-                    WHERE asg.ficha_id = f.id 
-                      AND asg.competencia_id = c.id 
-                      AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg
-                        WHERE asg.ficha_id = f.id
-                          AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )
-        ");
-        $stmtAuth->execute([$ra_id, $aprendiz_id_p, $ficha_id_p, $user_id, $user_id, $user_id]);
-        return (bool)$stmtAuth->fetchColumn();
+        return $this->accessService->tieneAccesoResultadoAprendizaje($ra_id, $aprendiz_id_p, $ficha_id_p, $user_id);
     }
 
     public function registrarEvaluacion(int $ra_id, int $aprendiz_id_p, int $ficha_id_p, string $concepto, string $comentario, string $motivo, int $user_id): void {
@@ -107,14 +76,7 @@ class SeguimientoModel {
     }
 
     public function checkRetroalimentacionPermission(int $aprendiz_id_r, int $user_id): bool {
-        $stmtCheckAp = $this->db->prepare("
-            SELECT 1 FROM aprendices ap
-            JOIN fichas f ON ap.ficha_id = f.id
-            LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
-            WHERE ap.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?)
-        ");
-        $stmtCheckAp->execute([$aprendiz_id_r, $user_id, $user_id, $user_id]);
-        return (bool)$stmtCheckAp->fetchColumn();
+        return $this->accessService->tieneAccesoAprendiz($aprendiz_id_r, $user_id);
     }
 
     public function agregarRetroalimentacion(int $aprendiz_id_r, int $user_id, string $tipo, string $contenido, int $privada): void {
