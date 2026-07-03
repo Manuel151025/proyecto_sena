@@ -69,6 +69,23 @@ class EvaluacionesModel {
             $stmtHist = $this->db->prepare("INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo) VALUES (?, ?, ?, ?, ?)");
             $stmtHist->execute([$eval_id, $user_id, $conceptoAnterior, $nuevo_concepto, $motivo ?: 'Calificación inicial']);
         }
+
+        // Registrar el comentario en retroalimentacion (mismo patron que EvidenciasModel::
+        // calificarEvidencia) para que el aprendiz lo vea en su feedback; antes solo la
+        // calificacion de evidencias generaba esta fila.
+        if (trim($comentario) !== '') {
+            $stmtAp = $this->db->prepare("SELECT aprendiz_id FROM evaluaciones WHERE id = ?");
+            $stmtAp->execute([$eval_id]);
+            $aprendizId = (int)$stmtAp->fetchColumn();
+
+            if ($aprendizId > 0) {
+                $tipo = $nuevo_concepto === 'A' ? 'fortaleza' : 'aspecto_mejorar';
+                $this->db->prepare("
+                    INSERT INTO retroalimentacion (evaluacion_id, aprendiz_id, instructor_id, tipo, contenido)
+                    VALUES (?, ?, ?, ?, ?)
+                ")->execute([$eval_id, $aprendizId, $user_id, $tipo, $comentario]);
+            }
+        }
     }
 
     public function getFichas(int $user_rol, int $user_id): array {

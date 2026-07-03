@@ -50,6 +50,7 @@ class SeguimientoModel {
                     VALUES (?, ?, ?, ?, ?)
                 ");
                 $stmtHist->execute([$eval_id, $user_id, $conceptoAnterior, $concepto, $motivo ?: 'Calificación inicial']);
+                $this->registrarRetroalimentacionEvaluacion($eval_id, $aprendiz_id_p, $user_id, $concepto, $comentario);
             } else {
                 $stmt = $this->db->prepare("
                     UPDATE evaluaciones
@@ -57,6 +58,7 @@ class SeguimientoModel {
                     WHERE id = ?
                 ");
                 $stmt->execute([$comentario, $user_id, $eval_id]);
+                $this->registrarRetroalimentacionEvaluacion($eval_id, $aprendiz_id_p, $user_id, $concepto, $comentario);
             }
         } else {
             $stmt = $this->db->prepare("
@@ -72,7 +74,26 @@ class SeguimientoModel {
                 VALUES (?, ?, 'pendiente', ?, 'Calificación inicial')
             ");
             $stmtHist->execute([$new_eval_id, $user_id, $concepto]);
+            $this->registrarRetroalimentacionEvaluacion($new_eval_id, $aprendiz_id_p, $user_id, $concepto, $comentario);
         }
+    }
+
+    /**
+     * Registra en retroalimentacion el comentario de una evaluación calificada,
+     * para que el aprendiz lo vea junto al resto de su feedback (getMisRetroalimentaciones).
+     * Antes, solo la calificación de evidencias generaba esta fila; calificar
+     * directamente desde seguimiento o evaluaciones dejaba el comentario "atrapado"
+     * en evaluaciones.comentario, sin aparecer en el feedback del aprendiz.
+     */
+    private function registrarRetroalimentacionEvaluacion(int $eval_id, int $aprendiz_id, int $instructor_id, string $concepto, string $comentario): void {
+        if (trim($comentario) === '') {
+            return;
+        }
+        $tipo = $concepto === 'A' ? 'fortaleza' : 'aspecto_mejorar';
+        $this->db->prepare("
+            INSERT INTO retroalimentacion (evaluacion_id, aprendiz_id, instructor_id, tipo, contenido)
+            VALUES (?, ?, ?, ?, ?)
+        ")->execute([$eval_id, $aprendiz_id, $instructor_id, $tipo, $comentario]);
     }
 
     public function checkRetroalimentacionPermission(int $aprendiz_id_r, int $user_id): bool {
