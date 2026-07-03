@@ -229,14 +229,15 @@ class DashboardModel {
     public function getRecentEvaluations(int $limit = 5): array {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
-                    e.fecha_evaluacion, 
-                    e.concepto, 
-                    a.nombre as aprendiz, 
-                    r.codigo as rap, 
-                    u.nombre as instructor 
+                SELECT
+                    e.fecha_evaluacion,
+                    e.concepto,
+                    ua.nombre as aprendiz,
+                    r.codigo as rap,
+                    u.nombre as instructor
                 FROM evaluaciones e
                 JOIN aprendices a ON e.aprendiz_id = a.id
+                JOIN usuarios ua ON a.usuario_id = ua.id
                 JOIN resultados_aprendizaje r ON e.resultado_aprendizaje_id = r.id
                 LEFT JOIN usuarios u ON e.instructor_id = u.id
                 WHERE e.fecha_evaluacion IS NOT NULL
