@@ -64,8 +64,7 @@ function log_reset_link(string $email, string $link): void {
 
 function build_reset_link(string $token): string {
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    return $scheme . '://' . $host . APP_URL . '/recover.php?step=3&token=' . urlencode($token);
+    return $scheme . '://' . APP_HOST . APP_URL . '/recover.php?step=3&token=' . urlencode($token);
 }
 
 // =====================================================================
