@@ -2,14 +2,14 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
 
 <style>
-/* â”€â”€ Contenedor general â”€â”€ */
+/* ── Contenedor general ── */
 .cal-wrap {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
 }
 
-/* â”€â”€ Encabezado de pÃ¡gina â”€â”€ */
+/* ── Encabezado de página ── */
 .cal-header {
     display: flex;
     align-items: center;
@@ -37,7 +37,7 @@
     background: <?= $roleColors[$rol] ?? '#39A900' ?>;
 }
 
-/* â”€â”€ Leyenda de colores â”€â”€ */
+/* ── Leyenda de colores ── */
 .cal-legend {
     display: flex;
     flex-wrap: wrap;
@@ -59,7 +59,7 @@
     flex-shrink: 0;
 }
 
-/* â”€â”€ Tarjeta del calendario â”€â”€ */
+/* ── Tarjeta del calendario ── */
 .cal-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -68,7 +68,7 @@
     padding: 1.25rem;
 }
 
-/* â”€â”€ Override FullCalendar para el tema del sistema â”€â”€ */
+/* ── Override FullCalendar para el tema del sistema ── */
 .fc {
     font-family: var(--font-sans);
     --fc-border-color: var(--border);
@@ -135,7 +135,7 @@
 .fc .fc-list-empty { color: var(--text-muted); }
 .fc .fc-list-day-cushion { background: var(--surface-2) !important; }
 
-/* â”€â”€ Modal de detalle de evento â”€â”€ */
+/* ── Modal de detalle de evento ── */
 #cal-modal-overlay {
     display: none;
     position: fixed;
@@ -170,7 +170,7 @@
 }
 #cal-modal .meta-row strong { color: var(--text); white-space: nowrap; }
 
-/* â”€â”€ Adaptabilidad MÃ³vil (Responsive CSS overrides) â”€â”€ */
+/* ── Adaptabilidad Móvil (Responsive CSS overrides) ── */
 @media (max-width: 768px) {
     .cal-card {
         padding: 0.75rem;
@@ -180,7 +180,7 @@
         align-items: stretch !important;
         gap: 0.75rem;
     }
-    /* Reordenar barra de herramientas: TÃ­tulo arriba, luego controles de navegaciÃ³n y vistas */
+    /* Reordenar barra de herramientas: Título arriba, luego controles de navegación y vistas */
     .fc .fc-toolbar-chunk:nth-child(2) {
         order: 1;
         text-align: center;
@@ -236,7 +236,7 @@
   <div class="cal-header">
     <h1>
       <i class="bi bi-calendar3" style="color:<?= $roleColors[$rol] ?? '#39A900' ?>"></i>
-      Calendario AcadÃ©mico
+      Calendario Académico
     </h1>
     <span class="role-badge">
       <i class="bi bi-person-circle"></i> <?= $rolLabels[$rol] ?? $rol ?>
@@ -250,11 +250,11 @@
       <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#6366f1"></span> Fin de Ficha</span>
     <?php endif; ?>
     <?php if ($rol === ROL_APRENDIZ): ?>
-      <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#3B82F6"></span> Fase en EjecuciÃ³n</span>
+      <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#3B82F6"></span> Fase en Ejecución</span>
       <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#39A900"></span> Fase Completada</span>
       <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#6366f1"></span> Fin de Fase</span>
     <?php endif; ?>
-    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#10b981"></span> EvaluaciÃ³n Aprobada (A)</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#10b981"></span> Evaluación Aprobada (A)</span>
     <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#ef4444"></span> Plan de Mejora / Eval. D</span>
   </div>
 
@@ -270,7 +270,7 @@
   <div id="cal-modal">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.25rem;">
       <span id="cal-modal-type" class="badge-soft" style="font-size:.72rem;"></span>
-      <button onclick="closeCalModal()" style="background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">Ã—</button>
+      <button onclick="closeCalModal()" style="background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">×</button>
     </div>
     <h4>
       <span class="modal-event-dot" id="cal-modal-dot"></span>
@@ -279,7 +279,7 @@
     <div id="cal-modal-meta"></div>
     <div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
       <a id="cal-modal-link" href="#" class="btn btn-primary btn-sm" style="border-radius:8px;">
-        <i class="bi bi-arrow-right me-1"></i>Ir al mÃ³dulo
+        <i class="bi bi-arrow-right me-1"></i>Ir al módulo
       </a>
       <button onclick="closeCalModal()" class="btn btn-soft btn-sm" style="border-radius:8px;">Cerrar</button>
     </div>
@@ -294,7 +294,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const calEl = document.getElementById('sena-calendar');
 
-    // Detectar si es pantalla pequeÃ±a
+    // Detectar si es pantalla pequeña
     const isMobile = window.innerWidth < 768;
 
     const calendar = new FullCalendar.Calendar(calEl, {
@@ -333,19 +333,19 @@ document.addEventListener('DOMContentLoaded', function () {
             // Tooltip nativo mientras no haya hover personalizado
             info.el.title = info.event.title;
         },
-        noEventsContent: 'âœ¨ Sin eventos en este perÃ­odo',
+        noEventsContent: '✨ Sin eventos en este período',
         dayMaxEvents: 3,
     });
 
     calendar.render();
 
-    // Redibujar al cambiar tamaÃ±o de ventana
+    // Redibujar al cambiar tamaño de ventana
     window.addEventListener('resize', function () {
         calendar.updateSize();
     });
 });
 
-/* â”€â”€ Modal helpers â”€â”€ */
+/* ── Modal helpers ── */
 function openCalModal(event) {
     const ext   = event.extendedProps || {};
     const color = event.backgroundColor || '#39A900';
@@ -358,16 +358,16 @@ function openCalModal(event) {
 
     // Construir filas de metadata
     const rows = [];
-    if (ext.programa)  rows.push(['ðŸ“š Programa', ext.programa]);
-    if (ext.estado)    rows.push(['ðŸ“Œ Estado',   ext.estado]);
-    if (ext.cumpl)     rows.push(['ðŸ“Š Cumplimiento', ext.cumpl]);
-    if (ext.ficha)     rows.push(['ðŸ“‹ Ficha',    ext.ficha]);
-    if (ext.ra)        rows.push(['ðŸ”– RA',       ext.ra]);
-    if (ext.aprendiz)  rows.push(['ðŸŽ“ Aprendiz', ext.aprendiz]);
-    if (ext.instructor)rows.push(['ðŸ‘¨â€ðŸ« Instructor', ext.instructor]);
+    if (ext.programa)  rows.push(['📚 Programa', ext.programa]);
+    if (ext.estado)    rows.push(['📌 Estado',   ext.estado]);
+    if (ext.cumpl)     rows.push(['📊 Cumplimiento', ext.cumpl]);
+    if (ext.ficha)     rows.push(['📋 Ficha',    ext.ficha]);
+    if (ext.ra)        rows.push(['🔖 RA',       ext.ra]);
+    if (ext.aprendiz)  rows.push(['🎓 Aprendiz', ext.aprendiz]);
+    if (ext.instructor)rows.push(['👨‍🏫 Instructor', ext.instructor]);
 
     const fecha = event.startStr ? event.startStr.substring(0, 10) : '';
-    if (fecha) rows.push(['ðŸ“… Fecha', fecha]);
+    if (fecha) rows.push(['📅 Fecha', fecha]);
 
     document.getElementById('cal-modal-meta').innerHTML = rows
         .map(([k, v]) =>

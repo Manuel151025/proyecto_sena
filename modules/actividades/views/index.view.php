@@ -3,7 +3,7 @@
     <h1 class="mb-1">Actividades de Aprendizaje</h1>
     <p class="text-muted mb-0">
       <?php if ($user_rol === ROL_APRENDIZ): ?>
-        Visualiza el cronograma de actividades y tareas correspondientes a tu ficha tÃ©cnica.
+        Visualiza el cronograma de actividades y tareas correspondientes a tu ficha técnica.
       <?php else: ?>
         Planifica y haz seguimiento a las tareas asignadas a cada ficha del centro.
       <?php endif; ?>
@@ -52,7 +52,7 @@
         <select name="ficha_id" class="form-select"
                 data-picker
                 data-picker-label="Filtrar por ficha"
-                data-picker-placeholder="NÃºmero de ficha...">
+                data-picker-placeholder="Número de ficha...">
           <option value="0">Todas las fichas</option>
           <?php foreach ($fichas as $f): ?>
             <option value="<?= $f['id'] ?>" <?= $filter_ficha === (int)$f['id'] ? 'selected' : '' ?>
@@ -98,7 +98,7 @@
           <i class="bi bi-diagram-3 me-1"></i><?= htmlspecialchars($act['comp_codigo'] ?: 'General') ?>
         </small>
         <p class="card-text text-muted small flex-grow-1">
-          <?= htmlspecialchars($act['descripcion'] ?: 'Sin descripciÃ³n provista para esta actividad acadÃ©mica.') ?>
+          <?= htmlspecialchars($act['descripcion'] ?: 'Sin descripción provista para esta actividad académica.') ?>
         </p>
         
         <div class="bg-light-soft p-2 rounded mb-3" style="background: rgba(0,0,0,0.02); font-size: 0.8rem;">
@@ -107,7 +107,7 @@
             <span class="fw-semibold text-dark"><?= $act['fecha_inicio'] ? date('d/m/Y', strtotime($act['fecha_inicio'])) : 'N/A' ?></span>
           </div>
           <div class="d-flex justify-content-between mb-1">
-            <span class="text-muted">LÃ­mite:</span>
+            <span class="text-muted">Límite:</span>
             <span class="fw-semibold text-danger"><?= $act['fecha_fin'] ? date('d/m/Y', strtotime($act['fecha_fin'])) : 'N/A' ?></span>
           </div>
           <div class="d-flex justify-content-between">
@@ -134,7 +134,7 @@
                 <i class="bi bi-pencil"></i>
               </button>
               <form method="POST" class="d-inline"
-                    onsubmit="return confirm('Â¿Eliminar esta actividad?')">
+                    onsubmit="return confirm('¿Eliminar esta actividad?')">
                 <input type="hidden" name="action" value="eliminar">
                 <input type="hidden" name="id" value="<?= $act['id'] ?>">
                 <button type="submit" class="btn btn-sm btn-soft text-danger">
@@ -183,17 +183,17 @@
               <label class="form-label text-muted small fw-semibold">Competencia</label>
               <select name="competencia_id" id="edit_act_competencia" class="form-select" required>
                 <?php foreach ($competencias as $c): ?>
-                  <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['codigo']) ?> â€” <?= htmlspecialchars($c['nombre']) ?></option>
+                  <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">TÃ­tulo / Nombre</label>
+            <label class="form-label text-muted small fw-semibold">Título / Nombre</label>
             <input type="text" name="nombre" id="edit_act_nombre" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">DescripciÃ³n</label>
+            <label class="form-label text-muted small fw-semibold">Descripción</label>
             <textarea name="descripcion" id="edit_act_descripcion" class="form-control" rows="3"></textarea>
           </div>
           <div class="row g-3 mb-3">
@@ -202,7 +202,7 @@
               <input type="date" name="fecha_inicio" id="edit_act_inicio" class="form-control">
             </div>
             <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Fecha LÃ­mite</label>
+              <label class="form-label text-muted small fw-semibold">Fecha Límite</label>
               <input type="date" name="fecha_fin" id="edit_act_fin" class="form-control">
             </div>
           </div>
@@ -264,7 +264,7 @@ function filtrarCompetencias(fichaSelectId, competenciaSelectId) {
             if (c.programa_id === programaId) {
                 const opt = document.createElement('option');
                 opt.value = c.id;
-                opt.textContent = c.codigo + ' â€” ' + c.nombre;
+                opt.textContent = c.codigo + ' — ' + c.nombre;
                 opt.dataset.search = c.codigo + ' ' + c.nombre;
                 if (String(c.id) === String(prevValue)) {
                     opt.selected = true;
@@ -278,12 +278,12 @@ function filtrarCompetencias(fichaSelectId, competenciaSelectId) {
     competenciaSelect.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-// Escuchar cambios en la selecciÃ³n de ficha del modal de creaciÃ³n
+// Escuchar cambios en la selección de ficha del modal de creación
 document.getElementById('crear_act_ficha')?.addEventListener('change', function() {
     filtrarCompetencias('crear_act_ficha', 'crear_act_competencia');
 });
 
-// Escuchar cambios en la selecciÃ³n de ficha del modal de ediciÃ³n
+// Escuchar cambios en la selección de ficha del modal de edición
 document.getElementById('edit_act_ficha')?.addEventListener('change', function() {
     filtrarCompetencias('edit_act_ficha', 'edit_act_competencia');
 });
@@ -326,7 +326,7 @@ function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripci
               <select name="ficha_id" id="crear_act_ficha" class="form-select" required
                       data-picker
                       data-picker-label="Seleccionar ficha"
-                      data-picker-placeholder="NÃºmero de ficha...">
+                      data-picker-placeholder="Número de ficha...">
                 <option value="" disabled selected>Seleccione Ficha...</option>
                 <?php foreach ($fichas as $f): ?>
                   <option value="<?= $f['id'] ?>"
@@ -342,13 +342,13 @@ function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripci
               <select name="competencia_id" id="crear_act_competencia" class="form-select" required
                       data-picker
                       data-picker-label="Seleccionar competencia"
-                      data-picker-placeholder="CÃ³digo o nombre de la competencia...">
+                      data-picker-placeholder="Código o nombre de la competencia...">
                 <option value="" disabled selected>Seleccione...</option>
                 <?php foreach ($competencias as $c): ?>
                   <option value="<?= $c['id'] ?>"
                           data-search="<?= htmlspecialchars($c['codigo'] . ' ' . $c['nombre']) ?>"
                           data-programa-id="<?= $c['programa_id'] ?>">
-                    <?= htmlspecialchars($c['codigo']) ?> â€” <?= htmlspecialchars($c['nombre']) ?>
+                    <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
                   </option>
                 <?php endforeach; ?>
               </select>
@@ -356,13 +356,13 @@ function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripci
           </div>
 
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">TÃ­tulo / Nombre de la Tarea</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej. Taller PrÃ¡ctico de CSS Grid" required>
+            <label class="form-label text-muted small fw-semibold">Título / Nombre de la Tarea</label>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej. Taller Práctico de CSS Grid" required>
           </div>
 
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">DescripciÃ³n del Entregable</label>
-            <textarea name="descripcion" class="form-control" rows="3" placeholder="Instrucciones, requerimientos tÃ©cnicos, links..."></textarea>
+            <label class="form-label text-muted small fw-semibold">Descripción del Entregable</label>
+            <textarea name="descripcion" class="form-control" rows="3" placeholder="Instrucciones, requerimientos técnicos, links..."></textarea>
           </div>
 
           <div class="row g-3 mb-3">

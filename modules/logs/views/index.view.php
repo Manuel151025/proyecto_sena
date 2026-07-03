@@ -1,6 +1,6 @@
 ﻿<div class="mb-3">
-  <h1 class="mb-1">AuditorÃ­a del Sistema</h1>
-  <p class="text-muted mb-0">Revisa la bitÃ¡cora de acciones y modificaciones del sistema para control de calidad y trazabilidad.</p>
+  <h1 class="mb-1">Auditoría del Sistema</h1>
+  <p class="text-muted mb-0">Revisa la bitácora de acciones y modificaciones del sistema para control de calidad y trazabilidad.</p>
 </div>
 
 <?php if (!empty($errors)): ?>
@@ -20,14 +20,14 @@
   <div class="card-body">
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-md-6">
-        <label class="form-label text-muted small">Buscar por Usuario, DescripciÃ³n o MÃ³dulo</label>
+        <label class="form-label text-muted small">Buscar por Usuario, Descripción o Módulo</label>
         <div class="input-group">
           <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Buscar..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>
       <div class="col-md-4">
-        <label class="form-label text-muted small">AcciÃ³n realizada</label>
+        <label class="form-label text-muted small">Acción realizada</label>
         <select name="accion" class="form-select">
           <option value="">Todas las acciones</option>
           <option value="Crear" <?= $filter_accion === 'Crear' ? 'selected' : '' ?>>Crear</option>
@@ -44,7 +44,7 @@
   </div>
 </div>
 
-<!-- BitÃ¡cora de AuditorÃ­a -->
+<!-- Bitácora de Auditoría -->
 <div class="card glass-card border-0 shadow-sm">
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -53,9 +53,9 @@
           <tr>
             <th class="ps-4">Fecha / Hora</th>
             <th>Usuario</th>
-            <th>AcciÃ³n</th>
-            <th>MÃ³dulo</th>
-            <th>DescripciÃ³n</th>
+            <th>Acción</th>
+            <th>Módulo</th>
+            <th>Descripción</th>
             <th class="pe-4">IP Address</th>
           </tr>
         </thead>
@@ -92,7 +92,7 @@
           <tr>
             <td colspan="6" class="text-center py-5 text-muted">
               <i class="bi bi-shield-check d-block mb-2" style="font-size:2rem; opacity:0.5;"></i>
-              No hay logs registrados en la bitÃ¡cora todavÃ­a.
+              No hay logs registrados en la bitácora todavía.
             </td>
           </tr>
           <?php endif; ?>

@@ -1,13 +1,13 @@
 <div class="mb-3">
   <h1><?= $id && $ficha ? 'Editar Ficha' : 'Crear Nueva Ficha' ?></h1>
-  <p class="text-muted mb-0"><?= $id && $ficha ? 'Modifica los datos de la ficha' : 'Completa el formulario para registrar una nueva ficha de formaciÃ³n' ?>.</p>
+  <p class="text-muted mb-0"><?= $id && $ficha ? 'Modifica los datos de la ficha' : 'Completa el formulario para registrar una nueva ficha de formación' ?>.</p>
 </div>
 
 <?php if ($mensaje): ?>
 <div class="alert-flat <?= $tipo_mensaje ?> mb-3">
   <i class="bi bi-check-circle"></i>
   <div><?= htmlspecialchars($mensaje) ?></div>
-  <br><a href="<?= APP_URL ?>/index.php/fichas">Volver a fichas â†’</a>
+  <br><a href="<?= APP_URL ?>/index.php/fichas">Volver a fichas →</a>
 </div>
 <?php endif; ?>
 
@@ -40,7 +40,7 @@
               <option value="">-- Sin proyecto asignado --</option>
               <?php foreach ($proyectos as $proy): ?>
               <option value="<?= $proy['id'] ?>" <?= ($ficha['proyecto_id'] ?? $_POST['proyecto_id'] ?? 0) == $proy['id'] ? 'selected' : '' ?>>
-                <?= htmlspecialchars($proy['codigo'] . ' â€” ' . $proy['nombre']) ?>
+                <?= htmlspecialchars($proy['codigo'] . ' — ' . $proy['nombre']) ?>
               </option>
               <?php endforeach; ?>
             </select>
@@ -73,9 +73,9 @@
           <div class="mb-3">
             <label class="form-label">Estado</label>
             <select name="estado" class="form-select" required>
-              <option value="planeacion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'planeacion' ? 'selected' : '' ?>>PlaneaciÃ³n</option>
-              <option value="induccion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'induccion' ? 'selected' : '' ?>>InducciÃ³n</option>
-              <option value="ejecucion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'ejecucion' ? 'selected' : '' ?>>EjecuciÃ³n</option>
+              <option value="planeacion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'planeacion' ? 'selected' : '' ?>>Planeación</option>
+              <option value="induccion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'induccion' ? 'selected' : '' ?>>Inducción</option>
+              <option value="ejecucion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'ejecucion' ? 'selected' : '' ?>>Ejecución</option>
               <option value="cierre" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'cierre' ? 'selected' : '' ?>>Cierre</option>
             </select>
           </div>
@@ -114,15 +114,15 @@
   <div class="col-lg-5">
     <div class="card">
       <div class="card-body">
-        <h5>â„¹ï¸ InformaciÃ³n importante</h5>
+        <h5>ℹ️ Información importante</h5>
         <ul style="font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
-          <li><strong>NÃºmero Ãºnico:</strong> Cada ficha debe tener un nÃºmero Ãºnico en el sistema.</li>
+          <li><strong>Número único:</strong> Cada ficha debe tener un número único en el sistema.</li>
           <li><strong>Estados:</strong>
             <ul>
-              <li><strong>PlaneaciÃ³n:</strong> Fase inicial de preparaciÃ³n</li>
-              <li><strong>InducciÃ³n:</strong> PresentaciÃ³n del programa</li>
-              <li><strong>EjecuciÃ³n:</strong> Desarrollo del programa</li>
-              <li><strong>Cierre:</strong> FinalizaciÃ³n del programa</li>
+              <li><strong>Planeación:</strong> Fase inicial de preparación</li>
+              <li><strong>Inducción:</strong> Presentación del programa</li>
+              <li><strong>Ejecución:</strong> Desarrollo del programa</li>
+              <li><strong>Cierre:</strong> Finalización del programa</li>
             </ul>
           </li>
           <li><strong>Cumplimiento:</strong> Porcentaje de avance del programa (0-100%).</li>

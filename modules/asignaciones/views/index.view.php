@@ -2,11 +2,11 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="mb-1">Asignaciones de Instructores</h1>
-    <p class="text-muted mb-0">Asocia instructores a competencias especÃ­ficas dentro de cada ficha tÃ©cnica.</p>
+    <p class="text-muted mb-0">Asocia instructores a competencias específicas dentro de cada ficha técnica.</p>
   </div>
   <?php if (hasRole(ROL_COORDINADOR)): ?>
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAsignar">
-    <i class="bi bi-person-plus me-1"></i> Nueva AsignaciÃ³n
+    <i class="bi bi-person-plus me-1"></i> Nueva Asignación
   </button>
   <?php endif; ?>
 </div>
@@ -35,7 +35,7 @@
   <div class="card-body">
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-md-4">
-        <label class="form-label text-muted small">Buscar asignaciÃ³n</label>
+        <label class="form-label text-muted small">Buscar asignación</label>
         <div class="input-group">
           <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Ficha, instructor o competencia..." value="<?= htmlspecialchars($search) ?>">
@@ -46,12 +46,12 @@
         <select name="ficha_id" class="form-select"
                 data-picker
                 data-picker-label="Filtrar por ficha"
-                data-picker-placeholder="NÃºmero de ficha o programa...">
+                data-picker-placeholder="Número de ficha o programa...">
           <option value="0">Todas las fichas</option>
           <?php foreach ($fichas as $f): ?>
             <option value="<?= $f['id'] ?>" <?= $filter_ficha === (int)$f['id'] ? 'selected' : '' ?>
                     data-search="<?= htmlspecialchars($f['numero_ficha'] . ' ' . $f['programa_codigo']) ?>">
-              Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> â€” <?= htmlspecialchars($f['programa_codigo']) ?>
+              Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa_codigo']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -87,7 +87,7 @@
             <th class="ps-4">Ficha</th>
             <th>Competencia</th>
             <th>Instructor Asignado</th>
-            <th>Fecha AsignaciÃ³n</th>
+            <th>Fecha Asignación</th>
             <?php if (hasRole(ROL_COORDINADOR)): ?>
             <th class="pe-4 text-end">Acciones</th>
             <?php endif; ?>
@@ -159,12 +159,12 @@
             <select name="ficha_id" class="form-select" required
                     data-picker
                     data-picker-label="Seleccionar ficha"
-                    data-picker-placeholder="NÃºmero de ficha o programa...">
+                    data-picker-placeholder="Número de ficha o programa...">
               <option value="" disabled selected>Seleccione Ficha...</option>
               <?php foreach ($fichas as $f): ?>
                 <option value="<?= $f['id'] ?>"
                         data-search="<?= htmlspecialchars($f['numero_ficha'] . ' ' . $f['programa_codigo']) ?>">
-                  Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> â€” <?= htmlspecialchars($f['programa_codigo']) ?>
+                  Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa_codigo']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -175,12 +175,12 @@
             <select name="competencia_id" class="form-select" required
                     data-picker
                     data-picker-label="Seleccionar competencia"
-                    data-picker-placeholder="CÃ³digo o nombre de la competencia...">
+                    data-picker-placeholder="Código o nombre de la competencia...">
               <option value="" disabled selected>Seleccione Competencia...</option>
               <?php foreach ($competencias as $c): ?>
                 <option value="<?= $c['id'] ?>"
                         data-search="<?= htmlspecialchars($c['programa_codigo'] . ' ' . $c['codigo'] . ' ' . $c['nombre']) ?>">
-                  <?= htmlspecialchars($c['codigo']) ?> â€” <?= htmlspecialchars($c['nombre']) ?>
+                  <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -196,7 +196,7 @@
               <?php foreach ($instructores as $inst): ?>
                 <option value="<?= $inst['id'] ?>"
                         data-search="<?= htmlspecialchars($inst['email']) ?>">
-                  <?= htmlspecialchars($inst['nombre']) ?> â€” <?= htmlspecialchars($inst['email']) ?>
+                  <?= htmlspecialchars($inst['nombre']) ?> — <?= htmlspecialchars($inst['email']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -220,7 +220,7 @@
 
 <script>
 function confirmarEliminarAsignacion(id, instructor, competencia) {
-    if (confirm('Â¿EstÃ¡s seguro de que deseas desvincular al instructor ' + instructor + ' de la competencia ' + competencia + '?')) {
+    if (confirm('¿Estás seguro de que deseas desvincular al instructor ' + instructor + ' de la competencia ' + competencia + '?')) {
         document.getElementById('eliminar_asignacion_id').value = id;
         document.getElementById('formEliminarAsignacion').submit();
     }
