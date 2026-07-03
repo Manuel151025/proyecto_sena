@@ -85,10 +85,10 @@ class UsuarioController extends BaseController {
             try {
                 $id = (int) $_POST['id'];
                 if ($this->usuarioModel->delete($id)) {
-                    setFlashMessage('Usuario eliminado correctamente', 'success');
+                    setFlashMessage('Usuario desactivado correctamente', 'success');
                 }
             } catch (Exception $e) {
-                setFlashMessage('Error al eliminar usuario', 'danger');
+                setFlashMessage('Error al desactivar usuario', 'danger');
             }
             $this->redirect(APP_URL . '/index.php/usuarios');
         }

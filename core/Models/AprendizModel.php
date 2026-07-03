@@ -242,8 +242,11 @@ class AprendizModel {
         try {
             $db->beginTransaction();
 
-            // Eliminar de aprendices
-            $db->prepare("DELETE FROM aprendices WHERE id = ?")->execute([$aprendizId]);
+            // Marcar como desertado en vez de borrar físicamente: el aprendiz ya
+            // tiene evaluaciones/evidencias asociadas (creadas al matricularse) y
+            // esas tablas no tienen ON DELETE CASCADE, por lo que un DELETE físico
+            // siempre fallaba por restricción de llave foránea.
+            $db->prepare("UPDATE aprendices SET estado = 'desertado' WHERE id = ?")->execute([$aprendizId]);
 
             // Desactivar el usuario
             $db->prepare("UPDATE usuarios SET estado = 'inactivo' WHERE id = ?")->execute([$usuario_id]);
