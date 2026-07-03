@@ -78,16 +78,42 @@ class EvidenciasController extends BaseController {
                         $tamanio_kb  = (int)round($_FILES['archivo']['size'] / 1024);
                         $tipo_archivo = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-                        $uploadDir = __DIR__ . '/../../uploads/evidencias/';
-                        if (!is_dir($uploadDir)) {
-                            mkdir($uploadDir, 0777, true);
-                        }
+                        $allowedMimeByExt = [
+                            'pdf'  => ['application/pdf'],
+                            'doc'  => ['application/msword', 'application/x-ole-storage'],
+                            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
+                            'xls'  => ['application/vnd.ms-excel', 'application/x-ole-storage'],
+                            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
+                            'ppt'  => ['application/vnd.ms-powerpoint', 'application/x-ole-storage'],
+                            'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/zip'],
+                            'jpg'  => ['image/jpeg'],
+                            'jpeg' => ['image/jpeg'],
+                            'png'  => ['image/png'],
+                            'txt'  => ['text/plain'],
+                        ];
 
-                        $newFileName = md5(time() . $fileName) . '.' . $tipo_archivo;
-                        if (move_uploaded_file($fileTmpPath, $uploadDir . $newFileName)) {
-                            $archivo_url = 'uploads/evidencias/' . $newFileName;
+                        if (!isset($allowedMimeByExt[$tipo_archivo])) {
+                            $errors[] = 'Tipo de archivo no permitido. Formatos aceptados: PDF, Word, Excel, PowerPoint, imágenes (JPG/PNG) o TXT.';
                         } else {
-                            $errors[] = 'No se pudo guardar el archivo subido.';
+                            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                            $realMime = $finfo ? finfo_file($finfo, $fileTmpPath) : false;
+                            if ($finfo) finfo_close($finfo);
+
+                            if ($realMime === false || !in_array($realMime, $allowedMimeByExt[$tipo_archivo], true)) {
+                                $errors[] = 'El contenido del archivo no coincide con la extensión indicada.';
+                            } else {
+                                $uploadDir = __DIR__ . '/../../uploads/evidencias/';
+                                if (!is_dir($uploadDir)) {
+                                    mkdir($uploadDir, 0755, true);
+                                }
+
+                                $newFileName = bin2hex(random_bytes(16)) . '.' . $tipo_archivo;
+                                if (move_uploaded_file($fileTmpPath, $uploadDir . $newFileName)) {
+                                    $archivo_url = 'uploads/evidencias/' . $newFileName;
+                                } else {
+                                    $errors[] = 'No se pudo guardar el archivo subido.';
+                                }
+                            }
                         }
                     }
 
