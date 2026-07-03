@@ -8,6 +8,12 @@ define('APP_NAME', 'SENA Seguimiento');
 define('APP_VERSION', '1.0.0');
 define('APP_URL', getenv('APP_URL') !== false ? getenv('APP_URL') : '/proyecto_sena');
 
+// Dominio de confianza para construir URLs absolutas (ej. enlaces de correo).
+// Si no se configura explícitamente, se usa el Host de la petición como
+// último recurso (solo aceptable en desarrollo local) — en producción debe
+// definirse APP_HOST en .env para no confiar en un header controlado por el cliente.
+define('APP_HOST', getenv('APP_HOST') !== false ? getenv('APP_HOST') : ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+
 // Rutas base
 define('BASE_PATH', dirname(__DIR__) . '/');
 define('ASSETS_PATH', APP_URL . '/assets');
