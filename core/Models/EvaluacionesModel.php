@@ -20,7 +20,7 @@ class EvaluacionesModel {
         return (int)($stmt->fetchColumn() ?: 0);
     }
 
-    public function getEvaluacionAnterior(int $eval_id, int $user_rol, int $user_id) {
+    public function getEvaluacionAnterior(int $eval_id, string $user_rol, int $user_id) {
         if ($user_rol === ROL_INSTRUCTOR) {
             $stmtCurrent = $this->db->prepare("
                 SELECT eval.concepto 
@@ -88,7 +88,7 @@ class EvaluacionesModel {
         }
     }
 
-    public function getFichas(int $user_rol, int $user_id): array {
+    public function getFichas(string $user_rol, int $user_id): array {
         if ($user_rol === ROL_INSTRUCTOR) {
             $stmtF = $this->db->prepare("
                 SELECT DISTINCT f.id, f.numero_ficha 
@@ -104,7 +104,7 @@ class EvaluacionesModel {
         }
     }
 
-    public function getEvaluaciones(int $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search): array {
+    public function getEvaluaciones(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search): array {
         $sql = "
             SELECT eval.id, eval.concepto, eval.comentario, eval.fecha_evaluacion,
                    ra.codigo as ra_codigo, ra.denominacion as ra_denominacion,
@@ -183,7 +183,7 @@ class EvaluacionesModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getStatsEval(int $user_rol, int $user_id, int $aprendiz_id): array {
+    public function getStatsEval(string $user_rol, int $user_id, int $aprendiz_id): array {
         if ($user_rol === ROL_APRENDIZ) {
             $sqlStats = "SELECT 
                 COUNT(*) as total,

@@ -153,7 +153,7 @@ class EvidenciasModel {
         }
     }
 
-    public function getEvidencias(int $user_rol, int $user_id, int $aprendiz_id): array {
+    public function getEvidencias(string $user_rol, int $user_id, int $aprendiz_id): array {
         if ($user_rol === ROL_APRENDIZ) {
             $stmt = $this->db->prepare("
                 SELECT ev.*, ra.denominacion AS ra_denominacion, u.nombre AS instructor_revisor
