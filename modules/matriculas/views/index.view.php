@@ -64,15 +64,15 @@
   <div class="card-body">
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-md-4">
-        <label class="form-label text-muted small">Buscar aprendiz</label>
+        <label class="form-label text-muted small" for="searchAprendizInput">Buscar aprendiz</label>
         <div class="input-group">
           <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" name="search" id="searchAprendizInput" class="form-control border-start-0 ps-0" placeholder="Nombre, correo o documento..." value="<?= htmlspecialchars($search) ?>">
         </div>
       </div>
       <div class="col-md-3">
-        <label class="form-label text-muted small">Filtrar por Ficha</label>
-        <select name="ficha_id" class="form-select" onchange="this.form.submit()"
+        <label class="form-label text-muted small" for="filterFichaSelect">Filtrar por Ficha</label>
+        <select name="ficha_id" id="filterFichaSelect" class="form-select" onchange="this.form.submit()"
                 data-picker
                 data-picker-label="Filtrar por ficha"
                 data-picker-placeholder="Buscar ficha por número o programa...">
@@ -86,8 +86,8 @@
         </select>
       </div>
       <div class="col-md-3">
-        <label class="form-label text-muted small">Estado</label>
-        <select name="estado" class="form-select">
+        <label class="form-label text-muted small" for="filterEstadoSelect">Estado</label>
+        <select name="estado" id="filterEstadoSelect" class="form-select">
           <option value="">Todos</option>
           <option value="matriculado" <?= $filter_estado === 'matriculado' ? 'selected' : '' ?>>Matriculado</option>
           <option value="suspendido" <?= $filter_estado === 'suspendido' ? 'selected' : '' ?>>Suspendido</option>
@@ -221,19 +221,19 @@
         <div class="modal-body">
           <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Nombre Completo</label>
-              <input type="text" name="nombre" class="form-control" placeholder="Ej. Carlos Mario Restrepo" required>
+              <label class="form-label text-muted small fw-semibold" for="mat-nombre">Nombre Completo</label>
+              <input type="text" id="mat-nombre" name="nombre" class="form-control" placeholder="Ej. Carlos Mario Restrepo" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Correo Electrónico Institucional</label>
-              <input type="email" name="email" class="form-control" placeholder="Ej. carlos@soy.sena.edu.co" required>
+              <label class="form-label text-muted small fw-semibold" for="mat-email">Correo Electrónico Institucional</label>
+              <input type="email" id="mat-email" name="email" class="form-control" placeholder="Ej. carlos@soy.sena.edu.co" required>
             </div>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Tipo Documento</label>
-              <select name="tipo_documento" class="form-select">
+              <label class="form-label text-muted small fw-semibold" for="mat-tipo-documento">Tipo Documento</label>
+              <select id="mat-tipo-documento" name="tipo_documento" class="form-select">
                 <option value="CC">Cédula de Ciudadanía (CC)</option>
                 <option value="TI">Tarjeta de Identidad (TI)</option>
                 <option value="CE">Cédula de Extranjería (CE)</option>
@@ -242,12 +242,12 @@
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Número Documento</label>
-              <input type="text" name="numero_documento" class="form-control" placeholder="Ej. 1045612378" required>
+              <label class="form-label text-muted small fw-semibold" for="mat-numero-documento">Número Documento</label>
+              <input type="text" id="mat-numero-documento" name="numero_documento" class="form-control" placeholder="Ej. 1045612378" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Ficha de Destino</label>
-              <select name="ficha_id" class="form-select" required
+              <label class="form-label text-muted small fw-semibold" for="mat-ficha-id">Ficha de Destino</label>
+              <select id="mat-ficha-id" name="ficha_id" class="form-select" required
                       data-picker
                       data-picker-label="Seleccionar ficha"
                       data-picker-placeholder="Número de ficha o nombre del programa...">
@@ -264,30 +264,30 @@
 
           <div class="row g-3 mb-3">
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Género</label>
-              <select name="genero" class="form-select">
+              <label class="form-label text-muted small fw-semibold" for="mat-genero">Género</label>
+              <select id="mat-genero" name="genero" class="form-select">
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
                 <option value="O">Otro</option>
               </select>
             </div>
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Fecha Nacimiento</label>
-              <input type="date" name="fecha_nacimiento" class="form-control">
+              <label class="form-label text-muted small fw-semibold" for="mat-fecha-nacimiento">Fecha Nacimiento</label>
+              <input type="date" id="mat-fecha-nacimiento" name="fecha_nacimiento" class="form-control">
             </div>
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Teléfono</label>
-              <input type="text" name="telefono" class="form-control" placeholder="Ej. 3127894512">
+              <label class="form-label text-muted small fw-semibold" for="mat-telefono">Teléfono</label>
+              <input type="text" id="mat-telefono" name="telefono" class="form-control" placeholder="Ej. 3127894512">
             </div>
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Ciudad</label>
-              <input type="text" name="ciudad" class="form-control" placeholder="Ej. Medellín">
+              <label class="form-label text-muted small fw-semibold" for="mat-ciudad">Ciudad</label>
+              <input type="text" id="mat-ciudad" name="ciudad" class="form-control" placeholder="Ej. Medellín">
             </div>
           </div>
           <div class="row g-3 mb-3">
             <div class="col-md-12">
-              <label class="form-label text-muted small fw-semibold">Instructor de Seguimiento (Etapa Práctica)</label>
-              <select name="instructor_seguimiento_id" class="form-select">
+              <label class="form-label text-muted small fw-semibold" for="mat-instructor-seguimiento">Instructor de Seguimiento (Etapa Práctica)</label>
+              <select id="mat-instructor-seguimiento" name="instructor_seguimiento_id" class="form-select">
                 <option value="">-- Sin asignar --</option>
                 <?php foreach ($instructores as $inst): ?>
                   <option value="<?= $inst['id'] ?>"><?= htmlspecialchars($inst['nombre']) ?></option>
@@ -322,8 +322,8 @@
           </p>
           
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Ficha de Destino</label>
-            <select name="ficha_id" class="form-select" required>
+            <label class="form-label text-muted small fw-semibold" for="csv-ficha-id">Ficha de Destino</label>
+            <select id="csv-ficha-id" name="ficha_id" class="form-select" required>
               <option value="" disabled selected>Seleccionar Ficha...</option>
               <?php foreach ($fichas as $f): ?>
                 <option value="<?= $f['id'] ?>">
@@ -334,8 +334,8 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Seleccionar Archivo CSV</label>
-            <input type="file" name="file_csv" class="form-control" accept=".csv" required>
+            <label class="form-label text-muted small fw-semibold" for="csv-file">Seleccionar Archivo CSV</label>
+            <input type="file" id="csv-file" name="file_csv" class="form-control" accept=".csv" required>
           </div>
 
           <div class="p-3 bg-light rounded-3 text-muted" style="font-size:0.8rem;">
@@ -373,18 +373,18 @@
         <div class="modal-body">
           <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Nombre Completo</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_nombre">Nombre Completo</label>
               <input type="text" name="nombre" id="edit_nombre" class="form-control" placeholder="Ej. Carlos Mario Restrepo" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Correo Electrónico Institucional</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_email">Correo Electrónico Institucional</label>
               <input type="email" name="email" id="edit_email" class="form-control" placeholder="Ej. carlos@soy.sena.edu.co" required>
             </div>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Tipo Documento</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_tipo_documento">Tipo Documento</label>
               <select name="tipo_documento" id="edit_tipo_documento" class="form-select">
                 <option value="CC">Cédula de Ciudadanía (CC)</option>
                 <option value="TI">Tarjeta de Identidad (TI)</option>
@@ -394,11 +394,11 @@
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Número Documento</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_numero_documento">Número Documento</label>
               <input type="text" name="numero_documento" id="edit_numero_documento" class="form-control" placeholder="Ej. 1045612378" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Ficha de Formación</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_ficha_id">Ficha de Formación</label>
               <select name="ficha_id" id="edit_ficha_id" class="form-select" required
                       data-picker
                       data-picker-label="Seleccionar ficha"
@@ -415,7 +415,7 @@
 
           <div class="row g-3 mb-3">
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Estado de Matrícula</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_estado">Estado de Matrícula</label>
               <select name="estado" id="edit_estado" class="form-select" required>
                 <option value="matriculado">Matriculado</option>
                 <option value="suspendido">Suspendido</option>
@@ -425,7 +425,7 @@
               </select>
             </div>
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Género</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_genero">Género</label>
               <select name="genero" id="edit_genero" class="form-select">
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
@@ -433,21 +433,21 @@
               </select>
             </div>
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Fecha Nacimiento</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_fecha_nacimiento">Fecha Nacimiento</label>
               <input type="date" name="fecha_nacimiento" id="edit_fecha_nacimiento" class="form-control">
             </div>
             <div class="col-md-3">
-              <label class="form-label text-muted small fw-semibold">Teléfono</label>
+              <label class="form-label text-muted small fw-semibold" for="edit_telefono">Teléfono</label>
               <input type="text" name="telefono" id="edit_telefono" class="form-control" placeholder="Ej. 3127894512">
             </div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Ciudad</label>
+            <label class="form-label text-muted small fw-semibold" for="edit_ciudad">Ciudad</label>
             <input type="text" name="ciudad" id="edit_ciudad" class="form-control" placeholder="Ej. Medellín">
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Instructor de Seguimiento (Etapa Práctica)</label>
+            <label class="form-label text-muted small fw-semibold" for="edit_instructor_seguimiento_id">Instructor de Seguimiento (Etapa Práctica)</label>
             <select name="instructor_seguimiento_id" id="edit_instructor_seguimiento_id" class="form-select">
               <option value="">-- Sin asignar --</option>
               <?php foreach ($instructores as $inst): ?>

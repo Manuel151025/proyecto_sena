@@ -29,25 +29,25 @@
         <form method="POST">
           <?= csrfField() ?>
           <div class="mb-3">
-            <label class="form-label">Nombre completo</label>
-            <input type="text" name="nombre" class="form-control" value="<?= htmlspecialchars($_POST['nombre'] ?? $usuario['nombre'] ?? '') ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
+            <label class="form-label" for="editar-nombre">Nombre completo</label>
+            <input type="text" id="editar-nombre" name="nombre" class="form-control" value="<?= htmlspecialchars($_POST['nombre'] ?? $usuario['nombre'] ?? '') ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Email institucional</label>
-            <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($_POST['email'] ?? $usuario['email'] ?? '') ?>" maxlength="100" required>
+            <label class="form-label" for="editar-email">Email institucional</label>
+            <input type="email" id="editar-email" name="email" class="form-control" value="<?= htmlspecialchars($_POST['email'] ?? $usuario['email'] ?? '') ?>" maxlength="100" required>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Contraseña (Opcional)</label>
-            <input type="password" name="password" class="form-control" placeholder="Déjalo en blanco para mantener la actual" minlength="6" maxlength="255">
+            <label class="form-label" for="editar-password">Contraseña (Opcional)</label>
+            <input type="password" id="editar-password" name="password" class="form-control" placeholder="Déjalo en blanco para mantener la actual" minlength="6" maxlength="255">
             <small class="text-muted">Mínimo 6 caracteres si decides cambiarla.</small>
           </div>
 
           <div class="row mb-3">
             <div class="col-md-6">
-              <label class="form-label">Rol</label>
-              <select name="rol" class="form-select" required>
+              <label class="form-label" for="editar-rol">Rol</label>
+              <select id="editar-rol" name="rol" class="form-select" required>
                 <?php $currentRol = $_POST['rol'] ?? $usuario['rol'] ?? ''; ?>
                 <option value="aprendiz" <?= $currentRol === 'aprendiz' ? 'selected' : '' ?>>Aprendiz</option>
                 <option value="instructor" <?= $currentRol === 'instructor' ? 'selected' : '' ?>>Instructor</option>
@@ -55,8 +55,8 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Estado</label>
-              <select name="estado" class="form-select" required>
+              <label class="form-label" for="editar-estado">Estado</label>
+              <select id="editar-estado" name="estado" class="form-select" required>
                 <?php $currentEstado = $_POST['estado'] ?? $usuario['estado'] ?? ''; ?>
                 <option value="activo" <?= $currentEstado === 'activo' ? 'selected' : '' ?>>Activo</option>
                 <option value="inactivo" <?= $currentEstado === 'inactivo' ? 'selected' : '' ?>>Inactivo</option>

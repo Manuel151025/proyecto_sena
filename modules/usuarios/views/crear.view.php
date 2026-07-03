@@ -29,23 +29,23 @@
         <form method="POST">
           <?= csrfField() ?>
           <div class="mb-3">
-            <label class="form-label">Nombre completo</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej: Carlos Andrés Martínez" value="<?= htmlspecialchars($_POST['nombre'] ?? '') ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
+            <label class="form-label" for="crear-nombre">Nombre completo</label>
+            <input type="text" id="crear-nombre" name="nombre" class="form-control" placeholder="Ej: Carlos Andrés Martínez" value="<?= htmlspecialchars($_POST['nombre'] ?? '') ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Email institucional</label>
-            <input type="email" name="email" class="form-control" placeholder="usuario@sena.edu.co" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" maxlength="100" required>
+            <label class="form-label" for="crear-email">Email institucional</label>
+            <input type="email" id="crear-email" name="email" class="form-control" placeholder="usuario@sena.edu.co" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" maxlength="100" required>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Contraseña</label>
-            <input type="password" name="password" class="form-control" placeholder="Mínimo 6 caracteres" minlength="6" maxlength="255" required>
+            <label class="form-label" for="crear-password">Contraseña</label>
+            <input type="password" id="crear-password" name="password" class="form-control" placeholder="Mínimo 6 caracteres" minlength="6" maxlength="255" required>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Rol</label>
-            <select name="rol" class="form-select" required>
+            <label class="form-label" for="crear-rol">Rol</label>
+            <select id="crear-rol" name="rol" class="form-select" required>
               <option value="aprendiz" <?= ($_POST['rol'] ?? '') === 'aprendiz' ? 'selected' : '' ?>>Aprendiz</option>
               <option value="instructor" <?= ($_POST['rol'] ?? '') === 'instructor' ? 'selected' : '' ?>>Instructor</option>
               <option value="coordinador" <?= ($_POST['rol'] ?? '') === 'coordinador' ? 'selected' : '' ?>>Coordinador</option>

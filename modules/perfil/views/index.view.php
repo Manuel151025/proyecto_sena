@@ -54,19 +54,19 @@
 
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Nombres y apellidos</label>
-              <input type="text" name="nombre" class="form-control"
+              <label class="form-label" for="perfil-nombre">Nombres y apellidos</label>
+              <input type="text" id="perfil-nombre" name="nombre" class="form-control"
                      value="<?= htmlspecialchars($user['nombre']) ?>"
                      minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Correo institucional</label>
-              <input type="email" class="form-control" value="<?= htmlspecialchars($user['email']) ?>" disabled>
+              <label class="form-label" for="perfil-email">Correo institucional</label>
+              <input type="email" id="perfil-email" class="form-control" value="<?= htmlspecialchars($user['email']) ?>" disabled>
               <div class="small text-muted mt-1">Para cambiar el correo contacta al coordinador.</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Rol</label>
-              <input type="text" class="form-control" value="<?= ucfirst(htmlspecialchars($user['rol'])) ?>" disabled>
+              <label class="form-label" for="perfil-rol">Rol</label>
+              <input type="text" id="perfil-rol" class="form-control" value="<?= ucfirst(htmlspecialchars($user['rol'])) ?>" disabled>
             </div>
             <div class="col-md-6">
               <label class="form-label">Color de avatar</label>
@@ -106,7 +106,7 @@
           <input type="hidden" name="action" value="change_password">
 
           <div class="mb-3">
-            <label class="form-label">Contraseña actual</label>
+            <label class="form-label" for="pw-cur">Contraseña actual</label>
             <div class="position-relative">
               <input type="password" name="password_actual" id="pw-cur"
                      class="form-control pe-5" required>
@@ -118,8 +118,8 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Nueva contraseña</label>
-            <input type="password" name="password_nueva" class="form-control"
+            <label class="form-label" for="pw-nueva">Nueva contraseña</label>
+            <input type="password" id="pw-nueva" name="password_nueva" class="form-control"
                    data-pw-strength required minlength="8">
             <div class="pw-strength mt-2"><span></span><span></span><span></span><span></span></div>
             <div class="mt-2">
@@ -130,8 +130,8 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Confirmar nueva contraseña</label>
-            <input type="password" name="password_confirmar" class="form-control"
+            <label class="form-label" for="pw-confirmar">Confirmar nueva contraseña</label>
+            <input type="password" id="pw-confirmar" name="password_confirmar" class="form-control"
                    required minlength="8">
           </div>
 
