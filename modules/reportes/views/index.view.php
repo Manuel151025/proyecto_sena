@@ -1,5 +1,3 @@
-?>
-
 <div class="mb-4">
   <h1 class="mb-1">Centro de Reportes</h1>
   <p class="text-muted mb-0">Genera reportes de cumplimiento por instructor, ficha y competencia. Exporta en CSV y Excel.</p>

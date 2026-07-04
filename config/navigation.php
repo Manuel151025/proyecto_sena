@@ -17,7 +17,7 @@ $MENU_CONFIG = [
             'icon' => 'bi bi-mortarboard',
             'items' => [
                 ['title' => 'Estructura Curricular', 'url' => APP_URL . '/index.php/estructura'],
-                ['title' => 'Fichas de Formación', 'url' => MODULES_PATH . '/fichas/'],
+                ['title' => 'Fichas de Formación', 'url' => APP_URL . '/index.php/fichas'],
                 ['title' => 'Matrículas', 'url' => APP_URL . '/index.php/matriculas'],
                 ['title' => 'Asignar Instructores', 'url' => APP_URL . '/index.php/asignaciones'],
             ]
@@ -60,7 +60,7 @@ $MENU_CONFIG = [
         'Mis Fichas' => [
             'icon' => 'bi bi-folder2-open',
             'items' => [
-                ['title' => 'Fichas asignadas', 'url' => MODULES_PATH . '/fichas/'],
+                ['title' => 'Fichas asignadas', 'url' => APP_URL . '/index.php/fichas'],
                 ['title' => 'Mis aprendices', 'url' => APP_URL . '/index.php/matriculas'],
             ]
         ],
@@ -99,8 +99,8 @@ $MENU_CONFIG = [
         'Mi Formación' => [
             'icon' => 'bi bi-mortarboard',
             'items' => [
-                ['title' => 'Mi ficha', 'url' => MODULES_PATH . '/fichas/'],
-                ['title' => 'Mi proyecto', 'url' => MODULES_PATH . '/proyectos/'],
+                ['title' => 'Mi ficha', 'url' => APP_URL . '/index.php/fichas'],
+                ['title' => 'Mi proyecto', 'url' => APP_URL . '/index.php/proyectos'],
                 ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
             ]
         ],
