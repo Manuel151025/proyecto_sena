@@ -148,6 +148,7 @@ $router->add('POST', '/configuracion', 'Core\Controllers\ConfiguracionController
 
 // Rutas de Calendario
 $router->add('GET', '/calendario', 'Core\Controllers\CalendarioController', 'index');
+$router->add('POST', '/calendario', 'Core\Controllers\CalendarioController', 'index');
 $router->add('GET', '/calendario/api', 'Core\Controllers\CalendarioController', 'apiEvents');
 
 // Rutas de Dashboard

@@ -278,9 +278,16 @@
       <i class="bi bi-calendar3" style="color:<?= $roleColors[$rol] ?? '#39A900' ?>"></i>
       Calendario Académico
     </h1>
-    <span class="role-badge">
-      <i class="bi bi-person-circle"></i> <?= $rolLabels[$rol] ?? $rol ?>
-    </span>
+    <div style="display:flex; align-items:center; gap:.6rem;">
+      <?php if ($puedeCrearEvento): ?>
+        <button type="button" class="btn btn-primary btn-sm" style="border-radius:8px;" onclick="openCrearEventoModal()">
+          <i class="bi bi-plus-lg me-1"></i>Nuevo evento
+        </button>
+      <?php endif; ?>
+      <span class="role-badge">
+        <i class="bi bi-person-circle"></i> <?= $rolLabels[$rol] ?? $rol ?>
+      </span>
+    </div>
   </div>
 
   <!-- Leyenda -->
@@ -296,6 +303,7 @@
     <?php endif; ?>
     <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#10b981"></span> Evaluación Aprobada (A)</span>
     <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#ef4444"></span> Plan de Mejora / Eval. D</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#f59e0b"></span> Evento manual</span>
   </div>
 
   <!-- Tarjeta con FullCalendar -->
@@ -330,10 +338,57 @@
       <a id="cal-modal-link" href="#" class="btn btn-primary btn-sm" style="border-radius:8px;">
         <i class="bi bi-arrow-right me-1"></i>Ir al módulo
       </a>
+      <form id="cal-modal-delete-form" method="post" action="<?= APP_URL ?>/index.php/calendario" style="display:none;" onsubmit="return confirm('¿Eliminar este evento del calendario?');">
+        <input type="hidden" name="action" value="eliminar_evento">
+        <input type="hidden" name="evento_id" id="cal-modal-delete-id" value="">
+        <button type="submit" class="btn btn-sm" style="border-radius:8px; background:#fee2e2; color:#dc2626; border:1px solid #fecaca;">
+          <i class="bi bi-trash me-1"></i>Eliminar
+        </button>
+      </form>
       <button onclick="closeCalModal()" class="btn btn-soft btn-sm" style="border-radius:8px;">Cerrar</button>
     </div>
   </div>
 </div>
+
+<?php if ($puedeCrearEvento): ?>
+<!-- Modal de creación de evento -->
+<div id="cal-crear-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1050; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.5rem; max-width:440px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.15);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h4 style="font-size:1.05rem; font-weight:700; margin:0;"><i class="bi bi-calendar-plus me-1" style="color:#f59e0b"></i> Nuevo evento</h4>
+      <button type="button" onclick="closeCrearEventoModal()" style="background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">×</button>
+    </div>
+    <form method="post" action="<?= APP_URL ?>/index.php/calendario">
+      <input type="hidden" name="action" value="crear_evento">
+      <div class="mb-3">
+        <label for="cal-ev-titulo" class="form-label" style="font-size:.85rem; font-weight:600;">Título</label>
+        <input type="text" class="form-control" id="cal-ev-titulo" name="titulo" maxlength="150" required placeholder="Ej: Reunión de seguimiento">
+      </div>
+      <div class="mb-3">
+        <label for="cal-ev-fecha" class="form-label" style="font-size:.85rem; font-weight:600;">Fecha</label>
+        <input type="date" class="form-control" id="cal-ev-fecha" name="fecha" required>
+      </div>
+      <div class="mb-3">
+        <label for="cal-ev-ficha" class="form-label" style="font-size:.85rem; font-weight:600;">Ficha</label>
+        <select class="form-select" id="cal-ev-ficha" name="ficha_id" required>
+          <option value="">Seleccione una ficha…</option>
+          <?php foreach ($fichasDisponibles as $f): ?>
+            <option value="<?= (int)$f['id'] ?>">#<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="cal-ev-desc" class="form-label" style="font-size:.85rem; font-weight:600;">Descripción (opcional)</label>
+        <textarea class="form-control" id="cal-ev-desc" name="descripcion" rows="2" maxlength="500"></textarea>
+      </div>
+      <div style="display:flex; gap:.5rem; justify-content:flex-end;">
+        <button type="button" onclick="closeCrearEventoModal()" class="btn btn-soft btn-sm" style="border-radius:8px;">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm" style="border-radius:8px;">Guardar evento</button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
@@ -446,6 +501,8 @@ function openCalModal(event) {
     if (ext.ra)        rows.push(['🔖 RA',       ext.ra]);
     if (ext.aprendiz)  rows.push(['🎓 Aprendiz', ext.aprendiz]);
     if (ext.instructor)rows.push(['👨‍🏫 Instructor', ext.instructor]);
+    if (ext.descripcion) rows.push(['📝 Descripción', ext.descripcion]);
+    if (ext.creador)   rows.push(['👤 Creado por', ext.creador]);
 
     const fecha = event.startStr ? event.startStr.substring(0, 10) : '';
     if (fecha) rows.push(['📅 Fecha', fecha]);
@@ -454,6 +511,14 @@ function openCalModal(event) {
         .map(([k, v]) =>
             `<div class="meta-row"><strong>${k}</strong><span>${v}</span></div>`
         ).join('');
+
+    const deleteForm = document.getElementById('cal-modal-delete-form');
+    if (ext.manual && ext.puedeEliminar) {
+        document.getElementById('cal-modal-delete-id').value = ext.eventoId;
+        deleteForm.style.display = '';
+    } else {
+        deleteForm.style.display = 'none';
+    }
 
     document.getElementById('cal-modal-overlay').classList.add('open');
 }
@@ -469,6 +534,26 @@ document.getElementById('cal-modal-overlay').addEventListener('click', function 
 
 // Cerrar con Escape
 document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeCalModal();
+    if (e.key === 'Escape') { closeCalModal(); closeCrearEventoModal(); }
+});
+
+/* ── Modal de creación de evento ── */
+function openCrearEventoModal() {
+    const overlay = document.getElementById('cal-crear-overlay');
+    if (!overlay) return;
+    const fechaInput = document.getElementById('cal-ev-fecha');
+    if (fechaInput && !fechaInput.value) {
+        fechaInput.value = new Date().toISOString().substring(0, 10);
+    }
+    overlay.style.display = 'flex';
+}
+
+function closeCrearEventoModal() {
+    const overlay = document.getElementById('cal-crear-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+document.getElementById('cal-crear-overlay')?.addEventListener('click', function (e) {
+    if (e.target === this) closeCrearEventoModal();
 });
 </script>
