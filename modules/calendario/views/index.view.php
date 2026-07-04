@@ -170,17 +170,56 @@
 }
 #cal-modal .meta-row strong { color: var(--text); white-space: nowrap; }
 
+/* ── Selector de vista para móvil (reemplaza los botones nativos de FullCalendar) ── */
+.cal-view-switcher {
+    display: none;
+    gap: .5rem;
+    margin-bottom: .75rem;
+}
+.cal-view-switcher select {
+    flex: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23888'%3E%3Cpath d='M4 6l4 4 4-4H4z'/%3E%3C/svg%3E") no-repeat right .7rem center/14px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: .85rem;
+    font-weight: 600;
+    padding: .55rem 2rem .55rem .9rem;
+    border-radius: 10px;
+    min-height: 42px;
+}
+.cal-view-switcher select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(57,169,0,.2);
+    border-color: var(--sena-primary);
+}
+/* Pista visual de swipe (solo aparece brevemente en móvil) */
+.cal-swipe-hint {
+    display: none;
+    text-align: center;
+    font-size: .72rem;
+    color: var(--text-muted);
+    margin-top: -.5rem;
+}
+
 /* ── Adaptabilidad Móvil (Responsive CSS overrides) ── */
 @media (max-width: 768px) {
     .cal-card {
         padding: 0.75rem;
     }
+    .cal-view-switcher {
+        display: flex;
+    }
+    .cal-swipe-hint {
+        display: block;
+    }
     .fc .fc-toolbar {
         flex-direction: column;
         align-items: stretch !important;
-        gap: 0.75rem;
+        gap: 0.6rem;
     }
-    /* Reordenar barra de herramientas: Título arriba, luego controles de navegación y vistas */
+    /* Sin botones de vista nativos en móvil: solo título + navegación prev/next/hoy */
     .fc .fc-toolbar-chunk:nth-child(2) {
         order: 1;
         text-align: center;
@@ -190,17 +229,18 @@
         display: flex;
         justify-content: center;
     }
-    .fc .fc-toolbar-chunk:nth-child(3) {
-        order: 3;
-        display: flex;
-        justify-content: center;
-    }
     .fc .fc-toolbar-title {
         font-size: 1.05rem !important;
     }
     .fc .fc-button {
         padding: 0.3rem 0.6rem;
         font-size: 0.75rem;
+    }
+    .fc .fc-daygrid-day-number {
+        font-size: .78rem;
+    }
+    .fc .fc-list-event-title {
+        font-size: .82rem;
     }
     .cal-legend {
         gap: 0.4rem;
@@ -260,7 +300,16 @@
 
   <!-- Tarjeta con FullCalendar -->
   <div class="cal-card">
+    <div class="cal-view-switcher">
+      <select id="cal-view-select" aria-label="Cambiar vista del calendario">
+        <option value="dayGridDay">Día</option>
+        <option value="dayGridWeek">Semana</option>
+        <option value="dayGridMonth">Mes</option>
+        <option value="listWeek">Agenda</option>
+      </select>
+    </div>
     <div id="sena-calendar"></div>
+    <div class="cal-swipe-hint"><i class="bi bi-arrow-left-right"></i> Desliza para cambiar de período</div>
   </div>
 
 </div>
@@ -293,27 +342,34 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const calEl = document.getElementById('sena-calendar');
+    const viewSelect = document.getElementById('cal-view-select');
 
     // Detectar si es pantalla pequeña
     const isMobile = window.innerWidth < 768;
+    const initialView = isMobile ? 'listWeek' : 'dayGridMonth';
 
+    // Los eventos (inicio/fin de ficha, evaluaciones, fases) son siempre de día completo,
+    // por eso se usan vistas "dayGrid" (no "timeGrid", que dejaría una grilla de horas vacía).
     const calendar = new FullCalendar.Calendar(calEl, {
         locale: 'es',
-        initialView: isMobile ? 'listMonth' : 'dayGridMonth',
+        initialView: initialView,
         height: isMobile ? 'auto' : 650,
         headerToolbar: {
             left:   'prev,next today',
             center: 'title',
             right:  isMobile
-                    ? 'listMonth,listWeek'
-                    : 'dayGridMonth,timeGridWeek,listMonth'
+                    ? ''
+                    : 'dayGridMonth,dayGridWeek,dayGridDay,listWeek'
         },
         buttonText: {
-            today:     'Hoy',
-            month:     'Mes',
-            week:      'Semana',
-            listMonth: 'Agenda mes',
-            listWeek:  'Agenda semana',
+            today: 'Hoy',
+            month: 'Mes',
+            week:  'Semana',
+            day:   'Día',
+            list:  'Agenda',
+        },
+        views: {
+            listWeek: { buttonText: 'Agenda' }
         },
         events: {
             url: '<?= $apiUrl ?>',
@@ -338,6 +394,31 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     calendar.render();
+
+    // Selector de vista para móvil (Día / Semana / Mes / Agenda)
+    if (viewSelect) {
+        viewSelect.value = initialView;
+        viewSelect.addEventListener('change', function () {
+            calendar.changeView(this.value);
+        });
+    }
+
+    // Navegación por gestos (swipe) en móvil: deslizar para ir al período anterior/siguiente
+    if (isMobile) {
+        let touchStartX = 0, touchStartY = 0;
+        calEl.addEventListener('touchstart', function (e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        calEl.addEventListener('touchend', function (e) {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            // Solo actuar si el gesto es principalmente horizontal
+            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                if (dx < 0) calendar.next(); else calendar.prev();
+            }
+        }, { passive: true });
+    }
 
     // Redibujar al cambiar tamaño de ventana
     window.addEventListener('resize', function () {

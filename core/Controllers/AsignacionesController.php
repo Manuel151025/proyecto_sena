@@ -76,6 +76,7 @@ class AsignacionesController extends BaseController {
         try {
             $asignaciones = $this->asignacionesModel->getAsignaciones($search, $filter_ficha, $filter_instructor);
         } catch (Exception $e) {
+            error_log('AsignacionesController::index getAsignaciones - ' . $e->getMessage());
             $errors[] = 'Error al cargar asignaciones.';
         }
 
@@ -87,6 +88,7 @@ class AsignacionesController extends BaseController {
             $competencias = $this->asignacionesModel->getCompetencias();
             $instructores = $this->asignacionesModel->getInstructores();
         } catch (Exception $e) {
+            error_log('AsignacionesController::index datos auxiliares - ' . $e->getMessage());
             $errors[] = 'Error al cargar datos auxiliares.';
         }
 
