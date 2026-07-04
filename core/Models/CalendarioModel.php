@@ -13,8 +13,62 @@ class CalendarioModel {
         $this->db = $db ?? Database::getConnection();
     }
 
+    public function crearEvento(string $titulo, ?string $descripcion, string $fecha, int $ficha_id, int $creado_por): int {
+        $stmt = $this->db->prepare("
+            INSERT INTO eventos_calendario (titulo, descripcion, fecha, ficha_id, creado_por)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$titulo, $descripcion, $fecha, $ficha_id, $creado_por]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function eliminarEvento(int $id, int $user_id, bool $esCoordinador): bool {
+        if ($esCoordinador) {
+            $stmt = $this->db->prepare("DELETE FROM eventos_calendario WHERE id = ?");
+            $stmt->execute([$id]);
+        } else {
+            $stmt = $this->db->prepare("DELETE FROM eventos_calendario WHERE id = ? AND creado_por = ?");
+            $stmt->execute([$id, $user_id]);
+        }
+        return $stmt->rowCount() > 0;
+    }
+
+    private function eventoManualToFullCalendar(array $ev, int $currentUserId, bool $esCoordinador): array {
+        return [
+            'id'       => 'manual-' . $ev['id'],
+            'title'    => '📌 ' . $ev['titulo'],
+            'start'    => $ev['fecha'],
+            'color'    => '#f59e0b',
+            'textColor'=> '#fff',
+            'url'      => APP_URL . '/index.php/fichas/ver?id=' . $ev['ficha_id'],
+            'extendedProps' => [
+                'tipo'        => 'Evento manual',
+                'ficha'       => '#' . $ev['numero_ficha'],
+                'descripcion' => $ev['descripcion'] ?? '',
+                'creador'     => $ev['creador_nombre'],
+                'manual'      => true,
+                'eventoId'    => (int)$ev['id'],
+                'puedeEliminar' => $esCoordinador || (int)$ev['creado_por'] === $currentUserId,
+            ],
+        ];
+    }
+
     public function getCoordinadorEvents(string $start, string $end): array {
         $events = [];
+
+        // Eventos manuales (creados por coordinador o instructores)
+        $stmt = $this->db->prepare("
+            SELECT ec.id, ec.titulo, ec.descripcion, ec.fecha, ec.ficha_id, ec.creado_por,
+                   u.nombre as creador_nombre, f.numero_ficha
+            FROM eventos_calendario ec
+            JOIN fichas f ON ec.ficha_id = f.id
+            JOIN usuarios u ON ec.creado_por = u.id
+            WHERE ec.fecha BETWEEN ? AND ?
+        ");
+        $stmt->execute([$start, $end]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $ev) {
+            $events[] = $this->eventoManualToFullCalendar($ev, 0, true);
+        }
 
         // Inicios y fines de fichas
         $stmt = $this->db->prepare("
@@ -99,6 +153,23 @@ class CalendarioModel {
 
     public function getInstructorEvents(int $user_id, string $start, string $end): array {
         $events = [];
+
+        // Eventos manuales de las fichas a las que tiene acceso este instructor
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT ec.id, ec.titulo, ec.descripcion, ec.fecha, ec.ficha_id, ec.creado_por,
+                   u.nombre as creador_nombre, f.numero_ficha
+            FROM eventos_calendario ec
+            JOIN fichas f ON ec.ficha_id = f.id
+            JOIN usuarios u ON ec.creado_por = u.id
+            LEFT JOIN asignaciones asg ON asg.ficha_id = ec.ficha_id
+            LEFT JOIN aprendices ap ON ap.ficha_id = ec.ficha_id
+            WHERE (f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?)
+              AND ec.fecha BETWEEN ? AND ?
+        ");
+        $stmt->execute([$user_id, $user_id, $user_id, $start, $end]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $ev) {
+            $events[] = $this->eventoManualToFullCalendar($ev, $user_id, false);
+        }
 
         // Sus fichas (inicio y fin)
         $stmt = $this->db->prepare("
@@ -198,6 +269,21 @@ class CalendarioModel {
         if ($ap) {
             $aprendiz_id = (int)$ap['aprendiz_id'];
             $proyecto_id = (int)($ap['proyecto_id'] ?? 0);
+            $ficha_id    = (int)$ap['ficha_id'];
+
+            // Eventos manuales de su ficha
+            $stmt = $this->db->prepare("
+                SELECT ec.id, ec.titulo, ec.descripcion, ec.fecha, ec.ficha_id, ec.creado_por,
+                       u.nombre as creador_nombre, f.numero_ficha
+                FROM eventos_calendario ec
+                JOIN fichas f ON ec.ficha_id = f.id
+                JOIN usuarios u ON ec.creado_por = u.id
+                WHERE ec.ficha_id = ? AND ec.fecha BETWEEN ? AND ?
+            ");
+            $stmt->execute([$ficha_id, $start, $end]);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $ev) {
+                $events[] = $this->eventoManualToFullCalendar($ev, $user_id, false);
+            }
 
             // Fases del proyecto
             if ($proyecto_id > 0) {
