@@ -12,3 +12,7 @@ RUN a2enmod rewrite
 
 # Establecer directorio de trabajo
 WORKDIR /var/www/html
+
+COPY . /var/www/html/
+
+RUN chown -R www-data:www-data /var/www/html

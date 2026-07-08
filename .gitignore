@@ -42,7 +42,6 @@ error_log
 
 # === Base de datos local (no subir dumps personales) ===
 *.sql
-!sena_seguimiento.sql
 
 # === install.php (peligroso en producción) ===
 install.php
