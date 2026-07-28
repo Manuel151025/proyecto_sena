@@ -129,6 +129,12 @@ class FichaController extends BaseController {
             $errors[] = 'Error al cargar ficha';
         }
 
+        if (!empty($errors)) {
+            setFlashMessage($errors[0], 'danger');
+            $this->redirect(APP_URL . '/index.php/fichas');
+            exit;
+        }
+
         $aprendices = [];
         if ($ficha) {
             try {

@@ -138,6 +138,24 @@ function requirePasswordChangeIfPending(): void {
         return;
     }
 
+    // Detectar si es una petición JSON/AJAX o hacia la API
+    $isJson = false;
+    $acceptHeader = $_SERVER['HTTP_ACCEPT'] ?? '';
+    $requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+    
+    if (strpos($acceptHeader, 'application/json') !== false || 
+        strtolower($requestedWith) === 'xmlhttprequest' || 
+        strpos($uri, '/api/') !== false) {
+        $isJson = true;
+    }
+
+    if ($isJson) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Debe cambiar su contraseña para continuar.']);
+        exit;
+    }
+
     setFlashMessage('Debes cambiar tu contraseña temporal antes de continuar.', 'warning');
     header('Location: ' . APP_URL . '/index.php/perfil');
     exit;
