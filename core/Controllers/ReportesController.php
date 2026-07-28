@@ -26,10 +26,20 @@ class ReportesController extends BaseController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
             requireCsrf();
-            $type = $_POST['export'];
-            $format = $_POST['format'] ?? 'csv';
             
             try {
+                $type = $_POST['export'] ?? '';
+                $format = $_POST['format'] ?? 'csv';
+                
+                $allowed_types = ['evaluaciones_ficha', 'cumplimiento_instructor', 'cumplimiento_competencia', 'historial_cambios'];
+                if (!in_array($type, $allowed_types, true)) {
+                    throw new Exception("Tipo de reporte no permitido.");
+                }
+                
+                if (!in_array($format, ['csv', 'excel'], true)) {
+                    throw new Exception("Formato de exportación no válido.");
+                }
+
                 $data = [];
                 $headers = [];
                 $filename = '';

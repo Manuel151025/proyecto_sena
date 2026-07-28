@@ -184,13 +184,16 @@ class EvaluacionesModel {
     }
 
     public function getStatsEval(string $user_rol, int $user_id, int $aprendiz_id): array {
+        $params = [];
+        
         if ($user_rol === ROL_APRENDIZ) {
             $sqlStats = "SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
                 SUM(CASE WHEN concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
                 SUM(CASE WHEN concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
-                FROM evaluaciones WHERE aprendiz_id = " . (int)$aprendiz_id;
+                FROM evaluaciones WHERE aprendiz_id = ?";
+            $params[] = $aprendiz_id;
         } elseif ($user_rol === ROL_INSTRUCTOR) {
             $sqlStats = "SELECT 
                 COUNT(*) as total,
@@ -207,11 +210,11 @@ class EvaluacionesModel {
                         SELECT 1 FROM asignaciones asg 
                         WHERE asg.ficha_id = eval.ficha_id 
                           AND asg.competencia_id = c.id 
-                          AND asg.instructor_id = " . (int)$user_id . "
+                          AND asg.instructor_id = ?
                     )
                     OR
                     (
-                        f.instructor_id = " . (int)$user_id . "
+                        f.instructor_id = ?
                         AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
                         AND NOT EXISTS (
                             SELECT 1 FROM asignaciones asg 
@@ -222,9 +225,10 @@ class EvaluacionesModel {
                     OR
                     (
                         (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                        AND ap.instructor_seguimiento_id = " . (int)$user_id . "
+                        AND ap.instructor_seguimiento_id = ?
                     )
                 )";
+            $params = [$user_id, $user_id, $user_id];
         } else {
             $sqlStats = "SELECT 
                 COUNT(*) as total,
@@ -233,6 +237,10 @@ class EvaluacionesModel {
                 SUM(CASE WHEN concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
                 FROM evaluaciones";
         }
-        return $this->db->query($sqlStats)->fetch(PDO::FETCH_ASSOC);
+        
+        $stmt = $this->db->prepare($sqlStats);
+        $stmt->execute($params);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result !== false ? $result : [];
     }
 }

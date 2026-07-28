@@ -29,7 +29,12 @@ class SeguimientoController extends BaseController {
         // 1. PROCESAR ACCIONES (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             requireCsrf();
-            $action = $_POST['action'];
+            $action = $_POST['action'] ?? '';
+            $allowed_actions = ['registrar_evaluacion', 'agregar_retroalimentacion'];
+            
+            if (!in_array($action, $allowed_actions, true)) {
+                throw new \Exception("Acción no permitida.");
+            }
 
             if ($action === 'registrar_evaluacion') {
                 if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {

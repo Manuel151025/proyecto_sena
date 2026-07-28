@@ -10,7 +10,7 @@ declare(strict_types=1);
   <div class="card-body p-3 p-md-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 position-relative" style="z-index: 2;">
     <div>
       <span class="badge bg-white text-success fw-bold px-2.5 py-1.5 mb-2" style="font-size: 0.65rem; border-radius: 30px; letter-spacing: 0.05em;">PORTAL DE COORDINACIÓN ACADÉMICA</span>
-      <h3 class="fw-bold mb-1 text-white" style="letter-spacing: -0.01em; font-size: 1.5rem;">¡Hola, <?= $nombreUsuario ?>! 👋</h3>
+      <h3 class="fw-bold mb-1 text-white" style="letter-spacing: -0.01em; font-size: 1.5rem;">¡Hola, <?= htmlspecialchars($nombreUsuario, ENT_QUOTES, 'UTF-8') ?>! 👋</h3>
       <p class="mb-0 text-white-50" style="max-width: 580px; font-size: 0.88rem; line-height: 1.5;">
         Monitorea los indicadores de cumplimiento, administra fichas de formación y controla la retención académica.
       </p>
