@@ -121,9 +121,16 @@ class UsuarioModel implements UsuarioRepositoryInterface {
      */
     public function update(int $id, array $data): bool {
         try {
+            // 1. Obtener los datos actuales del usuario antes del UPDATE
+            $stmtOld = $this->db->prepare("SELECT rol FROM usuarios WHERE id = ?");
+            $stmtOld->execute([$id]);
+            $oldUser = $stmtOld->fetch(PDO::FETCH_ASSOC);
+            $rol_antiguo = $oldUser ? $oldUser['rol'] : '';
+            $rol_nuevo = $data['rol'];
+
             if (!empty($data['password'])) {
                 $stmt = $this->db->prepare("UPDATE usuarios SET nombre = ?, email = ?, password = ?, rol = ?, estado = ?, avatar_color = ? WHERE id = ?");
-                return $stmt->execute([
+                $result = $stmt->execute([
                     $data['nombre'],
                     $data['email'],
                     password_hash($data['password'], PASSWORD_DEFAULT),
@@ -134,7 +141,7 @@ class UsuarioModel implements UsuarioRepositoryInterface {
                 ]);
             } else {
                 $stmt = $this->db->prepare("UPDATE usuarios SET nombre = ?, email = ?, rol = ?, estado = ?, avatar_color = ? WHERE id = ?");
-                return $stmt->execute([
+                $result = $stmt->execute([
                     $data['nombre'],
                     $data['email'],
                     $data['rol'],
@@ -143,6 +150,26 @@ class UsuarioModel implements UsuarioRepositoryInterface {
                     $id
                 ]);
             }
+
+            // Registrar la acción en logs_sistema si la actualización fue exitosa
+            if ($result && function_exists('getCurrentUser') && getCurrentUser()) {
+                $currentUserId = (int)getCurrentUser()['id'];
+                
+                // 2 y 3. Comparar roles y crear el mensaje dinámico
+                $mensajeLog = "Editó al usuario {$data['nombre']} / ID: $id";
+                if ($rol_antiguo !== '' && $rol_antiguo !== $rol_nuevo) {
+                    $mensajeLog .= " - Cambio de rol: de {$rol_antiguo} a {$rol_nuevo}";
+                }
+
+                // 4. Registrar en logs_sistema
+                $stmtLog = $this->db->prepare("
+                    INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
+                    VALUES (?, 'Editar', 'Usuarios', 'usuarios', ?, ?)
+                ");
+                $stmtLog->execute([$currentUserId, $id, $mensajeLog]);
+            }
+
+            return $result;
         } catch (Exception $e) {
             if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
                 throw new Exception('Este email ya está registrado por otro usuario');

@@ -51,6 +51,18 @@ class ActividadesController extends BaseController {
                     if (empty($nombre)) $errors[] = 'El nombre de la actividad es obligatorio.';
                     if ($responsable_id <= 0) $errors[] = 'Debe asignar un responsable.';
 
+                    // Validación de Scope para Instructores (Optimizado para PHP 8)
+                    if ($user_rol === ROL_INSTRUCTOR && $ficha_id > 0) {
+                        $fichasAsignadas = $this->actividadesModel->getFichas($user_rol, $user_id);
+                        
+                        // Extraemos solo los IDs de las fichas y validamos directamente
+                        $idsFichas = array_column($fichasAsignadas, 'id');
+                        
+                        if (!in_array((int)$ficha_id, $idsFichas)) {
+                            $errors[] = 'Acceso denegado: La ficha seleccionada no está asignada a su perfil.';
+                        }
+                    }
+
                     if (empty($errors)) {
                         try {
                             $this->actividadesModel->create([
@@ -60,6 +72,7 @@ class ActividadesController extends BaseController {
                                 'descripcion' => $descripcion,
                                 'fecha_inicio' => $fecha_inicio,
                                 'fecha_fin' => $fecha_fin,
+                                'responsable_id' => $responsable_id,
                                 'estado' => $estado
                             ], $user_id);
                             setFlashMessage('Actividad académica registrada exitosamente.', 'success');
@@ -102,6 +115,7 @@ class ActividadesController extends BaseController {
                                 'fecha_inicio' => $fecha_inicio,
                                 'fecha_fin' => $fecha_fin,
                                 'responsable_id' => $responsable_id,
+                                'estado' => $estado,
                                 'cumplimiento_porcentaje' => $cumplimiento
                             ], $user_id);
                             setFlashMessage('Actividad actualizada exitosamente.', 'success');

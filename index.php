@@ -92,9 +92,9 @@ $router->add('POST', '/fichas/crear', 'Core\Controllers\FichaController', 'edit'
 $router->add('GET', '/fichas/editar', 'Core\Controllers\FichaController', 'edit');
 $router->add('POST', '/fichas/editar', 'Core\Controllers\FichaController', 'edit');
 
-// Rutas de Evaluaciones (Juicios)
-$router->add('GET', '/evaluaciones/importar', 'Core\Controllers\EvaluacionController', 'import');
-$router->add('POST', '/evaluaciones/importar', 'Core\Controllers\EvaluacionController', 'import');
+// Rutas de Evaluaciones (Juicios) - Controlador Unificado
+$router->add('GET', '/evaluaciones/importar', 'Core\Controllers\EvaluacionesController', 'import');
+$router->add('POST', '/evaluaciones/importar', 'Core\Controllers\EvaluacionesController', 'import');
 
 // Rutas de Actividades
 $router->add('GET', '/actividades', 'Core\Controllers\ActividadesController', 'index');

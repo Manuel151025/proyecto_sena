@@ -103,6 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('file_data', base64Data);
                 formData.append('file_name', file.name);
                 
+                // Obtener y anexar CSRF Token para evitar el Error 403
+                const csrfInput = document.querySelector('input[name="csrf_token"]');
+                if (csrfInput) {
+                    formData.append('csrf_token', csrfInput.value);
+                }
+                
                 fetch(window.location.href, {
                     method: 'POST',
                     body: formData

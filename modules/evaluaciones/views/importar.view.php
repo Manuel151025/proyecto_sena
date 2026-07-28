@@ -236,6 +236,7 @@ declare(strict_types=1);
       </div>
       <div class="card-body p-4 pt-0">
         <form id="uploadForm" method="POST" enctype="multipart/form-data">
+          <?= csrfField() ?>
           <p class="text-muted small mb-4">
             Selecciona el archivo binario de Excel (<strong>.xls</strong>) que contiene los juicios evaluativos. El sistema lo convertirá y procesará para crear la ficha, los aprendices, las competencias y todos los juicios de evaluación.
           </p>
