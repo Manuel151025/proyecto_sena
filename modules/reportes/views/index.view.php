@@ -57,7 +57,7 @@
                     data-picker
                     data-picker-label="Seleccionar ficha"
                     data-picker-placeholder="Número de ficha o programa...">
-              <option value="">Seleccionar ficha...</option>
+              <option value="" disabled selected>Seleccionar ficha...</option>
               <?php foreach ($fichas as $f): ?>
               <option value="<?= $f['id'] ?>"
                       data-search="<?= htmlspecialchars($f['numero_ficha'] . ' ' . $f['programa']) ?>">

@@ -110,8 +110,8 @@ declare(strict_types=1);
           <?php foreach ($resultados as $c): ?>
             <tr>
               <td><?= htmlspecialchars((string)$c['programa_id']) ?></td>
-              <td class="font-monospace fw-bold"><?= htmlspecialchars($c['codigo']) ?></td>
-              <td><?= htmlspecialchars($c['nombre']) ?></td>
+              <td class="font-monospace fw-bold text-uppercase-visual"><?= htmlspecialchars($c['codigo']) ?></td>
+              <td class="text-uppercase-visual"><?= htmlspecialchars($c['nombre']) ?></td>
               <td><?= htmlspecialchars((string)$c['horas']) ?> hs</td>
             </tr>
           <?php endforeach; ?>

@@ -87,7 +87,10 @@
       </div>
       <div class="col-md-3">
         <label class="form-label text-muted small">Filtrar por Ficha</label>
-        <select name="ficha_id" class="form-select">
+        <select name="ficha_id" class="form-select"
+                data-picker
+                data-picker-label="Filtrar por ficha"
+                data-picker-placeholder="Todas las fichas">
           <option value="0">Todas las fichas</option>
           <?php foreach ($fichas as $f): ?>
             <option value="<?= $f['id'] ?>" <?= $filter_ficha === (int)$f['id'] ? 'selected' : '' ?>>
@@ -98,7 +101,10 @@
       </div>
       <div class="col-md-3">
         <label class="form-label text-muted small">Concepto Evaluativo</label>
-        <select name="concepto" class="form-select">
+        <select name="concepto" class="form-select"
+                data-picker
+                data-picker-label="Concepto evaluativo"
+                data-picker-placeholder="Todos">
           <option value="">Todos</option>
           <option value="A" <?= $filter_concepto === 'A' ? 'selected' : '' ?>>Aprobado (A)</option>
           <option value="D" <?= $filter_concepto === 'D' ? 'selected' : '' ?>>No Aprobado (D)</option>
@@ -118,7 +124,7 @@
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table mb-0 align-middle">
-        <thead class="table-light-head" style="background: rgba(0,0,0,0.03);">
+        <thead class="table-light-head" style="background: var(--surface-2);">
           <tr>
             <th class="ps-4">Resultado de Aprendizaje</th>
             <?php if ($user_rol !== ROL_APRENDIZ): ?>
@@ -134,11 +140,11 @@
           <?php foreach ($evaluaciones as $eval): ?>
           <tr>
             <td class="ps-4">
-              <div class="fw-semibold text-dark"><?= htmlspecialchars($eval['ra_codigo']) ?></div>
-              <small class="text-muted" style="display:block; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?= htmlspecialchars($eval['ra_denominacion']) ?>">
+              <div class="fw-semibold text-dark text-uppercase-visual"><?= htmlspecialchars($eval['ra_codigo']) ?></div>
+              <small class="text-muted text-uppercase-visual" style="display:block; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?= htmlspecialchars($eval['ra_denominacion']) ?>">
                 <?= htmlspecialchars($eval['ra_denominacion']) ?>
               </small>
-              <small class="badge bg-soft primary">Ficha #<?= htmlspecialchars($eval['numero_ficha']) ?></small>
+              <small class="badge bg-soft primary text-uppercase-visual">Ficha #<?= htmlspecialchars($eval['numero_ficha']) ?></small>
             </td>
             <?php if ($user_rol !== ROL_APRENDIZ): ?>
               <td>
@@ -147,7 +153,7 @@
               </td>
             <?php endif; ?>
             <td>
-              <small class="fw-medium text-muted"><?= htmlspecialchars($eval['competencia_nombre']) ?></small>
+              <small class="fw-medium text-muted text-uppercase-visual"><?= htmlspecialchars($eval['competencia_nombre']) ?></small>
             </td>
             <td>
               <span class="small"><?= $eval['fecha_evaluacion'] ? date('d/m/Y', strtotime($eval['fecha_evaluacion'])) : '—' ?></span>
@@ -194,15 +200,15 @@
 <?php if ($user_rol !== ROL_APRENDIZ): ?>
 <div class="modal fade" id="modalEvaluar" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
+    <div class="modal-content">
       <form method="POST">
         <input type="hidden" name="action" value="evaluar">
         <input type="hidden" name="evaluacion_id" id="evalId">
-        <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
-          <h5 class="modal-title"><i class="bi bi-clipboard-check me-2"></i>Juicio Evaluativo</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-clipboard-check"></i>Juicio Evaluativo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body p-4">
+        <div class="modal-body">
           <div class="mb-3">
             <div class="text-muted small text-uppercase">Resultado de Aprendizaje</div>
             <div class="fw-bold" id="evalRA">—</div>
@@ -233,7 +239,7 @@
             <input type="text" name="motivo" id="eval_motivo" class="form-control" placeholder="Ej: Plan de mejoramiento completado" maxlength="255" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')">
           </div>
         </div>
-        <div class="modal-footer border-0 px-4 pb-4">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Guardar Evaluación</button>
         </div>

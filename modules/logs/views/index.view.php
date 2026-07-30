@@ -28,7 +28,10 @@
       </div>
       <div class="col-md-4">
         <label class="form-label text-muted small">Acción realizada</label>
-        <select name="accion" class="form-select">
+        <select name="accion" class="form-select"
+                data-picker
+                data-picker-label="Acción realizada"
+                data-picker-placeholder="Todas las acciones">
           <option value="">Todas las acciones</option>
           <option value="Crear" <?= $filter_accion === 'Crear' ? 'selected' : '' ?>>Crear</option>
           <option value="Calificar" <?= $filter_accion === 'Calificar' ? 'selected' : '' ?>>Calificar</option>
@@ -49,7 +52,7 @@
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table mb-0 align-middle table-hover">
-        <thead class="table-light-head" style="background: rgba(0,0,0,0.03);">
+        <thead class="table-light-head" style="background: var(--surface-2);">
           <tr>
             <th class="ps-4">Fecha / Hora</th>
             <th>Usuario</th>

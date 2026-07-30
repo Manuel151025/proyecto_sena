@@ -55,7 +55,140 @@
 [data-theme="dark"] .text-muted {
   color: #94a3b8 !important;
 }
- 
+
+/* ============================================================
+   PUENTE CON BOOTSTRAP 5.3
+   ------------------------------------------------------------
+   Bootstrap pinta sus componentes con sus propias variables
+   (--bs-*), que quedan fijas en el tema claro porque el sistema
+   alterna [data-theme] y no [data-bs-theme]. Eso dejaba, por
+   ejemplo, TODAS las tablas con celdas blancas en modo oscuro
+   (.table>*>*>* aplica background-color y un box-shadow interno
+   con --bs-table-bg, que valía #fff).
+   Reasignando las variables de Bootstrap a los tokens del tema,
+   cualquier componente de Bootstrap respeta claro/oscuro sin
+   tener que parchear vista por vista.
+   ============================================================ */
+:root {
+  --bs-body-bg: var(--bg);
+  --bs-body-color: var(--text);
+  --bs-emphasis-color: var(--text);
+  --bs-secondary-color: var(--text-muted);
+  --bs-secondary-bg: var(--surface-2);
+  --bs-tertiary-bg: var(--surface-2);
+  --bs-tertiary-color: var(--text-soft);
+  --bs-border-color: var(--border);
+  --bs-border-color-translucent: var(--border);
+  --bs-heading-color: var(--text);
+}
+
+/* Tablas: fondo transparente para que se vea la superficie de la
+   tarjeta contenedora, y estados (rayado/hover/activo) con tokens. */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text);
+  --bs-table-border-color: var(--border);
+  --bs-table-striped-bg: var(--surface-2);
+  --bs-table-striped-color: var(--text);
+  --bs-table-hover-bg: var(--surface-2);
+  --bs-table-hover-color: var(--text);
+  --bs-table-active-bg: var(--surface-2);
+  --bs-table-active-color: var(--text);
+}
+.table-light,
+.table > thead.table-light,
+.table tr.table-light {
+  --bs-table-bg: var(--surface-2);
+  --bs-table-color: var(--text);
+}
+
+/* Menús desplegables (campana de notificaciones y menú de usuario): iban
+   con el fondo del <body>, así que en modo oscuro quedaban blancos. */
+.dropdown-menu {
+  --bs-dropdown-bg: var(--surface);
+  --bs-dropdown-color: var(--text);
+  --bs-dropdown-border-color: var(--border);
+  --bs-dropdown-link-color: var(--text);
+  --bs-dropdown-link-hover-color: var(--text);
+  --bs-dropdown-link-hover-bg: var(--surface-2);
+  --bs-dropdown-header-color: var(--text-muted);
+  --bs-dropdown-divider-bg: var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+/* La barra de progreso de Bootstrap toma el gris "secondary" como fondo, que
+   ahora es --surface-2; dentro de los paneles (que usan ese mismo tono) el
+   canal quedaba invisible, así que se usa el color de borde. */
+.progress,
+.progress-stacked {
+  --bs-progress-bg: var(--border);
+}
+
+/* Utilidades de color de Bootstrap usadas en las vistas: sin remapear,
+   fijan blanco/negro literal y se vuelven ilegibles en modo oscuro. */
+.bg-white { background-color: var(--surface) !important; }
+.bg-light,
+.bg-light-subtle,
+.bg-body-secondary,
+.bg-body-tertiary { background-color: var(--surface-2) !important; }
+.text-dark,
+.text-black { color: var(--text) !important; }
+.border-light-subtle { border-color: var(--border) !important; }
+[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* `.badge bg-soft [primary|info|...]` se usa en muchas vistas pero
+   nunca se definió: .badge fuerza color blanco y sin fondo el texto
+   quedaba invisible. Se alinea con el aspecto de .badge-soft. */
+.bg-soft {
+  background: var(--surface-2) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+.bg-soft.primary,
+.bg-soft-primary {
+  background: var(--sena-primary-50) !important;
+  color: var(--sena-primary-600) !important;
+  border-color: transparent;
+}
+.bg-soft.info,
+.bg-soft-info {
+  background: var(--info-bg) !important;
+  color: var(--info) !important;
+  border-color: transparent;
+}
+.bg-soft.success { background: var(--success-bg) !important; color: var(--success) !important; border-color: transparent; }
+.bg-soft.danger  { background: var(--danger-bg)  !important; color: var(--danger)  !important; border-color: transparent; }
+.bg-soft.warning { background: var(--warning-bg) !important; color: var(--warning) !important; border-color: transparent; }
+[data-theme="dark"] .bg-soft.primary,
+[data-theme="dark"] .bg-soft-primary { color: #79d24a !important; }
+
+/* ============================================================
+   MAYÚSCULAS SOLO VISUALES
+   ------------------------------------------------------------
+   Uniforma cómo se MUESTRAN los datos de la estructura curricular
+   (programas, fichas, proyectos, competencias, RAP y sus códigos)
+   sin tocar el dato: lo que se guarda en la base y lo que viaja en
+   los formularios conserva su capitalización original.
+
+   Se usa una clase propia en vez de la .text-uppercase de Bootstrap
+   para que la intención quede explícita y sea rastreable con un
+   grep, y para poder blindar los controles de formulario: escribir
+   dentro de un input con text-transform es incómodo, así que si la
+   clase cae en un contenedor que los envuelve, no los afecta.
+
+   No se aplica a nombres de personas, correos, descripciones ni
+   objetivos.
+   ============================================================ */
+.text-uppercase-visual { text-transform: uppercase; }
+.text-uppercase-visual input,
+.text-uppercase-visual textarea,
+.text-uppercase-visual .form-control,
+.text-uppercase-visual .form-select,
+.text-uppercase-visual .sp-trigger { text-transform: none; }
+
 *{box-sizing:border-box;}
 html,body{height:100%;}
 body {
@@ -405,7 +538,15 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .toolbar .search input{padding-left:38px;transition:all 0.2s ease-in-out;}
 .toolbar .search input:focus{border-color:var(--sena-primary);box-shadow:0 0 0 3px rgba(57,169,0,0.15);}
 .toolbar .search:focus-within i{color:var(--sena-primary) !important;}
- 
+/* Contenedor de cada filtro de la barra: el searchable-picker sustituye
+   el <select> por un botón de ancho 100%, así que necesita una caja
+   propia que le fije el ancho dentro del flex de .toolbar. */
+.toolbar .toolbar-filter{flex:0 1 210px;min-width:170px;}
+@media(max-width:576px){
+  .toolbar{padding:.85rem 1rem;}
+  .toolbar .search,.toolbar .toolbar-filter{flex:1 1 100%;max-width:none;}
+}
+
 .alert-flat{border-radius:var(--radius);padding:.85rem 1rem;display:flex;gap:.65rem;align-items:flex-start;border:1px solid transparent;font-size:.88rem;}
 .alert-flat.danger{background:var(--danger-bg);color:var(--danger);}
 .alert-flat.warning{background:var(--warning-bg);color:var(--warning);}
@@ -505,10 +646,106 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .phase .ph-name{font-weight:600;font-size:.9rem;}
 .phase .ph-meta{font-size:.75rem;color:var(--text-muted);}
  
-.modal-content{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-lg);}
-.modal-header{border-bottom:1px solid var(--border);}
-.modal-footer{border-top:1px solid var(--border);}
- 
+/* ============================================================
+   MODALES — un solo estilo para todo el sistema
+   ------------------------------------------------------------
+   Antes convivían tres variantes (encabezado plano, encabezado
+   verde con texto blanco, y "glass" con fondo blanco fijo que
+   además rompía el modo oscuro). Toda la apariencia vive aquí:
+   las vistas solo aportan la estructura estándar de Bootstrap
+   (.modal-content > .modal-header > .modal-title + .btn-close,
+   .modal-body, .modal-footer) y el ícono del título.
+   Los overlays que no usan Bootstrap (calendario) reutilizan las
+   mismas clases internas dentro de .ui-modal-overlay.
+   ============================================================ */
+.modal-content{
+  background:var(--surface);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-md);
+  overflow:hidden;
+}
+.modal-header{
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+  padding:1rem 1.25rem;
+  gap:.75rem;
+  align-items:flex-start;
+}
+.modal-title{
+  display:flex;
+  align-items:center;
+  gap:.55rem;
+  font-size:1.02rem;
+  font-weight:700;
+  letter-spacing:-.01em;
+  color:var(--text);
+  margin:0;
+}
+.modal-title i{color:var(--sena-primary);font-size:1.15rem;line-height:1;}
+.modal-header .btn-close{margin:0;flex-shrink:0;}
+.modal-body{padding:1.25rem;}
+.modal-footer{
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  padding:.9rem 1.25rem;
+  gap:.5rem;
+}
+/* Bootstrap separa los botones del pie con márgenes propios en cada hijo;
+   se anulan para que el espaciado lo controle únicamente el gap. */
+.modal-footer > *{margin:0;}
+.modal-footer .btn{min-width:118px;}
+
+/* Overlay propio para modales que no dependen de Bootstrap.
+   Solo aporta fondo + centrado: el contenido usa .modal-content. */
+.ui-modal-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:1055;
+  background:rgba(15,23,42,.55);
+  backdrop-filter:blur(2px);
+  align-items:center;
+  justify-content:center;
+  padding:1rem;
+  overflow-y:auto;
+}
+.ui-modal-overlay.is-open{display:flex;}
+.ui-modal-overlay > .modal-content{
+  width:100%;
+  max-width:440px;
+  margin:auto;
+  max-height:calc(100vh - 2rem);
+  overflow-y:auto;
+  animation:ui-modal-pop .2s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes ui-modal-pop{
+  from{transform:scale(.94);opacity:0;}
+  to{transform:scale(1);opacity:1;}
+}
+.ui-modal-close{
+  background:none;
+  border:0;
+  color:var(--text-muted);
+  font-size:1.1rem;
+  line-height:1;
+  padding:.25rem;
+  border-radius:6px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.ui-modal-close:hover{background:var(--border);color:var(--text);}
+
+@media(max-width:576px){
+  .modal-header{padding:.85rem 1rem;}
+  .modal-body{padding:1rem;}
+  .modal-footer{padding:.75rem 1rem;flex-wrap:wrap;}
+  .modal-footer .btn{flex:1 1 auto;min-width:0;}
+  .ui-modal-overlay{padding:.75rem;align-items:flex-start;}
+  .ui-modal-overlay > .modal-content{max-height:calc(100vh - 1.5rem);}
+}
+
 .nav-tabs{border-bottom:1px solid var(--border);gap:.25rem;}
 .nav-tabs .nav-link{border:0;color:var(--text-muted);font-weight:500;padding:.65rem 1rem;border-radius:0;border-bottom:2px solid transparent;}
 .nav-tabs .nav-link:hover{color:var(--text);}

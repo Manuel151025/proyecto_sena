@@ -8,7 +8,7 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="modalEditarUsuarioLabel"><i class="bi bi-pencil-square me-2 text-primary"></i>Editar Usuario</h5>
+        <h5 class="modal-title" id="modalEditarUsuarioLabel"><i class="bi bi-pencil-square"></i>Editar Usuario</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="formEditarUsuario" novalidate>
@@ -23,24 +23,27 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
 
               <div class="mb-3">
                 <label for="edit-nombre" class="form-label fw-semibold">Nombre completo</label>
-                <input type="text" id="edit-nombre" name="nombre" class="form-control form-control-custom" placeholder="Ej: Carlos Andrés Martínez" maxlength="60" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
+                <input type="text" id="edit-nombre" name="nombre" class="form-control" placeholder="Ej: Carlos Andrés Martínez" maxlength="60" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
               </div>
 
               <div class="mb-3">
                 <label for="edit-email" class="form-label fw-semibold">Email institucional</label>
-                <input type="email" id="edit-email" name="email" class="form-control form-control-custom" placeholder="usuario@sena.edu.co" maxlength="100" required>
+                <input type="email" id="edit-email" name="email" class="form-control" placeholder="usuario@sena.edu.co" maxlength="100" required>
               </div>
 
               <div class="mb-3">
                 <label for="edit-password" class="form-label fw-semibold">Contraseña (Opcional)</label>
-                <input type="password" id="edit-password" name="password" class="form-control form-control-custom" placeholder="Dejar en blanco para mantener la actual" maxlength="60" minlength="6">
+                <input type="password" id="edit-password" name="password" class="form-control" placeholder="Dejar en blanco para mantener la actual" maxlength="60" minlength="6">
                 <small class="text-muted" style="font-size: 0.75rem;">Mínimo 6 caracteres si deseas cambiarla.</small>
               </div>
 
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label for="edit-rol" class="form-label fw-semibold">Rol</label>
-                  <select id="edit-rol" name="rol" class="form-select form-select-custom" required>
+                  <select id="edit-rol" name="rol" class="form-select" required
+                          data-picker
+                          data-picker-label="Rol del sistema"
+                          data-picker-placeholder="Seleccionar rol...">
                     <option value="aprendiz">Aprendiz</option>
                     <option value="instructor">Instructor</option>
                     <option value="coordinador">Coordinador</option>
@@ -48,7 +51,10 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
                 </div>
                 <div class="col-md-6">
                   <label for="edit-estado" class="form-label fw-semibold">Estado</label>
-                  <select id="edit-estado" name="estado" class="form-select form-select-custom" required>
+                  <select id="edit-estado" name="estado" class="form-select" required
+                          data-picker
+                          data-picker-label="Estado de la cuenta"
+                          data-picker-placeholder="Seleccionar estado...">
                     <option value="activo">Activo</option>
                     <option value="inactivo">Inactivo</option>
                     <option value="bloqueado">Bloqueado</option>
@@ -115,27 +121,6 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
 </div>
 
 <style>
-#modalEditarUsuario .modal-content {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  background: var(--surface);
-}
-#modalEditarUsuario .modal-header {
-  background: linear-gradient(135deg, var(--bg-elev) 0%, var(--surface-2) 100%);
-  border-bottom: 1px solid var(--border);
-  padding: 1.25rem 1.5rem;
-}
-#modalEditarUsuario .modal-footer {
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding: 1rem 1.5rem;
-}
-#modalEditarUsuario .modal-title {
-  font-weight: 700;
-  letter-spacing: -0.019em;
-}
 .modal-edit-color-lbl {
   border: 2px solid transparent;
   transition: all 0.2s ease-in-out;

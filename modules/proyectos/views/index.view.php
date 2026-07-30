@@ -24,13 +24,13 @@
       <div class="card glass-card h-100 border-0 shadow-sm" style="border-top: 4px solid var(--sena-primary); border-radius: 12px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.05)';">
         <div class="card-body d-flex flex-column p-4">
           <div class="d-flex justify-content-between align-items-start mb-2">
-            <span class="badge bg-soft primary fw-semibold" style="letter-spacing: 0.5px;"><?= htmlspecialchars($proj['codigo']) ?></span>
+            <span class="badge bg-soft primary fw-semibold text-uppercase-visual" style="letter-spacing: 0.5px;"><?= htmlspecialchars($proj['codigo']) ?></span>
             <span class="badge-soft <?= $proj['estado'] === 'activo' ? 'success' : ($proj['estado'] === 'finalizado' ? 'info' : 'secondary') ?>"><?= ucfirst($proj['estado']) ?></span>
           </div>
-          <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($proj['nombre']) ?></h5>
+          <h5 class="fw-bold text-dark mb-1 text-uppercase-visual"><?= htmlspecialchars($proj['nombre']) ?></h5>
           <small class="text-muted d-block mb-3" style="max-height: 40px; overflow: hidden;"><?= htmlspecialchars($proj['objetivo'] ?? 'Sin objetivo definido') ?></small>
           
-          <div class="p-3 rounded-3 mb-3 flex-grow-1" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.04); font-size: 0.85rem;">
+          <div class="p-3 rounded-3 mb-3 flex-grow-1" style="background: var(--surface-2); border: 1px solid var(--border); font-size: 0.85rem;">
             <div class="d-flex justify-content-between mb-1">
               <span class="text-muted"><i class="bi bi-folder2-open me-1"></i>Fichas vinculadas</span>
               <span class="fw-bold"><?= (int)$proj['total_fichas'] ?></span>
@@ -92,16 +92,16 @@
 <?php if ($user_rol === ROL_COORDINADOR): ?>
 <div class="modal fade" id="modalEditar" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
+    <div class="modal-content">
       <form method="POST">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="editar">
         <input type="hidden" name="id" id="edit_id">
-        <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
-          <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar Proyecto Formativo</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil"></i>Editar Proyecto Formativo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body p-4">
+        <div class="modal-body">
           <div class="mb-3">
             <label class="form-label fw-semibold">Nombre del Proyecto <span class="text-danger">*</span></label>
             <input type="text" name="nombre" id="edit_nombre" class="form-control" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')" required>
@@ -120,14 +120,17 @@
           </div>
           <div class="mb-0">
             <label class="form-label fw-semibold">Estado</label>
-            <select name="estado" id="edit_estado" class="form-select">
+            <select name="estado" id="edit_estado" class="form-select"
+                    data-picker
+                    data-picker-label="Estado del proyecto"
+                    data-picker-placeholder="Seleccionar estado...">
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>
               <option value="finalizado">Finalizado</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer border-0 px-4 pb-4">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Guardar Cambios</button>
         </div>
@@ -152,15 +155,15 @@ function abrirModalEditarProyecto(id, nombre, codigo, objetivo, descripcion, est
 <?php if ($user_rol === ROL_COORDINADOR): ?>
 <div class="modal fade" id="modalCrear" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
+    <div class="modal-content">
       <form method="POST">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="crear">
-        <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
-          <h5 class="modal-title"><i class="bi bi-kanban me-2"></i>Nuevo Proyecto Formativo</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-kanban"></i>Nuevo Proyecto Formativo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body p-4">
+        <div class="modal-body">
           <div class="mb-3">
             <label class="form-label fw-semibold">Nombre del Proyecto <span class="text-danger">*</span></label>
             <input type="text" name="nombre" class="form-control" required placeholder="Ej: Sistema de Gestión de Inventarios Web" maxlength="100" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')">
@@ -178,7 +181,7 @@ function abrirModalEditarProyecto(id, nombre, codigo, objetivo, descripcion, est
             <textarea name="descripcion" class="form-control" rows="2" placeholder="Descripción ampliada del proyecto" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
           </div>
         </div>
-        <div class="modal-footer border-0 px-4 pb-4">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Crear Proyecto</button>
         </div>

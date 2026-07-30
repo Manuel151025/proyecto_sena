@@ -40,14 +40,14 @@ declare(strict_types=1);
       <div class="col-sm-6 col-lg-3">
         <div class="p-3 border rounded bg-light">
           <small class="text-muted d-block">Ficha de Caracterización</small>
-          <strong style="font-size: 1.1rem;">#<?= htmlspecialchars($import_summary['ficha_num']) ?></strong>
+          <strong style="font-size: 1.1rem;" class="text-uppercase-visual">#<?= htmlspecialchars($import_summary['ficha_num']) ?></strong>
           <span class="badge bg-soft primary d-block mt-1"><?= htmlspecialchars($import_summary['ficha_estado']) ?></span>
         </div>
       </div>
       <div class="col-sm-6 col-lg-5">
         <div class="p-3 border rounded bg-light">
           <small class="text-muted d-block">Programa de Formación</small>
-          <strong style="font-size: 1.1rem;"><?= htmlspecialchars($import_summary['programa']) ?></strong>
+          <strong style="font-size: 1.1rem;" class="text-uppercase-visual"><?= htmlspecialchars($import_summary['programa']) ?></strong>
         </div>
       </div>
     </div>
@@ -204,9 +204,9 @@ declare(strict_types=1);
                         }
                       ?>
                       <tr>
-                        <td style="font-size: 0.75rem; color: #555;"><i class="bi bi-award me-1"></i><?= htmlspecialchars($j['competencia'] ?? '') ?></td>
-                        <td><code class="text-dark bg-light px-1.5 py-0.5 rounded" style="font-size: 0.8rem;"><?= htmlspecialchars($j['ra_codigo']) ?></code></td>
-                        <td style="font-size: 0.75rem;"><?= htmlspecialchars($j['ra_denom'] ?? '') ?></td>
+                        <td class="text-uppercase-visual" style="font-size: 0.75rem; color: #555;"><i class="bi bi-award me-1"></i><?= htmlspecialchars($j['competencia'] ?? '') ?></td>
+                        <td><code class="text-dark bg-light px-1.5 py-0.5 rounded text-uppercase-visual" style="font-size: 0.8rem;"><?= htmlspecialchars($j['ra_codigo']) ?></code></td>
+                        <td class="text-uppercase-visual" style="font-size: 0.75rem;"><?= htmlspecialchars($j['ra_denom'] ?? '') ?></td>
                         <td class="text-center"><span class="badge <?= $badgeConcepto ?>" style="padding: 4px 8px; font-weight:600;"><?= $textoConcepto ?></span></td>
                         <td class="text-center"><span class="badge <?= $badgeAccion ?>" style="padding: 4px 8px; font-weight:600;"><?= htmlspecialchars($j['eval_accion']) ?></span></td>
                       </tr>

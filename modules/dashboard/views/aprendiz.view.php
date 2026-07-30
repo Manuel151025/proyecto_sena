@@ -61,7 +61,7 @@ if ($pctAprobado >= 100) {
     <h1>Hola, <?= htmlspecialchars($nombreUsuario, ENT_QUOTES, 'UTF-8') ?> 👋</h1>
     <?php if ($aprendiz): ?>
       <p class="text-muted mb-0">
-        Ficha #<?= htmlspecialchars($aprendiz['numero_ficha']) ?> · <?= htmlspecialchars($aprendiz['programa']) ?> · 
+        <span class="text-uppercase-visual">Ficha #<?= htmlspecialchars($aprendiz['numero_ficha']) ?> · <?= htmlspecialchars($aprendiz['programa']) ?></span> · 
         Instructor: <?= htmlspecialchars($aprendiz['instructor_nombre']) ?>
       </p>
     <?php else: ?>
@@ -92,7 +92,7 @@ if ($pctAprobado >= 100) {
                 <span class="badge-soft danger px-2 py-0.5" style="font-size: 0.65rem;">Pendiente</span>
                 <small class="text-muted" style="font-size: 0.72rem;"><?= date('d/m/Y', strtotime($ad['fecha_evaluacion'])) ?></small>
               </div>
-              <div class="text-truncate fw-bold text-dark" style="font-size: 0.82rem;" title="<?= htmlspecialchars($ad['ra_denominacion']) ?>"><?= htmlspecialchars($ad['ra_denominacion']) ?></div>
+              <div class="text-truncate fw-bold text-dark text-uppercase-visual" style="font-size: 0.82rem;" title="<?= htmlspecialchars($ad['ra_denominacion']) ?>"><?= htmlspecialchars($ad['ra_denominacion']) ?></div>
               <div class="text-muted text-truncate" style="font-size: 0.72rem; margin-top: 1px;"><i class="bi bi-person me-1"></i>Instructor: <?= htmlspecialchars($ad['instructor_nombre']) ?></div>
             </div>
           </div>
@@ -202,7 +202,7 @@ if ($pctAprobado >= 100) {
 <?php if (!empty($fasesProyecto)): ?>
   <h4 class="mb-2 fw-bold text-gradient"><i class="bi bi-kanban me-2 text-primary"></i>Fase actual del proyecto</h4>
   <?php if ($aprendiz['proyecto_nombre']): ?>
-    <p class="text-muted mb-3 small"><i class="bi bi-projector me-1"></i><?= htmlspecialchars($aprendiz['proyecto_nombre']) ?> (<?= htmlspecialchars($aprendiz['proyecto_codigo']) ?>)</p>
+    <p class="text-muted mb-3 small text-uppercase-visual"><i class="bi bi-projector me-1"></i><?= htmlspecialchars($aprendiz['proyecto_nombre']) ?> (<?= htmlspecialchars($aprendiz['proyecto_codigo']) ?>)</p>
   <?php endif; ?>
   <div class="phases mb-4">
     <?php foreach ($fasesProyecto as $fase): ?>
@@ -229,10 +229,10 @@ if ($pctAprobado >= 100) {
         <div class="card-body d-flex flex-column justify-content-between">
           <div>
             <div class="d-flex justify-content-between mb-1">
-              <strong class="text-truncate d-block" title="<?= htmlspecialchars($comp['competencia']) ?>" style="max-width: 80%;"><?= htmlspecialchars($comp['competencia']) ?></strong>
+              <strong class="text-truncate d-block text-uppercase-visual" title="<?= htmlspecialchars($comp['competencia']) ?>" style="max-width: 80%;"><?= htmlspecialchars($comp['competencia']) ?></strong>
               <span class="fw-bold <?= $compClass === 'danger' ? 'text-danger' : ($compClass === 'warning' ? 'text-warning' : 'text-success') ?>"><?= $compPct ?>%</span>
             </div>
-            <small class="text-muted d-block mb-2"><?= htmlspecialchars($comp['comp_codigo']) ?> · <?= (int)$comp['aprobados'] ?>/<?= $compTotal ?> RAs aprobados</small>
+            <small class="text-muted d-block mb-2"><span class="text-uppercase-visual"><?= htmlspecialchars($comp['comp_codigo']) ?></span> · <?= (int)$comp['aprobados'] ?>/<?= $compTotal ?> RAs aprobados</small>
             <?php if (!empty($comp['instructor_nombre'])): ?>
               <div class="text-muted small mb-2" style="font-size: 0.75rem;">
                 <i class="bi bi-person me-1"></i>Instructor: <?= htmlspecialchars($comp['instructor_nombre']) ?>
@@ -269,8 +269,8 @@ if ($pctAprobado >= 100) {
             <?php foreach ($evaluacionesRecientes as $ev): ?>
               <li class="d-flex justify-content-between align-items-center p-3 border-bottom" style="border-color:var(--border) !important">
                 <div style="max-width: 65%;">
-                  <strong><?= htmlspecialchars($ev['ra_codigo']) ?></strong>
-                  <small class="text-muted d-block text-truncate"><?= htmlspecialchars($ev['denominacion']) ?></small>
+                  <strong class="text-uppercase-visual"><?= htmlspecialchars($ev['ra_codigo']) ?></strong>
+                  <small class="text-muted d-block text-truncate text-uppercase-visual"><?= htmlspecialchars($ev['denominacion']) ?></small>
                   <?php if (!empty($ev['instructor_evaluador'])): ?>
                     <small class="text-muted d-block text-truncate" style="font-size: 0.72rem; margin-top: 2px;" title="<?= htmlspecialchars($ev['instructor_evaluador']) ?>">
                       <i class="bi bi-person me-1"></i>Evaluado por: <?= htmlspecialchars($ev['instructor_evaluador']) ?>

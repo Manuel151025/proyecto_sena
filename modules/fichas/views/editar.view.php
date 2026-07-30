@@ -36,7 +36,10 @@
 
           <div class="mb-3">
             <label class="form-label">Proyecto Formativo <span class="text-muted small">(opcional)</span></label>
-            <select name="proyecto_id" class="form-select">
+            <select name="proyecto_id" class="form-select"
+                    data-picker
+                    data-picker-label="Proyecto formativo"
+                    data-picker-placeholder="Código o nombre del proyecto...">
               <option value="">-- Sin proyecto asignado --</option>
               <?php foreach ($proyectos as $proy): ?>
               <option value="<?= $proy['id'] ?>" <?= ($ficha['proyecto_id'] ?? $_POST['proyecto_id'] ?? 0) == $proy['id'] ? 'selected' : '' ?>>
@@ -48,8 +51,11 @@
 
           <div class="mb-3">
             <label class="form-label">Programa Formativo</label>
-            <select name="programa_id" class="form-select" required>
-              <option value="">-- Selecciona un programa --</option>
+            <select name="programa_id" class="form-select" required
+                    data-picker
+                    data-picker-label="Programa formativo"
+                    data-picker-placeholder="Nombre del programa...">
+              <option value="" disabled selected>-- Selecciona un programa --</option>
               <?php foreach ($programas as $prog): ?>
               <option value="<?= $prog['id'] ?>" <?= ($ficha['programa_id'] ?? $_POST['programa_id'] ?? 0) == $prog['id'] ? 'selected' : '' ?>>
                 <?= htmlspecialchars($prog['nombre']) ?>
@@ -60,8 +66,11 @@
 
           <div class="mb-3">
             <label class="form-label">Instructor Responsable</label>
-            <select name="instructor_id" class="form-select" required>
-              <option value="">-- Selecciona un instructor --</option>
+            <select name="instructor_id" class="form-select" required
+                    data-picker
+                    data-picker-label="Instructor responsable"
+                    data-picker-placeholder="Nombre del instructor...">
+              <option value="" disabled selected>-- Selecciona un instructor --</option>
               <?php foreach ($instructores as $inst): ?>
               <option value="<?= $inst['id'] ?>" <?= ($ficha['instructor_id'] ?? $_POST['instructor_id'] ?? 0) == $inst['id'] ? 'selected' : '' ?>>
                 <?= htmlspecialchars($inst['nombre']) ?>
@@ -72,7 +81,10 @@
 
           <div class="mb-3">
             <label class="form-label">Estado</label>
-            <select name="estado" class="form-select" required>
+            <select name="estado" class="form-select" required
+                    data-picker
+                    data-picker-label="Estado de la ficha"
+                    data-picker-placeholder="Seleccionar estado...">
               <option value="planeacion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'planeacion' ? 'selected' : '' ?>>Planeación</option>
               <option value="induccion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'induccion' ? 'selected' : '' ?>>Inducción</option>
               <option value="ejecucion" <?= ($ficha['estado'] ?? $_POST['estado'] ?? 'planeacion') === 'ejecucion' ? 'selected' : '' ?>>Ejecución</option>

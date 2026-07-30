@@ -6,11 +6,11 @@
       <a href="<?= APP_URL ?>/index.php/dashboard" class="small"><i class="bi bi-arrow-left"></i> Volver al Inicio</a>
     <?php endif; ?>
     <h1 class="mt-2 mb-1">
-      Ficha #<?= htmlspecialchars($ficha['numero_ficha']) ?> 
+      <span class="text-uppercase-visual">Ficha #<?= htmlspecialchars($ficha['numero_ficha']) ?></span> 
       <span class="badge-soft <?= $estados_label[$ficha['estado']][1] ?> ms-2"><?= $estados_label[$ficha['estado']][0] ?></span>
     </h1>
     <p class="text-muted mb-0">
-      <?= htmlspecialchars($ficha['programa']) ?> · 
+      <span class="text-uppercase-visual"><?= htmlspecialchars($ficha['programa']) ?></span> · 
       Instructor Líder: <?= htmlspecialchars($ficha['instructor']) ?> · 
       <?= $ficha['cantidad_aprendices'] ?> aprendices
     </p>
@@ -49,7 +49,7 @@
         <div class="row g-3">
           <div class="col-md-4">
             <small class="text-muted">Programa</small>
-            <div class="fw-semibold"><?= htmlspecialchars($ficha['programa']) ?></div>
+            <div class="fw-semibold text-uppercase-visual"><?= htmlspecialchars($ficha['programa']) ?></div>
           </div>
           <div class="col-md-4">
             <small class="text-muted">Instructor Líder</small>
@@ -71,7 +71,7 @@
             <small class="text-muted">Cumplimiento</small>
             <div class="fw-semibold">
               <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <div style="width: 100px; height: 24px; background: #f0f0f0; border-radius: 4px; overflow: hidden;">
+                <div style="width: 100px; height: 24px; background: var(--border); border-radius: 4px; overflow: hidden;">
                   <div style="height: 100%; width: <?= $ficha['cumplimiento_porcentaje'] ?>%; background: <?= $ficha['cumplimiento_porcentaje'] >= 75 ? '#22c55e' : ($ficha['cumplimiento_porcentaje'] >= 50 ? '#eab308' : '#ef4444') ?>; transition: width 0.3s;"></div>
                 </div>
                 <span><?= (int)$ficha['cumplimiento_porcentaje'] ?>%</span>

@@ -87,7 +87,10 @@
       </div>
       <div class="col-md-3">
         <label class="form-label text-muted small" for="filterEstadoSelect">Estado</label>
-        <select name="estado" id="filterEstadoSelect" class="form-select">
+        <select name="estado" id="filterEstadoSelect" class="form-select"
+                data-picker
+                data-picker-label="Estado de matrícula"
+                data-picker-placeholder="Todos">
           <option value="">Todos</option>
           <option value="matriculado" <?= $filter_estado === 'matriculado' ? 'selected' : '' ?>>Matriculado</option>
           <option value="suspendido" <?= $filter_estado === 'suspendido' ? 'selected' : '' ?>>Suspendido</option>
@@ -108,7 +111,7 @@
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table mb-0 align-middle">
-        <thead class="table-light-head" style="background: rgba(0,0,0,0.03);">
+        <thead class="table-light-head" style="background: var(--surface-2);">
           <tr>
             <th class="ps-4">Documento</th>
             <th>Aprendiz</th>
@@ -138,8 +141,8 @@
             </td>
             <td>
               <?php if ($ap['numero_ficha']): ?>
-                <div class="fw-bold text-dark">Ficha #<?= htmlspecialchars($ap['numero_ficha']) ?></div>
-                <small class="text-muted text-wrap d-block" style="max-width:200px;"><?= htmlspecialchars($ap['programa_nombre']) ?></small>
+                <div class="fw-bold text-dark text-uppercase-visual">Ficha #<?= htmlspecialchars($ap['numero_ficha']) ?></div>
+                <small class="text-muted text-wrap d-block text-uppercase-visual" style="max-width:200px;"><?= htmlspecialchars($ap['programa_nombre']) ?></small>
               <?php else: ?>
                 <span class="text-danger small d-block mb-1"><i class="bi bi-x-circle me-1"></i>Sin Ficha</span>
               <?php endif; ?>
@@ -210,9 +213,9 @@
 <?php if (hasRole(ROL_COORDINADOR)): ?>
 <div class="modal fade" id="modalMatricular" tabindex="-1" aria-labelledby="modalMatricularLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold" id="modalMatricularLabel"><i class="bi bi-person-plus text-primary me-2"></i>Nueva Matrícula</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalMatricularLabel"><i class="bi bi-person-plus"></i>Nueva Matrícula</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -233,7 +236,10 @@
           <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold" for="mat-tipo-documento">Tipo Documento</label>
-              <select id="mat-tipo-documento" name="tipo_documento" class="form-select">
+              <select id="mat-tipo-documento" name="tipo_documento" class="form-select"
+                      data-picker
+                      data-picker-label="Tipo de documento"
+                      data-picker-placeholder="Seleccionar tipo...">
                 <option value="CC">Cédula de Ciudadanía (CC)</option>
                 <option value="TI">Tarjeta de Identidad (TI)</option>
                 <option value="CE">Cédula de Extranjería (CE)</option>
@@ -265,7 +271,10 @@
           <div class="row g-3 mb-3">
             <div class="col-md-3">
               <label class="form-label text-muted small fw-semibold" for="mat-genero">Género</label>
-              <select id="mat-genero" name="genero" class="form-select">
+              <select id="mat-genero" name="genero" class="form-select"
+                      data-picker
+                      data-picker-label="Género"
+                      data-picker-placeholder="Seleccionar género...">
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
                 <option value="O">Otro</option>
@@ -287,7 +296,10 @@
           <div class="row g-3 mb-3">
             <div class="col-md-12">
               <label class="form-label text-muted small fw-semibold" for="mat-instructor-seguimiento">Instructor de Seguimiento (Etapa Práctica)</label>
-              <select id="mat-instructor-seguimiento" name="instructor_seguimiento_id" class="form-select">
+              <select id="mat-instructor-seguimiento" name="instructor_seguimiento_id" class="form-select"
+                      data-picker
+                      data-picker-label="Instructor de seguimiento"
+                      data-picker-placeholder="Nombre del instructor...">
                 <option value="">-- Sin asignar --</option>
                 <?php foreach ($instructores as $inst): ?>
                   <option value="<?= $inst['id'] ?>"><?= htmlspecialchars($inst['nombre']) ?></option>
@@ -296,7 +308,7 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Matricular Aprendiz</button>
         </div>
@@ -308,9 +320,9 @@
 <!-- Modal Carga Masiva CSV -->
 <div class="modal fade" id="modalCargarCSV" tabindex="-1" aria-labelledby="modalCargarCSVLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold" id="modalCargarCSVLabel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Carga Masiva de Aprendices</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCargarCSVLabel"><i class="bi bi-file-earmark-spreadsheet"></i>Carga Masiva de Aprendices</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST" enctype="multipart/form-data">
@@ -323,7 +335,10 @@
           
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold" for="csv-ficha-id">Ficha de Destino</label>
-            <select id="csv-ficha-id" name="ficha_id" class="form-select" required>
+            <select id="csv-ficha-id" name="ficha_id" class="form-select" required
+                    data-picker
+                    data-picker-label="Seleccionar ficha"
+                    data-picker-placeholder="Número de ficha o nombre del programa...">
               <option value="" disabled selected>Seleccionar Ficha...</option>
               <?php foreach ($fichas as $f): ?>
                 <option value="<?= $f['id'] ?>">
@@ -347,7 +362,7 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Importar Aprendices</button>
         </div>
@@ -361,9 +376,9 @@
 <?php if (hasRole(ROL_COORDINADOR)): ?>
 <div class="modal fade" id="modalEditarMatricula" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Editar Datos del Aprendiz</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i>Editar Datos del Aprendiz</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -385,7 +400,10 @@
           <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold" for="edit_tipo_documento">Tipo Documento</label>
-              <select name="tipo_documento" id="edit_tipo_documento" class="form-select">
+              <select name="tipo_documento" id="edit_tipo_documento" class="form-select"
+                      data-picker
+                      data-picker-label="Tipo de documento"
+                      data-picker-placeholder="Seleccionar tipo...">
                 <option value="CC">Cédula de Ciudadanía (CC)</option>
                 <option value="TI">Tarjeta de Identidad (TI)</option>
                 <option value="CE">Cédula de Extranjería (CE)</option>
@@ -416,7 +434,10 @@
           <div class="row g-3 mb-3">
             <div class="col-md-3">
               <label class="form-label text-muted small fw-semibold" for="edit_estado">Estado de Matrícula</label>
-              <select name="estado" id="edit_estado" class="form-select" required>
+              <select name="estado" id="edit_estado" class="form-select" required
+                      data-picker
+                      data-picker-label="Estado de matrícula"
+                      data-picker-placeholder="Seleccionar estado...">
                 <option value="matriculado">Matriculado</option>
                 <option value="suspendido">Suspendido</option>
                 <option value="desertado">Desertado</option>
@@ -426,7 +447,10 @@
             </div>
             <div class="col-md-3">
               <label class="form-label text-muted small fw-semibold" for="edit_genero">Género</label>
-              <select name="genero" id="edit_genero" class="form-select">
+              <select name="genero" id="edit_genero" class="form-select"
+                      data-picker
+                      data-picker-label="Género"
+                      data-picker-placeholder="Seleccionar género...">
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
                 <option value="O">Otro</option>
@@ -448,7 +472,10 @@
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold" for="edit_instructor_seguimiento_id">Instructor de Seguimiento (Etapa Práctica)</label>
-            <select name="instructor_seguimiento_id" id="edit_instructor_seguimiento_id" class="form-select">
+            <select name="instructor_seguimiento_id" id="edit_instructor_seguimiento_id" class="form-select"
+                    data-picker
+                    data-picker-label="Instructor de seguimiento"
+                    data-picker-placeholder="Nombre del instructor...">
               <option value="">-- Sin asignar --</option>
               <?php foreach ($instructores as $inst): ?>
                 <option value="<?= $inst['id'] ?>"><?= htmlspecialchars($inst['nombre']) ?></option>
@@ -456,7 +483,7 @@
             </select>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar Cambios</button>
         </div>

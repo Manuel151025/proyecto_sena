@@ -204,14 +204,14 @@ function updateFilename(inputId, nameId) {
     <?php if (!empty($parsed_estructura)): ?>
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-transparent py-3">
-        <h5 class="mb-0 fw-bold text-success"><i class="bi bi-collection me-2"></i>Estructura Curricular: <?= htmlspecialchars($parsed_estructura['programa_nombre']) ?></h5>
+        <h5 class="mb-0 fw-bold text-success"><i class="bi bi-collection me-2"></i>Estructura Curricular: <span class="text-uppercase-visual"><?= htmlspecialchars($parsed_estructura['programa_nombre']) ?></span></h5>
       </div>
       <div class="card-body">
         <div class="row mb-3 g-2">
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Código del Programa</small>
-              <strong style="font-size: 1.1rem;"><code><?= htmlspecialchars($parsed_estructura['programa_codigo']) ?></code></strong>
+              <strong style="font-size: 1.1rem;"><code class="text-uppercase-visual"><?= htmlspecialchars($parsed_estructura['programa_codigo']) ?></code></strong>
             </div>
           </div>
           <div class="col-sm-6 col-lg-3">
@@ -233,8 +233,8 @@ function updateFilename(inputId, nameId) {
           <div class="accordion-item" style="border-radius: var(--radius-lg); margin-bottom: 0.5rem; overflow: hidden; border: 1px solid var(--border);">
             <h2 class="accordion-header" id="headingEst<?= $index ?>">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEst<?= $index ?>" aria-expanded="false" style="font-size: 0.95rem; font-weight: 600; padding: 1rem 1.25rem;">
-                <span class="badge bg-soft primary me-2">Código: <?= htmlspecialchars($comp['codigo']) ?></span>
-                <?= htmlspecialchars(substr($comp['nombre'], 0, 110)) ?><?= strlen($comp['nombre']) > 110 ? '...' : '' ?>
+                <span class="badge bg-soft primary me-2">Código: <span class="text-uppercase-visual"><?= htmlspecialchars($comp['codigo']) ?></span></span>
+                <span class="text-uppercase-visual"><?= htmlspecialchars(substr($comp['nombre'], 0, 110)) ?><?= strlen($comp['nombre']) > 110 ? '...' : '' ?></span>
                 <span class="badge bg-secondary ms-auto text-white ms-2" style="font-size: 0.72rem;"><?= count($comp['resultados']) ?> RAs</span>
               </button>
             </h2>
@@ -246,7 +246,7 @@ function updateFilename(inputId, nameId) {
                   <?php foreach ($comp['resultados'] as $ra): ?>
                   <li class="list-group-item px-0 py-2 d-flex align-items-start gap-2">
                     <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.72rem; font-family: monospace;">RA-<?= str_pad((string)$ra['numero'], 2, '0', STR_PAD_LEFT) ?></span>
-                    <span style="font-size: 0.9rem;"><?= htmlspecialchars($ra['denominacion']) ?></span>
+                    <span class="text-uppercase-visual" style="font-size: 0.9rem;"><?= htmlspecialchars($ra['denominacion']) ?></span>
                   </li>
                   <?php endforeach; ?>
                 </ul>
@@ -263,14 +263,14 @@ function updateFilename(inputId, nameId) {
     <?php if (!empty($parsed_proyecto)): ?>
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-transparent py-3">
-        <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-kanban me-2"></i>Proyecto Formativo: <?= htmlspecialchars($parsed_proyecto['proyecto_nombre']) ?></h5>
+        <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-kanban me-2"></i>Proyecto Formativo: <span class="text-uppercase-visual"><?= htmlspecialchars($parsed_proyecto['proyecto_nombre']) ?></span></h5>
       </div>
       <div class="card-body">
         <div class="row mb-4 g-2">
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Código del Proyecto</small>
-              <strong style="font-size: 1.1rem;"><code><?= htmlspecialchars($parsed_proyecto['proyecto_codigo']) ?></code></strong>
+              <strong style="font-size: 1.1rem;"><code class="text-uppercase-visual"><?= htmlspecialchars($parsed_proyecto['proyecto_codigo']) ?></code></strong>
             </div>
           </div>
           <div class="col-sm-6 col-lg-3">
@@ -282,7 +282,7 @@ function updateFilename(inputId, nameId) {
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Programa Asociado</small>
-              <strong style="font-size: 1.05rem;" class="text-truncate d-block" title="<?= htmlspecialchars($parsed_proyecto['programa_nombre']) ?>"><?= htmlspecialchars($parsed_proyecto['programa_nombre'] ?: 'Desconocido') ?></strong>
+              <strong style="font-size: 1.05rem;" class="text-truncate d-block text-uppercase-visual" title="<?= htmlspecialchars($parsed_proyecto['programa_nombre']) ?>"><?= htmlspecialchars($parsed_proyecto['programa_nombre'] ?: 'Desconocido') ?></strong>
             </div>
           </div>
         </div>
@@ -329,10 +329,10 @@ function updateFilename(inputId, nameId) {
                     <tbody>
                       <?php foreach ($raPorFase[$fase] as $ra): ?>
                       <tr>
-                        <td style="white-space: nowrap;"><strong><?= htmlspecialchars($ra['ra_code']) ?>-<?= str_pad((string)$ra['ra_num'], 2, '0', STR_PAD_LEFT) ?></strong></td>
-                        <td><?= htmlspecialchars($ra['denominacion']) ?></td>
+                        <td style="white-space: nowrap;"><strong class="text-uppercase-visual"><?= htmlspecialchars($ra['ra_code']) ?>-<?= str_pad((string)$ra['ra_num'], 2, '0', STR_PAD_LEFT) ?></strong></td>
+                        <td class="text-uppercase-visual"><?= htmlspecialchars($ra['denominacion']) ?></td>
                         <td>
-                          <div class="text-truncate" style="max-width: 250px;" title="<?= htmlspecialchars($ra['competencia_code'] . ' - ' . ($parsed_proyecto['competencias'][$ra['competencia_code']] ?? '')) ?>">
+                          <div class="text-truncate text-uppercase-visual" style="max-width: 250px;" title="<?= htmlspecialchars($ra['competencia_code'] . ' - ' . ($parsed_proyecto['competencias'][$ra['competencia_code']] ?? '')) ?>">
                             <small class="badge bg-light text-dark border"><?= htmlspecialchars($ra['competencia_code']) ?></small>
                             <?= htmlspecialchars($parsed_proyecto['competencias'][$ra['competencia_code']] ?? 'Ver competencia') ?>
                           </div>

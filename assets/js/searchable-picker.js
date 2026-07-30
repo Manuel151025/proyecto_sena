@@ -24,6 +24,11 @@
 (function () {
     'use strict';
 
+    // Con pocas opciones la caja de búsqueda estorba más de lo que ayuda:
+    // por debajo de este umbral el modal se muestra como lista simple
+    // (modo compacto). Se puede forzar con data-picker-search="always".
+    const COMPACT_MAX_OPTIONS = 8;
+
     // ----- Helpers -----
 
     function normalize(s) {
@@ -134,8 +139,12 @@
         if (select.dataset.spInitialized === '1') return;
         select.dataset.spInitialized = '1';
 
-        // Ocultar el select original (manteniéndolo en el DOM para que el form lo envíe)
-        select.style.display = 'none';
+        // Sacar el <select> de la vista sin quitarlo del render: si se
+        // oculta con display:none el navegador bloquea el envío de los
+        // selects `required` vacíos sin mostrar ningún mensaje. Recortado
+        // a 1px sigue siendo "visible" para la validación nativa y su
+        // globo aparece justo donde está el trigger.
+        select.classList.add('sp-native');
 
         // Crear UI
         const { trigger, text, clearBtn } = buildTrigger(select);
@@ -150,13 +159,19 @@
         const closeBtn    = modal.querySelector('.sp-close');
 
         // Extraer opciones del select (incluyendo data-search opcional)
+        //
+        // Solo se descartan los placeholders "muertos" — el patrón
+        // <option value="" disabled selected>Seleccione...</option> —.
+        // Las opciones de valor vacío que sí son seleccionables ("Todos",
+        // "-- Sin asignar --") se listan como cualquier otra: en los filtros
+        // son una elección real y antes desaparecían del listado.
         function getOptions() {
             return Array.from(select.options).map(opt => ({
                 value: opt.value,
                 label: opt.textContent.trim(),
                 searchExtra: opt.dataset.search || '',
                 disabled: opt.disabled,
-                isPlaceholder: opt.value === '' || opt.value === null,
+                isPlaceholder: (opt.value === '' || opt.value === null) && opt.disabled,
             }));
         }
 
@@ -168,7 +183,13 @@
                 trigger.classList.remove('is-empty');
                 trigger.classList.add('has-value');
             } else {
-                text.textContent = select.dataset.pickerPlaceholder || 'Seleccionar...';
+                // Con valor vacío hay dos casos: una opción seleccionable
+                // ("Todos", "-- Sin asignar --"), cuyo texto sí se muestra,
+                // o un placeholder muerto, que usa data-picker-placeholder.
+                const emptyLabel = selectedOpt && !selectedOpt.disabled
+                    ? selectedOpt.textContent.trim()
+                    : '';
+                text.textContent = emptyLabel || select.dataset.pickerPlaceholder || 'Seleccionar...';
                 trigger.classList.add('is-empty');
                 trigger.classList.remove('has-value');
             }
@@ -178,10 +199,19 @@
         let focusedIndex = -1;
         let currentResults = [];
 
+        // El modo compacto se recalcula en cada render porque hay selects
+        // que se repueblan por JS (p. ej. competencias filtradas por ficha).
+        function applyDensity(total) {
+            const always = select.dataset.pickerSearch === 'always';
+            modal.classList.toggle('sp-compact', !always && total <= COMPACT_MAX_OPTIONS);
+        }
+
         function render(query) {
             const q = normalize(query);
             const terms = q ? [q] : [];
             const options = getOptions();
+
+            applyDensity(options.filter(opt => !opt.isPlaceholder).length);
 
             currentResults = options.filter(opt => {
                 if (opt.isPlaceholder) return false;
@@ -277,7 +307,14 @@
             searchInput.value = '';
             render('');
             // foco después del paint para que la animación no lo robe
-            setTimeout(() => searchInput.focus(), 50);
+            setTimeout(() => {
+                if (modal.classList.contains('sp-compact')) {
+                    // Sin caja de búsqueda, el foco arranca en la opción activa
+                    const first = list.querySelector('.sp-item.is-selected') || list.querySelector('.sp-item');
+                    if (first) { first.focus(); return; }
+                }
+                searchInput.focus();
+            }, 50);
             // Solo bloqueamos overflow si el picker está en <body>;
             // si está dentro de un modal de Bootstrap, ese ya maneja overflow.
             if (!bsModal) {
@@ -348,8 +385,47 @@
             }
         });
 
+        // En modo compacto no hay input de búsqueda que capture el teclado:
+        // los .sp-item ya son <button> (Enter/Espacio funcionan solos), solo
+        // hay que mover el foco con las flechas y cerrar con Escape.
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                close();
+                return;
+            }
+            if (!modal.classList.contains('sp-compact')) return;
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            e.preventDefault();
+            const items = Array.from(list.querySelectorAll('.sp-item'));
+            if (!items.length) return;
+            const current = items.indexOf(document.activeElement);
+            const next = e.key === 'ArrowDown'
+                ? Math.min(current + 1, items.length - 1)
+                : Math.max(current - 1, 0);
+            items[next < 0 ? 0 : next].focus();
+        });
+
         // Si el <select> cambia desde fuera (ej. otro script), sincronizar
         select.addEventListener('change', syncTriggerLabel);
+
+        // Varias vistas precargan sus modales de edición asignando
+        // `select.value = ...`, que NO dispara 'change' y dejaba el trigger
+        // mostrando el placeholder en lugar del valor actual. Se intercepta
+        // la asignación solo en esta instancia del select.
+        const valueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+        if (valueDescriptor && valueDescriptor.set) {
+            Object.defineProperty(select, 'value', {
+                configurable: true,
+                enumerable: true,
+                get() { return valueDescriptor.get.call(this); },
+                set(v) { valueDescriptor.set.call(this, v); syncTriggerLabel(); }
+            });
+        }
+
+        // Red de seguridad para modales de Bootstrap poblados por otros
+        // medios (selectedIndex, atributos selected, etc.)
+        select.closest('.modal')?.addEventListener('shown.bs.modal', syncTriggerLabel);
 
         // Estado inicial
         syncTriggerLabel();

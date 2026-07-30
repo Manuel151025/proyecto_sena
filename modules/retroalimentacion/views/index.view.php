@@ -106,7 +106,7 @@
         <input type="hidden" name="action" value="create_feedback">
 
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-chat-left-quote me-2"></i>Nueva retroalimentación</h5>
+          <h5 class="modal-title"><i class="bi bi-chat-left-quote"></i>Nueva retroalimentación</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
 
@@ -131,7 +131,7 @@
                       data-picker
                       data-picker-label="Buscar aprendiz"
                       data-picker-placeholder="Escribe nombre, documento o ficha...">
-                <option value="">Selecciona un aprendiz...</option>
+                <option value="" disabled selected>Selecciona un aprendiz...</option>
                 <?php foreach ($aprendices_disponibles as $ap): ?>
                   <option value="<?= (int)$ap['id'] ?>"
                           data-search="<?= htmlspecialchars(($ap['numero_documento'] ?? '') . ' ' . ($ap['numero_ficha'] ?? '')) ?>">

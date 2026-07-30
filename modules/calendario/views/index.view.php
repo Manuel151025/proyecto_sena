@@ -135,76 +135,63 @@
 .fc .fc-list-empty { color: var(--text-muted); }
 .fc .fc-list-day-cushion { background: var(--surface-2) !important; }
 
-/* ── Modal de detalle de evento ── */
-#cal-modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.45);
-    z-index: 1050;
-    align-items: center;
-    justify-content: center;
+/* ── Modal de detalle de evento ──
+   Contenedor y encabezado los estilan .ui-modal-overlay / .modal-* de
+   theme.css; aquí solo queda lo propio del contenido del evento. ── */
+.modal-event-dot {
+    width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+    flex-shrink: 0;
 }
-#cal-modal-overlay.open { display: flex; }
-#cal-modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.5rem;
-    max-width: 420px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0,0,0,.15);
-    animation: modalPop .2s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes modalPop {
-    from { transform: scale(.9); opacity: 0; }
-    to   { transform: scale(1);  opacity: 1; }
-}
-#cal-modal .modal-event-dot {
-    width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: .4rem;
-}
-#cal-modal h4 { font-size: 1rem; font-weight: 700; margin: .5rem 0 .75rem; line-height: 1.3; }
-#cal-modal .meta-row {
+.cal-meta-row {
     display: flex; align-items: flex-start; gap: .5rem;
     font-size: .82rem; color: var(--text-muted); margin-bottom: .35rem;
 }
-#cal-modal .meta-row strong { color: var(--text); white-space: nowrap; }
+.cal-meta-row strong { color: var(--text); white-space: nowrap; }
 
-/* ── Selector de vista para móvil (reemplaza los botones nativos de FullCalendar) ── */
+/* ── Selector de vista (Día / Semana / Mes / Agenda) para móvil:
+      sustituye a los botones nativos de FullCalendar, que no caben. ── */
 .cal-view-switcher {
     display: none;
-    gap: .5rem;
-    margin-bottom: .75rem;
-}
-.cal-view-switcher select {
-    flex: 1;
-    appearance: none;
-    -webkit-appearance: none;
-    background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23888'%3E%3Cpath d='M4 6l4 4 4-4H4z'/%3E%3C/svg%3E") no-repeat right .7rem center/14px;
+    gap: .35rem;
+    margin-bottom: .85rem;
+    padding: .25rem;
+    background: var(--surface-2);
     border: 1px solid var(--border);
-    color: var(--text);
-    font-size: .85rem;
-    font-weight: 600;
-    padding: .55rem 2rem .55rem .9rem;
     border-radius: 10px;
-    min-height: 42px;
 }
-.cal-view-switcher select:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(57,169,0,.2);
-    border-color: var(--sena-primary);
+.cal-view-btn {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    font-size: .8rem;
+    font-weight: 600;
+    padding: .5rem .25rem;
+    border-radius: 8px;
+    min-height: 40px;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
 }
-/* Pista visual de swipe (solo aparece brevemente en móvil) */
+.cal-view-btn:hover { color: var(--text); }
+.cal-view-btn.is-active {
+    background: var(--sena-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(57,169,0,.25);
+}
+/* Pista visual de swipe (solo aparece en móvil) */
 .cal-swipe-hint {
     display: none;
     text-align: center;
     font-size: .72rem;
     color: var(--text-muted);
-    margin-top: -.5rem;
+    margin-top: .5rem;
 }
 
 /* ── Adaptabilidad Móvil (Responsive CSS overrides) ── */
 @media (max-width: 768px) {
+    .cal-wrap {
+        gap: 1rem;
+    }
     .cal-card {
         padding: 0.75rem;
     }
@@ -228,44 +215,92 @@
         order: 2;
         display: flex;
         justify-content: center;
+        gap: .35rem;
     }
     .fc .fc-toolbar-title {
         font-size: 1.05rem !important;
     }
     .fc .fc-button {
-        padding: 0.3rem 0.6rem;
-        font-size: 0.75rem;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.78rem;
+        min-height: 38px;
     }
+    /* Celdas del mes más compactas para que quepan 7 columnas */
     .fc .fc-daygrid-day-number {
-        font-size: .78rem;
+        font-size: .75rem;
+        padding: 2px 4px;
     }
+    .fc .fc-col-header-cell-cushion {
+        font-size: .72rem;
+        padding: 6px 2px;
+    }
+    .fc .fc-daygrid-day-frame {
+        min-height: 62px;
+    }
+    .fc .fc-event {
+        font-size: .68rem;
+        padding: 1px 3px;
+    }
+    .fc .fc-daygrid-more-link {
+        font-size: .68rem;
+    }
+    /* Agenda: filas más cómodas para el dedo */
     .fc .fc-list-event-title {
-        font-size: .82rem;
+        font-size: .85rem;
     }
+    .fc .fc-list-event td {
+        padding: .65rem .5rem;
+    }
+    /* La leyenda pasa a una fila deslizable en vez de ocupar cuatro líneas */
     .cal-legend {
+        flex-wrap: nowrap;
+        overflow-x: auto;
         gap: 0.4rem;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+    }
+    .cal-legend::-webkit-scrollbar {
+        display: none;
     }
     .cal-legend-item {
+        flex: 0 0 auto;
+        white-space: nowrap;
         font-size: 0.72rem;
-        padding: 0.2rem 0.5rem;
+        padding: 0.25rem 0.55rem;
         background: var(--surface-2);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 999px;
     }
 }
 
 @media (max-width: 576px) {
     .cal-header {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+        align-items: stretch;
+        gap: 0.6rem;
     }
     .cal-header h1 {
-        font-size: 1.3rem;
+        font-size: 1.25rem;
+    }
+    .cal-header .cal-header-actions {
+        justify-content: space-between;
     }
     .cal-header .role-badge {
         padding: 0.25rem 0.65rem;
         font-size: 0.75rem;
+    }
+    .cal-view-btn {
+        font-size: .74rem;
+        padding: .5rem .15rem;
+    }
+    .fc .fc-daygrid-day-frame {
+        min-height: 54px;
+    }
+    /* En pantallas muy angostas los eventos del mes se reducen a un punto:
+       el detalle se consulta con un toque (abre el modal). */
+    .fc .fc-daygrid-event .fc-event-time,
+    .fc .fc-daygrid-event .fc-event-title {
+        font-size: .65rem;
     }
 }
 </style>
@@ -278,7 +313,7 @@
       <i class="bi bi-calendar3" style="color:<?= $roleColors[$rol] ?? '#39A900' ?>"></i>
       Calendario Académico
     </h1>
-    <div style="display:flex; align-items:center; gap:.6rem;">
+    <div class="cal-header-actions" style="display:flex; align-items:center; gap:.6rem;">
       <?php if ($puedeCrearEvento): ?>
         <button type="button" class="btn btn-primary btn-sm" style="border-radius:8px;" onclick="openCrearEventoModal()">
           <i class="bi bi-plus-lg me-1"></i>Nuevo evento
@@ -308,13 +343,11 @@
 
   <!-- Tarjeta con FullCalendar -->
   <div class="cal-card">
-    <div class="cal-view-switcher">
-      <select id="cal-view-select" aria-label="Cambiar vista del calendario">
-        <option value="dayGridDay">Día</option>
-        <option value="dayGridWeek">Semana</option>
-        <option value="dayGridMonth">Mes</option>
-        <option value="listWeek">Agenda</option>
-      </select>
+    <div class="cal-view-switcher" role="group" aria-label="Cambiar vista del calendario">
+      <button type="button" class="cal-view-btn" data-cal-view="dayGridDay">Día</button>
+      <button type="button" class="cal-view-btn" data-cal-view="dayGridWeek">Semana</button>
+      <button type="button" class="cal-view-btn" data-cal-view="dayGridMonth">Mes</button>
+      <button type="button" class="cal-view-btn" data-cal-view="listWeek">Agenda</button>
     </div>
     <div id="sena-calendar"></div>
     <div class="cal-swipe-hint"><i class="bi bi-arrow-left-right"></i> Desliza para cambiar de período</div>
@@ -323,67 +356,81 @@
 </div>
 
 <!-- Modal de detalle -->
-<div id="cal-modal-overlay">
-  <div id="cal-modal">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.25rem;">
-      <span id="cal-modal-type" class="badge-soft" style="font-size:.72rem;"></span>
-      <button onclick="closeCalModal()" style="background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">×</button>
+<div id="cal-modal-overlay" class="ui-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cal-modal-titulo">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h5 class="modal-title" id="cal-modal-titulo">
+        <span class="modal-event-dot" id="cal-modal-dot"></span>
+        <span id="cal-modal-title"></span>
+      </h5>
+      <button type="button" class="ui-modal-close" onclick="closeCalModal()" aria-label="Cerrar">
+        <i class="bi bi-x-lg"></i>
+      </button>
     </div>
-    <h4>
-      <span class="modal-event-dot" id="cal-modal-dot"></span>
-      <span id="cal-modal-title"></span>
-    </h4>
-    <div id="cal-modal-meta"></div>
-    <div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
-      <a id="cal-modal-link" href="#" class="btn btn-primary btn-sm" style="border-radius:8px;">
-        <i class="bi bi-arrow-right me-1"></i>Ir al módulo
-      </a>
-      <form id="cal-modal-delete-form" method="post" action="<?= APP_URL ?>/index.php/calendario" style="display:none;" onsubmit="return confirm('¿Eliminar este evento del calendario?');">
+    <div class="modal-body">
+      <span id="cal-modal-type" class="badge-soft mb-3" style="font-size:.72rem;"></span>
+      <div id="cal-modal-meta" class="mt-3"></div>
+    </div>
+    <div class="modal-footer">
+      <form id="cal-modal-delete-form" method="post" action="<?= APP_URL ?>/index.php/calendario" style="display:none; margin-right:auto;" onsubmit="return confirm('¿Eliminar este evento del calendario?');">
         <input type="hidden" name="action" value="eliminar_evento">
         <input type="hidden" name="evento_id" id="cal-modal-delete-id" value="">
-        <button type="submit" class="btn btn-sm" style="border-radius:8px; background:#fee2e2; color:#dc2626; border:1px solid #fecaca;">
+        <button type="submit" class="btn btn-soft text-danger">
           <i class="bi bi-trash me-1"></i>Eliminar
         </button>
       </form>
-      <button onclick="closeCalModal()" class="btn btn-soft btn-sm" style="border-radius:8px;">Cerrar</button>
+      <button type="button" onclick="closeCalModal()" class="btn btn-soft">Cerrar</button>
+      <a id="cal-modal-link" href="#" class="btn btn-primary">
+        <i class="bi bi-arrow-right me-1"></i>Ir al módulo
+      </a>
     </div>
   </div>
 </div>
 
 <?php if ($puedeCrearEvento): ?>
 <!-- Modal de creación de evento -->
-<div id="cal-crear-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1050; align-items:center; justify-content:center;">
-  <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.5rem; max-width:440px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.15);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h4 style="font-size:1.05rem; font-weight:700; margin:0;"><i class="bi bi-calendar-plus me-1" style="color:#f59e0b"></i> Nuevo evento</h4>
-      <button type="button" onclick="closeCrearEventoModal()" style="background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">×</button>
+<div id="cal-crear-overlay" class="ui-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cal-crear-titulo">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h5 class="modal-title" id="cal-crear-titulo"><i class="bi bi-calendar-plus"></i>Nuevo evento</h5>
+      <button type="button" class="ui-modal-close" onclick="closeCrearEventoModal()" aria-label="Cerrar">
+        <i class="bi bi-x-lg"></i>
+      </button>
     </div>
     <form method="post" action="<?= APP_URL ?>/index.php/calendario">
       <input type="hidden" name="action" value="crear_evento">
-      <div class="mb-3">
-        <label for="cal-ev-titulo" class="form-label" style="font-size:.85rem; font-weight:600;">Título</label>
-        <input type="text" class="form-control" id="cal-ev-titulo" name="titulo" maxlength="150" required placeholder="Ej: Reunión de seguimiento">
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="cal-ev-titulo" class="form-label">Título</label>
+          <input type="text" class="form-control" id="cal-ev-titulo" name="titulo" maxlength="150" required placeholder="Ej: Reunión de seguimiento">
+        </div>
+        <div class="mb-3">
+          <label for="cal-ev-fecha" class="form-label">Fecha</label>
+          <input type="date" class="form-control" id="cal-ev-fecha" name="fecha" required>
+        </div>
+        <div class="mb-3">
+          <label for="cal-ev-ficha" class="form-label">Ficha</label>
+          <select class="form-select" id="cal-ev-ficha" name="ficha_id" required
+                  data-picker
+                  data-picker-label="Seleccionar ficha"
+                  data-picker-placeholder="Número de ficha o programa...">
+            <option value="" disabled selected>Seleccione una ficha…</option>
+            <?php foreach ($fichasDisponibles as $f): ?>
+              <option value="<?= (int)$f['id'] ?>"
+                      data-search="<?= htmlspecialchars($f['numero_ficha'] . ' ' . $f['programa']) ?>">
+                #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="mb-0">
+          <label for="cal-ev-desc" class="form-label">Descripción (opcional)</label>
+          <textarea class="form-control" id="cal-ev-desc" name="descripcion" rows="2" maxlength="500"></textarea>
+        </div>
       </div>
-      <div class="mb-3">
-        <label for="cal-ev-fecha" class="form-label" style="font-size:.85rem; font-weight:600;">Fecha</label>
-        <input type="date" class="form-control" id="cal-ev-fecha" name="fecha" required>
-      </div>
-      <div class="mb-3">
-        <label for="cal-ev-ficha" class="form-label" style="font-size:.85rem; font-weight:600;">Ficha</label>
-        <select class="form-select" id="cal-ev-ficha" name="ficha_id" required>
-          <option value="">Seleccione una ficha…</option>
-          <?php foreach ($fichasDisponibles as $f): ?>
-            <option value="<?= (int)$f['id'] ?>">#<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa']) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="mb-3">
-        <label for="cal-ev-desc" class="form-label" style="font-size:.85rem; font-weight:600;">Descripción (opcional)</label>
-        <textarea class="form-control" id="cal-ev-desc" name="descripcion" rows="2" maxlength="500"></textarea>
-      </div>
-      <div style="display:flex; gap:.5rem; justify-content:flex-end;">
-        <button type="button" onclick="closeCrearEventoModal()" class="btn btn-soft btn-sm" style="border-radius:8px;">Cancelar</button>
-        <button type="submit" class="btn btn-primary btn-sm" style="border-radius:8px;">Guardar evento</button>
+      <div class="modal-footer">
+        <button type="button" onclick="closeCrearEventoModal()" class="btn btn-soft">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar evento</button>
       </div>
     </form>
   </div>
@@ -397,10 +444,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const calEl = document.getElementById('sena-calendar');
-    const viewSelect = document.getElementById('cal-view-select');
+    const viewButtons = Array.from(document.querySelectorAll('.cal-view-btn'));
+
+    // Punto de corte único para toda la lógica responsive de esta vista
+    const MOBILE_BP = 768;
+    const isNarrow = () => window.innerWidth < MOBILE_BP;
 
     // Detectar si es pantalla pequeña
-    const isMobile = window.innerWidth < 768;
+    let isMobile = isNarrow();
     const initialView = isMobile ? 'listWeek' : 'dayGridMonth';
 
     // Los eventos (inicio/fin de ficha, evaluaciones, fases) son siempre de día completo,
@@ -445,39 +496,79 @@ document.addEventListener('DOMContentLoaded', function () {
             info.el.title = info.event.title;
         },
         noEventsContent: '✨ Sin eventos en este período',
-        dayMaxEvents: 3,
+        dayMaxEvents: isMobile ? 2 : 3,
     });
 
     calendar.render();
 
     // Selector de vista para móvil (Día / Semana / Mes / Agenda)
-    if (viewSelect) {
-        viewSelect.value = initialView;
-        viewSelect.addEventListener('change', function () {
-            calendar.changeView(this.value);
+    function markActiveViewButton() {
+        const current = calendar.view.type;
+        viewButtons.forEach(btn => {
+            btn.classList.toggle('is-active', btn.dataset.calView === current);
         });
     }
+    viewButtons.forEach(btn => {
+        btn.addEventListener('click', function () {
+            calendar.changeView(this.dataset.calView);
+            markActiveViewButton();
+        });
+    });
+    markActiveViewButton();
 
-    // Navegación por gestos (swipe) en móvil: deslizar para ir al período anterior/siguiente
-    if (isMobile) {
-        let touchStartX = 0, touchStartY = 0;
-        calEl.addEventListener('touchstart', function (e) {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        }, { passive: true });
-        calEl.addEventListener('touchend', function (e) {
-            const dx = e.changedTouches[0].clientX - touchStartX;
-            const dy = e.changedTouches[0].clientY - touchStartY;
-            // Solo actuar si el gesto es principalmente horizontal
-            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                if (dx < 0) calendar.next(); else calendar.prev();
-            }
-        }, { passive: true });
+    // Navegación por gestos (swipe) en móvil: deslizar para ir al período
+    // anterior/siguiente. Se registra siempre (no solo si arranca en móvil)
+    // porque la ventana puede cambiar de tamaño; en escritorio no molesta.
+    let touchStartX = 0, touchStartY = 0;
+    calEl.addEventListener('touchstart', function (e) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    calEl.addEventListener('touchend', function (e) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        // Solo actuar si el gesto es principalmente horizontal
+        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            if (dx < 0) calendar.next(); else calendar.prev();
+        }
+    }, { passive: true });
+
+    // Al cruzar el punto de corte hay que reconfigurar el calendario, no solo
+    // redibujarlo: en móvil la vista por defecto es la agenda, la altura es
+    // automática y los botones de vista nativos se ocultan (los sustituye
+    // .cal-view-switcher). Antes esto se decidía una única vez al cargar, así
+    // que al rotar el teléfono o redimensionar quedaba la configuración vieja.
+    function applyResponsiveLayout() {
+        const narrow = isNarrow();
+        if (narrow === isMobile) {
+            calendar.updateSize();
+            return;
+        }
+        isMobile = narrow;
+        calendar.setOption('height', narrow ? 'auto' : 650);
+        calendar.setOption('dayMaxEvents', narrow ? 2 : 3);
+        calendar.setOption('headerToolbar', {
+            left:   'prev,next today',
+            center: 'title',
+            right:  narrow ? '' : 'dayGridMonth,dayGridWeek,dayGridDay,listWeek'
+        });
+        // Solo se cambia de vista si la actual no es cómoda en el nuevo ancho
+        if (narrow && calendar.view.type === 'dayGridMonth') {
+            calendar.changeView('listWeek');
+        } else if (!narrow && calendar.view.type === 'listWeek') {
+            calendar.changeView('dayGridMonth');
+        }
+        markActiveViewButton();
+        calendar.updateSize();
     }
 
-    // Redibujar al cambiar tamaño de ventana
+    let resizeTimer;
     window.addEventListener('resize', function () {
-        calendar.updateSize();
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(applyResponsiveLayout, 150);
+    });
+    window.addEventListener('orientationchange', function () {
+        setTimeout(applyResponsiveLayout, 200);
     });
 });
 
@@ -509,7 +600,7 @@ function openCalModal(event) {
 
     document.getElementById('cal-modal-meta').innerHTML = rows
         .map(([k, v]) =>
-            `<div class="meta-row"><strong>${k}</strong><span>${v}</span></div>`
+            `<div class="cal-meta-row"><strong>${k}</strong><span>${v}</span></div>`
         ).join('');
 
     const deleteForm = document.getElementById('cal-modal-delete-form');
@@ -520,11 +611,11 @@ function openCalModal(event) {
         deleteForm.style.display = 'none';
     }
 
-    document.getElementById('cal-modal-overlay').classList.add('open');
+    document.getElementById('cal-modal-overlay').classList.add('is-open');
 }
 
 function closeCalModal() {
-    document.getElementById('cal-modal-overlay').classList.remove('open');
+    document.getElementById('cal-modal-overlay').classList.remove('is-open');
 }
 
 // Cerrar modal al hacer clic fuera
@@ -534,7 +625,12 @@ document.getElementById('cal-modal-overlay').addEventListener('click', function 
 
 // Cerrar con Escape
 document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { closeCalModal(); closeCrearEventoModal(); }
+    if (e.key !== 'Escape') return;
+    // Si hay un searchable-picker abierto por encima, Escape es suyo:
+    // cerrarlo no debe descartar también el formulario de nuevo evento.
+    if (document.querySelector('.sp-modal.is-open')) return;
+    closeCalModal();
+    closeCrearEventoModal();
 });
 
 /* ── Modal de creación de evento ── */
@@ -545,12 +641,12 @@ function openCrearEventoModal() {
     if (fechaInput && !fechaInput.value) {
         fechaInput.value = new Date().toISOString().substring(0, 10);
     }
-    overlay.style.display = 'flex';
+    overlay.classList.add('is-open');
 }
 
 function closeCrearEventoModal() {
     const overlay = document.getElementById('cal-crear-overlay');
-    if (overlay) overlay.style.display = 'none';
+    if (overlay) overlay.classList.remove('is-open');
 }
 
 document.getElementById('cal-crear-overlay')?.addEventListener('click', function (e) {
