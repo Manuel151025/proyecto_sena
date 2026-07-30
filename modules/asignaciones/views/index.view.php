@@ -82,7 +82,7 @@
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table mb-0 align-middle">
-        <thead class="table-light-head" style="background: rgba(0,0,0,0.03);">
+        <thead class="table-light-head" style="background: var(--surface-2);">
           <tr>
             <th class="ps-4">Ficha</th>
             <th>Competencia</th>
@@ -97,12 +97,12 @@
           <?php foreach ($asignaciones as $asg): ?>
           <tr>
             <td class="ps-4">
-              <span class="badge bg-soft primary font-monospace fs-6">#<?= htmlspecialchars($asg['numero_ficha']) ?></span>
-              <div class="text-muted small mt-1"><?= htmlspecialchars($asg['programa_nombre']) ?></div>
+              <span class="badge bg-soft primary font-monospace fs-6 text-uppercase-visual">#<?= htmlspecialchars($asg['numero_ficha']) ?></span>
+              <div class="text-muted small mt-1 text-uppercase-visual"><?= htmlspecialchars($asg['programa_nombre']) ?></div>
             </td>
             <td>
-              <div class="fw-bold text-dark font-monospace" style="font-size:0.9rem;"><?= htmlspecialchars($asg['competencia_codigo']) ?></div>
-              <small class="text-muted text-wrap d-inline-block" style="max-width:320px;"><?= htmlspecialchars($asg['competencia_nombre']) ?></small>
+              <div class="fw-bold text-dark font-monospace text-uppercase-visual" style="font-size:0.9rem;"><?= htmlspecialchars($asg['competencia_codigo']) ?></div>
+              <small class="text-muted text-wrap d-inline-block text-uppercase-visual" style="max-width:320px;"><?= htmlspecialchars($asg['competencia_nombre']) ?></small>
             </td>
             <td>
               <div class="d-flex align-items-center gap-2">
@@ -145,9 +145,9 @@
 <?php if (hasRole(ROL_COORDINADOR)): ?>
 <div class="modal fade" id="modalAsignar" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>Asignar Instructor</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus"></i>Asignar Instructor</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -202,7 +202,7 @@
             </select>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Asignar Instructor</button>
         </div>

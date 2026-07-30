@@ -103,9 +103,9 @@ declare(strict_types=1);
             <div>
               <div class="d-flex justify-content-between mb-2">
                 <span class="badge-soft <?= $ficha['badge'] ?>"><?= htmlspecialchars($ficha['estado']) ?></span>
-                <small class="text-muted">#<?= htmlspecialchars($ficha['numero']) ?></small>
+                <small class="text-muted text-uppercase-visual">#<?= htmlspecialchars($ficha['numero']) ?></small>
               </div>
-              <h5 class="mb-1 fw-bold text-truncate" title="<?= htmlspecialchars($ficha['programa']) ?>" style="font-size: 0.95rem;"><?= htmlspecialchars($ficha['programa']) ?></h5>
+              <h5 class="mb-1 fw-bold text-truncate text-uppercase-visual" title="<?= htmlspecialchars($ficha['programa']) ?>" style="font-size: 0.95rem;"><?= htmlspecialchars($ficha['programa']) ?></h5>
               <small class="text-muted d-block mb-3">
                 <i class="bi bi-people me-1"></i><?= $ficha['aprendices'] ?> aprendices
               </small>
@@ -200,9 +200,9 @@ declare(strict_types=1);
                         <span class="fw-bold"><?= htmlspecialchars($p['aprendiz']) ?></span>
                       </div>
                     </td>
-                    <td>#<?= htmlspecialchars($p['ficha']) ?></td>
+                    <td class="text-uppercase-visual">#<?= htmlspecialchars($p['ficha']) ?></td>
                     <td>
-                      <span class="badge-soft primary" title="<?= htmlspecialchars($p['ra_nombre']) ?>">
+                      <span class="badge-soft primary text-uppercase-visual" title="<?= htmlspecialchars($p['ra_nombre']) ?>">
                         <?= htmlspecialchars($p['ra_codigo']) ?>
                       </span>
                     </td>
@@ -278,8 +278,8 @@ declare(strict_types=1);
                     <strong><?= htmlspecialchars($ap_seg['nombre']) ?></strong>
                   </div>
                 </td>
-                <td>#<?= htmlspecialchars($ap_seg['numero_ficha']) ?></td>
-                <td><small class="text-muted"><?= htmlspecialchars($ap_seg['programa']) ?></small></td>
+                <td class="text-uppercase-visual">#<?= htmlspecialchars($ap_seg['numero_ficha']) ?></td>
+                <td><small class="text-muted text-uppercase-visual"><?= htmlspecialchars($ap_seg['programa']) ?></small></td>
                 <td>
                   <div><?= htmlspecialchars($ap_seg['telefono'] ?: '—') ?></div>
                   <small class="text-muted"><?= htmlspecialchars($ap_seg['ciudad'] ?: '—') ?></small>

@@ -15,12 +15,12 @@
           </div>
           <h5 class="fw-bold text-dark mb-1">Plan de Nivelación: <?= htmlspecialchars($plan['actividad_nombre']) ?></h5>
           <?php if (!empty($plan['ra_codigo'])): ?>
-            <div class="small text-muted mb-2">RA <code><?= htmlspecialchars($plan['ra_codigo']) ?></code></div>
+            <div class="small text-muted mb-2">RA <code class="text-uppercase-visual"><?= htmlspecialchars($plan['ra_codigo']) ?></code></div>
           <?php endif; ?>
           
           <?php if ($user_rol !== ROL_APRENDIZ): ?>
             <div class="small text-muted mb-2">
-              Aprendiz: <strong><?= htmlspecialchars($plan['aprendiz_nombre']) ?></strong> (Ficha #<?= htmlspecialchars($plan['numero_ficha']) ?>)
+              Aprendiz: <strong><?= htmlspecialchars($plan['aprendiz_nombre']) ?></strong> (<span class="text-uppercase-visual">Ficha #<?= htmlspecialchars($plan['numero_ficha']) ?></span>)
             </div>
           <?php endif; ?>
 

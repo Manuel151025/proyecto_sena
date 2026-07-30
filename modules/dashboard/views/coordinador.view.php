@@ -192,7 +192,7 @@ declare(strict_types=1);
       <div class="card-body p-0">
         <ul class="list-group list-group-flush bg-transparent">
           <?php foreach ($topInstructores as $inst): ?>
-          <li class="list-group-item d-flex align-items-center gap-3 p-3 bg-transparent" style="border-color: rgba(0,0,0,0.05);">
+          <li class="list-group-item d-flex align-items-center gap-3 p-3 bg-transparent" style="border-color: var(--border);">
             <div class="avatar" style="background: <?= htmlspecialchars($inst['avatar_color']) ?>; width: 38px; height: 38px; font-size: 1rem; border-radius: 50%; display: grid; place-items: center; color: white;">
               <?= strtoupper(substr($inst['nombre'], 0, 1)) ?>
             </div>
@@ -242,8 +242,8 @@ declare(strict_types=1);
               <tbody>
                 <?php foreach ($fichasCriticas as $ficha): ?>
                 <tr style="background: var(--danger-bg);">
-                  <td class="ps-4"><strong>#<?= htmlspecialchars($ficha['numero_ficha']) ?></strong></td>
-                  <td class="d-none d-sm-table-cell text-truncate" style="max-width: 180px;"><?= htmlspecialchars($ficha['programa']) ?></td>
+                  <td class="ps-4"><strong class="text-uppercase-visual">#<?= htmlspecialchars($ficha['numero_ficha']) ?></strong></td>
+                  <td class="d-none d-sm-table-cell text-truncate text-uppercase-visual" style="max-width: 180px;"><?= htmlspecialchars($ficha['programa']) ?></td>
                   <td class="d-none d-md-table-cell"><?= htmlspecialchars($ficha['instructor']) ?></td>
                   <td>
                     <div class="d-flex align-items-center gap-2">

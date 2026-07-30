@@ -23,12 +23,17 @@ declare(strict_types=1);
 
 <div class="toolbar mb-3">
   <div class="search"><i class="bi bi-search"></i><input class="form-control" id="searchPrograms" placeholder="Buscar programa..."></div>
-  <select class="form-select" style="max-width:180px" id="filterStatus">
-    <option value="">Todos los estados</option>
-    <option value="activo">Activo</option>
-    <option value="inactivo">Inactivo</option>
-    <option value="archivado">Archivado</option>
-  </select>
+  <div class="toolbar-filter">
+    <select class="form-select" id="filterStatus"
+            data-picker
+            data-picker-label="Filtrar por estado"
+            data-picker-placeholder="Todos los estados">
+      <option value="">Todos los estados</option>
+      <option value="activo">Activo</option>
+      <option value="inactivo">Inactivo</option>
+      <option value="archivado">Archivado</option>
+    </select>
+  </div>
 </div>
 
 <div class="row g-3">
@@ -38,8 +43,8 @@ declare(strict_types=1);
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start">
           <div>
-            <h5><?= htmlspecialchars($programa['nombre']) ?></h5>
-            <p class="text-muted mb-2"><code><?= htmlspecialchars($programa['codigo']) ?></code></p>
+            <h5 class="text-uppercase-visual"><?= htmlspecialchars($programa['nombre']) ?></h5>
+            <p class="text-muted mb-2"><code class="text-uppercase-visual"><?= htmlspecialchars($programa['codigo']) ?></code></p>
             <p style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem;">
               <?= htmlspecialchars(substr($programa['descripcion'] ?? '', 0, 100)) ?><?= strlen($programa['descripcion'] ?? '') > 100 ? '...' : '' ?>
             </p>

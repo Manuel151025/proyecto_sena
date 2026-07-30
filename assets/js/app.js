@@ -3,17 +3,25 @@
   'use strict';
 
   // ===== Dark mode =====
+  // data-bs-theme va en paralelo a data-theme para que los componentes de
+  // Bootstrap sigan el mismo modo (el header lo aplica antes del primer
+  // pintado; aquí solo se mantiene sincronizado al alternar).
   const root = document.documentElement;
   const savedTheme = localStorage.getItem('sena-theme');
-  if (savedTheme === 'dark') root.setAttribute('data-theme', 'dark');
+  if (savedTheme === 'dark') {
+    root.setAttribute('data-theme', 'dark');
+    root.setAttribute('data-bs-theme', 'dark');
+  }
 
   window.toggleTheme = function () {
     const isDark = root.getAttribute('data-theme') === 'dark';
     if (isDark) {
       root.removeAttribute('data-theme');
+      root.removeAttribute('data-bs-theme');
       localStorage.setItem('sena-theme', 'light');
     } else {
       root.setAttribute('data-theme', 'dark');
+      root.setAttribute('data-bs-theme', 'dark');
       localStorage.setItem('sena-theme', 'dark');
     }
     updateThemeIcons();

@@ -90,8 +90,8 @@ declare(strict_types=1);
               <?php foreach ($programas as $p): ?>
               <tr>
                 <td>
-                  <div class="fw-bold text-truncate" style="max-width: 250px;" title="<?= htmlspecialchars($p['nombre']) ?>"><?= htmlspecialchars($p['nombre']) ?></div>
-                  <small class="text-muted">Código: <code><?= htmlspecialchars($p['codigo']) ?></code> · <?= $p['duracion_horas'] ?> hs</small>
+                  <div class="fw-bold text-truncate text-uppercase-visual" style="max-width: 250px;" title="<?= htmlspecialchars($p['nombre']) ?>"><?= htmlspecialchars($p['nombre']) ?></div>
+                  <small class="text-muted">Código: <code class="text-uppercase-visual"><?= htmlspecialchars($p['codigo']) ?></code> · <?= $p['duracion_horas'] ?> hs</small>
                 </td>
                 <td class="text-center">
                   <span class="badge bg-light text-dark border px-2.5 py-1.5 rounded-pill"><?= $p['total_competencias'] ?></span>
@@ -143,8 +143,8 @@ declare(strict_types=1);
               <?php foreach ($proyectos as $pj): ?>
               <tr>
                 <td>
-                  <div class="fw-bold text-truncate" style="max-width: 250px;" title="<?= htmlspecialchars($pj['nombre']) ?>"><?= htmlspecialchars($pj['nombre']) ?></div>
-                  <small class="text-muted">Código: <code><?= htmlspecialchars($pj['codigo']) ?></code></small>
+                  <div class="fw-bold text-truncate text-uppercase-visual" style="max-width: 250px;" title="<?= htmlspecialchars($pj['nombre']) ?>"><?= htmlspecialchars($pj['nombre']) ?></div>
+                  <small class="text-muted">Código: <code class="text-uppercase-visual"><?= htmlspecialchars($pj['codigo']) ?></code></small>
                 </td>
                 <td class="text-center">
                   <span class="badge bg-light text-dark border px-2.5 py-1.5 rounded-pill"><?= $pj['total_fases'] ?></span>

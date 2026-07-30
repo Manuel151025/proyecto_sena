@@ -53,7 +53,7 @@
   <div class="card-body py-3">
     <div class="d-flex justify-content-between align-items-center">
       <div>
-        <h5 class="mb-0 fw-bold"><?= htmlspecialchars($proyectoActual['nombre']) ?></h5>
+        <h5 class="mb-0 fw-bold text-uppercase-visual"><?= htmlspecialchars($proyectoActual['nombre']) ?></h5>
         <small class="text-muted"><?= htmlspecialchars($proyectoActual['objetivo'] ?? 'Sin objetivo definido') ?></small>
       </div>
       <div class="text-end">
@@ -86,7 +86,7 @@
             <?= htmlspecialchars($fase['descripcion'] ?: 'Sin descripción.') ?>
           </p>
 
-          <div class="p-2 rounded mb-3" style="background: rgba(0,0,0,0.02); font-size: 0.8rem;">
+          <div class="p-2 rounded mb-3" style="background: var(--surface-2); font-size: 0.8rem;">
             <div class="d-flex justify-content-between mb-1">
               <span class="text-muted">Inicio:</span>
               <span class="fw-semibold text-dark"><?= $fase['fecha_inicio'] ? date('d/m/Y', strtotime($fase['fecha_inicio'])) : 'N/A' ?></span>
@@ -146,16 +146,16 @@
 <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
 <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
-      <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
-        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar Fase</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil"></i>Editar Fase</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="editar">
         <input type="hidden" name="id" id="edit_fase_id">
-        <div class="modal-body p-4">
+        <div class="modal-body">
           <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold">Fase N°</label>
@@ -187,7 +187,10 @@
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Estado</label>
-              <select name="estado" id="edit_fase_estado" class="form-select">
+              <select name="estado" id="edit_fase_estado" class="form-select"
+                      data-picker
+                      data-picker-label="Estado de la fase"
+                      data-picker-placeholder="Seleccionar estado...">
                 <option value="planeada">Planeada</option>
                 <option value="en_ejecucion">En Ejecución</option>
                 <option value="completada">Completada</option>
@@ -195,7 +198,7 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer border-0 px-4 pb-4">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar Cambios</button>
         </div>
@@ -222,16 +225,16 @@ function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fech
 <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
 <div class="modal fade" id="modalCrear" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border:0; border-radius: 16px; overflow: hidden;">
-      <div class="modal-header" style="background: linear-gradient(135deg, var(--sena-primary), #2d8000); color: white; border: 0;">
-        <h5 class="modal-title"><i class="bi bi-list-task me-2"></i>Nueva Fase de Proyecto</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-list-task"></i>Nueva Fase de Proyecto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="crear">
         <input type="hidden" name="proyecto_id" value="<?= $selected_proyecto_id ?>">
-        <div class="modal-body p-4">
+        <div class="modal-body">
           <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold">Fase N°</label>
@@ -263,7 +266,10 @@ function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fech
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Estado Inicial</label>
-              <select name="estado" class="form-select">
+              <select name="estado" class="form-select"
+                      data-picker
+                      data-picker-label="Estado inicial"
+                      data-picker-placeholder="Seleccionar estado...">
                 <option value="planeada">Planeada</option>
                 <option value="en_ejecucion">En Ejecución</option>
                 <option value="completada">Completada</option>
@@ -271,7 +277,7 @@ function abrirModalEditarFase(id, numero, nombre, descripcion, fechaInicio, fech
             </div>
           </div>
         </div>
-        <div class="modal-footer border-0 px-4 pb-4">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Crear Fase</button>
         </div>

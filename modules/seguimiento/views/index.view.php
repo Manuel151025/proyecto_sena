@@ -8,14 +8,20 @@
     <?php if ($user_rol !== ROL_APRENDIZ && !empty($fichas)): ?>
       <form method="GET" class="d-flex align-items-center gap-2">
         <label class="text-muted small fw-semibold text-nowrap d-none d-sm-inline">Ficha:</label>
-        <select name="ficha_id" class="form-select bg-white border border-light-subtle shadow-sm"
-                onchange="this.form.submit()" style="min-width: 250px;">
-          <?php foreach ($fichas as $f): ?>
-            <option value="<?= $f['id'] ?>" <?= $f['id'] == $selected_ficha_id ? 'selected' : '' ?>>
-              #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars(substr($f['programa'], 0, 30)) ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
+        <div style="min-width: 250px; flex: 1 1 250px;">
+          <select name="ficha_id" class="form-select"
+                  onchange="this.form.submit()"
+                  data-picker
+                  data-picker-label="Seleccionar ficha"
+                  data-picker-placeholder="Número de ficha o programa...">
+            <?php foreach ($fichas as $f): ?>
+              <option value="<?= $f['id'] ?>" <?= $f['id'] == $selected_ficha_id ? 'selected' : '' ?>
+                      data-search="<?= htmlspecialchars($f['numero_ficha'] . ' ' . $f['programa']) ?>">
+                #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars(substr($f['programa'], 0, 30)) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
       </form>
     <?php endif; ?>
   </div>
@@ -70,8 +76,8 @@
           </div>
           <div class="col">
             <h4 class="fw-bold text-dark mb-1"><?= htmlspecialchars(getCurrentUser()['nombre'] ?? '') ?></h4>
-            <span class="badge bg-soft primary me-2">Ficha #<?= htmlspecialchars($mi_perfil['numero_ficha']) ?></span>
-            <span class="text-muted small me-2"><?= htmlspecialchars($mi_perfil['programa_nombre']) ?></span>
+            <span class="badge bg-soft primary me-2 text-uppercase-visual">Ficha #<?= htmlspecialchars($mi_perfil['numero_ficha']) ?></span>
+            <span class="text-muted small me-2 text-uppercase-visual"><?= htmlspecialchars($mi_perfil['programa_nombre']) ?></span>
             <?php if ($mi_perfil['aprendiz_estado'] === 'etapa_practica'): ?>
               <span class="badge bg-primary text-white">Etapa Práctica</span>
             <?php endif; ?>
@@ -186,11 +192,11 @@
                     <?php $cl = $conceptos_labels[$act['concepto']] ?? ['Pendiente', 'secondary']; ?>
                     <tr>
                       <td class="ps-4">
-                        <div class="fw-bold text-dark"><?= htmlspecialchars($act['ra_nombre']) ?></div>
-                        <small class="text-muted font-monospace"><?= htmlspecialchars($act['ra_codigo']) ?></small>
+                        <div class="fw-bold text-dark text-uppercase-visual"><?= htmlspecialchars($act['ra_nombre']) ?></div>
+                        <small class="text-muted font-monospace text-uppercase-visual"><?= htmlspecialchars($act['ra_codigo']) ?></small>
                       </td>
                       <td>
-                        <span class="badge bg-light text-dark font-monospace" style="max-width:250px;white-space:normal;">
+                        <span class="badge bg-light text-dark font-monospace text-uppercase-visual" style="max-width:250px;white-space:normal;">
                           <?= htmlspecialchars($act['competencia_codigo'] ?: 'N/A') ?> — <?= htmlspecialchars(substr($act['competencia_nombre'] ?: 'General', 0, 40)) ?>
                         </span>
                       </td>
@@ -279,8 +285,8 @@
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
               <div>
                 <span class="badge bg-soft primary mb-2">Ficha Académica</span>
-                <h3 class="fw-bold text-dark mb-1">Ficha #<?= htmlspecialchars($ficha_detalle['numero_ficha']) ?></h3>
-                <h5 class="text-muted"><?= htmlspecialchars($ficha_detalle['programa_nombre']) ?></h5>
+                <h3 class="fw-bold text-dark mb-1 text-uppercase-visual">Ficha #<?= htmlspecialchars($ficha_detalle['numero_ficha']) ?></h3>
+                <h5 class="text-muted text-uppercase-visual"><?= htmlspecialchars($ficha_detalle['programa_nombre']) ?></h5>
               </div>
               <span class="badge bg-soft warning">Etapa de <?= htmlspecialchars(ucfirst($ficha_detalle['estado'])) ?></span>
             </div>
@@ -465,17 +471,17 @@
     <!-- MODAL: Detalle académico del aprendiz -->
     <div class="modal fade" id="modalDetalleAprendiz" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
-        <div class="modal-content glass-card border-0" style="background:rgba(255,255,255,.99);backdrop-filter:blur(25px);">
-          <div class="modal-header border-bottom-0 pb-0">
+        <div class="modal-content">
+          <div class="modal-header">
             <div>
-              <h5 class="modal-title fw-bold text-dark">
-                <i class="bi bi-person-check text-primary me-2"></i>Seguimiento Académico Individual
+              <h5 class="modal-title">
+                <i class="bi bi-person-check"></i>Seguimiento Académico Individual
               </h5>
               <small class="text-muted d-block" id="detalle_aprendiz_subtitulo"></small>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="modal-body p-4">
+          <div class="modal-body">
             <ul class="nav nav-pills bg-light p-1 rounded mb-4" id="pills-tab" role="tablist">
               <li class="nav-item flex-fill text-center">
                 <button class="nav-link active w-100 py-2 fw-semibold" data-bs-toggle="pill" data-bs-target="#pills-evals" type="button">
@@ -520,7 +526,7 @@
               </div>
             </div>
           </div>
-          <div class="modal-footer border-top-0 pt-0">
+          <div class="modal-footer">
             <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cerrar Detalle</button>
           </div>
         </div>
@@ -530,10 +536,10 @@
     <!-- MODAL: Registrar evaluación por RA -->
     <div class="modal fade" id="modalCalificarActividad" tabindex="-1" aria-hidden="true" style="z-index:1060;">
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow-lg border-0 bg-white">
-          <div class="modal-header border-bottom-0 pb-0">
-            <h5 class="modal-title fw-bold">
-              <i class="bi bi-clipboard-check text-primary me-2"></i>Registrar Evaluación
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-clipboard-check"></i>Registrar Evaluación
             </h5>
             <button type="button" class="btn-close" onclick="cerrarModalCalificar()"></button>
           </div>
@@ -549,7 +555,10 @@
               </div>
               <div class="mb-3">
                 <label class="form-label text-muted small fw-semibold">Concepto Evaluativo (SENA)</label>
-                <select name="concepto" id="calif_concepto" class="form-select" required>
+                <select name="concepto" id="calif_concepto" class="form-select" required
+                        data-picker
+                        data-picker-label="Concepto evaluativo"
+                        data-picker-placeholder="Seleccionar concepto...">
                   <option value="aprobado">Aprobado (A)</option>
                   <option value="en_proceso">En Proceso (D)</option>
                   <option value="no_aplica">No Aplica</option>
@@ -566,7 +575,7 @@
                        placeholder="Ej. Plan de mejoramiento completado" maxlength="255" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')">
               </div>
             </div>
-            <div class="modal-footer border-top-0 pt-0">
+            <div class="modal-footer">
               <button type="button" class="btn btn-soft" onclick="cerrarModalCalificar()">Cancelar</button>
               <button type="submit" class="btn btn-primary">Guardar Evaluación</button>
             </div>
@@ -578,10 +587,10 @@
     <!-- MODAL: Anotación de retroalimentación -->
     <div class="modal fade" id="modalRetroalimentacion" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content glass-card border-0" style="background:rgba(255,255,255,.99);backdrop-filter:blur(25px);">
-          <div class="modal-header border-bottom-0 pb-0">
-            <h5 class="modal-title fw-bold text-dark">
-              <i class="bi bi-chat-text text-primary me-2"></i>Anotación de Seguimiento
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-chat-text"></i>Anotación de Seguimiento
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -595,7 +604,10 @@
               </div>
               <div class="mb-3">
                 <label class="form-label text-muted small fw-semibold">Tipo de Nota</label>
-                <select name="tipo" class="form-select" required>
+                <select name="tipo" class="form-select" required
+                        data-picker
+                        data-picker-label="Tipo de nota"
+                        data-picker-placeholder="Seleccionar tipo...">
                   <option value="recomendacion">💡 Recomendación / Sugerencia</option>
                   <option value="fortaleza">⭐ Fortaleza / Felicitación</option>
                   <option value="aspecto_mejorar">⚠️ Aspecto a Mejorar (Alerta)</option>
@@ -613,7 +625,7 @@
                 </label>
               </div>
             </div>
-            <div class="modal-footer border-top-0 pt-0">
+            <div class="modal-footer">
               <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
               <button type="submit" class="btn btn-primary">Registrar Nota</button>
             </div>
@@ -1183,11 +1195,11 @@
                 tbody.innerHTML += `
                     <tr class="ra-fila-modal" data-concepto="${esc(ev.concepto || 'pendiente')}">
                       <td>
-                        <div class="fw-semibold text-dark">${esc(ev.ra_nombre)}</div>
-                        <small class="text-muted font-monospace">${esc(ev.ra_codigo)}</small>
+                        <div class="fw-semibold text-dark text-uppercase-visual">${esc(ev.ra_nombre)}</div>
+                        <small class="text-muted font-monospace text-uppercase-visual">${esc(ev.ra_codigo)}</small>
                       </td>
                       <td>
-                        <span class="badge bg-light text-dark font-monospace" style="max-width:250px;white-space:normal;">
+                        <span class="badge bg-light text-dark font-monospace text-uppercase-visual" style="max-width:250px;white-space:normal;">
                           ${esc(ev.competencia_codigo || 'N/A')} — ${esc((ev.competencia_nombre || 'General').substring(0,40))}
                         </span>
                       </td>

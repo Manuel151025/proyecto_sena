@@ -102,8 +102,8 @@ declare(strict_types=1);
           <?php foreach ($resultados as $rap): ?>
             <tr>
               <td><?= htmlspecialchars((string)$rap['competencia_id']) ?></td>
-              <td class="font-monospace fw-bold text-success"><?= htmlspecialchars($rap['codigo']) ?></td>
-              <td><?= htmlspecialchars($rap['denominacion']) ?></td>
+              <td class="font-monospace fw-bold text-success text-uppercase-visual"><?= htmlspecialchars($rap['codigo']) ?></td>
+              <td class="text-uppercase-visual"><?= htmlspecialchars($rap['denominacion']) ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>

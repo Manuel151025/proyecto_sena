@@ -290,3 +290,66 @@
     color: #374151;
     box-shadow: 0 1px 0 #d1d5db;
 }
+
+/* El <select> original: fuera de la vista pero todavía renderizado, para
+ * no perder los mensajes de validación nativos (ver searchable-picker.js). */
+.sp-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+}
+
+/* Modo compacto: listas cortas (≤ 8 opciones) no necesitan buscador
+ * ni ayuda de teclado, se muestran como una lista de opciones limpia. */
+.sp-compact .sp-search-wrap,
+.sp-compact .sp-footer {
+    display: none;
+}
+
+.sp-compact .sp-dialog {
+    max-width: 420px;
+}
+
+.sp-compact .sp-list {
+    padding: .5rem 0;
+}
+
+/* Móvil: el diálogo se pega arriba con menos aire y las opciones ganan
+ * altura para que sean cómodas de pulsar con el dedo. */
+@media (max-width: 576px) {
+    .sp-modal {
+        padding: 1rem .75rem;
+        align-items: flex-start;
+    }
+
+    .sp-dialog {
+        max-height: calc(100vh - 2rem);
+        border-radius: .625rem;
+    }
+
+    .sp-header,
+    .sp-search-wrap {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .sp-search-icon {
+        left: 1.75rem;
+    }
+
+    .sp-item {
+        padding: .8rem 1rem;
+        min-height: 48px;
+    }
+
+    .sp-list {
+        max-height: 60vh;
+    }
+}

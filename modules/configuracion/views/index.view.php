@@ -31,7 +31,10 @@
           <div class="row g-3 mb-4">
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Porcentaje Mínimo Aprobación</label>
-              <select name="pass_score" class="form-select">
+              <select name="pass_score" class="form-select"
+                      data-picker
+                      data-picker-label="Porcentaje mínimo de aprobación"
+                      data-picker-placeholder="Seleccionar porcentaje...">
                 <option value="60%" <?= $pass_score === '60%' ? 'selected' : '' ?>>60%</option>
                 <option value="70%" <?= $pass_score === '70%' ? 'selected' : '' ?>>70% (Por defecto)</option>
                 <option value="80%" <?= $pass_score === '80%' ? 'selected' : '' ?>>80%</option>

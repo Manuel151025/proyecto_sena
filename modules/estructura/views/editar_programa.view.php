@@ -60,7 +60,10 @@ declare(strict_types=1);
 
           <div class="mb-4">
             <label class="form-label fw-bold">Estado del Programa</label>
-            <select name="estado" class="form-select" required>
+            <select name="estado" class="form-select" required
+                    data-picker
+                    data-picker-label="Estado del programa"
+                    data-picker-placeholder="Seleccionar estado...">
               <option value="activo" <?= $programa['estado'] === 'activo' ? 'selected' : '' ?>>Activo</option>
               <option value="inactivo" <?= $programa['estado'] === 'inactivo' ? 'selected' : '' ?>>Inactivo</option>
             </select>

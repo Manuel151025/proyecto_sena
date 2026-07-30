@@ -47,7 +47,10 @@
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label" for="editar-rol">Rol</label>
-              <select id="editar-rol" name="rol" class="form-select" required>
+              <select id="editar-rol" name="rol" class="form-select" required
+                      data-picker
+                      data-picker-label="Rol del sistema"
+                      data-picker-placeholder="Seleccionar rol...">
                 <?php $currentRol = $_POST['rol'] ?? $usuario['rol'] ?? ''; ?>
                 <option value="aprendiz" <?= $currentRol === 'aprendiz' ? 'selected' : '' ?>>Aprendiz</option>
                 <option value="instructor" <?= $currentRol === 'instructor' ? 'selected' : '' ?>>Instructor</option>
@@ -56,7 +59,10 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="editar-estado">Estado</label>
-              <select id="editar-estado" name="estado" class="form-select" required>
+              <select id="editar-estado" name="estado" class="form-select" required
+                      data-picker
+                      data-picker-label="Estado de la cuenta"
+                      data-picker-placeholder="Seleccionar estado...">
                 <?php $currentEstado = $_POST['estado'] ?? $usuario['estado'] ?? ''; ?>
                 <option value="activo" <?= $currentEstado === 'activo' ? 'selected' : '' ?>>Activo</option>
                 <option value="inactivo" <?= $currentEstado === 'inactivo' ? 'selected' : '' ?>>Inactivo</option>

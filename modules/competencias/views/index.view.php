@@ -50,7 +50,10 @@ declare(strict_types=1);
       </div>
       <div class="col-md-3">
         <label class="form-label text-muted small">Filtrar por Programa</label>
-        <select name="programa_id" class="form-select">
+        <select name="programa_id" class="form-select"
+                data-picker
+                data-picker-label="Filtrar por programa"
+                data-picker-placeholder="Todos los programas">
           <option value="0">Todos los programas</option>
           <?php foreach ($programas as $p): ?>
             <option value="<?= $p['id'] ?>" <?= $filter_programa === (int)$p['id'] ? 'selected' : '' ?>>
@@ -61,7 +64,10 @@ declare(strict_types=1);
       </div>
       <div class="col-md-3">
         <label class="form-label text-muted small">Estado</label>
-        <select name="estado" class="form-select">
+        <select name="estado" class="form-select"
+                data-picker
+                data-picker-label="Estado"
+                data-picker-placeholder="Todos">
           <option value="">Todos</option>
           <option value="activo" <?= $filter_estado === 'activo' ? 'selected' : '' ?>>Activo</option>
           <option value="inactivo" <?= $filter_estado === 'inactivo' ? 'selected' : '' ?>>Inactivo</option>
@@ -79,7 +85,7 @@ declare(strict_types=1);
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table mb-0 align-middle">
-        <thead class="table-light-head" style="background: rgba(0,0,0,0.03);">
+        <thead class="table-light-head" style="background: var(--surface-2);">
           <tr>
             <th class="ps-4">Código</th>
             <th>Competencia</th>
@@ -92,9 +98,9 @@ declare(strict_types=1);
         <tbody>
           <?php foreach ($competencias as $comp): ?>
           <tr>
-            <td class="ps-4 font-monospace fw-bold text-primary"><?= htmlspecialchars($comp['codigo']) ?></td>
+            <td class="ps-4 font-monospace fw-bold text-primary text-uppercase-visual"><?= htmlspecialchars($comp['codigo']) ?></td>
             <td>
-              <div class="fw-semibold text-wrap" style="max-width:350px;">
+              <div class="fw-semibold text-wrap text-uppercase-visual" style="max-width:350px;">
                 <?= htmlspecialchars($comp['nombre']) ?>
               </div>
               <small class="text-muted d-block text-wrap" style="max-width:350px;">
@@ -102,8 +108,8 @@ declare(strict_types=1);
               </small>
             </td>
             <td>
-              <span class="badge bg-soft info"><?= htmlspecialchars($comp['programa_codigo']) ?></span>
-              <span class="small text-muted text-wrap d-inline-block ms-1" style="max-width:200px;">
+              <span class="badge bg-soft info text-uppercase-visual"><?= htmlspecialchars($comp['programa_codigo']) ?></span>
+              <span class="small text-muted text-wrap d-inline-block ms-1 text-uppercase-visual" style="max-width:200px;">
                 <?= htmlspecialchars($comp['programa_nombre']) ?>
               </span>
             </td>
@@ -153,9 +159,9 @@ declare(strict_types=1);
 <?php if (hasRole(ROL_COORDINADOR)): ?>
 <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold">Editar Competencia</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i>Editar Competencia</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -165,7 +171,10 @@ declare(strict_types=1);
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Programa de Formación</label>
-            <select name="programa_id" id="edit_programa_id" class="form-select" required>
+            <select name="programa_id" id="edit_programa_id" class="form-select" required
+                    data-picker
+                    data-picker-label="Programa de formación"
+                    data-picker-placeholder="Código o nombre del programa...">
               <?php foreach ($programas as $p): ?>
                 <option value="<?= $p['id'] ?>">
                   <?= htmlspecialchars($p['codigo'] . ' - ' . $p['nombre']) ?>
@@ -193,13 +202,16 @@ declare(strict_types=1);
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Estado</label>
-            <select name="estado" id="edit_estado" class="form-select">
+            <select name="estado" id="edit_estado" class="form-select"
+                    data-picker
+                    data-picker-label="Estado"
+                    data-picker-placeholder="Seleccionar estado...">
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar Cambios</button>
         </div>
@@ -225,9 +237,9 @@ function abrirModalEditar(id, programaId, codigo, nombre, descripcion, horas, es
 <?php if (hasRole(ROL_COORDINADOR)): ?>
 <div class="modal fade" id="modalCrear" tabindex="-1" aria-labelledby="modalCrearLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold" id="modalCrearLabel">Nueva Competencia</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCrearLabel"><i class="bi bi-diagram-3"></i>Nueva Competencia</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -236,7 +248,10 @@ function abrirModalEditar(id, programaId, codigo, nombre, descripcion, horas, es
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Programa de Formación</label>
-            <select name="programa_id" class="form-select" required>
+            <select name="programa_id" class="form-select" required
+                    data-picker
+                    data-picker-label="Programa de formación"
+                    data-picker-placeholder="Código o nombre del programa...">
               <option value="" disabled selected>Seleccione un programa...</option>
               <?php foreach ($programas as $p): ?>
                 <option value="<?= $p['id'] ?>">
@@ -265,13 +280,16 @@ function abrirModalEditar(id, programaId, codigo, nombre, descripcion, horas, es
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Estado</label>
-            <select name="estado" class="form-select">
+            <select name="estado" class="form-select"
+                    data-picker
+                    data-picker-label="Estado"
+                    data-picker-placeholder="Seleccionar estado...">
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Registrar Competencia</button>
         </div>

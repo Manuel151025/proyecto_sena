@@ -58,7 +58,10 @@ declare(strict_types=1);
 
           <div class="mb-3">
             <label class="form-label">Estado</label>
-            <select name="estado" class="form-select">
+            <select name="estado" class="form-select"
+                    data-picker
+                    data-picker-label="Estado del programa"
+                    data-picker-placeholder="Seleccionar estado...">
               <option value="activo" <?= ($valores['estado'] ?? 'activo') === 'activo' ? 'selected' : '' ?>>Activo</option>
               <option value="inactivo" <?= ($valores['estado'] ?? '') === 'inactivo' ? 'selected' : '' ?>>Inactivo</option>
               <option value="archivado" <?= ($valores['estado'] ?? '') === 'archivado' ? 'selected' : '' ?>>Archivado</option>

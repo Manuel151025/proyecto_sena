@@ -43,17 +43,17 @@ declare(strict_types=1);
       <div class="card glass-card h-100 border-0 shadow-sm">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
-            <span class="badge bg-soft info font-monospace"><?= htmlspecialchars($comp['codigo']) ?></span>
-            <small class="text-muted"><?= htmlspecialchars($comp['programa']) ?></small>
+            <span class="badge bg-soft info font-monospace text-uppercase-visual"><?= htmlspecialchars($comp['codigo']) ?></span>
+            <small class="text-muted text-uppercase-visual"><?= htmlspecialchars($comp['programa']) ?></small>
           </div>
-          <h5 class="fw-bold text-dark mb-3"><?= htmlspecialchars($comp['nombre']) ?></h5>
+          <h5 class="fw-bold text-dark mb-3 text-uppercase-visual"><?= htmlspecialchars($comp['nombre']) ?></h5>
           
           <h6 class="text-muted small fw-bold mb-2">Resultados de Aprendizaje (RAP) Vinculados:</h6>
           <ul class="list-group list-group-flush small" style="background:transparent;">
             <?php foreach ($comp['raps'] as $rap): ?>
               <li class="list-group-item d-flex gap-2 align-items-start ps-0 border-0" style="background:transparent;">
-                <span class="badge bg-success flex-shrink-0"><?= htmlspecialchars($rap['codigo']) ?></span>
-                <span class="text-dark flex-grow-1"><?= htmlspecialchars($rap['denominacion']) ?></span>
+                <span class="badge bg-success flex-shrink-0 text-uppercase-visual"><?= htmlspecialchars($rap['codigo']) ?></span>
+                <span class="text-dark flex-grow-1 text-uppercase-visual"><?= htmlspecialchars($rap['denominacion']) ?></span>
                 <?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
                 <div class="d-flex gap-1 flex-shrink-0">
                   <button class="btn btn-sm btn-soft py-0 px-1" style="font-size:.75rem;"
@@ -99,9 +99,9 @@ declare(strict_types=1);
 <?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
 <div class="modal fade" id="modalEditarRAP" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold">Editar Resultado de Aprendizaje (RAP)</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i>Editar Resultado de Aprendizaje (RAP)</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -111,7 +111,10 @@ declare(strict_types=1);
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold">Competencia Asociada</label>
-            <select name="competencia_id" id="edit_rap_competencia_id" class="form-select" required>
+            <select name="competencia_id" id="edit_rap_competencia_id" class="form-select" required
+                    data-picker
+                    data-picker-label="Competencia asociada"
+                    data-picker-placeholder="Código o nombre de la competencia...">
               <?php foreach ($competencias as $c): ?>
                 <option value="<?= $c['id'] ?>">
                   <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
@@ -128,7 +131,7 @@ declare(strict_types=1);
             <textarea name="denominacion" id="edit_rap_denominacion" class="form-control" rows="4" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar Cambios</button>
         </div>
@@ -151,9 +154,9 @@ function abrirModalEditarRAP(id, competenciaId, codigo, denominacion) {
 <?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
 <div class="modal fade" id="modalCrearRAP" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold">Nuevo Resultado de Aprendizaje (RAP)</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-bookmark-check"></i>Nuevo Resultado de Aprendizaje (RAP)</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -184,7 +187,7 @@ function abrirModalEditarRAP(id, competenciaId, codigo, denominacion) {
             <textarea name="denominacion" class="form-control" rows="4" placeholder="Describa el resultado de aprendizaje..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Registrar RAP</button>
         </div>

@@ -21,21 +21,31 @@ declare(strict_types=1);
 </div>
 <?php endif; ?>
 
-<div class="toolbar mb-4" style="background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); padding: 1rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
-  <div class="search" style="max-width: 360px; flex-grow: 1;"><i class="bi bi-search"></i><input class="form-control border-0 bg-transparent" id="searchFichas" placeholder="Buscar ficha o programa..."></div>
-  <select class="form-select border-0 bg-light" id="filterEstado" style="max-width:180px">
-    <option value="">Todos los estados</option>
-    <option value="planeacion">Planeación</option>
-    <option value="induccion">Inducción</option>
-    <option value="ejecucion">Ejecución</option>
-    <option value="cierre">Cierre</option>
-  </select>
-  <select class="form-select border-0 bg-light" id="filterPrograma" style="max-width:200px">
-    <option value="">Todos los programas</option>
-    <?php foreach ($programas as $prog): ?>
-    <option value="<?= htmlspecialchars($prog['codigo']) ?>"><?= htmlspecialchars($prog['nombre']) ?></option>
-    <?php endforeach; ?>
-  </select>
+<div class="toolbar mb-4">
+  <div class="search"><i class="bi bi-search"></i><input class="form-control" id="searchFichas" placeholder="Buscar ficha o programa..."></div>
+  <div class="toolbar-filter">
+    <select class="form-select" id="filterEstado"
+            data-picker
+            data-picker-label="Filtrar por estado"
+            data-picker-placeholder="Todos los estados">
+      <option value="">Todos los estados</option>
+      <option value="planeacion">Planeación</option>
+      <option value="induccion">Inducción</option>
+      <option value="ejecucion">Ejecución</option>
+      <option value="cierre">Cierre</option>
+    </select>
+  </div>
+  <div class="toolbar-filter">
+    <select class="form-select" id="filterPrograma"
+            data-picker
+            data-picker-label="Filtrar por programa"
+            data-picker-placeholder="Todos los programas">
+      <option value="">Todos los programas</option>
+      <?php foreach ($programas as $prog): ?>
+      <option value="<?= htmlspecialchars($prog['codigo']) ?>"><?= htmlspecialchars($prog['nombre']) ?></option>
+      <?php endforeach; ?>
+    </select>
+  </div>
 </div>
 
 <div class="row g-4" id="fichasGrid">
@@ -47,10 +57,10 @@ declare(strict_types=1);
           <span class="badge-soft <?= $estados_label[$ficha['estado']][1] ?> px-3 py-2 rounded-pill fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.5px;">
             <?= strtoupper($estados_label[$ficha['estado']][0]) ?>
           </span>
-          <span class="text-muted small fw-bold" style="font-size: 0.9rem; letter-spacing: 1px;">#<?= htmlspecialchars($ficha['numero_ficha']) ?></span>
+          <span class="text-muted small fw-bold text-uppercase-visual" style="font-size: 0.9rem; letter-spacing: 1px;">#<?= htmlspecialchars($ficha['numero_ficha']) ?></span>
         </div>
         
-        <h4 class="card-title fw-bold mb-3 text-truncate" title="<?= htmlspecialchars($ficha['programa']) ?>" style="font-size: 1.15rem; color: #1f2937;">
+        <h4 class="card-title fw-bold mb-3 text-truncate text-uppercase-visual" title="<?= htmlspecialchars($ficha['programa']) ?>" style="font-size: 1.15rem; color: var(--text);">
           <?= htmlspecialchars($ficha['programa']) ?>
         </h4>
         
@@ -68,7 +78,7 @@ declare(strict_types=1);
             <div class="icon-bg bg-light text-muted rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px;height:28px;font-size:0.8rem;">
               <i class="bi bi-kanban"></i>
             </div>
-            <span class="text-muted small fw-medium text-truncate" title="<?= htmlspecialchars($ficha['proyecto_nombre']) ?>">
+            <span class="text-muted small fw-medium text-truncate text-uppercase-visual" title="<?= htmlspecialchars($ficha['proyecto_nombre']) ?>">
               <?= htmlspecialchars($ficha['proyecto_codigo'] . ' — ' . substr($ficha['proyecto_nombre'], 0, 28) . (strlen($ficha['proyecto_nombre']) > 28 ? '…' : '')) ?>
             </span>
           </div>
@@ -88,7 +98,7 @@ declare(strict_types=1);
           </div>
         </div>
 
-        <div class="d-flex align-items-center gap-4 p-3 rounded-3" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.04);">
+        <div class="d-flex align-items-center gap-4 p-3 rounded-3" style="background: var(--surface-2); border: 1px solid var(--border);">
           <div class="d-flex align-items-center gap-2">
             <div class="text-primary fs-4"><i class="bi bi-people-fill"></i></div>
             <div>
@@ -102,7 +112,7 @@ declare(strict_types=1);
               <span class="text-muted" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px;">Cumplimiento</span>
               <span class="fw-bold text-dark" style="font-size:0.9rem;"><?= (int)$ficha['cumplimiento_porcentaje'] ?>%</span>
             </div>
-            <div class="progress" style="height:6px; background:rgba(0,0,0,0.06); border-radius: 10px;">
+            <div class="progress" style="height:6px; border-radius: 10px;">
               <div class="progress-bar" style="width: <?= $ficha['cumplimiento_porcentaje'] ?>%; background: <?= $ficha['cumplimiento_porcentaje'] >= 75 ? 'var(--sena-primary)' : ($ficha['cumplimiento_porcentaje'] >= 50 ? '#eab308' : '#ef4444') ?>; border-radius: 10px;"></div>
             </div>
           </div>

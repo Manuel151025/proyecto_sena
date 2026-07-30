@@ -64,7 +64,10 @@
       </div>
       <div class="col-md-3">
         <label class="form-label text-muted small">Estado de Actividad</label>
-        <select name="estado" class="form-select">
+        <select name="estado" class="form-select"
+                data-picker
+                data-picker-label="Estado de la actividad"
+                data-picker-placeholder="Todos">
           <option value="">Todos</option>
           <option value="pendiente" <?= $filter_estado === 'pendiente' ? 'selected' : '' ?>>Pendiente</option>
           <option value="en_progreso" <?= $filter_estado === 'en_progreso' ? 'selected' : '' ?>>En Progreso</option>
@@ -87,21 +90,21 @@
     <div class="card glass-card h-100 border-0 shadow-sm">
       <div class="card-body d-flex flex-column">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <span class="badge bg-soft primary">Ficha #<?= htmlspecialchars($act['numero_ficha']) ?></span>
+          <span class="badge bg-soft primary text-uppercase-visual">Ficha #<?= htmlspecialchars($act['numero_ficha']) ?></span>
           <?php $el = $estados_label[$act['estado']] ?? ['Desconocido', 'secondary']; ?>
           <span class="badge-soft <?= $el[1] ?>">
             <?= $el[0] ?>
           </span>
         </div>
         <h5 class="card-title fw-bold text-dark mb-1"><?= htmlspecialchars($act['nombre']) ?></h5>
-        <small class="text-muted d-block font-monospace mb-2" style="font-size:0.75rem;">
+        <small class="text-muted d-block font-monospace mb-2 text-uppercase-visual" style="font-size:0.75rem;">
           <i class="bi bi-diagram-3 me-1"></i><?= htmlspecialchars($act['comp_codigo'] ?: 'General') ?>
         </small>
         <p class="card-text text-muted small flex-grow-1">
           <?= htmlspecialchars($act['descripcion'] ?: 'Sin descripción provista para esta actividad académica.') ?>
         </p>
         
-        <div class="bg-light-soft p-2 rounded mb-3" style="background: rgba(0,0,0,0.02); font-size: 0.8rem;">
+        <div class="bg-light-soft p-2 rounded mb-3" style="background: var(--surface-2); font-size: 0.8rem;">
           <div class="d-flex justify-content-between mb-1">
             <span class="text-muted">Inicio:</span>
             <span class="fw-semibold text-dark"><?= $act['fecha_inicio'] ? date('d/m/Y', strtotime($act['fecha_inicio'])) : 'N/A' ?></span>
@@ -161,9 +164,9 @@
 <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
 <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold">Editar Actividad</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i>Editar Actividad</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -173,7 +176,10 @@
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Ficha Asociada</label>
-              <select name="ficha_id" id="edit_act_ficha" class="form-select" required>
+              <select name="ficha_id" id="edit_act_ficha" class="form-select" required
+                      data-picker
+                      data-picker-label="Seleccionar ficha"
+                      data-picker-placeholder="Número de ficha...">
                 <?php foreach ($fichas as $f): ?>
                   <option value="<?= $f['id'] ?>" data-programa-id="<?= $f['programa_id'] ?>">Ficha #<?= htmlspecialchars($f['numero_ficha']) ?></option>
                 <?php endforeach; ?>
@@ -181,7 +187,10 @@
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Competencia</label>
-              <select name="competencia_id" id="edit_act_competencia" class="form-select" required>
+              <select name="competencia_id" id="edit_act_competencia" class="form-select" required
+                      data-picker
+                      data-picker-label="Seleccionar competencia"
+                      data-picker-placeholder="Código o nombre de la competencia...">
                 <?php foreach ($competencias as $c): ?>
                   <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?></option>
                 <?php endforeach; ?>
@@ -209,7 +218,10 @@
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold">Instructor</label>
-              <select name="responsable_id" id="edit_act_responsable" class="form-select" required>
+              <select name="responsable_id" id="edit_act_responsable" class="form-select" required
+                      data-picker
+                      data-picker-label="Seleccionar instructor responsable"
+                      data-picker-placeholder="Nombre del instructor...">
                 <?php foreach ($instructores as $inst): ?>
                   <option value="<?= $inst['id'] ?>"><?= htmlspecialchars($inst['nombre']) ?></option>
                 <?php endforeach; ?>
@@ -217,7 +229,10 @@
             </div>
             <div class="col-md-4">
               <label class="form-label text-muted small fw-semibold">Estado</label>
-              <select name="estado" id="edit_act_estado" class="form-select">
+              <select name="estado" id="edit_act_estado" class="form-select"
+                      data-picker
+                      data-picker-label="Estado de la actividad"
+                      data-picker-placeholder="Seleccionar estado...">
                 <option value="pendiente">Pendiente</option>
                 <option value="en_progreso">En Progreso</option>
                 <option value="completada">Completada</option>
@@ -230,7 +245,7 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar Cambios</button>
         </div>
@@ -312,9 +327,9 @@ function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripci
 <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
 <div class="modal fade" id="modalCrear" tabindex="-1" aria-labelledby="modalCrearLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold" id="modalCrearLabel">Nueva Actividad de Aprendizaje</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCrearLabel"><i class="bi bi-check2-square"></i>Nueva Actividad de Aprendizaje</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
@@ -393,14 +408,17 @@ function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripci
             </div>
             <div class="col-md-6">
               <label class="form-label text-muted small fw-semibold">Estado Inicial</label>
-              <select name="estado" class="form-select">
+              <select name="estado" class="form-select"
+                      data-picker
+                      data-picker-label="Estado inicial"
+                      data-picker-placeholder="Seleccionar estado...">
                 <option value="pendiente">Pendiente</option>
                 <option value="en_progreso">En Progreso</option>
               </select>
             </div>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Crear Actividad</button>
         </div>

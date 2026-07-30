@@ -42,7 +42,7 @@
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table mb-0 align-middle">
-            <thead class="table-light-head" style="background: rgba(0,0,0,0.03);">
+            <thead class="table-light-head" style="background: var(--surface-2);">
               <tr>
                 <th class="ps-4">Título / Entrega</th>
                 <?php if ($user_rol !== ROL_APRENDIZ): ?>
@@ -71,11 +71,11 @@
                 <?php if ($user_rol !== ROL_APRENDIZ): ?>
                   <td>
                     <div class="fw-semibold text-dark"><?= htmlspecialchars($ev['aprendiz_nombre'] ?? '') ?></div>
-                    <small class="badge bg-soft primary">Ficha #<?= htmlspecialchars($ev['numero_ficha']) ?></small>
+                    <small class="badge bg-soft primary text-uppercase-visual">Ficha #<?= htmlspecialchars($ev['numero_ficha']) ?></small>
                   </td>
                 <?php endif; ?>
                 <td>
-                  <span class="text-muted small"><?= htmlspecialchars($ev['ra_denominacion'] ?? 'Sin resultado asociado') ?></span>
+                  <span class="text-muted small text-uppercase-visual"><?= htmlspecialchars($ev['ra_denominacion'] ?? 'Sin resultado asociado') ?></span>
                 </td>
                 <td>
                   <div class="small"><?= date('d/m/Y h:i A', strtotime($ev['fecha_envio'])) ?></div>
@@ -123,9 +123,9 @@
 <?php if ($user_rol === ROL_APRENDIZ): ?>
 <div class="modal fade" id="modalSubir" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold">Enviar Evidencia</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-cloud-arrow-up"></i>Enviar Evidencia</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST" enctype="multipart/form-data">
@@ -144,7 +144,7 @@
             <input type="file" id="ev-archivo" name="archivo" class="form-control" required>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Subir Evidencia</button>
         </div>
@@ -158,22 +158,25 @@
 <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
 <div class="modal fade" id="modalCalificar" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card border-0" style="background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);">
-      <div class="modal-header border-bottom-0 pb-0">
-        <h5 class="modal-title fw-bold">Calificar Evidencia</h5>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-clipboard-check"></i>Calificar Evidencia</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST">
         <input type="hidden" name="action" value="calificar_evidencia">
         <input type="hidden" name="evidencia_id" id="calificar_evidencia_id">
         <div class="modal-body">
-          <div class="mb-3 p-3 rounded" style="background:rgba(0,0,0,0.02)">
+          <div class="mb-3 p-3 rounded" style="background:var(--surface-2)">
             <span class="text-muted small">Evidencia seleccionada:</span>
             <div class="fw-bold" id="calificar_titulo">Ninguna</div>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-semibold" for="calificar-concepto">Concepto Evaluativo</label>
-            <select id="calificar-concepto" name="concepto" class="form-select" required>
+            <select id="calificar-concepto" name="concepto" class="form-select" required
+                    data-picker
+                    data-picker-label="Concepto evaluativo"
+                    data-picker-placeholder="Seleccionar concepto...">
               <option value="aprobado">Aprobado (A)</option>
               <option value="en_proceso">En Proceso (D)</option>
               <option value="no_aplica">No Aplica</option>
@@ -185,7 +188,7 @@
                       placeholder="Indica los logros o aspectos a mejorar de la entrega..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
           </div>
         </div>
-        <div class="modal-footer border-top-0 pt-0">
+        <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Registrar Calificación</button>
         </div>

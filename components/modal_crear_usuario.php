@@ -8,7 +8,7 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="modalCrearUsuarioLabel"><i class="bi bi-person-plus me-2 text-primary"></i>Registrar Nuevo Usuario</h5>
+        <h5 class="modal-title" id="modalCrearUsuarioLabel"><i class="bi bi-person-plus"></i>Registrar Nuevo Usuario</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="formCrearUsuario" novalidate>
@@ -22,22 +22,25 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
 
               <div class="mb-3">
                 <label for="modal-nombre" class="form-label fw-semibold">Nombre completo</label>
-                <input type="text" id="modal-nombre" name="nombre" class="form-control form-control-custom" placeholder="Ej: Carlos Andrés Martínez" maxlength="60" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
+                <input type="text" id="modal-nombre" name="nombre" class="form-control" placeholder="Ej: Carlos Andrés Martínez" maxlength="60" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
               </div>
 
               <div class="mb-3">
                 <label for="modal-email" class="form-label fw-semibold">Email institucional</label>
-                <input type="email" id="modal-email" name="email" class="form-control form-control-custom" placeholder="usuario@sena.edu.co" maxlength="100" required>
+                <input type="email" id="modal-email" name="email" class="form-control" placeholder="usuario@sena.edu.co" maxlength="100" required>
               </div>
 
               <div class="mb-3">
                 <label for="modal-password" class="form-label fw-semibold">Contraseña</label>
-                <input type="password" id="modal-password" name="password" class="form-control form-control-custom" placeholder="Mínimo 6 caracteres" maxlength="60" minlength="6" required>
+                <input type="password" id="modal-password" name="password" class="form-control" placeholder="Mínimo 6 caracteres" maxlength="60" minlength="6" required>
               </div>
 
               <div class="mb-3">
                 <label for="modal-rol" class="form-label fw-semibold">Rol del Sistema</label>
-                <select id="modal-rol" name="rol" class="form-select form-select-custom" required>
+                <select id="modal-rol" name="rol" class="form-select" required
+                        data-picker
+                        data-picker-label="Rol del sistema"
+                        data-picker-placeholder="Seleccionar rol...">
                   <option value="aprendiz" selected>Aprendiz</option>
                   <option value="instructor">Instructor</option>
                   <option value="coordinador">Coordinador</option>
@@ -114,39 +117,6 @@ $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
 </div>
 
 <style>
-#modalCrearUsuario .modal-content {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  background: var(--surface);
-}
-#modalCrearUsuario .modal-header {
-  background: linear-gradient(135deg, var(--bg-elev) 0%, var(--surface-2) 100%);
-  border-bottom: 1px solid var(--border);
-  padding: 1.25rem 1.5rem;
-}
-#modalCrearUsuario .modal-footer {
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding: 1rem 1.5rem;
-}
-#modalCrearUsuario .modal-title {
-  font-weight: 700;
-  letter-spacing: -0.019em;
-}
-.form-control-custom, .form-select-custom {
-  border-radius: 10px !important;
-  padding: 0.65rem 0.85rem !important;
-  font-size: 0.9rem !important;
-  background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text) !important;
-}
-.form-control-custom:focus, .form-select-custom:focus {
-  border-color: var(--sena-primary) !important;
-  box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.15) !important;
-}
 .border-end-custom {
   border-right: 1px solid var(--border) !important;
 }

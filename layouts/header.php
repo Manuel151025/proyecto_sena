@@ -7,6 +7,18 @@ declare(strict_types=1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle ?? 'SENA') ?></title>
+    <script>
+    // Tema aplicado antes de pintar: app.js se carga en el footer, así que
+    // el modo oscuro llegaba tarde y la página parpadeaba en blanco.
+    // data-bs-theme acompaña a data-theme para que los componentes de
+    // Bootstrap (dropdowns, selects, alertas...) también se oscurezcan.
+    (function () {
+      if (localStorage.getItem('sena-theme') === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+      }
+    })();
+    </script>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -18,7 +30,7 @@ declare(strict_types=1);
     <!-- Theme CSS -->
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/theme.css?v=<?= filemtime(BASE_PATH . 'assets/css/theme.css') ?>">
     <!-- Searchable picker -->
-    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/picker.css">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/picker.css?v=<?= filemtime(BASE_PATH . 'assets/css/picker.css') ?>">
     
     <!-- PWA Manifest & Meta Tags -->
     <link rel="manifest" href="<?= APP_URL ?>/manifest.json">

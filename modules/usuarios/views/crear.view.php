@@ -45,7 +45,10 @@
 
           <div class="mb-3">
             <label class="form-label" for="crear-rol">Rol</label>
-            <select id="crear-rol" name="rol" class="form-select" required>
+            <select id="crear-rol" name="rol" class="form-select" required
+                    data-picker
+                    data-picker-label="Rol del sistema"
+                    data-picker-placeholder="Seleccionar rol...">
               <option value="aprendiz" <?= ($_POST['rol'] ?? '') === 'aprendiz' ? 'selected' : '' ?>>Aprendiz</option>
               <option value="instructor" <?= ($_POST['rol'] ?? '') === 'instructor' ? 'selected' : '' ?>>Instructor</option>
               <option value="coordinador" <?= ($_POST['rol'] ?? '') === 'coordinador' ? 'selected' : '' ?>>Coordinador</option>
