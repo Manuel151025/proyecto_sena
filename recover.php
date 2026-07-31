@@ -23,6 +23,7 @@ require_once __DIR__ . '/includes/session.php';
 require_once __DIR__ . '/core/Database.php';
 
 use Core\Database;
+use Core\Services\MailService;
 
 // =====================================================================
 // CONFIGURACIÓN
@@ -112,7 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reque
                 // Loguear para demo / debugging
                 log_reset_link($email, $link);
 
-                // Intentar enviar email real (puede fallar silenciosamente en XAMPP)
+                // Enviar el correo por SMTP (PHPMailer). MailService nunca
+                // lanza excepciones: si el envío falla devuelve false y lo
+                // registra en logs/mail.log, para que un problema de correo
+                // no altere la respuesta ni rompa la anti-enumeración.
                 $subject = 'Recuperación de contraseña - SENA';
                 $message = "Hola " . $user['nombre'] . ",\n\n"
                          . "Recibimos una solicitud para restablecer tu contraseña.\n"
@@ -121,9 +125,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reque
                          . "Este enlace expira en " . TOKEN_TTL_MIN . " minutos.\n"
                          . "Si no fuiste tú, ignora este mensaje.\n\n"
                          . "— Sistema de Seguimiento SENA";
-                $headers = "From: no-reply@sena.edu.co\r\n"
-                         . "Content-Type: text/plain; charset=utf-8\r\n";
-                @mail($email, $subject, $message, $headers);
+
+                // Versión HTML del mismo mensaje (mismo enlace, misma lógica).
+                // Todo lo que viene de la BD se escapa: el correo no debe ser
+                // un vector de inyección de HTML.
+                $nombre_html = htmlspecialchars($user['nombre'], ENT_QUOTES, 'UTF-8');
+                $link_html   = htmlspecialchars($link, ENT_QUOTES, 'UTF-8');
+                $html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1f2937;line-height:1.6;max-width:520px;margin:0 auto;padding:24px;">'
+                      . '<p style="margin:0 0 16px;">Hola <strong>' . $nombre_html . '</strong>,</p>'
+                      . '<p style="margin:0 0 16px;">Recibimos una solicitud para restablecer tu contraseña.</p>'
+                      . '<p style="margin:0 0 24px;text-align:center;">'
+                      . '<a href="' . $link_html . '" style="display:inline-block;background:#39A900;color:#ffffff;'
+                      . 'text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;">Restablecer mi contraseña</a>'
+                      . '</p>'
+                      . '<p style="margin:0 0 8px;font-size:13px;color:#6b7280;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>'
+                      . '<p style="margin:0 0 24px;font-size:13px;word-break:break-all;"><a href="' . $link_html . '" style="color:#1a7a00;">' . $link_html . '</a></p>'
+                      . '<p style="margin:0 0 8px;font-size:13px;color:#6b7280;">Este enlace expira en ' . TOKEN_TTL_MIN . ' minutos.</p>'
+                      . '<p style="margin:0 0 24px;font-size:13px;color:#6b7280;">Si no fuiste tú, ignora este mensaje.</p>'
+                      . '<hr style="border:0;border-top:1px solid #e5e7eb;margin:0 0 12px;">'
+                      . '<p style="margin:0;font-size:12px;color:#9ca3af;">Sistema de Seguimiento SENA</p>'
+                      . '</div>';
+
+                (new MailService())->send($email, $subject, $message, $html);
 
                 if (DEV_MODE) {
                     $_SESSION['_dev_reset_link'] = $link;

@@ -71,3 +71,7 @@ $user = getCurrentUser();
     </div>
   </div>
 </aside>
+<!-- Velo para cerrar el menú tocando fuera (solo visible en móvil con el
+     sidebar abierto; en escritorio está display:none y position:fixed, así
+     que no participa en el grid de .app-shell). -->
+<button type="button" class="sidebar-overlay" aria-label="Cerrar menú"></button>
