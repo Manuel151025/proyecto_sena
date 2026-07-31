@@ -365,13 +365,28 @@ class UsuarioController extends BaseController {
                             if (empty($errors)) {
                                 if (count($usersData) > 0) {
                                     try {
-                                        $count = $this->usuarioModel->createMultiple($usersData);
+                                        // Importación idempotente: las filas cuyo email ya
+                                        // existe se omiten (no se toca el usuario existente).
+                                        $resultado = $this->usuarioModel->importMultiple($usersData);
+                                        $nuevos = count($resultado['insertados']);
+                                        $omitidos = count($resultado['omitidos']);
+
+                                        // Solo se listan las contraseñas de los usuarios
+                                        // realmente creados: mostrar la de uno omitido daría
+                                        // una credencial que no sirve.
                                         $resultados = array_map(
                                             fn($u) => ['nombre' => $u['nombre'], 'email' => $u['email'], 'password' => $u['password']],
-                                            $usersData
+                                            $resultado['insertados']
                                         );
-                                        $mensaje = "Se importaron $count usuarios correctamente. Copia o comparte estas contraseñas temporales ahora: no volverán a mostrarse.";
-                                        $tipo_mensaje = 'success';
+
+                                        $mensaje = "Importados $nuevos nuevos, omitidos $omitidos ya existentes.";
+                                        if ($nuevos > 0) {
+                                            $mensaje .= ' Copia o comparte estas contraseñas temporales ahora: no volverán a mostrarse.';
+                                            $tipo_mensaje = 'success';
+                                        } else {
+                                            $mensaje .= ' No se creó ningún usuario nuevo: todos los registros del archivo ya estaban en el sistema.';
+                                            $tipo_mensaje = 'warning';
+                                        }
                                     } catch (Exception $e) {
                                         $errors[] = $e->getMessage();
                                     }

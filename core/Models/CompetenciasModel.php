@@ -95,6 +95,57 @@ class CompetenciasModel {
     }
 
     /**
+     * Inserta una competencia solo si no existe todavía. Devuelve true si la
+     * fila se creó y false si se omitió porque ya estaba registrada.
+     *
+     * Pensada para la importación masiva, que debe ser idempotente: volver a
+     * subir el mismo archivo no debe fallar ni duplicar. La creación manual
+     * sigue usando create(), que necesita lanzar la excepción de duplicado
+     * para poder avisar al coordinador.
+     *
+     * La identidad de una competencia es (programa_id, codigo), no el código
+     * suelto: hay competencias transversales del SENA (Inglés, Ética, Etapa
+     * Práctica…) que comparten el mismo código oficial en varios programas.
+     * Por eso el índice del esquema es UNIQUE (programa_id, codigo).
+     *
+     * Se combinan dos mecanismos a propósito:
+     *  - El SELECT previo detecta las que ya existían y funciona incluso si
+     *    el índice UNIQUE compuesto no se ha aplicado en ese entorno
+     *    (migrations/add_unique_codigos.php lo omite si encuentra duplicados).
+     *  - INSERT IGNORE cubre las repetidas dentro del propio archivo y las
+     *    carreras entre importaciones simultáneas, sin abortar la transacción.
+     */
+    public function createIfNotExists(array $data): bool {
+        try {
+            $check = $this->db->prepare("
+                SELECT id FROM competencias WHERE programa_id = ? AND codigo = ? LIMIT 1
+            ");
+            $check->execute([$data['programa_id'], $data['codigo']]);
+            if ($check->fetch()) {
+                return false;
+            }
+
+            $stmt = $this->db->prepare("
+                INSERT IGNORE INTO competencias (programa_id, codigo, nombre, descripcion, horas, estado)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $data['programa_id'],
+                $data['codigo'],
+                $data['nombre'],
+                $data['descripcion'] ?? null,
+                $data['horas'],
+                $data['estado'] ?? 'activo'
+            ]);
+
+            // rowCount() === 1 -> insertada; 0 -> la ignoró por duplicado.
+            return $stmt->rowCount() === 1;
+        } catch (Exception $e) {
+            throw new Exception("Error al registrar competencia '{$data['codigo']}': " . $e->getMessage());
+        }
+    }
+
+    /**
      * Actualiza una competencia.
      */
     public function update(int $id, array $data): bool {

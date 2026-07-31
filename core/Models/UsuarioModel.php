@@ -117,6 +117,77 @@ class UsuarioModel implements UsuarioRepositoryInterface {
     }
 
     /**
+     * Importación masiva idempotente: inserta solo los usuarios cuyo email no
+     * está registrado todavía y omite el resto.
+     *
+     * A diferencia de createMultiple(), un email repetido no aborta la carga
+     * completa: se salta esa fila y se sigue. Así, reimportar el mismo archivo
+     * no crea duplicados ni falla.
+     *
+     * Devuelve:
+     *   [
+     *     'insertados' => [ ...filas de $usersData realmente creadas... ],
+     *     'omitidos'   => [ ...emails que ya existían... ]
+     *   ]
+     * Se devuelven las filas insertadas (no solo el conteo) porque la vista
+     * necesita mostrar la contraseña temporal únicamente de los usuarios que
+     * sí se crearon.
+     *
+     * Nota: este importador escribe SOLO en `usuarios`. La fila de `aprendices`
+     * la crea el módulo de Matrículas (AprendizModel::matricular / carga CSV de
+     * matrículas), así que aquí no hay riesgo de dejar un usuario sin su
+     * aprendiz asociado.
+     */
+    public function importMultiple(array $usersData): array {
+        $insertados = [];
+        $omitidos = [];
+
+        try {
+            $this->db->beginTransaction();
+
+            $check = $this->db->prepare("SELECT id FROM usuarios WHERE email = ? LIMIT 1");
+            // INSERT IGNORE además del SELECT: cubre emails repetidos dentro del
+            // mismo archivo y carreras entre importaciones simultáneas sin que
+            // la clave única aborte la transacción entera.
+            $insert = $this->db->prepare("
+                INSERT IGNORE INTO usuarios (nombre, email, password, rol, avatar_color, estado, debe_cambiar_password)
+                VALUES (?, ?, ?, ?, ?, 'activo', 1)
+            ");
+
+            foreach ($usersData as $data) {
+                $check->execute([$data['email']]);
+                if ($check->fetch()) {
+                    $omitidos[] = $data['email'];
+                    continue;
+                }
+
+                // El hash se calcula solo para las filas que sí se van a crear.
+                $insert->execute([
+                    $data['nombre'],
+                    $data['email'],
+                    password_hash($data['password'], PASSWORD_DEFAULT),
+                    $data['rol'],
+                    $data['avatar_color']
+                ]);
+
+                if ($insert->rowCount() === 1) {
+                    $insertados[] = $data;
+                } else {
+                    $omitidos[] = $data['email'];
+                }
+            }
+
+            $this->db->commit();
+            return ['insertados' => $insertados, 'omitidos' => $omitidos];
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw new Exception("Error en la importación masiva: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Actualiza un usuario existente.
      */
     public function update(int $id, array $data): bool {

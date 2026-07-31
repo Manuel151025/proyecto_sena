@@ -4,8 +4,15 @@
 </div>
 
 <?php if (!empty($mensaje)): ?>
+<?php
+// El icono acompaña al tipo de mensaje: la importación puede terminar en
+// 'warning' cuando todas las filas se omitieron por ya existir.
+$iconoMensaje = 'bi-check-circle';
+if ($tipo_mensaje === 'warning') $iconoMensaje = 'bi-exclamation-triangle';
+if ($tipo_mensaje === 'danger') $iconoMensaje = 'bi-exclamation-circle';
+?>
 <div class="alert-flat <?= htmlspecialchars($tipo_mensaje) ?> mb-3">
-  <i class="bi bi-check-circle"></i>
+  <i class="bi <?= $iconoMensaje ?>"></i>
   <div><?= htmlspecialchars($mensaje) ?></div>
 </div>
 <?php endif; ?>
@@ -63,8 +70,15 @@
           <?= csrfField() ?>
           <div class="mb-4">
             <label class="form-label d-block">Archivo Excel / CSV</label>
-            <input type="file" name="archivo_csv" class="form-control" accept=".csv, .xlsx, .xls" required>
-            <div class="text-muted small mt-2">Formatos aceptados: <strong>.xlsx</strong> (Excel moderno) y <strong>.csv</strong>. Si tiene un archivo antiguo (.xls), por favor guardelo como .xlsx.</div>
+            <input type="file" name="archivo_csv" class="form-control" accept=".csv, .xlsx" required
+                   data-import-preview data-import-preview-target="#previewUsuarios">
+            <div class="text-muted small mt-2">
+              Formatos aceptados: <strong>.xlsx</strong> (Excel moderno) y <strong>.csv</strong>.
+              El formato antiguo <strong>.xls</strong> no se admite: ábrelo en Excel y usa
+              <em>Guardar como</em> &rarr; <strong>.xlsx</strong>.
+            </div>
+            <!-- Vista previa del archivo: debajo de la ayuda de formatos -->
+            <div id="previewUsuarios"></div>
           </div>
 
           <div class="d-flex gap-2">
@@ -116,3 +130,6 @@
     </div>
   </div>
 </div>
+
+<!-- Vista previa del archivo antes de enviar (solo frontend) -->
+<script src="<?= APP_URL ?>/assets/js/import-preview.js?v=<?= filemtime(BASE_PATH . 'assets/js/import-preview.js') ?>"></script>
