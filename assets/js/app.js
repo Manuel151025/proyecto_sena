@@ -34,18 +34,77 @@
     });
   }
 
-  // ===== Sidebar collapse =====
+  // ===== Sidebar =====
+  // Escritorio y móvil son dos comportamientos distintos y NO comparten
+  // estado:
+  //   · Escritorio: rail estrecho con expansión por :hover. La clase
+  //     .collapsed se conserva (con su valor en localStorage) para el
+  //     colapso manual.
+  //   · Móvil: panel deslizable, cerrado en cada carga. Usa .sidebar-open
+  //     y NO se persiste; si se persistiera, al recargar el menú aparecería
+  //     abierto tapando el contenido (que era justo el fallo).
+  // La media query debe coincidir con la de theme.css (@media max-width:768px).
+  const mobileQuery = window.matchMedia('(max-width: 768px)');
+  const isMobile = () => mobileQuery.matches;
+  const getShell = () => document.querySelector('.app-shell');
+
   window.toggleSidebar = function () {
-    const shell = document.querySelector('.app-shell');
+    const shell = getShell();
     if (!shell) return;
+
+    if (isMobile()) {
+      shell.classList.toggle('sidebar-open');
+      return; // estado transitorio: no se guarda
+    }
+
     shell.classList.toggle('collapsed');
     localStorage.setItem('sena-sidebar', shell.classList.contains('collapsed') ? '1' : '0');
   };
 
+  window.closeSidebar = function () {
+    getShell()?.classList.remove('sidebar-open');
+  };
+
   document.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('sena-sidebar') === '1') {
-      document.querySelector('.app-shell')?.classList.add('collapsed');
+    const shell = getShell();
+
+    // El estado guardado solo aplica en escritorio. En móvil se arranca
+    // siempre cerrado, sin importar lo que hubiera en localStorage.
+    if (shell && !isMobile() && localStorage.getItem('sena-sidebar') === '1') {
+      shell.classList.add('collapsed');
     }
+
+    if (shell) {
+      // Tocar el velo cierra el menú
+      document.querySelector('.sidebar-overlay')
+        ?.addEventListener('click', window.closeSidebar);
+
+      // Al elegir una opción del menú, cerrar antes de navegar para que no
+      // quede el panel encima durante la carga de la página siguiente.
+      // Solo enlaces reales: los grupos con submenú son <div class="sidebar-link">
+      // y en móvil se muestran desplegados, así que no deben cerrar nada.
+      document.querySelector('.sidebar')?.addEventListener('click', (e) => {
+        if (isMobile() && e.target.closest('a[href]')) {
+          window.closeSidebar();
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') window.closeSidebar();
+      });
+
+      // Al pasar a escritorio, descartar el estado de móvil para que no
+      // quede colgando si luego se vuelve a reducir la ventana.
+      const handleBreakpointChange = () => {
+        if (!isMobile()) window.closeSidebar();
+      };
+      if (typeof mobileQuery.addEventListener === 'function') {
+        mobileQuery.addEventListener('change', handleBreakpointChange);
+      } else if (typeof mobileQuery.addListener === 'function') {
+        mobileQuery.addListener(handleBreakpointChange); // Safari antiguo
+      }
+    }
+
     updateThemeIcons();
 
     // Posicionamiento dinámico de tooltips del sidebar para evitar clipping al hacer scroll
