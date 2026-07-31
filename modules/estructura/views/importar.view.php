@@ -60,8 +60,10 @@ declare(strict_types=1);
               <i class="bi bi-file-earmark-arrow-up icon"></i>
               <span class="text">Arrastra aquí el archivo o haz clic para buscar</span>
               <span class="filename" id="file_estructura_name">No se ha seleccionado ningún archivo</span>
-              <input type="file" name="pdf_estructura" id="pdf_estructura" class="d-none" accept=".pdf" onchange="updateFilename('pdf_estructura', 'file_estructura_name')">
+              <input type="file" name="pdf_estructura" id="pdf_estructura" class="d-none" accept=".pdf" onchange="updateFilename('pdf_estructura', 'file_estructura_name')"
+                     data-import-preview data-import-preview-mode="meta" data-import-preview-target="#previewPdfEstructura">
             </div>
+            <div id="previewPdfEstructura"></div>
           </div>
 
           <!-- Proyecto Formativo -->
@@ -75,8 +77,10 @@ declare(strict_types=1);
               <i class="bi bi-kanban-fill icon"></i>
               <span class="text">Arrastra aquí el archivo o haz clic para buscar</span>
               <span class="filename" id="file_proyecto_name">No se ha seleccionado ningún archivo</span>
-              <input type="file" name="pdf_proyecto" id="pdf_proyecto" class="d-none" accept=".pdf" onchange="updateFilename('pdf_proyecto', 'file_proyecto_name')">
+              <input type="file" name="pdf_proyecto" id="pdf_proyecto" class="d-none" accept=".pdf" onchange="updateFilename('pdf_proyecto', 'file_proyecto_name')"
+                     data-import-preview data-import-preview-mode="meta" data-import-preview-target="#previewPdfProyecto">
             </div>
+            <div id="previewPdfProyecto"></div>
           </div>
 
           <div class="d-grid mt-4">
@@ -165,10 +169,18 @@ function updateFilename(inputId, nameId) {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       input.files = e.dataTransfer.files;
       updateFilename(inputId, nameId);
+      // Asignar .files por código no dispara 'change': se emite a mano para
+      // que la ficha del archivo (import-preview.js) también se actualice.
+      input.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
 });
 </script>
+<!-- Ficha del archivo antes de enviar (solo frontend). Estos importadores
+     reciben PDF, así que no hay filas que previsualizar en el navegador: el
+     contenido se extrae en el servidor y se muestra en el paso siguiente
+     ("Analizar y Previsualizar Documentos"). -->
+<script src="<?= APP_URL ?>/assets/js/import-preview.js?v=<?= filemtime(BASE_PATH . 'assets/js/import-preview.js') ?>"></script>
 <?php endif; ?>
 
 <?php if ($preview_mode && !empty($_SESSION['pending_import'])): ?>

@@ -37,11 +37,20 @@ interface UsuarioRepositoryInterface {
 
     /**
      * Crea múltiples usuarios de forma masiva.
-     * 
+     *
      * @param array $usersData
      * @return int Número de registros insertados
      */
     public function createMultiple(array $usersData): int;
+
+    /**
+     * Importación masiva idempotente: crea solo los usuarios cuyo email no
+     * existe todavía y omite los ya registrados.
+     *
+     * @param array $usersData
+     * @return array{insertados: array, omitidos: array}
+     */
+    public function importMultiple(array $usersData): array;
 
     /**
      * Actualiza un usuario existente.

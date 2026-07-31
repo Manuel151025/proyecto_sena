@@ -36,7 +36,8 @@ declare(strict_types=1);
           <?= csrfField() ?>
           <div class="mb-4">
             <label class="form-label text-muted small fw-semibold">Selecciona el archivo (.xlsx o .csv)</label>
-            <input type="file" name="archivo_raps" class="form-control" accept=".xlsx, .csv" required>
+            <input type="file" name="archivo_raps" class="form-control" accept=".xlsx, .csv" required
+                   data-import-preview data-import-preview-target="#previewRaps">
             <small class="text-muted d-block mt-1">El archivo no debe exceder los 10MB de tamaño.</small>
           </div>
           <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-circle-fill me-1"></i>Procesar e Importar</button>
@@ -85,6 +86,10 @@ declare(strict_types=1);
   </div>
 </div>
 
+<!-- Vista previa del archivo (a ancho completo: la denominación del RAP es
+     larga y no cabe dentro de la tarjeta de carga) -->
+<div id="previewRaps"></div>
+
 <?php if (!empty($resultados)): ?>
 <div class="card glass-card border-0 shadow-sm mt-4">
   <div class="card-body">
@@ -112,3 +117,6 @@ declare(strict_types=1);
   </div>
 </div>
 <?php endif; ?>
+
+<!-- Vista previa del archivo antes de enviar (solo frontend) -->
+<script src="<?= APP_URL ?>/assets/js/import-preview.js?v=<?= filemtime(BASE_PATH . 'assets/js/import-preview.js') ?>"></script>

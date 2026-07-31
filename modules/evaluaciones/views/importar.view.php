@@ -243,11 +243,16 @@ declare(strict_types=1);
           
           <div class="mb-4">
             <label class="form-label text-muted small fw-bold">Archivo Excel (.xls)</label>
-            <input type="file" id="excelFileInput" name="excel_file" class="form-control" accept=".xls" required>
+            <input type="file" id="excelFileInput" name="excel_file" class="form-control" accept=".xls" required
+                   data-import-preview data-import-preview-target="#previewJuicios">
             <div class="form-text text-muted" style="font-size:0.75rem;">
               * Asegúrate de no alterar el archivo original de juicios evaluativos.
             </div>
           </div>
+
+          <!-- Vista previa del archivo (el reporte de juicios tiene muchas
+               columnas, así que se pinta debajo del formulario) -->
+          <div id="previewJuicios" class="mb-3"></div>
           
           <!-- Barra de progreso (oculta inicialmente) -->
           <div id="uploadProgress" class="mb-3" style="display:none;">
@@ -278,5 +283,7 @@ declare(strict_types=1);
 </div>
 <?php endif; ?>
 
+<!-- Vista previa del archivo antes de enviar (solo frontend) -->
+<script src="<?= APP_URL ?>/assets/js/import-preview.js?v=<?= filemtime(BASE_PATH . 'assets/js/import-preview.js') ?>"></script>
 <!-- Cargar Script del Cliente Desacoplado -->
-<script src="<?= APP_URL ?>/assets/js/evaluaciones/importar.js"></script>
+<script src="<?= APP_URL ?>/assets/js/evaluaciones/importar.js?v=<?= filemtime(BASE_PATH . 'assets/js/evaluaciones/importar.js') ?>"></script>

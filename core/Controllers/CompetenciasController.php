@@ -331,9 +331,13 @@ class CompetenciasController extends BaseController {
                                     try {
                                         $this->db->beginTransaction();
                                         
+                                        // Importación idempotente: las competencias que ya
+                                        // existen (mismo programa + mismo código) se omiten
+                                        // en lugar de romper toda la carga.
                                         $importedCount = 0;
+                                        $skippedCount = 0;
                                         foreach ($competenciasData as $c) {
-                                            $this->competenciasModel->create([
+                                            $inserted = $this->competenciasModel->createIfNotExists([
                                                 'programa_id' => $c['programa_id'],
                                                 'codigo' => $c['codigo'],
                                                 'nombre' => $c['nombre'],
@@ -341,7 +345,11 @@ class CompetenciasController extends BaseController {
                                                 'horas' => $c['horas'],
                                                 'estado' => 'activo'
                                             ]);
-                                            $importedCount++;
+                                            if ($inserted) {
+                                                $importedCount++;
+                                            } else {
+                                                $skippedCount++;
+                                            }
                                         }
 
                                         // Registrar log
@@ -349,10 +357,11 @@ class CompetenciasController extends BaseController {
                                             INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, descripcion)
                                             VALUES (?, 'Importar', 'Competencias', 'competencias', ?)
                                         ");
-                                        $logStmt->execute([(int)getCurrentUser()['id'], "Importó masivamente $importedCount competencias académicas"]);
+                                        $logStmt->execute([(int)getCurrentUser()['id'], "Importación masiva de competencias: $importedCount nuevas, $skippedCount omitidas por ya existir"]);
 
                                         $this->db->commit();
-                                        setFlashMessage("Se han importado exitosamente $importedCount competencias académicas.", 'success');
+                                        $resumen = "Importados $importedCount nuevos, omitidos $skippedCount ya existentes.";
+                                        setFlashMessage($resumen, $importedCount > 0 ? 'success' : 'warning');
                                         $this->redirect(APP_URL . '/index.php/competencias');
                                     } catch (Exception $e) {
                                         if ($this->db->inTransaction()) {
