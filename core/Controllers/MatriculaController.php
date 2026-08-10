@@ -218,10 +218,15 @@ class MatriculaController extends BaseController {
                             $stmt->execute([$usuario_id, $ficha_id, $num_doc, $tipo_doc, $genero, $telefono, $ciudad]);
                             $new_ap_id = (int)$db->lastInsertId();
 
-                            // 3. Inicializar evaluaciones
-                            if (function_exists('inicializarEvaluacionesAprendiz')) {
-                                inicializarEvaluacionesAprendiz($db, $new_ap_id, $ficha_id);
-                            }
+                            // 3. Inicializar evaluaciones.
+                            // Sin guardia `function_exists`: la tenía porque
+                            // functions.php se cargaba tarde en el arranque, y
+                            // el efecto real era saltarse la inicialización en
+                            // silencio (31 aprendices acabaron sin ninguna
+                            // evaluación). El arranque ya la carga siempre, así
+                            // que si vuelve a faltar debe fallar de forma
+                            // visible en vez de dejar el dato a medias.
+                            inicializarEvaluacionesAprendiz($db, $new_ap_id, $ficha_id);
 
                             // 4. Incrementar contador en la ficha
                             $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$ficha_id]);

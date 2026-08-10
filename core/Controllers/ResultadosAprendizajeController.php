@@ -7,6 +7,7 @@ use Core\BaseController;
 use Core\Database;
 use Core\Models\ResultadosAprendizajeModel;
 use Core\Models\CompetenciasModel;
+use Core\Services\EvaluacionesSyncService;
 use Core\XlsxParser;
 use PDO;
 use Exception;
@@ -15,16 +16,19 @@ class ResultadosAprendizajeController extends BaseController {
     private PDO $db;
     private ResultadosAprendizajeModel $resultadosModel;
     private CompetenciasModel $competenciasModel;
+    private EvaluacionesSyncService $evaluacionesSync;
 
     public function __construct(
         ?PDO $db = null,
         ?ResultadosAprendizajeModel $resultadosModel = null,
-        ?CompetenciasModel $competenciasModel = null
+        ?CompetenciasModel $competenciasModel = null,
+        ?EvaluacionesSyncService $evaluacionesSync = null
     ) {
         requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $this->db = $db ?? Database::getConnection();
         $this->resultadosModel = $resultadosModel ?? new ResultadosAprendizajeModel($this->db);
         $this->competenciasModel = $competenciasModel ?? new CompetenciasModel($this->db);
+        $this->evaluacionesSync = $evaluacionesSync ?? new EvaluacionesSyncService($this->db);
     }
 
     /**
@@ -64,14 +68,33 @@ class ResultadosAprendizajeController extends BaseController {
 
                 if (empty($errors)) {
                     try {
+                        $this->db->beginTransaction();
                         $this->resultadosModel->create([
                             'competencia_id' => $competencia_id,
                             'codigo' => $codigo,
                             'denominacion' => $denominacion
                         ], $userId);
-                        setFlashMessage('Resultado de Aprendizaje (RAP) registrado exitosamente.', 'success');
+
+                        // Un RAP nuevo no le sirve de nada al aprendiz si no
+                        // tiene su fila 'pendiente': sin ella no aparece en
+                        // /seguimiento ni en /evaluaciones y no hay forma de
+                        // calificarlo. Se crea aquí, en la misma transacción.
+                        $sync = $this->evaluacionesSync->sincronizar(['competencia_id' => $competencia_id]);
+                        $this->db->commit();
+
+                        $mensaje = 'Resultado de Aprendizaje (RAP) registrado exitosamente.';
+                        if ($sync['creadas'] > 0) {
+                            $mensaje .= " Se habilitó su evaluación para {$sync['creadas']} aprendiz(ces) ya matriculados.";
+                        }
+                        if ($sync['omitidas_sin_instructor'] > 0) {
+                            $mensaje .= " Quedaron {$sync['omitidas_sin_instructor']} pendientes en fichas sin instructor líder asignado.";
+                        }
+                        setFlashMessage($mensaje, 'success');
                         $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                     } catch (Exception $e) {
+                        if ($this->db->inTransaction()) {
+                            $this->db->rollBack();
+                        }
                         setFlashMessage('Error al registrar RAP: ' . $e->getMessage(), 'danger');
                     }
                 }
@@ -108,14 +131,29 @@ class ResultadosAprendizajeController extends BaseController {
 
                 if (empty($errors)) {
                     try {
+                        $this->db->beginTransaction();
                         $this->resultadosModel->update($id, [
                             'competencia_id' => $competencia_id,
                             'codigo' => $codigo,
                             'denominacion' => $denominacion
                         ], $userId);
-                        setFlashMessage('Resultado de Aprendizaje actualizado exitosamente.', 'success');
+
+                        // La edición puede mover el RAP a otra competencia —y
+                        // por tanto a otro programa—, así que los aprendices
+                        // del programa de destino necesitan su fila.
+                        $sync = $this->evaluacionesSync->sincronizar(['competencia_id' => $competencia_id]);
+                        $this->db->commit();
+
+                        $mensaje = 'Resultado de Aprendizaje actualizado exitosamente.';
+                        if ($sync['creadas'] > 0) {
+                            $mensaje .= " Se habilitó su evaluación para {$sync['creadas']} aprendiz(ces) del nuevo programa.";
+                        }
+                        setFlashMessage($mensaje, 'success');
                         $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                     } catch (Exception $e) {
+                        if ($this->db->inTransaction()) {
+                            $this->db->rollBack();
+                        }
                         setFlashMessage('Error al actualizar RAP: ' . $e->getMessage(), 'danger');
                     }
                 }
@@ -271,9 +309,24 @@ class ResultadosAprendizajeController extends BaseController {
                                         $this->db->beginTransaction();
 
                                         $importedCount = 0;
+                                        $competenciasTocadas = [];
                                         foreach ($rapsData as $rap) {
                                             $this->resultadosModel->create($rap, $userId);
+                                            $competenciasTocadas[(int)$rap['competencia_id']] = true;
                                             $importedCount++;
+                                        }
+
+                                        // Habilitar los RAP importados para los
+                                        // aprendices ya matriculados. Se recorre
+                                        // por competencia (y no una sola vez en
+                                        // global) para no revisar programas que
+                                        // esta importación no tocó.
+                                        $evaluacionesCreadas = 0;
+                                        $sinInstructor = 0;
+                                        foreach (array_keys($competenciasTocadas) as $competenciaId) {
+                                            $sync = $this->evaluacionesSync->sincronizar(['competencia_id' => $competenciaId]);
+                                            $evaluacionesCreadas += $sync['creadas'];
+                                            $sinInstructor += $sync['omitidas_sin_instructor'];
                                         }
 
                                         // Registrar log general de importación
@@ -283,11 +336,19 @@ class ResultadosAprendizajeController extends BaseController {
                                         ");
                                         $logStmt->execute([
                                             $userId,
-                                            "Importó masivamente $importedCount Resultados de Aprendizaje (RAPs)"
+                                            "Importó masivamente $importedCount Resultados de Aprendizaje (RAPs)" .
+                                            ($evaluacionesCreadas > 0 ? " y habilitó $evaluacionesCreadas evaluaciones pendientes" : "")
                                         ]);
 
                                         $this->db->commit();
-                                        setFlashMessage("Se han importado exitosamente $importedCount Resultados de Aprendizaje.", 'success');
+                                        $mensaje = "Se han importado exitosamente $importedCount Resultados de Aprendizaje.";
+                                        if ($evaluacionesCreadas > 0) {
+                                            $mensaje .= " Se habilitaron $evaluacionesCreadas evaluaciones pendientes para los aprendices ya matriculados.";
+                                        }
+                                        if ($sinInstructor > 0) {
+                                            $mensaje .= " Quedaron $sinInstructor sin crear, en fichas sin instructor líder asignado.";
+                                        }
+                                        setFlashMessage($mensaje, 'success');
                                         $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                                     } catch (Exception $e) {
                                         if ($this->db->inTransaction()) {
