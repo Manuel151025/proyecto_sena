@@ -104,7 +104,9 @@ class EvaluacionesModel {
         }
     }
 
-    public function getEvaluaciones(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search): array {
+    public function getEvaluaciones(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search, ?int $limit = null, int $offset = 0): array {
+        [$from, $params] = $this->construirConsulta($user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search);
+
         $sql = "
             SELECT eval.id, eval.concepto, eval.comentario, eval.fecha_evaluacion,
                    ra.codigo as ra_codigo, ra.denominacion as ra_denominacion,
@@ -112,6 +114,44 @@ class EvaluacionesModel {
                    f.numero_ficha, f.id as ficha_id,
                    u_ap.nombre as aprendiz_nombre, u_ap.email as aprendiz_email,
                    u_inst.nombre as instructor_nombre
+            $from
+            ORDER BY eval.fecha_evaluacion DESC, eval.id DESC
+        ";
+
+        if ($limit !== null) {
+            // Enteros interpolados: con ATTR_EMULATE_PREPARES en false,
+            // MariaDB no acepta parámetros ligados en LIMIT/OFFSET.
+            $sql .= ' LIMIT ' . (int)$limit . ' OFFSET ' . max(0, $offset);
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Total de evaluaciones visibles con esos filtros y para ese rol.
+     *
+     * Imprescindible para paginar bien: el permiso del instructor se
+     * resuelve dentro del WHERE (asignaciones, ficha propia, etapa
+     * práctica), así que el total tiene que calcularse con las mismas
+     * condiciones o mostraría páginas que no existen.
+     */
+    public function contarEvaluaciones(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search): int {
+        [$from, $params] = $this->construirConsulta($user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search);
+        $stmt = $this->db->prepare("SELECT COUNT(*) $from");
+        $stmt->execute($params);
+        return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * FROM + WHERE (visibilidad por rol + filtros) compartidos por el
+     * listado y el conteo.
+     *
+     * @return array{0:string, 1:array}
+     */
+    private function construirConsulta(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search): array {
+        $sql = "
             FROM evaluaciones eval
             JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
             JOIN competencias c ON ra.competencia_id = c.id
@@ -176,11 +216,11 @@ class EvaluacionesModel {
             $params[] = $filter_concepto;
         }
 
-        $sql .= " ORDER BY eval.fecha_evaluacion DESC, eval.id DESC LIMIT 200";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Aquí había un `LIMIT 200` fijo. Con 3.873 evaluaciones el
+        // coordinador veía las 200 más recientes y nada indicaba que
+        // existieran las demás: era un recorte silencioso de datos, no una
+        // medida de rendimiento. Ahora el límite lo pone la paginación.
+        return [$sql, $params];
     }
 
     public function getStatsEval(string $user_rol, int $user_id, int $aprendiz_id): array {
