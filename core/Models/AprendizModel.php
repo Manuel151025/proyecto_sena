@@ -17,12 +17,45 @@ class AprendizModel {
     /**
      * Get learners with filters and search
      */
-    public function getFilteredList(array $filters = [], ?int $instructorId = null): array {
-        $db = $this->db;
+    public function getFilteredList(array $filters = [], ?int $instructorId = null, ?int $limit = null, int $offset = 0): array {
+        [$from, $params] = $this->construirConsulta($filters, $instructorId);
 
         $sql = "
             SELECT a.*, u.nombre, u.email, u.avatar_color, f.numero_ficha, p.nombre as programa_nombre,
                    u2.nombre as instructor_seguimiento_nombre
+            $from
+            ORDER BY u.nombre, a.id
+        ";
+
+        if ($limit !== null) {
+            // Interpolados como enteros: con ATTR_EMULATE_PREPARES en false,
+            // MariaDB no acepta parámetros ligados en LIMIT/OFFSET.
+            $sql .= ' LIMIT ' . (int)$limit . ' OFFSET ' . max(0, $offset);
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Total de aprendices que cumplen los mismos filtros, para paginar.
+     */
+    public function contarFiltrados(array $filters = [], ?int $instructorId = null): int {
+        [$from, $params] = $this->construirConsulta($filters, $instructorId);
+        $stmt = $this->db->prepare("SELECT COUNT(*) $from");
+        $stmt->execute($params);
+        return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * FROM + WHERE compartidos por el listado y el conteo, para que el
+     * total de la paginación no pueda desalinearse de las filas mostradas.
+     *
+     * @return array{0:string, 1:array}
+     */
+    private function construirConsulta(array $filters, ?int $instructorId): array {
+        $from = "
             FROM aprendices a
             JOIN usuarios u ON a.usuario_id = u.id
             LEFT JOIN fichas f ON a.ficha_id = f.id
@@ -33,33 +66,29 @@ class AprendizModel {
         $params = [];
 
         if ($instructorId !== null) {
-            $sql .= " AND (f.instructor_id = ? OR a.instructor_seguimiento_id = ?)";
+            $from .= " AND (f.instructor_id = ? OR a.instructor_seguimiento_id = ?)";
             $params[] = $instructorId;
             $params[] = $instructorId;
         }
 
         if (!empty($filters['search'])) {
-            $sql .= " AND (u.nombre LIKE ? OR a.numero_documento LIKE ? OR u.email LIKE ?)";
+            $from .= " AND (u.nombre LIKE ? OR a.numero_documento LIKE ? OR u.email LIKE ?)";
             $params[] = "%{$filters['search']}%";
             $params[] = "%{$filters['search']}%";
             $params[] = "%{$filters['search']}%";
         }
 
         if (!empty($filters['ficha_id'])) {
-            $sql .= " AND a.ficha_id = ?";
+            $from .= " AND a.ficha_id = ?";
             $params[] = (int)$filters['ficha_id'];
         }
 
         if (!empty($filters['estado'])) {
-            $sql .= " AND a.estado = ?";
+            $from .= " AND a.estado = ?";
             $params[] = $filters['estado'];
         }
 
-        $sql .= " ORDER BY u.nombre";
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return [$from, $params];
     }
 
     /**
@@ -117,10 +146,10 @@ class AprendizModel {
             ]);
             $new_aprendiz_id = (int)$db->lastInsertId();
 
-            // 3. Inicializar evaluaciones como 'pendiente'
-            if (function_exists('inicializarEvaluacionesAprendiz')) {
-                inicializarEvaluacionesAprendiz($db, $new_aprendiz_id, (int)$data['ficha_id']);
-            }
+            // 3. Inicializar evaluaciones como 'pendiente'.
+            // Ver la nota en MatriculaController: la guardia
+            // `function_exists` ocultaba el fallo en vez de evitarlo.
+            inicializarEvaluacionesAprendiz($db, $new_aprendiz_id, (int)$data['ficha_id']);
 
             // 4. Incrementar contador en la ficha
             $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$data['ficha_id']]);

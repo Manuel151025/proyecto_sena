@@ -56,7 +56,7 @@ if ($pctAprobado >= 100) {
 }
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
     <h1>Hola, <?= htmlspecialchars($nombreUsuario, ENT_QUOTES, 'UTF-8') ?> 👋</h1>
     <?php if ($aprendiz): ?>
@@ -107,11 +107,11 @@ if ($pctAprobado >= 100) {
   <div class="card border-0 mb-4 shadow-sm" style="border-left: 5px solid var(--success) !important; border-radius: 12px; background: var(--success-bg);">
     <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
       <div class="d-flex align-items-center">
-        <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 38px; height: 38px; background-color: rgba(46, 139, 31, 0.1); color: var(--success); border: 1.5px solid rgba(46, 139, 31, 0.15);">
-          <i class="bi bi-shield-fill-check" style="font-size: 1.2rem; color: var(--success);"></i>
+        <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 38px; height: 38px; background-color: rgba(46, 139, 31, 0.1); color: var(--success-text); border: 1.5px solid rgba(46, 139, 31, 0.15);">
+          <i class="bi bi-shield-fill-check" style="font-size: 1.2rem; color: var(--success-text);"></i>
         </div>
         <div>
-          <h4 class="mb-0 fw-bold" style="font-size: 0.95rem; color: var(--success);">¡Formación al Día!</h4>
+          <h4 class="mb-0 fw-bold" style="font-size: 0.95rem; color: var(--success-text);">¡Formación al Día!</h4>
           <small class="text-muted" style="font-size: 0.78rem;">No registras planes de mejoramiento activos ni deficiencias. ¡Buen trabajo!</small>
         </div>
       </div>

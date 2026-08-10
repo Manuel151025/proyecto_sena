@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 ?>
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Estructura Curricular y Proyectos</h1>
     <p class="text-muted mb-0">Gestión global de programas de formación, competencias, resultados de aprendizaje y proyectos formativos.</p>
   </div>
-  <div>
+  <div class="d-flex gap-2">
     <a href="<?= APP_URL ?>/index.php/estructura/importar" class="btn btn-primary">
       <i class="bi bi-file-earmark-arrow-up me-2"></i>Importar PDF
     </a>

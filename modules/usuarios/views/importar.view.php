@@ -1,6 +1,8 @@
-<div class="mb-3">
+<div class="page-header">
+  <div>
   <h1>Importar Usuarios</h1>
   <p class="text-muted mb-0">Sube un archivo Excel (.xlsx) o CSV para registrar aprendices, instructores o coordinadores de forma masiva.</p>
+  </div>
 </div>
 
 <?php if (!empty($mensaje)): ?>

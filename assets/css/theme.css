@@ -23,6 +23,17 @@
   --warning-bg: #fef3e2;
   --info: #1f6feb;
   --info-bg: #e6efff;
+  /* Par de tokens por color semántico:
+       --x      → relleno (fondos sólidos, bordes, barras) — lleva texto blanco
+       --x-text → texto/ícono SOBRE la superficie del tema o sobre --x-bg
+     En tema claro coinciden. En oscuro NO pueden coincidir: un
+     #c0392b sobre el fondo #3a1d1a es rojo oscuro sobre rojo oscuro,
+     ilegible; pero aclarar --danger rompería .btn-danger (texto
+     blanco sobre relleno claro). De ahí que sean dos tokens. */
+  --success-text: var(--success);
+  --danger-text: var(--danger);
+  --warning-text: var(--warning);
+  --info-text: var(--info);
   --radius: 8px;
   --radius-lg: 12px;
   --shadow-sm: 0 1px 2px rgba(15,30,22,0.04),0 1px 1px rgba(15,30,22,0.03);
@@ -50,6 +61,14 @@
   --sena-primary-50: #1d2d1a;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
   --shadow-md: 0 6px 18px rgba(0,0,0,0.45);
+  /* Versiones aclaradas para TEXTO. Los tokens de relleno
+     (--success, --danger…) se dejan intactos a propósito: siguen
+     sirviendo de fondo sólido con letra blanca (.btn-danger,
+     .step.done .num, .progress-flat.danger). */
+  --success-text: #6ee787;
+  --danger-text: #fca5a5;
+  --warning-text: #fbbf24;
+  --info-text: #7cc4ff;
 }
 
 [data-theme="dark"] .text-muted {
@@ -156,14 +175,44 @@
 .bg-soft.info,
 .bg-soft-info {
   background: var(--info-bg) !important;
-  color: var(--info) !important;
+  color: var(--info-text) !important;
   border-color: transparent;
 }
-.bg-soft.success { background: var(--success-bg) !important; color: var(--success) !important; border-color: transparent; }
-.bg-soft.danger  { background: var(--danger-bg)  !important; color: var(--danger)  !important; border-color: transparent; }
-.bg-soft.warning { background: var(--warning-bg) !important; color: var(--warning) !important; border-color: transparent; }
+.bg-soft.success { background: var(--success-bg) !important; color: var(--success-text) !important; border-color: transparent; }
+.bg-soft.danger  { background: var(--danger-bg)  !important; color: var(--danger-text)  !important; border-color: transparent; }
+.bg-soft.warning { background: var(--warning-bg) !important; color: var(--warning-text) !important; border-color: transparent; }
 [data-theme="dark"] .bg-soft.primary,
 [data-theme="dark"] .bg-soft-primary { color: #79d24a !important; }
+
+/* Utilidades de TEXTO semántico de Bootstrap.
+   ------------------------------------------------------------
+   El modo oscuro de Bootstrap 5.3 aclara los tokens `-bg-subtle` y
+   `-text-emphasis`, pero NO los de las utilidades .text-*: éstas
+   siguen resolviendo a los colores del tema claro (#198754 verde,
+   #dc3545 rojo, #0d6efd azul…). Sobre las superficies oscuras del
+   tema (#151b26 / #1e2638) eso deja letra oscura sobre fondo
+   oscuro: es el caso más repetido del sistema, con 172 usos de
+   estas clases entre las vistas (text-danger y text-success solos
+   suman casi 100).
+   Se aclaran manteniendo el tono, no la intención de color. */
+[data-theme="dark"] .text-success,
+[data-theme="dark"] .link-success { color: var(--success-text) !important; }
+[data-theme="dark"] .text-danger,
+[data-theme="dark"] .link-danger { color: var(--danger-text) !important; }
+[data-theme="dark"] .text-warning,
+[data-theme="dark"] .link-warning { color: var(--warning-text) !important; }
+[data-theme="dark"] .text-info,
+[data-theme="dark"] .link-info { color: var(--info-text) !important; }
+[data-theme="dark"] .text-primary,
+[data-theme="dark"] .link-primary { color: #6ea8fe !important; }
+[data-theme="dark"] .text-secondary { color: var(--text-muted) !important; }
+
+/* Excepción: dentro de un relleno sólido de color (`.bg-success`,
+   `.bg-danger`…) o de un bloque siempre oscuro, la letra debe
+   quedarse blanca; aclararla la volvería ilegible sobre el relleno. */
+[data-theme="dark"] .bg-success .text-white,
+[data-theme="dark"] .bg-danger .text-white,
+[data-theme="dark"] .bg-primary .text-white { color: #fff !important; }
 
 /* ============================================================
    MAYÚSCULAS SOLO VISUALES
@@ -521,10 +570,10 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .content{padding:24px;flex:1;}
  
 .badge-soft{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
-.badge-soft.success{background:var(--success-bg);color:var(--success);border-color:transparent;}
-.badge-soft.danger{background:var(--danger-bg);color:var(--danger);border-color:transparent;}
-.badge-soft.warning{background:var(--warning-bg);color:var(--warning);border-color:transparent;}
-.badge-soft.info{background:var(--info-bg);color:var(--info);border-color:transparent;}
+.badge-soft.success{background:var(--success-bg);color: var(--success-text);border-color:transparent;}
+.badge-soft.danger{background:var(--danger-bg);color: var(--danger-text);border-color:transparent;}
+.badge-soft.warning{background:var(--warning-bg);color: var(--warning-text);border-color:transparent;}
+.badge-soft.info{background:var(--info-bg);color: var(--info-text);border-color:transparent;}
 .badge-soft.primary{background:var(--sena-primary-50);color:var(--sena-primary-600);border-color:transparent;}
 [data-theme="dark"] .badge-soft.primary{color:#79d24a;}
  
@@ -534,8 +583,8 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .kpi .label{color:var(--text-muted) !important;font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
 .kpi .value{font-size:2.2rem;font-weight:800;margin:.4rem 0;letter-spacing:-.03em;color:var(--text);display:flex;align-items:center;justify-content:space-between;}
 .kpi .trend{font-size:.8rem;display:inline-flex;align-items:center;gap:.3rem;font-weight:500;padding:0.25rem 0.6rem;border-radius:999px;background:var(--surface-2);}
-.kpi .trend.up{color:var(--success);background:var(--success-bg);}
-.kpi .trend.down{color:var(--danger);background:var(--danger-bg);}
+.kpi .trend.up{color: var(--success-text);background:var(--success-bg);}
+.kpi .trend.down{color: var(--danger-text);background:var(--danger-bg);}
 .kpi .icon-bg{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg, var(--sena-primary-50) 0%, rgba(57,169,0,0.05) 100%);color:var(--sena-primary);display:grid;place-items:center;font-size:1.4rem;box-shadow:inset 0 0 0 1px rgba(57,169,0,0.1);}
 [data-theme="dark"] .kpi .icon-bg{background:linear-gradient(135deg, rgba(121,210,74,0.15) 0%, transparent 100%);color:#79d24a;}
 .sparkline-container{position:absolute;bottom:0;left:0;right:0;height:45px;opacity:0.4;z-index:3;pointer-events:auto;}
@@ -544,7 +593,12 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .glass-card{background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);box-shadow:0 8px 32px rgba(0,0,0,0.04);}
 [data-theme="dark"] .glass-card{background:rgba(22,32,27,0.7);border-color:rgba(255,255,255,0.05);}
  
-.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+/* `overflow-x:auto` y no `overflow:hidden`: la caja sigue recortando
+   las esquinas redondeadas (cualquier overflow distinto de `visible`
+   lo hace), pero ahora las tablas anchas se pueden desplazar. Con
+   `hidden`, en un teléfono las últimas columnas —incluida la de
+   Acciones— quedaban cortadas y sin forma de alcanzarlas. */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow-x:auto;}
 .table{margin:0;color:var(--text);}
 .table thead th{background:var(--surface-2);color:var(--text-muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);padding:.75rem 1rem;}
 .table tbody td{padding:.85rem 1rem;border-bottom:1px solid var(--border);vertical-align:middle;font-size:.88rem;}
@@ -569,10 +623,10 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 }
 
 .alert-flat{border-radius:var(--radius);padding:.85rem 1rem;display:flex;gap:.65rem;align-items:flex-start;border:1px solid transparent;font-size:.88rem;}
-.alert-flat.danger{background:var(--danger-bg);color:var(--danger);}
-.alert-flat.warning{background:var(--warning-bg);color:var(--warning);}
-.alert-flat.info{background:var(--info-bg);color:var(--info);}
-.alert-flat.success{background:var(--success-bg);color:var(--success);}
+.alert-flat.danger{background:var(--danger-bg);color: var(--danger-text);}
+.alert-flat.warning{background:var(--warning-bg);color: var(--warning-text);}
+.alert-flat.info{background:var(--info-bg);color: var(--info-text);}
+.alert-flat.success{background:var(--success-bg);color: var(--success-text);}
 .alert-flat i{font-size:1.1rem;line-height:1.2;}
  
 .progress-flat{height:8px;background:var(--surface-2);border-radius:999px;overflow:hidden;}
@@ -620,8 +674,8 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .auth-form .btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none;}
 .alert-flat{border-radius:12px;padding:1rem;display:flex;gap:0.75rem;align-items:flex-start;border:1px solid transparent;font-size:0.95rem;animation:slide-in 0.3s ease-out;}
 @keyframes slide-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
-.alert-flat.danger{background:linear-gradient(135deg,var(--danger-bg) 0%,rgba(192,57,43,0.08) 100%);color:var(--danger);border-color:rgba(192,57,43,0.2);}
-.alert-flat.warning{background:linear-gradient(135deg,var(--warning-bg) 0%,rgba(217,119,6,0.08) 100%);color:var(--warning);border-color:rgba(217,119,6,0.2);}
+.alert-flat.danger{background:linear-gradient(135deg,var(--danger-bg) 0%,rgba(192,57,43,0.08) 100%);color: var(--danger-text);border-color:rgba(192,57,43,0.2);}
+.alert-flat.warning{background:linear-gradient(135deg,var(--warning-bg) 0%,rgba(217,119,6,0.08) 100%);color: var(--warning-text);border-color:rgba(217,119,6,0.2);}
 .text-center{text-align:center;margin-top:1.5rem;}
 .icon-btn{background:transparent;border:0;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:var(--text-muted);cursor:pointer;transition:all 0.2s ease;font-size:1.2rem;}
 .icon-btn:hover{background:linear-gradient(135deg,rgba(57,169,0,0.1) 0%,rgba(45,128,0,0.08) 100%);color:var(--sena-primary);}
@@ -641,8 +695,8 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .concept-btn .lbl{font-weight:700;font-size:1rem;}
 .concept-btn .desc{font-size:.75rem;color:var(--text-muted);}
 .concept-btn:hover{border-color:var(--text-soft);}
-.concept-btn.active.A{background:var(--success-bg);border-color:var(--success);color:var(--success);}
-.concept-btn.active.D{background:var(--danger-bg);border-color:var(--danger);color:var(--danger);}
+.concept-btn.active.A{background:var(--success-bg);border-color:var(--success);color: var(--success-text);}
+.concept-btn.active.D{background:var(--danger-bg);border-color:var(--danger);color: var(--danger-text);}
 .concept-btn.active.P{background:var(--surface-2);border-color:var(--text-soft);color:var(--text);}
  
 .dropzone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:2.25rem 1rem;text-align:center;background:var(--surface-2);color:var(--text-muted);cursor:pointer;transition:all .15s;}
@@ -654,7 +708,7 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .step .num{width:22px;height:22px;border-radius:50%;background:var(--border);color:var(--text);display:grid;place-items:center;font-size:.72rem;font-weight:700;}
 .step.active{background:var(--sena-primary-50);color:var(--sena-primary-600);}
 .step.active .num{background:var(--sena-primary);color:#fff;}
-.step.done{color:var(--success);}
+.step.done{color: var(--success-text);}
 .step.done .num{background:var(--success);color:#fff;}
 .step-sep{color:var(--text-soft);}
  
@@ -778,7 +832,7 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .acc-body{padding:0 1.25rem 1rem;border-top:1px solid var(--border);}
  
 .pw-req{font-size:.78rem;color:var(--text-muted);display:flex;align-items:center;gap:.4rem;margin:.15rem 0;}
-.pw-req.ok{color:var(--success);}
+.pw-req.ok{color: var(--success-text);}
 .pw-req i{font-size:.9rem;}
 .pw-strength{display:flex;gap:4px;margin-top:.35rem;}
 .pw-strength span{flex:1;height:4px;border-radius:2px;background:var(--border);}
@@ -1141,4 +1195,464 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
   .w-sm-auto {
     width: auto !important;
   }
+}
+
+/* ============================================================
+   PAGINACIÓN — componente único (components/paginacion.php)
+   ------------------------------------------------------------
+   En escritorio: resumen a la izquierda, números a la derecha.
+   En móvil (ver la capa móvil más abajo): solo Anterior/Siguiente
+   y el contador "3 / 7", porque los números sueltos quedaban por
+   debajo del área táctil recomendada y se desbordaban en cuanto
+   había muchas páginas.
+   ============================================================ */
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .85rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+/* Cuando va suelta (no pegada al pie de una tarjeta) recupera el
+   borde superior y las cuatro esquinas. */
+.paginacion.is-standalone {
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-top: 1rem;
+}
+.paginacion-resumen {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--text-muted);
+}
+.paginacion-resumen strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.paginacion-paginas {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pag-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 .6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: .85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease;
+}
+.pag-link:hover {
+  background: var(--surface-2);
+  border-color: var(--text-soft);
+  color: var(--text);
+}
+.pag-link.is-current {
+  background: var(--sena-primary);
+  border-color: var(--sena-primary);
+  color: #fff;
+}
+.pag-link.is-disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.pag-link.is-disabled:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.pag-salto {
+  display: inline-block;
+  padding: 0 .2rem;
+  color: var(--text-soft);
+}
+/* El contador "3 / 7" solo se usa en móvil, donde sustituye a los
+   números de página. */
+.pag-contador {
+  display: none;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 .35rem;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   ENCABEZADO DE PÁGINA — un solo patrón para todo el sistema
+   ------------------------------------------------------------
+   Todas las vistas repetían el mismo bloque a mano:
+     <div class="d-flex justify-content-between align-items-center mb-3">
+       <div><h1>…</h1><p class="text-muted">…</p></div>
+       <div class="d-flex gap-2"><button…></div>
+     </div>
+   En escritorio funciona, pero en un teléfono el título y los
+   botones (con etiquetas largas: "Carga Masiva (CSV)",
+   "Matricular Aprendiz") se pelean por el mismo renglón: quedan
+   apretados, desalineados y desbordando el ancho.
+
+   .page-header centraliza el patrón: mismo resultado en
+   escritorio, y en pantallas angostas apila el título arriba y
+   las acciones abajo, ocupando el ancho completo.
+
+   La zona de acciones se reconoce por la FORMA que ya tienen las
+   vistas (un `.d-flex` contenedor, un `.btn` suelto o un `form` de
+   filtro como último hijo) en vez de exigir una clase nueva: así
+   basta cambiar la clase del contenedor. Se listan tipos concretos
+   —y no un `:last-child` genérico— para no confundir con acciones
+   el `<p>` de subtítulo de los encabezados de una sola columna.
+   `:not(:first-child)` cubre los encabezados sin botones (o con
+   botones que PHP oculta según el rol).
+   ============================================================ */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.page-header > :first-child {
+  min-width: 0; /* permite que el título/subtítulo se corte en vez de estirar el flex */
+}
+.page-header h1 {
+  margin-bottom: .25rem;
+}
+.page-header > .d-flex:last-child:not(:first-child),
+.page-header > form:last-child:not(:first-child),
+.page-header > .btn-group:last-child:not(:first-child) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   CAPA MÓVIL
+   ------------------------------------------------------------
+   Ajustes de densidad para teléfonos. El corte es 640px (y no el
+   768px del sidebar) porque los problemas de encabezados, botones
+   y tablas empiezan antes de que el sidebar necesite volverse
+   cajón: una tablet en vertical todavía acomoda dos columnas.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* --- Encabezado: título arriba, acciones abajo a ancho completo --- */
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .85rem;
+    margin-bottom: 1rem;
+  }
+  .page-header > .d-flex:last-child:not(:first-child),
+  .page-header > form:last-child:not(:first-child),
+  .page-header > .btn-group:last-child:not(:first-child),
+  .page-header > .btn:last-child:not(:first-child) {
+    width: 100%;
+  }
+  /* Los botones de acción reparten el ancho en vez de quedar
+     gigantes y descolgados a la derecha. */
+  .page-header > .d-flex:last-child > .btn,
+  .page-header > .d-flex:last-child > a.btn,
+  .page-header > form:last-child > .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  h1 { font-size: 1.25rem; }
+  h2 { font-size: 1.1rem; }
+  .page-header p {
+    font-size: .85rem;
+  }
+
+  /* --- Botones: menos padding y sin el desplazamiento de hover
+         (en táctil el :hover se queda "pegado" tras el tap) --- */
+  .btn {
+    padding: .5rem .85rem;
+    font-size: .875rem;
+  }
+  .btn-sm {
+    padding: .35rem .6rem;
+  }
+  .btn-primary:hover,
+  .btn-danger:hover,
+  .btn-soft:hover,
+  .btn-outline-primary:hover {
+    transform: none;
+  }
+  /* El barrido de brillo (.btn::before) también depende de :hover:
+     en táctil solo alcanza a verse como un destello al soltar. */
+  .btn::before {
+    display: none;
+  }
+
+  /* --- Área táctil mínima (44px, guía de accesibilidad) para los
+         controles que solo llevan ícono --- */
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* --- Contenido y tarjetas: recuperar ancho útil --- */
+  .content {
+    padding: 14px 12px;
+  }
+  .card-body {
+    padding: 1rem;
+  }
+  .card-header {
+    padding: .85rem 1rem;
+  }
+
+  /* --- Tablas: en un teléfono ninguna tabla de 6 columnas cabe.
+         .table-responsive ya da scroll horizontal; aquí se reduce
+         la densidad y se anulan los `ps-4`/`pe-4` que las vistas
+         usan para el aire lateral de escritorio, que en móvil solo
+         gastan ancho. --- */
+  .table > :not(caption) > * > * {
+    padding: .6rem .5rem;
+    font-size: .85rem;
+  }
+  .table .ps-4 { padding-left: .5rem !important; }
+  .table .pe-4 { padding-right: .5rem !important; }
+  /* Sombra en los bordes que indica que la tabla sigue hacia el lado.
+     Las dos primeras capas son parches del color de la superficie que
+     tapan la sombra al llegar al extremo; van con
+     `background-attachment: local` para que se desplacen con el
+     contenido, mientras las sombras quedan fijas (`scroll`).
+     Se usa `background-image`/`-color` por separado —y no el atajo
+     `background`— porque el atajo reinicia el color de fondo de la
+     tarjeta (`.table-wrap` lo trae en su regla base) y dejaba la
+     zona central transparente. */
+  .table-responsive,
+  .table-wrap {
+    background-color: var(--surface);
+    background-image:
+      linear-gradient(to right, var(--surface) 30%, transparent),
+      linear-gradient(to left, var(--surface) 30%, transparent),
+      radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.14), transparent),
+      radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.14), transparent);
+    background-position: 0 0, 100% 0, 0 0, 100% 0;
+    background-repeat: no-repeat;
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+  /* Los botones de acción de cada fila no se parten en dos renglones */
+  .table td .btn-sm {
+    margin-bottom: 2px;
+  }
+  .table td.text-end {
+    white-space: nowrap;
+  }
+
+  /* Ancho mínimo según cuántas columnas tenga la tabla.
+     ------------------------------------------------------------
+     Sin esto, una tabla de 7 columnas se comprime hasta caber en
+     los 366px del contenido y las columnas de texto quedan
+     estranguladas: en /seguimiento un nombre como "Alejandro
+     Ramírez García" se partía en tres renglones y cada fila
+     triplicaba su alto (con 26 aprendices, un scroll enorme).
+     Dándole un ancho mínimo, las columnas respiran y el
+     desplazamiento horizontal —que el contenedor ya ofrece— hace
+     el resto.
+     Se usa `:has()` para no castigar a las tablas de 3-4 columnas,
+     que sí caben; donde no esté soportado simplemente no se aplica
+     y queda el comportamiento anterior. */
+  .table-responsive:has(> .table > thead th:nth-child(5)) > .table,
+  .table-wrap:has(> .table > thead th:nth-child(5)) > .table {
+    min-width: 580px;
+  }
+  .table-responsive:has(> .table > thead th:nth-child(7)) > .table,
+  .table-wrap:has(> .table > thead th:nth-child(7)) > .table {
+    min-width: 760px;
+  }
+
+  /* El ancho mínimo por sí solo no basta: con `table-layout:auto` el
+     navegador reparte el espacio y a la columna de texto le da lo
+     justo, partiendo el nombre en varios renglones ("VICTOR ANDRES
+     CAMACHO RIVERA" salía en cuatro, y en /seguimiento cada fila
+     triplicaba su alto).
+
+     El dato principal de cada fila se marca de dos formas en el
+     sistema —`<h6 class="fw-semibold">` en matrículas, asignaciones
+     y seguimiento; `<td><strong>` en usuarios y los dashboards—, así
+     que se cubren las dos y se les prohíbe partirse.
+
+     Va dentro del mismo guardia de ≥5 columnas: en las tablas-leyenda
+     de 2 columnas de las vistas de importación el `<strong>` es una
+     etiqueta larga ("Resultados de Aprendizaje (RAs)") que sí conviene
+     que se parta, en vez de forzar un desplazamiento innecesario. */
+  .table-responsive:has(> .table > thead th:nth-child(5)) > .table td h6,
+  .table-wrap:has(> .table > thead th:nth-child(5)) > .table td h6,
+  .table-responsive:has(> .table > thead th:nth-child(5)) > .table td > strong,
+  .table-wrap:has(> .table > thead th:nth-child(5)) > .table td > strong {
+    white-space: nowrap;
+  }
+
+  /* --- Barra de filtros: cada control en su propio renglón --- */
+  .toolbar {
+    padding: .75rem;
+  }
+
+  /* --- Paginación: se cambian los números por Anterior / "3 / 7" /
+         Siguiente. Los números sueltos medían 36px (por debajo del
+         área táctil recomendada) y con muchas páginas desbordaban. --- */
+  .paginacion {
+    padding: .75rem;
+    justify-content: center;
+    gap: .6rem;
+  }
+  .paginacion-resumen {
+    width: 100%;
+    text-align: center;
+    font-size: .8rem;
+  }
+  .paginacion-paginas {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .pag-numero { display: none; }
+  .pag-contador { display: inline-block; }
+  .pag-link {
+    height: 44px;
+    min-width: 44px;
+  }
+
+  /* --- KPIs: el número gigante de escritorio no cabe, y en móvil
+         van de dos en dos (col-6), así que necesitan menos aire --- */
+  .kpi {
+    padding: .9rem 1rem;
+  }
+  .kpi:hover { transform: none; }
+  .kpi .kpi-content { margin-bottom: 8px; }
+  .kpi .value { font-size: 1.4rem; }
+  .kpi .label { font-size: .7rem; letter-spacing: .02em; }
+  .kpi .icon-bg { width: 36px; height: 36px; font-size: 1.05rem; border-radius: 9px; }
+
+  /* --- Barra superior --- */
+  .navbar-top {
+    padding: 0 .5rem;
+    gap: .35rem;
+  }
+  /* La miga de pan crece con el nombre del módulo ("Matrículas de
+     Aprendices") y empujaba los botones de tema/campana/avatar fuera
+     de la pantalla, porque .nav-actions se coloca con margin-left:auto
+     y no tenía nada que la protegiera. Se recorta con puntos
+     suspensivos y se le prohíbe encogerse a los iconos. */
+  .breadcrumb-nav {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: .8rem;
+  }
+  .breadcrumb-nav .sep { margin: 0 .25rem; }
+  .nav-actions { flex-shrink: 0; gap: .1rem; }
+
+  /* Los menús de la barra superior tenían 360px fijos: se desbordaban
+     en un teléfono de 390px, más aún con el margen del contenedor. */
+  .navbar-top .dropdown-menu {
+    width: calc(100vw - 20px) !important;
+    max-width: 360px;
+  }
+
+  /* --- Pestañas: scroll horizontal en vez de romper en dos filas --- */
+  .nav-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tabs .nav-link {
+    white-space: nowrap;
+    padding: .6rem .75rem;
+    font-size: .875rem;
+  }
+
+  /* --- Fases y pasos --- */
+  .phases { grid-template-columns: 1fr; }
+  .steps { gap: .35rem; }
+  .step { padding: .4rem .7rem; font-size: .75rem; }
+}
+
+/* Teléfonos angostos (≤380px): las etiquetas largas de los botones
+   de encabezado se apilan en una sola columna, porque a dos
+   columnas el texto se parte en tres renglones. */
+@media (max-width: 380px) {
+  .page-header > .d-flex:last-child:not(:first-child) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .page-header > .d-flex:last-child:not(:first-child) > .btn {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   BLOQUES SIEMPRE OSCUROS (.on-dark)
+   ------------------------------------------------------------
+   Los banners de bienvenida de los dashboards tienen un degradado
+   oscuro fijo en ambos temas, así que su contenido debe quedarse
+   claro también en ambos temas. Con las utilidades de Bootstrap no
+   funcionaba: el puente de variables remapea .text-dark a
+   var(--text) y .bg-white a var(--surface), de modo que en modo
+   oscuro un `btn-light text-dark` quedaba con fondo claro y letra
+   casi blanca (ilegible), y una `badge bg-white` se volvía oscura
+   sobre un banner oscuro.
+
+   .on-dark marca ese contexto y fija los valores literales que el
+   bloque necesita, sin tocar el resto del sistema.
+   ============================================================ */
+.on-dark,
+.on-dark h1, .on-dark h2, .on-dark h3, .on-dark h4, .on-dark h5, .on-dark h6 {
+  color: #fff;
+}
+.on-dark .text-muted,
+.on-dark .text-white-50 {
+  color: rgba(255,255,255,.72) !important;
+}
+/* Botón claro sobre fondo oscuro: fondo y texto literales, iguales
+   en tema claro y oscuro. */
+.on-dark .btn-light {
+  background: #fff !important;
+  border-color: #fff !important;
+  color: #0f172a !important;
+}
+.on-dark .btn-light:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+.on-dark .btn-outline-light {
+  border-color: rgba(255,255,255,.6) !important;
+  color: #fff !important;
+  background: transparent !important;
+}
+.on-dark .btn-outline-light:hover {
+  background: rgba(255,255,255,.14) !important;
+  border-color: #fff !important;
+  color: #fff !important;
+}
+/* Insignias claras sobre el banner */
+.on-dark .badge.bg-white {
+  background: #fff !important;
+  color: var(--sena-primary-600) !important;
+}
+.on-dark .bg-white-10 {
+  background: rgba(255,255,255,.12) !important;
+  color: #fff !important;
 }

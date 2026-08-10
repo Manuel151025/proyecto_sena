@@ -17,6 +17,10 @@ class UsuarioModel implements UsuarioRepositoryInterface {
 
     /**
      * Obtiene todos los usuarios ordenados por fecha de creación descendente.
+     *
+     * Se conserva sin filtros ni paginación porque forma parte de
+     * UsuarioRepositoryInterface. Para el listado de pantalla usar
+     * `getFilteredList()`, que sí pagina.
      */
     public function getAll(): array {
         try {
@@ -27,6 +31,85 @@ class UsuarioModel implements UsuarioRepositoryInterface {
             // Se puede registrar el error en un log si se desea
             throw new Exception("Error al cargar usuarios: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Listado de usuarios con búsqueda, filtros y paginación.
+     *
+     * La búsqueda se hace en SQL y no en JavaScript (como hacía
+     * `assets/js/modules/usuarios.js`, ocultando filas ya renderizadas):
+     * al paginar, un filtro de cliente solo alcanzaría a las 25 filas
+     * visibles y daría la impresión de que el resto no existe.
+     *
+     * @param array{search?:string, rol?:string, estado?:string} $filters
+     */
+    public function getFilteredList(array $filters = [], ?int $limit = null, int $offset = 0): array {
+        [$where, $params] = $this->construirFiltro($filters);
+        try {
+            $sql = "SELECT id, nombre, email, rol, estado, fecha_creacion
+                      FROM usuarios
+                     WHERE 1=1 $where
+                     ORDER BY fecha_creacion DESC, id DESC";
+            if ($limit !== null) {
+                // LIMIT/OFFSET van interpolados como enteros ya saneados:
+                // MariaDB no acepta parámetros preparados en esa posición
+                // cuando emulate_prepares está desactivado.
+                $sql .= ' LIMIT ' . (int)$limit . ' OFFSET ' . max(0, $offset);
+            }
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al cargar usuarios: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cuenta los usuarios que cumplen los mismos filtros, para saber
+     * cuántas páginas hay.
+     */
+    public function contarFiltrados(array $filters = []): int {
+        [$where, $params] = $this->construirFiltro($filters);
+        try {
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM usuarios WHERE 1=1 $where");
+            $stmt->execute($params);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            throw new Exception("Error al contar usuarios: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Fragmento WHERE compartido por el listado y el conteo: si se
+     * construyeran por separado, el total y las filas podrían dejar de
+     * coincidir en cuanto se añada un filtro a uno y no al otro.
+     *
+     * @return array{0:string, 1:array}
+     */
+    private function construirFiltro(array $filters): array {
+        $where = '';
+        $params = [];
+
+        $search = trim((string)($filters['search'] ?? ''));
+        if ($search !== '') {
+            $where .= " AND (nombre LIKE ? OR email LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        $rol = (string)($filters['rol'] ?? '');
+        if (in_array($rol, [ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ], true)) {
+            $where .= " AND rol = ?";
+            $params[] = $rol;
+        }
+
+        $estado = (string)($filters['estado'] ?? '');
+        if (in_array($estado, ['activo', 'inactivo'], true)) {
+            $where .= " AND estado = ?";
+            $params[] = $estado;
+        }
+
+        return [$where, $params];
     }
 
     /**
