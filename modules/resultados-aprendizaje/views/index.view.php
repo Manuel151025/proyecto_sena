@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 ?>
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Resultados de Aprendizaje (RAP)</h1>
     <p class="text-muted mb-0">Listado y gestión de RAPs asociados a las competencias de cada programa formativo.</p>

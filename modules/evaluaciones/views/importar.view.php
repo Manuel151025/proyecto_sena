@@ -2,12 +2,12 @@
 declare(strict_types=1);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Importar Juicios Evaluativos</h1>
     <p class="text-muted mb-0">Carga el reporte de juicios evaluativos desde Excel para registrar notas, fichas y aprendices automáticamente.</p>
   </div>
-  <div>
+  <div class="d-flex gap-2">
     <a href="<?= APP_URL ?>/index.php/evaluaciones" class="btn btn-soft">
       <i class="bi bi-arrow-left me-2"></i>Volver a Evaluaciones
     </a>

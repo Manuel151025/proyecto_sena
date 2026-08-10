@@ -1,4 +1,4 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
     <h1>Gestión de Usuarios</h1>
     <p class="text-muted mb-0">Administra usuarios del sistema (Coordinadores, Instructores y Aprendices).</p>

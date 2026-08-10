@@ -1,7 +1,6 @@
-<div class="mb-4">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+<div class="page-header">
     <div>
-      <h1 class="mb-1 text-dark fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>Seguimiento Académico</h1>
+      <h1 class="mb-1 fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>Seguimiento Académico</h1>
       <p class="text-muted mb-0">Control del avance formativo, cumplimiento de resultados de aprendizaje y nivelación de competencias.</p>
     </div>
 
@@ -24,7 +23,6 @@
         </div>
       </form>
     <?php endif; ?>
-  </div>
 </div>
 
 <?php if (!empty($successMessage)): ?>

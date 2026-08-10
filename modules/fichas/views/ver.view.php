@@ -1,4 +1,4 @@
-<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+<div class="page-header align-items-start">
   <div>
     <?php if (getCurrentRole() !== ROL_APRENDIZ): ?>
       <a href="<?= APP_URL ?>/index.php/fichas" class="small"><i class="bi bi-arrow-left"></i> Volver a fichas</a>

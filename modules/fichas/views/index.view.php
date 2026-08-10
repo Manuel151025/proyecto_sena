@@ -2,7 +2,7 @@
 declare(strict_types=1);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <div>
     <h1><?= $role === ROL_INSTRUCTOR ? 'Mis fichas asignadas' : 'Directorio de Fichas' ?></h1>
     <p class="text-muted mb-0">Gestiona y haz seguimiento a las fichas de formación.</p>
