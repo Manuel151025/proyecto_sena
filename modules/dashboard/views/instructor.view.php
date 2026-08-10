@@ -2,7 +2,7 @@
 declare(strict_types=1);
 ?>
 <!-- Hero Banner de Bienvenida Premium Compacto -->
-<div class="card border-0 mb-4 shadow-sm text-white overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 12px;">
+<div class="card on-dark border-0 mb-4 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 12px;">
   <!-- Figuras orgánicas de fondo -->
   <div class="position-absolute" style="width: 180px; height: 180px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -85px; right: -40px;"></div>
   <div class="position-absolute" style="width: 120px; height: 120px; background: rgba(255, 255, 255, 0.02); border-radius: 50%; bottom: -45px; right: 90px;"></div>
@@ -66,8 +66,8 @@ declare(strict_types=1);
   </div>
   <div class="col-md-4">
     <?php if ($kpis['aprendices_seguimiento'] > 0): ?>
-      <div class="alert-flat info h-100" style="background: rgba(31, 111, 235, 0.05); border-left: 4px solid var(--info); color: var(--info);">
-        <i class="bi bi-person-video3" style="color: var(--info);"></i>
+      <div class="alert-flat info h-100" style="background: rgba(31, 111, 235, 0.05); border-left: 4px solid var(--info); color: var(--info-text);">
+        <i class="bi bi-person-video3" style="color: var(--info-text);"></i>
         <div>
           <strong><?= number_format($kpis['aprendices_seguimiento']) ?>
             <?= $kpis['aprendices_seguimiento'] === 1 ? 'aprendiz' : 'aprendices' ?> en Etapa Práctica</strong>
