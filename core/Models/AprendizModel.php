@@ -117,10 +117,10 @@ class AprendizModel {
             ]);
             $new_aprendiz_id = (int)$db->lastInsertId();
 
-            // 3. Inicializar evaluaciones como 'pendiente'
-            if (function_exists('inicializarEvaluacionesAprendiz')) {
-                inicializarEvaluacionesAprendiz($db, $new_aprendiz_id, (int)$data['ficha_id']);
-            }
+            // 3. Inicializar evaluaciones como 'pendiente'.
+            // Ver la nota en MatriculaController: la guardia
+            // `function_exists` ocultaba el fallo en vez de evitarlo.
+            inicializarEvaluacionesAprendiz($db, $new_aprendiz_id, (int)$data['ficha_id']);
 
             // 4. Incrementar contador en la ficha
             $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$data['ficha_id']]);

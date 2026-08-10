@@ -410,8 +410,22 @@ class EstructuraController extends BaseController {
                             }
                         }
                         
+                        // La importación crea competencias y RAP nuevos. Sin
+                        // esto, los RAP recién importados no le aparecerían a
+                        // ningún aprendiz ya matriculado en una ficha de esos
+                        // programas: no habría nada que calificar. Va dentro
+                        // de la transacción para que estructura y evaluaciones
+                        // entren o se descarten juntas.
+                        $sync = (new \Core\Services\EvaluacionesSyncService($this->db))->sincronizar();
+
                         $this->db->commit();
                         $success = '¡La estructura curricular y el proyecto formativo se han importado y registrado correctamente en la base de datos!';
+                        if ($sync['creadas'] > 0) {
+                            $success .= " Además se habilitaron {$sync['creadas']} evaluaciones pendientes para los aprendices ya matriculados.";
+                        }
+                        if ($sync['omitidas_sin_instructor'] > 0) {
+                            $success .= " Quedaron {$sync['omitidas_sin_instructor']} sin crear, en fichas sin instructor líder asignado.";
+                        }
                         unset($_SESSION['pending_import']);
                     } catch (Exception $e) {
                         if ($this->db->inTransaction()) $this->db->rollBack();
