@@ -1,10 +1,12 @@
 <?php
 declare(strict_types=1);
 ?>
-<div class="mb-4">
-  <a href="<?= APP_URL ?>/index.php/competencias" class="btn btn-soft btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Volver al Listado</a>
-  <h1 class="mb-1">Importación Masiva de Competencias</h1>
-  <p class="text-muted mb-0">Registra de forma masiva las competencias de formación usando plantillas Excel o archivos CSV.</p>
+<a href="<?= APP_URL ?>/index.php/competencias" class="btn btn-soft btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Volver al Listado</a>
+<div class="page-header">
+  <div>
+    <h1 class="mb-1">Importación Masiva de Competencias</h1>
+    <p class="text-muted mb-0">Registra de forma masiva las competencias de formación usando plantillas Excel o archivos CSV.</p>
+  </div>
 </div>
 
 <?php if (!empty($successMessage)): ?>

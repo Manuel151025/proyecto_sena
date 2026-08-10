@@ -249,7 +249,22 @@ class FichaController extends BaseController {
                 try {
                     if ($id > 0) {
                         $this->fichaModel->updateFicha($id, $numero_ficha, $proyecto_id, $programa_id, $instructor_id, $estado, $cantidad_aprendices, $fecha_inicio, $fecha_fin, $cumplimiento_porcentaje);
-                        setFlashMessage('Ficha actualizada correctamente', 'success');
+
+                        // Editar una ficha puede cambiarle el programa —y con
+                        // él, el juego de RAP que deben evaluarse— o asignarle
+                        // por primera vez un instructor líder, que es
+                        // obligatorio para poder crear evaluaciones. En ambos
+                        // casos sus aprendices necesitan las filas del nuevo
+                        // conjunto. No se borra nada de lo ya evaluado: los RAP
+                        // del programa anterior conservan su historial.
+                        $sync = (new \Core\Services\EvaluacionesSyncService(Database::getConnection()))
+                            ->sincronizar(['ficha_id' => $id]);
+
+                        $mensaje = 'Ficha actualizada correctamente';
+                        if ($sync['creadas'] > 0) {
+                            $mensaje .= ". Se habilitaron {$sync['creadas']} evaluaciones pendientes para sus aprendices.";
+                        }
+                        setFlashMessage($mensaje, 'success');
                     } else {
                         $coordinador_id = getCurrentUser()['id'];
                         $this->fichaModel->createFicha($numero_ficha, $proyecto_id, $programa_id, $instructor_id, $coordinador_id, $estado, $cantidad_aprendices, $fecha_inicio, $fecha_fin, $cumplimiento_porcentaje);

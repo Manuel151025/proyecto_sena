@@ -2,12 +2,12 @@
 declare(strict_types=1);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Importar Juicios Evaluativos</h1>
     <p class="text-muted mb-0">Carga el reporte de juicios evaluativos desde Excel para registrar notas, fichas y aprendices automáticamente.</p>
   </div>
-  <div>
+  <div class="d-flex gap-2">
     <a href="<?= APP_URL ?>/index.php/evaluaciones" class="btn btn-soft">
       <i class="bi bi-arrow-left me-2"></i>Volver a Evaluaciones
     </a>
@@ -168,7 +168,7 @@ declare(strict_types=1);
                 </button>
               </td>
             </tr>
-            <tr id="<?= $detailsId ?>" style="display: none; background-color: #f8fafc;">
+            <tr id="<?= $detailsId ?>" style="display: none; background-color: var(--surface-2);">
               <td colspan="5" class="p-3">
                 <div class="px-4 py-3 border rounded bg-white shadow-sm" style="border-radius: 8px;">
                   <h6 class="fw-bold mb-3 text-muted" style="font-size: 0.8rem;"><i class="bi bi-journal-check me-2"></i>Detalle de Evaluaciones</h6>
@@ -204,7 +204,7 @@ declare(strict_types=1);
                         }
                       ?>
                       <tr>
-                        <td class="text-uppercase-visual" style="font-size: 0.75rem; color: #555;"><i class="bi bi-award me-1"></i><?= htmlspecialchars($j['competencia'] ?? '') ?></td>
+                        <td class="text-uppercase-visual text-muted" style="font-size: 0.75rem;"><i class="bi bi-award me-1"></i><?= htmlspecialchars($j['competencia'] ?? '') ?></td>
                         <td><code class="text-dark bg-light px-1.5 py-0.5 rounded text-uppercase-visual" style="font-size: 0.8rem;"><?= htmlspecialchars($j['ra_codigo']) ?></code></td>
                         <td class="text-uppercase-visual" style="font-size: 0.75rem;"><?= htmlspecialchars($j['ra_denom'] ?? '') ?></td>
                         <td class="text-center"><span class="badge <?= $badgeConcepto ?>" style="padding: 4px 8px; font-weight:600;"><?= $textoConcepto ?></span></td>

@@ -100,42 +100,29 @@ function generateTempPassword(int $length = 10): string {
  * Inicializa los registros de evaluación en estado 'pendiente'
  * para todos los Resultados de Aprendizaje (RAs) del programa de la ficha
  * asociada a un aprendiz.
+ *
+ * Se mantiene como función porque es la firma que ya usan
+ * MatriculaController y AprendizModel, pero la lógica vive en
+ * Core\Services\EvaluacionesSyncService: era la mitad de una misma regla
+ * ("un aprendiz en formación debe tener una fila por cada RAP de su
+ * programa") y tenerla duplicada fue lo que dejó pasar el caso inverso,
+ * el del RAP creado después de la matrícula.
+ *
+ * @return int Número de filas creadas.
  */
-function inicializarEvaluacionesAprendiz(PDO $db, int $aprendizId, int $fichaId): void {
-    // 1. Obtener el programa_id y el instructor responsable de la ficha
-    $stmtFicha = $db->prepare("SELECT programa_id, instructor_id FROM fichas WHERE id = ?");
-    $stmtFicha->execute([$fichaId]);
-    $ficha = $stmtFicha->fetch(PDO::FETCH_ASSOC);
-    if (!$ficha) return;
+function inicializarEvaluacionesAprendiz(PDO $db, int $aprendizId, int $fichaId): int {
+    $resultado = (new Core\Services\EvaluacionesSyncService($db))->sincronizar([
+        'aprendiz_id' => $aprendizId,
+        'ficha_id'    => $fichaId,
+    ]);
 
-    $programaId = (int)$ficha['programa_id'];
-    $instructorId = (int)($ficha['instructor_id'] ?: 0);
-
-    // 2. Obtener todos los RAs asociados a este programa
-    $stmtRas = $db->prepare("
-        SELECT ra.id
-        FROM resultados_aprendizaje ra
-        JOIN competencias c ON ra.competencia_id = c.id
-        WHERE c.programa_id = ?
-    ");
-    $stmtRas->execute([$programaId]);
-    $ras = $stmtRas->fetchAll(PDO::FETCH_COLUMN);
-
-    if (empty($ras)) return;
-
-    // 3. Insertar registros en evaluaciones (si no existen)
-    $stmtInsert = $db->prepare("
-        INSERT INTO evaluaciones (resultado_aprendizaje_id, aprendiz_id, instructor_id, ficha_id, concepto, comentario, fecha_evaluacion)
-        VALUES (?, ?, ?, ?, 'pendiente', NULL, NULL)
-        ON DUPLICATE KEY UPDATE concepto = concepto
-    ");
-
-    foreach ($ras as $raId) {
-        $stmtInsert->execute([
-            (int)$raId, 
-            $aprendizId, 
-            $instructorId > 0 ? $instructorId : null, 
-            $fichaId
-        ]);
+    if ($resultado['omitidas_sin_instructor'] > 0) {
+        error_log(
+            "inicializarEvaluacionesAprendiz: la ficha $fichaId no tiene instructor líder, " .
+            "así que no se crearon {$resultado['omitidas_sin_instructor']} evaluaciones del aprendiz $aprendizId. " .
+            "Asigne un instructor a la ficha y vuelva a sincronizar."
+        );
     }
+
+    return $resultado['creadas'];
 }

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 ?>
 <!-- Hero Banner de Bienvenida Premium Compacto -->
-<div class="card border-0 mb-4 shadow-sm text-white overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 12px;">
+<div class="card on-dark border-0 mb-4 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 12px;">
   <!-- Figuras orgánicas de fondo -->
   <div class="position-absolute" style="width: 180px; height: 180px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -85px; right: -40px;"></div>
   <div class="position-absolute" style="width: 120px; height: 120px; background: rgba(255, 255, 255, 0.02); border-radius: 50%; bottom: -45px; right: 90px;"></div>
@@ -29,7 +29,7 @@ declare(strict_types=1);
 <!-- Grid de Tarjetas KPI con Minigráficos (Sparklines) -->
 <div class="row g-3 mb-4">
   <!-- Fichas Activas -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">
@@ -51,7 +51,7 @@ declare(strict_types=1);
   </div>
 
   <!-- Aprendices Matriculados -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">
@@ -62,7 +62,7 @@ declare(strict_types=1);
           <div class="icon-bg" style="color: #3B82F6;"><i class="bi bi-people"></i></div>
         </div>
         <div class="mt-2">
-          <span class="trend up" style="background: var(--info-bg); color: var(--info);"><i class="bi bi-arrow-up-right me-1"></i>+1.8%</span>
+          <span class="trend up" style="background: var(--info-bg); color: var(--info-text);"><i class="bi bi-arrow-up-right me-1"></i>+1.8%</span>
           <span class="text-muted ms-2 small">vs mes anterior</span>
         </div>
       </div>
@@ -73,7 +73,7 @@ declare(strict_types=1);
   </div>
 
   <!-- Instructores Activos -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">
@@ -95,7 +95,7 @@ declare(strict_types=1);
   </div>
 
   <!-- Promedio de Retención Académica -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">
@@ -270,7 +270,7 @@ declare(strict_types=1);
       <!-- Tarjeta premium de "Institución al Día" -->
       <div class="card border-0 shadow-sm mb-4" style="border-left: 5px solid var(--success) !important; border-radius: 12px; background: var(--success-bg);">
         <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center h-100">
-          <div class="rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 54px; height: 54px; background-color: rgba(46, 139, 31, 0.1); color: var(--success); border: 2px solid rgba(46, 139, 31, 0.2);">
+          <div class="rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 54px; height: 54px; background-color: rgba(46, 139, 31, 0.1); color: var(--success-text); border: 2px solid rgba(46, 139, 31, 0.2);">
             <i class="bi bi-shield-fill-check" style="font-size: 1.8rem;"></i>
           </div>
           <h4 class="mb-2 fw-bold text-success">¡Institución al Día!</h4>

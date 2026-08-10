@@ -1,17 +1,12 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Buscar usuarios
-    const searchInput = document.getElementById('searchUsers');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function(e) {
-            const filter = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('tbody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(filter) ? '' : 'none';
-            });
-        });
-    }
-});
+// La búsqueda de usuarios se resolvía aquí ocultando filas ya
+// renderizadas. Ahora el listado está paginado y busca en SQL
+// (UsuarioModel::getFilteredList): un filtro de cliente solo habría
+// alcanzado a las 25 filas de la página visible, dando a entender que el
+// resto de coincidencias no existía. El campo de búsqueda es un input
+// normal dentro de un formulario GET.
+//
+// Se deja el envío del formulario al pulsar Enter, que es el
+// comportamiento nativo, sin JavaScript de por medio.
 
 // Función global para eliminar usuarios (llamada desde onclick)
 function deleteUser(id) {

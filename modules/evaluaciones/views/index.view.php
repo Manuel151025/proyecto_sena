@@ -1,5 +1,5 @@
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Juicios de Evaluación</h1>
     <p class="text-muted mb-0">
@@ -11,7 +11,7 @@
     </p>
   </div>
   <?php if ($user_rol !== ROL_APRENDIZ): ?>
-  <div>
+  <div class="d-flex gap-2">
     <a href="<?= APP_URL ?>/index.php/evaluaciones/importar" class="btn btn-primary">
       <i class="bi bi-file-earmark-excel me-1"></i> Importar Juicios Evaluativos
     </a>
@@ -193,6 +193,7 @@
         </tbody>
       </table>
     </div>
+    <?php $paginador = $paginacion; $paginacionEtiqueta = 'juicios de evaluación'; require BASE_PATH . 'components/paginacion.php'; ?>
   </div>
 </div>
 

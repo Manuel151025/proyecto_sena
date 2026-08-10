@@ -6,10 +6,30 @@ namespace Core\Interfaces;
 interface UsuarioRepositoryInterface {
     /**
      * Obtiene todos los usuarios.
-     * 
+     *
      * @return array
      */
     public function getAll(): array;
+
+    /**
+     * Listado con búsqueda, filtros y paginación, para la pantalla de
+     * gestión. Se declara en el contrato porque el controlador depende de
+     * la interfaz y no de la implementación concreta.
+     *
+     * @param array{search?:string, rol?:string, estado?:string} $filters
+     * @param int|null $limit Sin límite si es null.
+     * @return array
+     */
+    public function getFilteredList(array $filters = [], ?int $limit = null, int $offset = 0): array;
+
+    /**
+     * Total de usuarios que cumplen esos mismos filtros, para calcular
+     * cuántas páginas hay.
+     *
+     * @param array $filters
+     * @return int
+     */
+    public function contarFiltrados(array $filters = []): int;
 
     /**
      * Elimina un usuario por su ID.

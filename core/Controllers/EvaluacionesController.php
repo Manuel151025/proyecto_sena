@@ -99,8 +99,15 @@ class EvaluacionesController extends BaseController {
         $filter_concepto = $_GET['concepto'] ?? '';
 
         $evaluaciones = [];
+        $paginacion = null;
         try {
-            $evaluaciones = $this->evaluacionesModel->getEvaluaciones($user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search);
+            $total = $this->evaluacionesModel->contarEvaluaciones($user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search);
+            $paginacion = \Core\Services\Paginator::desdePeticion($total);
+            $evaluaciones = $this->evaluacionesModel->getEvaluaciones(
+                $user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search,
+                $paginacion->perPage(),
+                $paginacion->offset()
+            );
         } catch (Exception $e) {
             $errors[] = 'Error al cargar evaluaciones: ' . $e->getMessage();
         }
@@ -131,7 +138,8 @@ class EvaluacionesController extends BaseController {
                 'conceptos_label' => $conceptos_label,
                 'search' => $search,
                 'filter_ficha' => $filter_ficha,
-                'filter_concepto' => $filter_concepto
+                'filter_concepto' => $filter_concepto,
+                'paginacion' => $paginacion
             ],
             'Juicios de Evaluación · SENA'
         );

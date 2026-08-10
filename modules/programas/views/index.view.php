@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 ?>
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
     <h1>Programas de Formación</h1>
     <p class="text-muted mb-0">Administra todos los programas de formación disponibles.</p>

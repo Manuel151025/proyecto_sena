@@ -1,4 +1,4 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Matrículas de Aprendices</h1>
     <p class="text-muted mb-0">Gestiona las admisiones de estudiantes y su asignación a fichas técnicas.</p>
@@ -123,7 +123,10 @@
         </thead>
         <tbody>
           <?php foreach ($aprendices as $ap): ?>
-          <tr class="aprendiz-row" data-search="<?= htmlspecialchars(strtolower($ap['nombre'] . ' ' . $ap['email'] . ' ' . $ap['numero_documento']), ENT_QUOTES, 'UTF-8') ?>">
+          <?php /* Sin `data-search`: alimentaba el filtro de cliente que se
+                   retiró al paginar, y repetía en el HTML una copia en
+                   minúsculas del nombre, correo y documento de cada fila. */ ?>
+          <tr>
             <td class="ps-4 font-monospace fw-bold text-muted">
               <span class="badge bg-light text-dark border"><?= htmlspecialchars($ap['tipo_documento']) ?></span> 
               <?= htmlspecialchars($ap['numero_documento']) ?>
@@ -206,6 +209,7 @@
         </tbody>
       </table>
     </div>
+    <?php $paginador = $paginacion; $paginacionEtiqueta = 'aprendices'; require BASE_PATH . 'components/paginacion.php'; ?>
   </div>
 </div>
 
@@ -535,17 +539,10 @@ function mostrarEditarMatricula(button) {
     if (elInstSeg) elInstSeg.value = button.getAttribute('data-instructor-seguimiento-id') || '';
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchAprendizInput');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function(e) {
-            const filter = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('.aprendiz-row');
-            rows.forEach(row => {
-                const text = row.getAttribute('data-search') || '';
-                row.style.display = text.includes(filter) ? '' : 'none';
-            });
-        });
-    }
-});
+// El campo de búsqueda ya filtraba en el cliente ocultando filas, además
+// de enviarse al servidor con el formulario (es el mismo input,
+// name="search"). Con el listado paginado ese filtro sobra y engaña: solo
+// veía las 25 filas de la página actual, así que buscar un aprendiz de la
+// página 4 no devolvía nada. Ahora manda siempre el servidor
+// (AprendizModel::getFilteredList) y basta con pulsar Enter.
 </script>

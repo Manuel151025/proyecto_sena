@@ -1,6 +1,10 @@
 
-<h1 class="mb-1">Mi perfil</h1>
-<p class="text-muted">Actualiza tus datos personales y credenciales de acceso.</p>
+<div class="page-header">
+  <div>
+    <h1 class="mb-1">Mi perfil</h1>
+    <p class="text-muted mb-0">Actualiza tus datos personales y credenciales de acceso.</p>
+  </div>
+</div>
 
 <?php if (!empty($debeCambiarPassword)): ?>
   <div class="alert-flat warning mb-3">

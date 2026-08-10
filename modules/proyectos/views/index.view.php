@@ -1,4 +1,4 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Proyectos Formativos</h1>
     <p class="text-muted mb-0">Cada proyecto integra las competencias y resultados de aprendizaje de un programa de formación.</p>

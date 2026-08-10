@@ -1,6 +1,8 @@
-﻿<div class="mb-3">
+﻿<div class="page-header">
+  <div>
   <h1 class="mb-1">Auditoría del Sistema</h1>
   <p class="text-muted mb-0">Revisa la bitácora de acciones y modificaciones del sistema para control de calidad y trazabilidad.</p>
+  </div>
 </div>
 
 <?php if (!empty($errors)): ?>
@@ -102,5 +104,6 @@
         </tbody>
       </table>
     </div>
+    <?php $paginador = $paginacion; $paginacionEtiqueta = 'registros de auditoría'; require BASE_PATH . 'components/paginacion.php'; ?>
   </div>
 </div>
