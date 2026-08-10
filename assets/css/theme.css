@@ -23,6 +23,17 @@
   --warning-bg: #fef3e2;
   --info: #1f6feb;
   --info-bg: #e6efff;
+  /* Par de tokens por color semántico:
+       --x      → relleno (fondos sólidos, bordes, barras) — lleva texto blanco
+       --x-text → texto/ícono SOBRE la superficie del tema o sobre --x-bg
+     En tema claro coinciden. En oscuro NO pueden coincidir: un
+     #c0392b sobre el fondo #3a1d1a es rojo oscuro sobre rojo oscuro,
+     ilegible; pero aclarar --danger rompería .btn-danger (texto
+     blanco sobre relleno claro). De ahí que sean dos tokens. */
+  --success-text: var(--success);
+  --danger-text: var(--danger);
+  --warning-text: var(--warning);
+  --info-text: var(--info);
   --radius: 8px;
   --radius-lg: 12px;
   --shadow-sm: 0 1px 2px rgba(15,30,22,0.04),0 1px 1px rgba(15,30,22,0.03);
@@ -50,6 +61,14 @@
   --sena-primary-50: #1d2d1a;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
   --shadow-md: 0 6px 18px rgba(0,0,0,0.45);
+  /* Versiones aclaradas para TEXTO. Los tokens de relleno
+     (--success, --danger…) se dejan intactos a propósito: siguen
+     sirviendo de fondo sólido con letra blanca (.btn-danger,
+     .step.done .num, .progress-flat.danger). */
+  --success-text: #6ee787;
+  --danger-text: #fca5a5;
+  --warning-text: #fbbf24;
+  --info-text: #7cc4ff;
 }
 
 [data-theme="dark"] .text-muted {
@@ -156,14 +175,44 @@
 .bg-soft.info,
 .bg-soft-info {
   background: var(--info-bg) !important;
-  color: var(--info) !important;
+  color: var(--info-text) !important;
   border-color: transparent;
 }
-.bg-soft.success { background: var(--success-bg) !important; color: var(--success) !important; border-color: transparent; }
-.bg-soft.danger  { background: var(--danger-bg)  !important; color: var(--danger)  !important; border-color: transparent; }
-.bg-soft.warning { background: var(--warning-bg) !important; color: var(--warning) !important; border-color: transparent; }
+.bg-soft.success { background: var(--success-bg) !important; color: var(--success-text) !important; border-color: transparent; }
+.bg-soft.danger  { background: var(--danger-bg)  !important; color: var(--danger-text)  !important; border-color: transparent; }
+.bg-soft.warning { background: var(--warning-bg) !important; color: var(--warning-text) !important; border-color: transparent; }
 [data-theme="dark"] .bg-soft.primary,
 [data-theme="dark"] .bg-soft-primary { color: #79d24a !important; }
+
+/* Utilidades de TEXTO semántico de Bootstrap.
+   ------------------------------------------------------------
+   El modo oscuro de Bootstrap 5.3 aclara los tokens `-bg-subtle` y
+   `-text-emphasis`, pero NO los de las utilidades .text-*: éstas
+   siguen resolviendo a los colores del tema claro (#198754 verde,
+   #dc3545 rojo, #0d6efd azul…). Sobre las superficies oscuras del
+   tema (#151b26 / #1e2638) eso deja letra oscura sobre fondo
+   oscuro: es el caso más repetido del sistema, con 172 usos de
+   estas clases entre las vistas (text-danger y text-success solos
+   suman casi 100).
+   Se aclaran manteniendo el tono, no la intención de color. */
+[data-theme="dark"] .text-success,
+[data-theme="dark"] .link-success { color: var(--success-text) !important; }
+[data-theme="dark"] .text-danger,
+[data-theme="dark"] .link-danger { color: var(--danger-text) !important; }
+[data-theme="dark"] .text-warning,
+[data-theme="dark"] .link-warning { color: var(--warning-text) !important; }
+[data-theme="dark"] .text-info,
+[data-theme="dark"] .link-info { color: var(--info-text) !important; }
+[data-theme="dark"] .text-primary,
+[data-theme="dark"] .link-primary { color: #6ea8fe !important; }
+[data-theme="dark"] .text-secondary { color: var(--text-muted) !important; }
+
+/* Excepción: dentro de un relleno sólido de color (`.bg-success`,
+   `.bg-danger`…) o de un bloque siempre oscuro, la letra debe
+   quedarse blanca; aclararla la volvería ilegible sobre el relleno. */
+[data-theme="dark"] .bg-success .text-white,
+[data-theme="dark"] .bg-danger .text-white,
+[data-theme="dark"] .bg-primary .text-white { color: #fff !important; }
 
 /* ============================================================
    MAYÚSCULAS SOLO VISUALES
@@ -521,10 +570,10 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .content{padding:24px;flex:1;}
  
 .badge-soft{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
-.badge-soft.success{background:var(--success-bg);color:var(--success);border-color:transparent;}
-.badge-soft.danger{background:var(--danger-bg);color:var(--danger);border-color:transparent;}
-.badge-soft.warning{background:var(--warning-bg);color:var(--warning);border-color:transparent;}
-.badge-soft.info{background:var(--info-bg);color:var(--info);border-color:transparent;}
+.badge-soft.success{background:var(--success-bg);color: var(--success-text);border-color:transparent;}
+.badge-soft.danger{background:var(--danger-bg);color: var(--danger-text);border-color:transparent;}
+.badge-soft.warning{background:var(--warning-bg);color: var(--warning-text);border-color:transparent;}
+.badge-soft.info{background:var(--info-bg);color: var(--info-text);border-color:transparent;}
 .badge-soft.primary{background:var(--sena-primary-50);color:var(--sena-primary-600);border-color:transparent;}
 [data-theme="dark"] .badge-soft.primary{color:#79d24a;}
  
@@ -534,8 +583,8 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .kpi .label{color:var(--text-muted) !important;font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
 .kpi .value{font-size:2.2rem;font-weight:800;margin:.4rem 0;letter-spacing:-.03em;color:var(--text);display:flex;align-items:center;justify-content:space-between;}
 .kpi .trend{font-size:.8rem;display:inline-flex;align-items:center;gap:.3rem;font-weight:500;padding:0.25rem 0.6rem;border-radius:999px;background:var(--surface-2);}
-.kpi .trend.up{color:var(--success);background:var(--success-bg);}
-.kpi .trend.down{color:var(--danger);background:var(--danger-bg);}
+.kpi .trend.up{color: var(--success-text);background:var(--success-bg);}
+.kpi .trend.down{color: var(--danger-text);background:var(--danger-bg);}
 .kpi .icon-bg{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg, var(--sena-primary-50) 0%, rgba(57,169,0,0.05) 100%);color:var(--sena-primary);display:grid;place-items:center;font-size:1.4rem;box-shadow:inset 0 0 0 1px rgba(57,169,0,0.1);}
 [data-theme="dark"] .kpi .icon-bg{background:linear-gradient(135deg, rgba(121,210,74,0.15) 0%, transparent 100%);color:#79d24a;}
 .sparkline-container{position:absolute;bottom:0;left:0;right:0;height:45px;opacity:0.4;z-index:3;pointer-events:auto;}
@@ -574,10 +623,10 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 }
 
 .alert-flat{border-radius:var(--radius);padding:.85rem 1rem;display:flex;gap:.65rem;align-items:flex-start;border:1px solid transparent;font-size:.88rem;}
-.alert-flat.danger{background:var(--danger-bg);color:var(--danger);}
-.alert-flat.warning{background:var(--warning-bg);color:var(--warning);}
-.alert-flat.info{background:var(--info-bg);color:var(--info);}
-.alert-flat.success{background:var(--success-bg);color:var(--success);}
+.alert-flat.danger{background:var(--danger-bg);color: var(--danger-text);}
+.alert-flat.warning{background:var(--warning-bg);color: var(--warning-text);}
+.alert-flat.info{background:var(--info-bg);color: var(--info-text);}
+.alert-flat.success{background:var(--success-bg);color: var(--success-text);}
 .alert-flat i{font-size:1.1rem;line-height:1.2;}
  
 .progress-flat{height:8px;background:var(--surface-2);border-radius:999px;overflow:hidden;}
@@ -625,8 +674,8 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .auth-form .btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none;}
 .alert-flat{border-radius:12px;padding:1rem;display:flex;gap:0.75rem;align-items:flex-start;border:1px solid transparent;font-size:0.95rem;animation:slide-in 0.3s ease-out;}
 @keyframes slide-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
-.alert-flat.danger{background:linear-gradient(135deg,var(--danger-bg) 0%,rgba(192,57,43,0.08) 100%);color:var(--danger);border-color:rgba(192,57,43,0.2);}
-.alert-flat.warning{background:linear-gradient(135deg,var(--warning-bg) 0%,rgba(217,119,6,0.08) 100%);color:var(--warning);border-color:rgba(217,119,6,0.2);}
+.alert-flat.danger{background:linear-gradient(135deg,var(--danger-bg) 0%,rgba(192,57,43,0.08) 100%);color: var(--danger-text);border-color:rgba(192,57,43,0.2);}
+.alert-flat.warning{background:linear-gradient(135deg,var(--warning-bg) 0%,rgba(217,119,6,0.08) 100%);color: var(--warning-text);border-color:rgba(217,119,6,0.2);}
 .text-center{text-align:center;margin-top:1.5rem;}
 .icon-btn{background:transparent;border:0;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:var(--text-muted);cursor:pointer;transition:all 0.2s ease;font-size:1.2rem;}
 .icon-btn:hover{background:linear-gradient(135deg,rgba(57,169,0,0.1) 0%,rgba(45,128,0,0.08) 100%);color:var(--sena-primary);}
@@ -646,8 +695,8 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .concept-btn .lbl{font-weight:700;font-size:1rem;}
 .concept-btn .desc{font-size:.75rem;color:var(--text-muted);}
 .concept-btn:hover{border-color:var(--text-soft);}
-.concept-btn.active.A{background:var(--success-bg);border-color:var(--success);color:var(--success);}
-.concept-btn.active.D{background:var(--danger-bg);border-color:var(--danger);color:var(--danger);}
+.concept-btn.active.A{background:var(--success-bg);border-color:var(--success);color: var(--success-text);}
+.concept-btn.active.D{background:var(--danger-bg);border-color:var(--danger);color: var(--danger-text);}
 .concept-btn.active.P{background:var(--surface-2);border-color:var(--text-soft);color:var(--text);}
  
 .dropzone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:2.25rem 1rem;text-align:center;background:var(--surface-2);color:var(--text-muted);cursor:pointer;transition:all .15s;}
@@ -659,7 +708,7 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .step .num{width:22px;height:22px;border-radius:50%;background:var(--border);color:var(--text);display:grid;place-items:center;font-size:.72rem;font-weight:700;}
 .step.active{background:var(--sena-primary-50);color:var(--sena-primary-600);}
 .step.active .num{background:var(--sena-primary);color:#fff;}
-.step.done{color:var(--success);}
+.step.done{color: var(--success-text);}
 .step.done .num{background:var(--success);color:#fff;}
 .step-sep{color:var(--text-soft);}
  
@@ -783,7 +832,7 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .acc-body{padding:0 1.25rem 1rem;border-top:1px solid var(--border);}
  
 .pw-req{font-size:.78rem;color:var(--text-muted);display:flex;align-items:center;gap:.4rem;margin:.15rem 0;}
-.pw-req.ok{color:var(--success);}
+.pw-req.ok{color: var(--success-text);}
 .pw-req i{font-size:.9rem;}
 .pw-strength{display:flex;gap:4px;margin-top:.35rem;}
 .pw-strength span{flex:1;height:4px;border-radius:2px;background:var(--border);}
@@ -1434,3 +1483,56 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
   }
 }
 
+/* ============================================================
+   BLOQUES SIEMPRE OSCUROS (.on-dark)
+   ------------------------------------------------------------
+   Los banners de bienvenida de los dashboards tienen un degradado
+   oscuro fijo en ambos temas, así que su contenido debe quedarse
+   claro también en ambos temas. Con las utilidades de Bootstrap no
+   funcionaba: el puente de variables remapea .text-dark a
+   var(--text) y .bg-white a var(--surface), de modo que en modo
+   oscuro un `btn-light text-dark` quedaba con fondo claro y letra
+   casi blanca (ilegible), y una `badge bg-white` se volvía oscura
+   sobre un banner oscuro.
+
+   .on-dark marca ese contexto y fija los valores literales que el
+   bloque necesita, sin tocar el resto del sistema.
+   ============================================================ */
+.on-dark,
+.on-dark h1, .on-dark h2, .on-dark h3, .on-dark h4, .on-dark h5, .on-dark h6 {
+  color: #fff;
+}
+.on-dark .text-muted,
+.on-dark .text-white-50 {
+  color: rgba(255,255,255,.72) !important;
+}
+/* Botón claro sobre fondo oscuro: fondo y texto literales, iguales
+   en tema claro y oscuro. */
+.on-dark .btn-light {
+  background: #fff !important;
+  border-color: #fff !important;
+  color: #0f172a !important;
+}
+.on-dark .btn-light:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+.on-dark .btn-outline-light {
+  border-color: rgba(255,255,255,.6) !important;
+  color: #fff !important;
+  background: transparent !important;
+}
+.on-dark .btn-outline-light:hover {
+  background: rgba(255,255,255,.14) !important;
+  border-color: #fff !important;
+  color: #fff !important;
+}
+/* Insignias claras sobre el banner */
+.on-dark .badge.bg-white {
+  background: #fff !important;
+  color: var(--sena-primary-600) !important;
+}
+.on-dark .bg-white-10 {
+  background: rgba(255,255,255,.12) !important;
+  color: #fff !important;
+}
