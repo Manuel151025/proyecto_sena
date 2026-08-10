@@ -29,7 +29,7 @@ declare(strict_types=1);
 <!-- Grid de Tarjetas KPI con Minigráficos (Sparklines) -->
 <div class="row g-3 mb-4">
   <!-- Fichas Activas -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">
@@ -51,7 +51,7 @@ declare(strict_types=1);
   </div>
 
   <!-- Aprendices Matriculados -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">
@@ -73,7 +73,7 @@ declare(strict_types=1);
   </div>
 
   <!-- Instructores Activos -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">
@@ -95,7 +95,7 @@ declare(strict_types=1);
   </div>
 
   <!-- Promedio de Retención Académica -->
-  <div class="col-12 col-sm-6 col-xl-3">
+  <div class="col-6 col-xl-3">
     <div class="kpi">
       <div class="kpi-content">
         <div class="d-flex justify-content-between align-items-start">

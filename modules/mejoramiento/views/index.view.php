@@ -1,7 +1,9 @@
 ﻿
-<div class="mb-4">
+<div class="page-header">
+  <div>
   <h1 class="mb-1">Planes de Mejoramiento</h1>
   <p class="text-muted mb-0">Cuando un aprendiz obtiene una evaluación 'En Proceso' (D), se genera automáticamente un plan de mejoramiento para nivelar las competencias pendientes.</p>
+  </div>
 </div>
 
 <div class="row g-3">

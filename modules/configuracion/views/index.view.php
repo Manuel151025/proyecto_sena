@@ -1,6 +1,8 @@
-<div class="mb-4">
+<div class="page-header">
+  <div>
   <h1 class="mb-1">Configuración General</h1>
   <p class="text-muted mb-0">Ajusta los parámetros académicos, nombres institucionales y credenciales del sistema.</p>
+  </div>
 </div>
 
 <?php if (!empty($successMessage)): ?>

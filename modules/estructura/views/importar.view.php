@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 ?>
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Importar Datos Académicos</h1>
     <p class="text-muted mb-0">Carga los documentos PDF para estructurar automáticamente tu programa de formación.</p>
   </div>
-  <div>
+  <div class="d-flex gap-2">
     <a href="<?= APP_URL ?>/index.php/estructura" class="btn btn-soft">
       <i class="bi bi-arrow-left me-2"></i>Volver al Módulo
     </a>
