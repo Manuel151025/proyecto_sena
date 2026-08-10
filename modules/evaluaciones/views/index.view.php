@@ -193,6 +193,7 @@
         </tbody>
       </table>
     </div>
+    <?php $paginador = $paginacion; $paginacionEtiqueta = 'juicios de evaluación'; require BASE_PATH . 'components/paginacion.php'; ?>
   </div>
 </div>
 

@@ -25,8 +25,16 @@ class LogsController extends BaseController {
         $filter_accion = $_GET['accion'] ?? '';
 
         $logs = [];
+        $paginacion = null;
         try {
-            $logs = $this->logsModel->getLogs($search, $filter_accion);
+            $total = $this->logsModel->contarLogs($search, $filter_accion);
+            $paginacion = \Core\Services\Paginator::desdePeticion($total, 50);
+            $logs = $this->logsModel->getLogs(
+                $search,
+                $filter_accion,
+                $paginacion->perPage(),
+                $paginacion->offset()
+            );
         } catch (Exception $e) {
             $errors[] = 'Error al cargar los registros de auditoría: ' . $e->getMessage();
         }
@@ -47,7 +55,8 @@ class LogsController extends BaseController {
                 'logs' => $logs,
                 'search' => $search,
                 'filter_accion' => $filter_accion,
-                'acciones_badge' => $acciones_badge
+                'acciones_badge' => $acciones_badge,
+                'paginacion' => $paginacion
             ],
             'Bitácora de Auditoría · SENA'
         );

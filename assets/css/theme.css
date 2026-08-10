@@ -1198,6 +1198,102 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 }
 
 /* ============================================================
+   PAGINACIÓN — componente único (components/paginacion.php)
+   ------------------------------------------------------------
+   En escritorio: resumen a la izquierda, números a la derecha.
+   En móvil (ver la capa móvil más abajo): solo Anterior/Siguiente
+   y el contador "3 / 7", porque los números sueltos quedaban por
+   debajo del área táctil recomendada y se desbordaban en cuanto
+   había muchas páginas.
+   ============================================================ */
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .85rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+/* Cuando va suelta (no pegada al pie de una tarjeta) recupera el
+   borde superior y las cuatro esquinas. */
+.paginacion.is-standalone {
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-top: 1rem;
+}
+.paginacion-resumen {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--text-muted);
+}
+.paginacion-resumen strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.paginacion-paginas {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pag-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 .6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: .85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease;
+}
+.pag-link:hover {
+  background: var(--surface-2);
+  border-color: var(--text-soft);
+  color: var(--text);
+}
+.pag-link.is-current {
+  background: var(--sena-primary);
+  border-color: var(--sena-primary);
+  color: #fff;
+}
+.pag-link.is-disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.pag-link.is-disabled:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.pag-salto {
+  display: inline-block;
+  padding: 0 .2rem;
+  color: var(--text-soft);
+}
+/* El contador "3 / 7" solo se usa en móvil, donde sustituye a los
+   números de página. */
+.pag-contador {
+  display: none;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 .35rem;
+  white-space: nowrap;
+}
+
+/* ============================================================
    ENCABEZADO DE PÁGINA — un solo patrón para todo el sistema
    ------------------------------------------------------------
    Todas las vistas repetían el mismo bloque a mano:
@@ -1410,6 +1506,30 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
   /* --- Barra de filtros: cada control en su propio renglón --- */
   .toolbar {
     padding: .75rem;
+  }
+
+  /* --- Paginación: se cambian los números por Anterior / "3 / 7" /
+         Siguiente. Los números sueltos medían 36px (por debajo del
+         área táctil recomendada) y con muchas páginas desbordaban. --- */
+  .paginacion {
+    padding: .75rem;
+    justify-content: center;
+    gap: .6rem;
+  }
+  .paginacion-resumen {
+    width: 100%;
+    text-align: center;
+    font-size: .8rem;
+  }
+  .paginacion-paginas {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .pag-numero { display: none; }
+  .pag-contador { display: inline-block; }
+  .pag-link {
+    height: 44px;
+    min-width: 44px;
   }
 
   /* --- KPIs: el número gigante de escritorio no cabe, y en móvil

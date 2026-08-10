@@ -6,6 +6,7 @@ namespace Core\Controllers;
 use Core\BaseController;
 use Core\Interfaces\UsuarioRepositoryInterface;
 use Core\Models\UsuarioModel;
+use Core\Services\Paginator;
 use Core\XlsxParser;
 use Exception;
 
@@ -93,9 +94,25 @@ class UsuarioController extends BaseController {
             $this->redirect(APP_URL . '/index.php/usuarios');
         }
 
-        // Obtener la lista de usuarios
+        // Filtros y paginación del listado. La búsqueda pasó de JavaScript
+        // a SQL: con el listado paginado, filtrar en el cliente solo
+        // alcanzaría a las filas de la página actual.
+        $filtros = [
+            'search' => trim($_GET['search'] ?? ''),
+            'rol'    => $_GET['rol'] ?? '',
+            'estado' => $_GET['estado'] ?? '',
+        ];
+
+        $usuarios = [];
+        $paginacion = null;
         try {
-            $usuarios = $this->usuarioModel->getAll();
+            $total = $this->usuarioModel->contarFiltrados($filtros);
+            $paginacion = Paginator::desdePeticion($total);
+            $usuarios = $this->usuarioModel->getFilteredList(
+                $filtros,
+                $paginacion->perPage(),
+                $paginacion->offset()
+            );
         } catch (Exception $e) {
             $usuarios = [];
             $mensaje = 'Error al cargar usuarios';
@@ -122,7 +139,9 @@ class UsuarioController extends BaseController {
                 'tipo_mensaje' => $tipo_mensaje,
                 'usuarios' => $usuarios,
                 'roles_label' => $roles_label,
-                'estados_label' => $estados_label
+                'estados_label' => $estados_label,
+                'filtros' => $filtros,
+                'paginacion' => $paginacion
             ],
             'Usuarios · SENA'
         );

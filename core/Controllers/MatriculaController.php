@@ -292,9 +292,17 @@ class MatriculaController extends BaseController {
             'estado' => $filter_estado
         ];
 
+        $paginacion = null;
         try {
             $instructorIdScope = (getCurrentRole() === ROL_INSTRUCTOR) ? (int)getCurrentUser()['id'] : null;
-            $aprendices = $this->aprendizModel->getFilteredList($filters, $instructorIdScope);
+            $total = $this->aprendizModel->contarFiltrados($filters, $instructorIdScope);
+            $paginacion = \Core\Services\Paginator::desdePeticion($total);
+            $aprendices = $this->aprendizModel->getFilteredList(
+                $filters,
+                $instructorIdScope,
+                $paginacion->perPage(),
+                $paginacion->offset()
+            );
         } catch (Exception $e) {
             $errors[] = 'Error al cargar los aprendices: ' . $e->getMessage();
         }
@@ -321,7 +329,8 @@ class MatriculaController extends BaseController {
                 'estados_label' => $estados_label,
                 'successMessage' => $successMessage,
                 'errors' => $errors,
-                'passwordResultados' => $passwordResultados
+                'passwordResultados' => $passwordResultados,
+                'paginacion' => $paginacion
             ],
             'Gestión de Matrículas · SENA'
         );

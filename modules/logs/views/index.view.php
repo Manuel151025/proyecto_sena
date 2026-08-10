@@ -104,5 +104,6 @@
         </tbody>
       </table>
     </div>
+    <?php $paginador = $paginacion; $paginacionEtiqueta = 'registros de auditoría'; require BASE_PATH . 'components/paginacion.php'; ?>
   </div>
 </div>

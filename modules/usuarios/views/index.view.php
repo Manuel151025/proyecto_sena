@@ -16,9 +16,43 @@
 </div>
 <?php endif; ?>
 
-<div class="toolbar mb-3">
-  <div class="search"><i class="bi bi-search"></i><input class="form-control" id="searchUsers" placeholder="Buscar por nombre o email..."></div>
-</div>
+<!-- La búsqueda y los filtros se resuelven en el servidor (ver
+     UsuarioModel::getFilteredList): el listado está paginado, así que
+     filtrar en el cliente solo alcanzaría a las filas de esta página. -->
+<form method="GET" class="toolbar mb-3">
+  <div class="search">
+    <i class="bi bi-search"></i>
+    <label class="visually-hidden" for="searchUsers">Buscar usuario</label>
+    <input type="text" name="search" id="searchUsers" class="form-control"
+           placeholder="Buscar por nombre o email..."
+           value="<?= htmlspecialchars($filtros['search'] ?? '') ?>">
+  </div>
+  <div class="toolbar-filter">
+    <label class="visually-hidden" for="filtroRol">Rol</label>
+    <select name="rol" id="filtroRol" class="form-select" onchange="this.form.submit()"
+            data-picker data-picker-label="Rol" data-picker-placeholder="Todos los roles">
+      <option value="">Todos los roles</option>
+      <?php foreach ($roles_label as $valor => $etiqueta): ?>
+        <option value="<?= htmlspecialchars($valor) ?>" <?= ($filtros['rol'] ?? '') === $valor ? 'selected' : '' ?>>
+          <?= htmlspecialchars($etiqueta) ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+  <div class="toolbar-filter">
+    <label class="visually-hidden" for="filtroEstado">Estado</label>
+    <select name="estado" id="filtroEstado" class="form-select" onchange="this.form.submit()"
+            data-picker data-picker-label="Estado" data-picker-placeholder="Todos los estados">
+      <option value="">Todos los estados</option>
+      <option value="activo" <?= ($filtros['estado'] ?? '') === 'activo' ? 'selected' : '' ?>>Activo</option>
+      <option value="inactivo" <?= ($filtros['estado'] ?? '') === 'inactivo' ? 'selected' : '' ?>>Inactivo</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-soft"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+  <?php if (($filtros['search'] ?? '') !== '' || ($filtros['rol'] ?? '') !== '' || ($filtros['estado'] ?? '') !== ''): ?>
+    <a href="<?= APP_URL ?>/index.php/usuarios" class="btn btn-soft text-muted">Limpiar</a>
+  <?php endif; ?>
+</form>
 
 <div class="table-wrap">
   <table class="table">
@@ -33,6 +67,14 @@
       </tr>
     </thead>
     <tbody>
+      <?php if (empty($usuarios)): ?>
+      <tr>
+        <td colspan="6" class="text-center text-muted py-5">
+          <i class="bi bi-search d-block mb-2" style="font-size:2rem;opacity:.5;"></i>
+          No hay usuarios que coincidan con la búsqueda.
+        </td>
+      </tr>
+      <?php endif; ?>
       <?php foreach ($usuarios as $usuario): ?>
       <tr>
         <td><strong><?= htmlspecialchars($usuario['nombre']) ?></strong></td>
@@ -49,6 +91,7 @@
     </tbody>
   </table>
 </div>
+<?php $paginador = $paginacion; $paginacionEtiqueta = 'usuarios'; require BASE_PATH . 'components/paginacion.php'; ?>
 
 <form id="deleteForm" method="POST" style="display:none;">
   <?= csrfField() ?>
