@@ -1,208 +1,85 @@
 <?php
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+/** @var \Core\Support\Actor $actor */
+$gestiona = $actor->gestiona();
+$url = static fn(string $r) => e(APP_URL . '/index.php' . $r);
+$hayFiltros = $filtros['search'] !== '' || $filtros['tipo'] !== '' || $filtros['ficha_id'];
 ?>
-
 <div class="page-header">
   <div>
-    <h1 class="mb-1">Retroalimentación Académica</h1>
-    <p class="text-muted mb-0">
-      <?php if ($user_rol === ROL_APRENDIZ): ?>
-        Revisa los comentarios, recomendaciones y fortalezas indicadas por tus instructores.
-      <?php else: ?>
-        Gestiona y registra retroalimentación para los aprendices.
-      <?php endif; ?>
-    </p>
+    <h1 class="mb-1"><?= $actor->esAprendiz() ? 'Mi retroalimentación' : 'Retroalimentación' ?></h1>
+    <p class="text-muted mb-0"><?= $actor->esAprendiz()
+        ? 'Lo que tus instructores destacan de tu trabajo y lo que te recomiendan mejorar.'
+        : 'Fortalezas, aspectos a mejorar y recomendaciones para tus aprendices; las privadas solo las ve el equipo de formación.' ?></p>
   </div>
-  <?php if ($user_rol !== ROL_APRENDIZ): ?>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaRetro">
-      <i class="bi bi-plus-lg me-1"></i> Nueva retroalimentación
-    </button>
+  <?php if ($gestiona): ?>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRetro"><i class="bi bi-plus-lg me-1"></i>Nueva retroalimentación</button>
   <?php endif; ?>
 </div>
 
-<?php if (!empty($success)): ?>
-  <div class="alert-flat success mb-3">
-    <i class="bi bi-check-circle"></i>
-    <div><?= htmlspecialchars($success) ?></div>
-  </div>
-<?php endif; ?>
+<?php foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach; ?>
 
-<?php if (!empty($errors)): ?>
-  <div class="alert-flat danger mb-3">
-    <i class="bi bi-exclamation-circle"></i>
-    <div>
-      <?php foreach ($errors as $err): ?>
-        <div><?= htmlspecialchars($err) ?></div>
-      <?php endforeach; ?>
-    </div>
+<form method="GET" class="toolbar mb-3">
+  <div class="search">
+    <i class="bi bi-search"></i>
+    <label class="visually-hidden" for="f_search">Buscar</label>
+    <input type="search" name="search" id="f_search" class="form-control" maxlength="100"
+           placeholder="<?= $gestiona ? 'Aprendiz, documento o texto...' : 'Buscar en el texto...' ?>" value="<?= e($filtros['search']) ?>">
   </div>
-<?php endif; ?>
+  <div class="toolbar-filter">
+    <label class="visually-hidden" for="f_tipo">Tipo</label>
+    <select name="tipo" id="f_tipo" class="form-select" data-autoenvio>
+      <option value="">Todos los tipos</option>
+      <?php foreach ($tipos as $valor => [$texto]): ?><option value="<?= e($valor) ?>" <?= $filtros['tipo'] === $valor ? 'selected' : '' ?>><?= e($texto) ?></option><?php endforeach; ?>
+    </select>
+  </div>
+  <?php if ($gestiona): ?>
+  <div class="toolbar-filter">
+    <label class="visually-hidden" for="f_ficha">Ficha</label>
+    <select name="ficha_id" id="f_ficha" class="form-select" data-autoenvio data-picker data-picker-label="Ficha">
+      <option value="0">Todas las fichas</option>
+      <?php foreach ($fichas as $f): ?><option value="<?= (int)$f['id'] ?>" <?= $filtros['ficha_id'] === (int)$f['id'] ? 'selected' : '' ?>>Ficha <?= e($f['numero_ficha']) ?></option><?php endforeach; ?>
+    </select>
+  </div>
+  <?php endif; ?>
+  <button type="submit" class="btn btn-soft"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+  <?php if ($hayFiltros): ?><a class="btn btn-soft" href="<?= $url('/retroalimentacion') ?>" aria-label="Quitar filtros"><i class="bi bi-x-lg"></i></a><?php endif; ?>
+</form>
 
 <div class="row g-3">
-  <?php foreach ($feedbacks as $fb): ?>
-    <?php $meta = $tipos_label[$fb['tipo']] ?? ['—','secondary','bi-chat']; ?>
-    <div class="col-md-6 col-lg-4">
-      <div class="card glass-card h-100 border-0 shadow-sm">
-        <div class="card-body d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <span class="badge-soft <?= $meta[1] ?>">
-              <i class="bi <?= $meta[2] ?> me-1"></i>
-              <?= $meta[0] ?>
-            </span>
-            <small class="text-muted"><?= date('d/m/Y h:i A', strtotime($fb['fecha_creacion'])) ?></small>
-          </div>
-
-          <?php if (!empty($fb['privada'])): ?>
-            <div class="small mb-2">
-              <span class="badge-soft secondary"><i class="bi bi-lock-fill me-1"></i>Privada</span>
-            </div>
-          <?php endif; ?>
-
-          <p class="card-text text-dark flex-grow-1" style="font-size:.95rem;font-style:italic">
-            "<?= htmlspecialchars($fb['contenido']) ?>"
-          </p>
-
-          <div class="border-top pt-2 mt-3 d-flex align-items-center gap-2">
-            <?php if ($user_rol === ROL_APRENDIZ): ?>
-              <div class="avatar"
-                   style="width:30px;height:30px;font-size:.75rem;background:<?= htmlspecialchars($fb['inst_color'] ?? '#3B82F6') ?>">
-                <?= getInitials($fb['instructor_nombre']) ?>
-              </div>
-              <div class="small">
-                <span class="text-muted d-block" style="font-size:.7rem">Instructor:</span>
-                <span class="fw-semibold text-dark"><?= htmlspecialchars($fb['instructor_nombre']) ?></span>
-              </div>
-            <?php else: ?>
-              <div class="small">
-                <span class="text-muted d-block" style="font-size:.7rem">Para aprendiz:</span>
-                <span class="fw-semibold text-dark"><?= htmlspecialchars($fb['aprendiz_nombre'] ?? 'Desconocido') ?></span>
-                <small class="text-muted d-block" style="font-size:.65rem">
-                  Por: <?= htmlspecialchars($fb['instructor_nombre']) ?>
-                </small>
-              </div>
-            <?php endif; ?>
-          </div>
+  <?php foreach ($retros as $r): [$tTexto, $tClase, $tIcono] = $tipos[$r['tipo']] ?? [$r['tipo'], 'secondary', 'bi-chat']; ?>
+  <div class="col-md-6 col-xl-4">
+    <article class="card h-100 tarjeta-lateral lateral-<?= e($tClase) ?>">
+      <div class="card-body d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <span class="badge-soft <?= e($tClase) ?>"><i class="bi <?= e($tIcono) ?> me-1"></i><?= e($tTexto) ?></span>
+          <?php if ((int)$r['privada'] === 1): ?><span class="badge-soft secondary"><i class="bi bi-lock me-1"></i>Privada</span><?php endif; ?>
+        </div>
+        <?php if ($gestiona): ?>
+          <div class="fw-semibold"><?= e($r['aprendiz_nombre']) ?> <small class="text-muted fw-normal">· Ficha <?= e($r['numero_ficha']) ?></small></div>
+        <?php endif; ?>
+        <?php if ($r['ra_codigo']): ?><div class="small text-muted font-monospace"><?= e($r['ra_codigo']) ?></div><?php endif; ?>
+        <p class="mt-2 mb-3 text-break texto-multilinea"><?= e($r['contenido']) ?></p>
+        <div class="d-flex align-items-center gap-2 mt-auto small text-muted">
+          <div class="avatar sm" style="background: <?= e($r['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($r['instructor_nombre'])) ?></div>
+          <span><?= e($r['instructor_nombre']) ?> · <?= e(date('d/m/Y', strtotime((string)$r['fecha_creacion']))) ?></span>
         </div>
       </div>
-    </div>
+    </article>
+  </div>
   <?php endforeach; ?>
-
-  <?php if (empty($feedbacks)): ?>
-    <div class="col-12 text-center py-5 text-muted">
-      <i class="bi bi-chat-left-text d-block mb-2" style="font-size:3rem;opacity:.3"></i>
-      <?php if ($user_rol === ROL_APRENDIZ): ?>
-        Aún no has recibido retroalimentaciones.
-      <?php else: ?>
-        No has registrado retroalimentaciones todavía. Usa el botón
-        <strong>Nueva retroalimentación</strong> arriba para crear la primera.
-      <?php endif; ?>
-    </div>
+  <?php if (empty($retros)): ?>
+    <div class="col-12 estado-vacio"><i class="bi bi-chat-square-text"></i><?= $hayFiltros ? 'Nada coincide con los filtros.' : ($actor->esAprendiz() ? 'Aún no tienes retroalimentación.' : 'No hay retroalimentación registrada.') ?></div>
   <?php endif; ?>
 </div>
+<?php $paginador = $paginacion; $paginacionEtiqueta = 'registros'; require BASE_PATH . 'components/paginacion.php'; ?>
 
-<!-- ===== Modal: nueva retroalimentación ===== -->
-<?php if ($user_rol !== ROL_APRENDIZ): ?>
-<div class="modal fade" id="modalNuevaRetro" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form method="POST" action="">
-        <input type="hidden" name="action" value="create_feedback">
-
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-chat-left-quote"></i>Nueva retroalimentación</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-
-        <div class="modal-body">
-
-          <?php if (empty($aprendices_disponibles)): ?>
-            <div class="alert-flat warning mb-0">
-              <i class="bi bi-exclamation-circle"></i>
-              <div>
-                <?php if ($user_rol === ROL_INSTRUCTOR): ?>
-                  No tienes aprendices matriculados en tus fichas. Cuando se te asignen, podrás registrar retroalimentación.
-                <?php else: ?>
-                  No hay aprendices matriculados en el sistema.
-                <?php endif; ?>
-              </div>
-            </div>
-          <?php else: ?>
-
-            <div class="mb-3">
-              <label class="form-label">Aprendiz</label>
-              <select name="aprendiz_id" class="form-select" required
-                      data-picker
-                      data-picker-label="Buscar aprendiz"
-                      data-picker-placeholder="Escribe nombre, documento o ficha...">
-                <option value="" disabled selected>Selecciona un aprendiz...</option>
-                <?php foreach ($aprendices_disponibles as $ap): ?>
-                  <option value="<?= (int)$ap['id'] ?>"
-                          data-search="<?= htmlspecialchars(($ap['numero_documento'] ?? '') . ' ' . ($ap['numero_ficha'] ?? '')) ?>">
-                    <?= htmlspecialchars($ap['nombre']) ?>
-                    <?= !empty($ap['numero_documento']) ? ' — ' . htmlspecialchars($ap['tipo_documento'] ?? 'CC') . ' ' . htmlspecialchars($ap['numero_documento']) : '' ?>
-                    <?= !empty($ap['numero_ficha']) ? ' · Ficha #' . htmlspecialchars($ap['numero_ficha']) : '' ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Tipo</label>
-              <div class="row g-2">
-                <?php foreach ($tipos_label as $key => $meta): ?>
-                  <div class="col-md-4">
-                    <label class="d-block">
-                      <input type="radio" name="tipo" value="<?= $key ?>" class="d-none" required
-                             <?= $key === 'aspecto_mejorar' ? 'checked' : '' ?>>
-                      <div class="card text-center p-2" style="cursor:pointer">
-                        <i class="bi <?= $meta[2] ?>" style="font-size:1.5rem"></i>
-                        <small class="mt-1"><?= $meta[0] ?></small>
-                      </div>
-                    </label>
-                  </div>
-                <?php endforeach; ?>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Contenido</label>
-              <textarea name="contenido" class="form-control" rows="5"
-                        minlength="10" maxlength="2000"
-                        placeholder="Describe la retroalimentación de forma constructiva..."
-                        oninput="this.value = this.value.replace(/[<>]/g, '')"
-                        required></textarea>
-              <div class="small text-muted mt-1">Entre 10 y 2000 caracteres.</div>
-            </div>
-
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="privada" id="chkPrivada" value="1">
-              <label class="form-check-label" for="chkPrivada">
-                <i class="bi bi-lock-fill me-1"></i>
-                Privada (el aprendiz no la verá; solo instructores y coordinadores)
-              </label>
-            </div>
-
-          <?php endif; ?>
-
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <?php if (!empty($aprendices_disponibles)): ?>
-            <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check2 me-1"></i> Registrar
-            </button>
-          <?php endif; ?>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<?php endif; ?>
+<?php if ($gestiona) { $aprendicesModal = $aprendices; require BASE_PATH . 'components/modal_retroalimentacion.php'; } ?>

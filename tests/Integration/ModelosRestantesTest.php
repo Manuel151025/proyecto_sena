@@ -218,15 +218,29 @@ final class ModelosRestantesTest extends CasoConBaseDeDatos {
             [ROL_INSTRUCTOR, $this->idInstructorConFicha()],
             [ROL_APRENDIZ, $this->idUsuarioAprendiz()],
         ] as [$rol, $uid]) {
-            $this->assertIsArray($m->getFeedbacks($rol, $uid, $this->idAprendiz()));
-            $this->assertIsArray($m->getAprendicesDisponibles($rol, $uid));
+            $actor = new \Core\Support\Actor($uid, $rol);
+            $this->assertIsArray($m->listar($actor, ['search' => 'a', 'tipo' => 'fortaleza'], 20, 0));
+            $this->assertIsArray($m->aprendicesDisponibles($actor));
         }
+        $this->assertSame([], $m->aprendicesDisponibles(new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR)));
     }
 
-    #[TestDox('un instructor ajeno no puede dejar retroalimentación')]
+    #[TestDox('la retroalimentación: el ajeno no escribe y el aprendiz no ve las privadas')]
     public function testRetroalimentacionPermiso(): void {
-        $m = new Models\RetroalimentacionModel($this->db);
-        $this->assertFalse($m->checkPermisoInstructor($this->idAprendiz(), $this->idInstructorAjeno()));
+        $s = new \Core\Services\RetroalimentacionService($this->db);
+        $d = ['aprendiz_id' => $this->idAprendiz(), 'tipo' => 'recomendacion', 'contenido' => 'Nota interna de prueba', 'privada' => 1, 'evaluacion_id' => null];
+        try {
+            $s->registrar($d, new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR));
+            $this->fail('un instructor ajeno registró retroalimentación');
+        } catch (\Core\Support\ErrorDeNegocio) {
+            $this->addToAssertionCount(1);
+        }
+        $usuario = (int)$this->db->query("SELECT usuario_id FROM aprendices WHERE id = {$d['aprendiz_id']}")->fetchColumn();
+        $avisos = $this->contar('notificaciones', 'usuario_id = ?', [$usuario]);
+        $id = $s->registrar($d, new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR));
+        $this->assertSame($avisos, $this->contar('notificaciones', 'usuario_id = ?', [$usuario]), 'una nota privada no se anuncia al aprendiz');
+        $suyas = (new Models\RetroalimentacionModel($this->db))->listar(new \Core\Support\Actor($usuario, ROL_APRENDIZ), [], 100, 0);
+        $this->assertNotContains($id, array_map('intval', array_column($suyas, 'id')), 'el aprendiz ve una nota privada');
     }
 
     // =================================================================

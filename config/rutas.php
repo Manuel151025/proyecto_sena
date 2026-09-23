@@ -161,14 +161,19 @@ return static function (Router $router): void {
     $router->accion('/evaluaciones', 'evaluar', $EV, 'evaluar', $GESTION);
     $importacion('/evaluaciones/importar', $GESTION);
 
-    $ambos('/seguimiento',            'Core\Controllers\SeguimientoController',  'index',  $TODOS);
+    $SG = 'Core\Controllers\SeguimientoController';
+    $router->add('GET', '/seguimiento', $SG, 'index', $TODOS);
+    $router->accion('/seguimiento', 'evaluar',  $SG, 'evaluar',  $GESTION);
+    $router->accion('/seguimiento', 'observar', $SG, 'observar', $GESTION);
     $EVI = 'Core\Controllers\EvidenciasController';
     $router->add('GET', '/evidencias',         $EVI, 'index',   $TODOS);
     $router->add('GET', '/evidencias/archivo', $EVI, 'archivo', $TODOS);   // el servicio comprueba de quién es
     $router->accion('/evidencias', 'enviar',   $EVI, 'enviar',   [ROL_APRENDIZ]);
     $router->accion('/evidencias', 'revisar',  $EVI, 'revisar',  $GESTION);
     $router->accion('/evidencias', 'eliminar', $EVI, 'eliminar', [ROL_COORDINADOR, ROL_APRENDIZ]);
-    $ambos('/retroalimentacion',      'Core\Controllers\RetroalimentacionController', 'index', $TODOS);
+    $RT = 'Core\Controllers\RetroalimentacionController';
+    $router->add('GET', '/retroalimentacion', $RT, 'index', $TODOS);
+    $router->accion('/retroalimentacion', 'registrar', $RT, 'registrar', $GESTION);
     $MJ = 'Core\Controllers\MejoramientoController';
     $router->add('GET', '/mejoramiento',          $MJ, 'index',    $TODOS);
     $router->add('GET', '/mejoramiento/exportar', $MJ, 'exportar', $TODOS);

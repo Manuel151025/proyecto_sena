@@ -1680,6 +1680,10 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 }
 .tarjeta-acento { border-top: 4px solid var(--sena-primary) !important; border-radius: 12px; overflow: hidden; }
 .tarjeta-lateral { border-left: 4px solid var(--sena-primary) !important; border-radius: 8px; }
+.tarjeta-lateral.lateral-success { border-left-color: #22c55e !important; }
+.tarjeta-lateral.lateral-warning { border-left-color: #f59e0b !important; }
+.tarjeta-lateral.lateral-info { border-left-color: #0ea5e9 !important; }
+.tarjeta-lateral.lateral-danger { border-left-color: #ef4444 !important; }
 
 .panel-cifras {
   background: var(--surface-2);
@@ -1774,3 +1778,11 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .muestra-color:has(input:checked) { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
 .muestra-color:has(input:focus-visible) { outline: 2px solid var(--sena-primary); outline-offset: 2px; }
 .credencial-temporal { border-left: 4px solid var(--warning) !important; }
+
+/* Expediente de seguimiento: competencias plegables y lista de aprendices */
+.competencia-expediente > summary { cursor: pointer; list-style: none; }
+.competencia-expediente > summary::-webkit-details-marker { display: none; }
+.competencia-expediente > summary::after { content: "\F282"; font-family: "bootstrap-icons"; margin-left: auto; transition: transform .2s; }
+.competencia-expediente[open] > summary::after { transform: rotate(180deg); }
+@media (min-width: 992px) { .lista-aprendices { max-height: 75vh; overflow-y: auto; } }
+.list-group-item.active { background-color: var(--sena-primary); border-color: var(--sena-primary); color: #fff; }

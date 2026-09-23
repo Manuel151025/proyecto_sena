@@ -187,7 +187,7 @@ final class RutasYPermisosTest extends CasoDePrueba {
     public function testNumeroDeRutas(): void {
         // Es un canario: si alguien añade o quita una ruta, esta prueba
         // falla y obliga a revisar conscientemente el permiso que declara.
-        $this->assertCount(107, $this->destinos(),
+        $this->assertCount(108, $this->destinos(),
             'ha cambiado el número de rutas: revisa los permisos declarados y actualiza esta cifra');
     }
 }

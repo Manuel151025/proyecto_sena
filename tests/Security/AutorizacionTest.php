@@ -177,27 +177,23 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
         $this->assertSame($antes + 1, $this->contar('historial_evaluaciones', 'evaluacion_id = ?', [$id]));
     }
 
-    #[TestDox('el permiso de seguimiento rechaza un RAP de otra ficha')]
+    #[TestDox('el expediente no ofrece calificar a un instructor ajeno')]
     public function testPermisoDeSeguimientoConDatosCruzados(): void {
         $modelo = new SeguimientoModel($this->db);
-        $ajeno  = $this->idInstructorAjeno();
-
-        $this->assertFalse(
-            $modelo->checkInstructorPermission(
-                $this->db->query("SELECT resultado_aprendizaje_id FROM evaluaciones LIMIT 1")->fetchColumn(),
-                $this->idAprendiz(),
-                $this->idFicha(),
-                $ajeno
-            )
-        );
+        $competencias = $modelo->competencias($this->idAprendiz(), new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR));
+        foreach ($competencias as $c) {
+            foreach ($c['raps'] as $r) {
+                $this->assertFalse($r['puede_calificar'], "el ajeno podría calificar {$r['ra_codigo']}");
+            }
+        }
     }
 
     #[TestDox('agregar retroalimentación exige relación con el aprendiz')]
     public function testRetroalimentacionExigeRelacion(): void {
-        $modelo = new SeguimientoModel($this->db);
-        $this->assertFalse(
-            $modelo->checkRetroalimentacionPermission($this->idAprendiz(), $this->idInstructorAjeno())
-        );
+        $this->expectException(\Core\Support\ErrorDeNegocio::class);
+        (new \Core\Services\RetroalimentacionService($this->db))->registrar(
+            ['aprendiz_id' => $this->idAprendiz(), 'tipo' => 'fortaleza', 'contenido' => 'Sin relación con el aprendiz', 'privada' => 0, 'evaluacion_id' => null],
+            new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR));
     }
 
     // =================================================================

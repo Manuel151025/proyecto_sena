@@ -110,22 +110,23 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
     // SEGUIMIENTO Y EVALUACIÓN
     // =================================================================
 
-    #[TestDox('SeguimientoModel responde en los dos roles de gestión')]
+    #[TestDox('SeguimientoModel arma el expediente y marca qué puede calificar cada rol')]
     public function testSeguimientoModel(): void {
         $m = new Models\SeguimientoModel($this->db);
-        $ficha = $this->idFicha();
-        $programa = (int)$this->db->query("SELECT programa_id FROM fichas WHERE id = $ficha")->fetchColumn();
+        $ap = $this->idAprendiz();
+        $resumen = $this->ejecuta(fn() => $m->resumen($ap), 'resumen');
+        $this->assertSame((int)$resumen['total'], (int)$resumen['aprobados'] + (int)$resumen['en_d'] + (int)$resumen['pendientes']);
 
-        foreach ([[ROL_COORDINADOR, $this->idCoordinador()], [ROL_INSTRUCTOR, $this->idInstructorConFicha()]] as [$rol, $uid]) {
-            $this->ejecuta(fn() => $m->getFichas($uid, $rol), "getFichas ($rol)");
-            $this->ejecuta(fn() => $m->getAprendicesStats($ficha, $programa, $rol, $uid), "getAprendicesStats ($rol)");
-            $this->ejecuta(fn() => $m->getTodasActividades($ficha, $programa, $rol, $uid), "getTodasActividades ($rol)");
-        }
+        $coord = $m->competencias($ap, new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR));
+        $raps = array_merge(...array_column($coord, 'raps') ?: [[]]);
+        $this->assertSame($this->contar('evaluaciones', 'aprendiz_id = ?', [$ap]), count($raps));
+        $this->assertNotContains(false, array_column($raps, 'puede_calificar'), 'coordinación puede calificar todo');
 
-        $this->ejecuta(fn() => $m->getTodasEvaluaciones($ficha), 'getTodasEvaluaciones');
-        $this->ejecuta(fn() => $m->getRetroalimentacionesFicha($ficha), 'getRetroalimentacionesFicha');
-        $this->ejecuta(fn() => $m->getFichaDetalle($ficha), 'getFichaDetalle');
-        $this->ejecuta(fn() => $m->getPerfilAprendiz($this->idUsuarioAprendiz()), 'getPerfilAprendiz');
+        $ajeno = $m->competencias($ap, new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR));
+        $this->assertNotContains(true, array_column(array_merge(...array_column($ajeno, 'raps') ?: [[]]), 'puede_calificar'),
+            'un instructor ajeno aparece con permiso de calificar');
+        $propio = $m->competencias($ap, new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ));
+        $this->assertNotContains(true, array_column(array_merge(...array_column($propio, 'raps') ?: [[]]), 'puede_calificar'));
     }
 
     #[TestDox('EvaluacionesModel lista y cuenta en los tres roles')]
