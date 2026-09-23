@@ -4,11 +4,26 @@
     "type": "project",
     "require": {
         "phpmailer/phpmailer": "^7.1",
-        "shuchkin/simplexls": "^1.0"
+        "shuchkin/simplexls": "^1.0",
+        "dompdf/dompdf": "^3.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11"
     },
     "autoload": {
         "psr-4": {
             "Core\\": "core/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite unitarias",
+        "test:security": "phpunit --testsuite seguridad",
+        "test:integration": "phpunit --testsuite integracion"
     }
 }

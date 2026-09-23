@@ -33,7 +33,7 @@ class ReportesModel {
                 OR
                 (
                     f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND c.es_etapa_practica = 0
                     AND NOT EXISTS (
                         SELECT 1 FROM asignaciones asg 
                         WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -41,7 +41,7 @@ class ReportesModel {
                 )
                 OR
                 (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    c.es_etapa_practica = 1
                     AND ap.instructor_seguimiento_id = ?
                 )
             )
@@ -81,7 +81,7 @@ class ReportesModel {
                 OR
                 (
                     f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND c.es_etapa_practica = 0
                     AND NOT EXISTS (
                         SELECT 1 FROM asignaciones asg 
                         WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -89,7 +89,7 @@ class ReportesModel {
                 )
                 OR
                 (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    c.es_etapa_practica = 1
                     AND ap.instructor_seguimiento_id = ?
                 )
             )
@@ -134,6 +134,20 @@ class ReportesModel {
         ")->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Datos de cabecera de una ficha, para rotular el PDF exportado.
+     */
+    public function getFichaResumen(int $ficha_id): ?array {
+        $stmt = $this->db->prepare("
+            SELECT f.numero_ficha, p.nombre AS programa
+              FROM fichas f
+              JOIN programas p ON f.programa_id = p.id
+             WHERE f.id = ?
+        ");
+        $stmt->execute([$ficha_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
     public function checkFichaInstructorAccess(int $ficha_id, int $user_id): bool {
         $stmt = $this->db->prepare("
             SELECT COUNT(*) FROM fichas f
@@ -168,7 +182,7 @@ class ReportesModel {
                 OR
                 (
                     f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND c.es_etapa_practica = 0
                     AND NOT EXISTS (
                         SELECT 1 FROM asignaciones asg 
                         WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -176,7 +190,7 @@ class ReportesModel {
                 )
                 OR
                 (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    c.es_etapa_practica = 1
                     AND ap.instructor_seguimiento_id = ?
                 )
             )";
@@ -219,7 +233,7 @@ class ReportesModel {
                 OR
                 (
                     f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND c.es_etapa_practica = 0
                     AND NOT EXISTS (
                         SELECT 1 FROM asignaciones asg
                         WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -227,7 +241,7 @@ class ReportesModel {
                 )
                 OR
                 (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    c.es_etapa_practica = 1
                     AND ap.instructor_seguimiento_id = ?
                 )
             )";
@@ -266,7 +280,7 @@ class ReportesModel {
                 OR
                 (
                     f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND c.es_etapa_practica = 0
                     AND NOT EXISTS (
                         SELECT 1 FROM asignaciones asg 
                         WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -274,7 +288,7 @@ class ReportesModel {
                 )
                 OR
                 (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    c.es_etapa_practica = 1
                     AND ap.instructor_seguimiento_id = ?
                 )
             )";
@@ -312,7 +326,7 @@ class ReportesModel {
                 OR
                 (
                     f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    AND c.es_etapa_practica = 0
                     AND NOT EXISTS (
                         SELECT 1 FROM asignaciones asg 
                         WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -320,7 +334,7 @@ class ReportesModel {
                 )
                 OR
                 (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                    c.es_etapa_practica = 1
                     AND ap.instructor_seguimiento_id = ?
                 )
             )";

@@ -3,9 +3,12 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\ReportesModel;
+use Core\Services\ReportePdfService;
+use Core\Services\SemaforoReporte;
 use PDO;
 use Exception;
 
@@ -33,28 +36,33 @@ class ReportesController extends BaseController {
                 
                 $allowed_types = ['evaluaciones_ficha', 'cumplimiento_instructor', 'cumplimiento_competencia', 'historial_cambios'];
                 if (!in_array($type, $allowed_types, true)) {
-                    throw new Exception("Tipo de reporte no permitido.");
+                    throw new ErrorDeNegocio("Tipo de reporte no permitido.");
                 }
                 
-                if (!in_array($format, ['csv', 'excel'], true)) {
-                    throw new Exception("Formato de exportación no válido.");
+                if (!in_array($format, ['csv', 'excel', 'pdf'], true)) {
+                    throw new ErrorDeNegocio("Formato de exportación no válido.");
                 }
 
                 $data = [];
                 $headers = [];
                 $filename = '';
+                $subtitulo = '';
 
                 switch ($type) {
                     case 'evaluaciones_ficha':
                         $ficha_id = (int)($_POST['ficha_id'] ?? 0);
                         if ($user_rol === ROL_INSTRUCTOR) {
                             if (!$this->reportesModel->checkFichaInstructorAccess($ficha_id, $user_id)) {
-                                throw new Exception("No tiene permisos para descargar los reportes de esta ficha.");
+                                throw new ErrorDeNegocio("No tiene permisos para descargar los reportes de esta ficha.");
                             }
                         }
                         $headers = ['Aprendiz', 'Documento', 'RA Código', 'RA Denominación', 'Competencia', 'Concepto', 'Fecha Evaluación', 'Instructor'];
                         $data = $this->reportesModel->getReportEvaluacionesFicha($ficha_id, $user_id, $user_rol);
                         $filename = "evaluaciones_ficha_{$ficha_id}_" . date('Ymd');
+                        $ficha = $this->reportesModel->getFichaResumen($ficha_id);
+                        $subtitulo = $ficha
+                            ? 'Ficha ' . $ficha['numero_ficha'] . ' · ' . $ficha['programa']
+                            : 'Ficha ' . $ficha_id;
                         break;
                     case 'cumplimiento_instructor':
                         $headers = ['Instructor Líder', 'Ficha', 'Programa', 'Competencia', 'Total RAs', 'Aprobados (A)', 'No Aprobados (D)', 'Pendientes', '% Cumplimiento'];
@@ -71,6 +79,36 @@ class ReportesController extends BaseController {
                         $data = $this->reportesModel->getReportHistorialCambios($user_id, $user_rol);
                         $filename = "historial_evaluaciones_" . date('Ymd');
                         break;
+                }
+
+                // El criterio de color lo declara SemaforoReporte, para que
+                // el Excel y el PDF pinten lo mismo con los mismos umbrales.
+                $estilos = SemaforoReporte::paraReporte($type);
+
+                if ($format === 'pdf') {
+                    $titulos = [
+                        'evaluaciones_ficha'       => 'Juicios evaluativos por ficha',
+                        'cumplimiento_instructor'  => 'Cumplimiento por instructor',
+                        'cumplimiento_competencia' => 'Cumplimiento por competencia',
+                        'historial_cambios'        => 'Historial de cambios en evaluaciones',
+                    ];
+
+                    $pdf = (new ReportePdfService())->generar(
+                        $titulos[$type] ?? 'Reporte',
+                        $headers,
+                        $data,
+                        $estilos + [
+                            'subtitulo'    => $subtitulo,
+                            'generado_por' => getCurrentUser()['nombre'] ?? '',
+                            'orientacion'  => 'landscape',
+                        ]
+                    );
+
+                    header('Content-Type: application/pdf');
+                    header('Content-Disposition: attachment; filename="' . $filename . '.pdf"');
+                    header('Content-Length: ' . strlen($pdf));
+                    echo $pdf;
+                    exit;
                 }
 
                 if ($format === 'excel') {
@@ -91,26 +129,19 @@ class ReportesController extends BaseController {
                     echo '<table><thead><tr>';
                     foreach ($headers as $h) echo '<th>' . htmlspecialchars($h) . '</th>';
                     echo '</tr></thead><tbody>';
+                    $clasesExcel = [
+                        'aldia'   => ' class="alert-dia"',
+                        'riesgo'  => ' class="alert-riesgo"',
+                        'critico' => ' class="alert-critico"',
+                    ];
                     foreach ($data as $row) {
                         echo '<tr>';
-                        foreach ($row as $colIdx => $cell) {
-                            $style = ''; $class = '';
-                            if ($type === 'evaluaciones_ficha' && $colIdx === 5) {
-                                if ($cell === 'A') $class = ' class="alert-dia"';
-                                elseif ($cell === 'D') $class = ' class="alert-critico"';
-                                else $class = ' class="alert-riesgo"';
-                            } elseif (($type === 'cumplimiento_instructor' && $colIdx === 8) || ($type === 'cumplimiento_competencia' && $colIdx === 6)) {
-                                $val = (float)$cell;
-                                if ($val >= 80) $class = ' class="alert-dia"';
-                                elseif ($val >= 60) $class = ' class="alert-riesgo"';
-                                else $class = ' class="alert-critico"';
-                            } elseif ($type === 'historial_cambios' && ($colIdx === 3 || $colIdx === 4)) {
-                                if ($cell === 'A') $class = ' class="alert-dia"';
-                                elseif ($cell === 'D') $class = ' class="alert-critico"';
-                                else $class = ' class="alert-riesgo"';
-                            }
-                            if (is_numeric($cell) && $class === '') $style = ' style="text-align: center;"';
-                            echo "<td{$class}{$style}>" . htmlspecialchars((string)($cell ?? '')) . '</td>';
+                        foreach (array_values($row) as $colIdx => $cell) {
+                            $valor = (string)($cell ?? '');
+                            $semaforo = SemaforoReporte::clase($colIdx, $valor, $estilos);
+                            $class = $clasesExcel[$semaforo] ?? '';
+                            $style = $semaforo === 'num' ? ' style="text-align: center;"' : '';
+                            echo "<td{$class}{$style}>" . htmlspecialchars($valor) . '</td>';
                         }
                         echo '</tr>';
                     }
@@ -123,12 +154,17 @@ class ReportesController extends BaseController {
                     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
                     fwrite($output, "sep=;\n");
                     fputcsv($output, $headers, ';');
-                    foreach ($data as $row) fputcsv($output, $row, ';');
+                    // Cada celda pasa por protegerCsv: sin eso, un texto
+                    // escrito por un usuario que empiece por '=' se ejecuta
+                    // como fórmula al abrir el archivo (CSV injection).
+                    foreach ($data as $row) {
+                        fputcsv($output, SemaforoReporte::protegerFilaCsv($row), ';');
+                    }
                     fclose($output);
                     exit;
                 }
             } catch (Exception $e) {
-                $errors[] = 'Error al exportar reporte: ' . $e->getMessage();
+                $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al exportar reporte');
             }
         }
 
