@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\MejoramientoModel;
@@ -38,7 +39,7 @@ class MejoramientoController extends BaseController {
         try {
             $planes = $this->mejoramientoModel->getPlanesMejoramiento($user_rol, $user_id, $aprendiz_id);
         } catch (Exception $e) {
-            $errors[] = 'Error al cargar planes de mejoramiento: ' . $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar planes de mejoramiento');
         }
 
         $this->render(

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\EvidenciasModel;
@@ -122,7 +123,7 @@ class EvidenciasController extends BaseController {
                             setFlashMessage('Evidencia enviada correctamente. Su instructor será notificado.', 'success');
                             $this->redirect(APP_URL . '/index.php/evidencias');
                         } catch (Exception $e) {
-                            $errors[] = 'Error al enviar la evidencia: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al enviar la evidencia');
                         }
                     }
                 }
@@ -158,7 +159,7 @@ class EvidenciasController extends BaseController {
                             if ($evidencia) {
                                 if ($user_rol === ROL_INSTRUCTOR) {
                                     if (!$this->evidenciasModel->checkPermisoCalificar($evidencia, $user_id)) {
-                                        throw new Exception('No tiene permisos para calificar esta evidencia.');
+                                        throw new ErrorDeNegocio('No tiene permisos para calificar esta evidencia.');
                                     }
                                 }
 
@@ -169,7 +170,7 @@ class EvidenciasController extends BaseController {
                                 $errors[] = 'Evidencia no encontrada.';
                             }
                         } catch (Exception $e) {
-                            $errors[] = 'Error al calificar la evidencia: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al calificar la evidencia');
                         }
                     }
                 }
@@ -180,7 +181,7 @@ class EvidenciasController extends BaseController {
         try {
             $evidencias = $this->evidenciasModel->getEvidencias($user_rol, $user_id, $aprendiz_id);
         } catch (Exception $e) {
-            $errors[] = 'Error al cargar evidencias: ' . $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar evidencias');
         }
 
         $estados_badge = [

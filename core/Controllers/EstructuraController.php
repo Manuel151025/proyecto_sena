@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\ProgramasModel;
@@ -41,7 +45,7 @@ class EstructuraController extends BaseController {
                     $mensaje = 'Programa y todas sus competencias y RAs asociadas eliminados correctamente.';
                     $tipo_mensaje = 'success';
                 } catch (Exception $e) {
-                    $mensaje = $e->getMessage();
+                    $mensaje = ErrorDeNegocio::mensajeSeguro($e);
                     $tipo_mensaje = 'danger';
                 }
             } elseif ($_POST['action'] === 'eliminar_proyecto') {
@@ -50,7 +54,7 @@ class EstructuraController extends BaseController {
                     $mensaje = 'Proyecto formativo y sus fases eliminados correctamente.';
                     $tipo_mensaje = 'success';
                 } catch (Exception $e) {
-                    $mensaje = $e->getMessage();
+                    $mensaje = ErrorDeNegocio::mensajeSeguro($e);
                     $tipo_mensaje = 'danger';
                 }
             }
@@ -66,7 +70,7 @@ class EstructuraController extends BaseController {
             $programas = $this->programasModel->getAll();
             $proyectos = $this->proyectosModel->getAll();
         } catch (Exception $e) {
-            $mensaje = 'Error al cargar los datos de la estructura: ' . $e->getMessage();
+            $mensaje = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los datos de la estructura');
             $tipo_mensaje = 'danger';
             $numProgramas = 0;
             $numCompetencias = 0;
@@ -121,7 +125,7 @@ class EstructuraController extends BaseController {
             $nombre = trim($_POST['nombre'] ?? '');
             $codigo = trim($_POST['codigo'] ?? '');
             $duracion_horas = (int)($_POST['duracion_horas'] ?? 0);
-            $estado = $_POST['estado'] ?? 'activo';
+            $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROGRAMA_ESTADO, 'activo');
 
             if (empty($nombre)) {
                 $errors[] = 'El nombre del programa es requerido';
@@ -152,7 +156,7 @@ class EstructuraController extends BaseController {
                     $tipo_mensaje = 'success';
                     $programa = array_merge($programa, $data);
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                 }
             }
         }
@@ -197,7 +201,7 @@ class EstructuraController extends BaseController {
             $codigo = trim($_POST['codigo'] ?? '');
             $objetivo = trim($_POST['objetivo'] ?? '');
             $descripcion = trim($_POST['descripcion'] ?? '');
-            $estado = $_POST['estado'] ?? 'activo';
+            $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROGRAMA_ESTADO, 'activo');
 
             if (empty($nombre)) {
                 $errors[] = 'El nombre del proyecto es requerido';
@@ -221,7 +225,7 @@ class EstructuraController extends BaseController {
                     $tipo_mensaje = 'success';
                     $proyecto = array_merge($proyecto, $data);
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                 }
             }
         }

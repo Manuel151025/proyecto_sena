@@ -3,12 +3,21 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
+use Core\Support\Enums;
+use Core\Support\Validador;
 use Core\Database;
 use Core\Interfaces\UsuarioRepositoryInterface;
 use PDO;
 use Exception;
 
 class UsuarioModel implements UsuarioRepositoryInterface {
+    /**
+     * Valor que no existe en ningún ENUM del esquema. Se usa cuando un
+     * filtro llega con un valor desconocido: así la consulta no devuelve
+     * nada, en lugar de ignorar el filtro y devolverlo todo.
+     */
+    private const VALOR_IMPOSIBLE = "\x00__sin_coincidencia__";
+
     private PDO $db;
 
     public function __construct(?PDO $db = null) {
@@ -93,20 +102,26 @@ class UsuarioModel implements UsuarioRepositoryInterface {
         $search = trim((string)($filters['search'] ?? ''));
         if ($search !== '') {
             $where .= " AND (nombre LIKE ? OR email LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
         }
 
+        // Un filtro con un valor que no existe NO debe ignorarse: hacerlo
+        // significaba que al manipular `?rol=cualquier-cosa` el listado
+        // devolvía TODOS los usuarios en lugar de ninguno, es decir, que
+        // trastear con la URL mostraba más de lo que la pantalla ofrecía.
+        // Ahora un valor desconocido no encaja con nada, que es la
+        // respuesta honesta a "enséñame los usuarios con el rol X".
         $rol = (string)($filters['rol'] ?? '');
-        if (in_array($rol, [ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ], true)) {
+        if ($rol !== '') {
             $where .= " AND rol = ?";
-            $params[] = $rol;
+            $params[] = in_array($rol, Enums::USUARIO_ROL, true) ? $rol : self::VALOR_IMPOSIBLE;
         }
 
         $estado = (string)($filters['estado'] ?? '');
-        if (in_array($estado, ['activo', 'inactivo'], true)) {
+        if ($estado !== '') {
             $where .= " AND estado = ?";
-            $params[] = $estado;
+            $params[] = in_array($estado, Enums::USUARIO_ESTADO, true) ? $estado : self::VALOR_IMPOSIBLE;
         }
 
         return [$where, $params];

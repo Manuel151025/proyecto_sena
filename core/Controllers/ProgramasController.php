@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\ProgramasModel;
@@ -33,7 +37,7 @@ class ProgramasController extends BaseController {
                 $this->programasModel->delete($id);
                 setFlashMessage('Programa eliminado correctamente', 'success');
             } catch (Exception $e) {
-                setFlashMessage($e->getMessage(), 'danger');
+                setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
             }
             $this->redirect(APP_URL . '/index.php/programas');
         }
@@ -42,7 +46,7 @@ class ProgramasController extends BaseController {
             $programas = $this->programasModel->getAll();
         } catch (Exception $e) {
             $programas = [];
-            $mensaje = 'Error al cargar programas: ' . $e->getMessage();
+            $mensaje = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar programas');
             $tipo_mensaje = 'danger';
         }
 
@@ -79,7 +83,7 @@ class ProgramasController extends BaseController {
             $codigo = trim($_POST['codigo'] ?? '');
             $descripcion = trim($_POST['descripcion'] ?? '');
             $duracion_horas = (int)($_POST['duracion_horas'] ?? 0);
-            $estado = $_POST['estado'] ?? 'activo';
+            $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROGRAMA_ESTADO, 'activo');
 
             if (empty($nombre)) {
                 $errores[] = 'El nombre es requerido';
@@ -170,7 +174,7 @@ class ProgramasController extends BaseController {
             $codigo = trim($_POST['codigo'] ?? '');
             $descripcion = trim($_POST['descripcion'] ?? '');
             $duracion_horas = (int)($_POST['duracion_horas'] ?? 0);
-            $estado = $_POST['estado'] ?? 'activo';
+            $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROGRAMA_ESTADO, 'activo');
 
             if (empty($nombre)) {
                 $errores[] = 'El nombre es requerido';

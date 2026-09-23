@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\LogsModel;
@@ -36,7 +37,7 @@ class LogsController extends BaseController {
                 $paginacion->offset()
             );
         } catch (Exception $e) {
-            $errors[] = 'Error al cargar los registros de auditoría: ' . $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los registros de auditoría');
         }
 
         $acciones_badge = [

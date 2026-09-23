@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Models\AprendizModel;
 use Core\Models\FichaModel;
@@ -52,9 +56,9 @@ class MatriculaController extends BaseController {
                         'nombre' => mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8'),
                         'email' => trim($_POST['email'] ?? ''),
                         'numero_documento' => trim($_POST['numero_documento'] ?? ''),
-                        'tipo_documento' => $_POST['tipo_documento'] ?? 'CC',
+                        'tipo_documento' => (new Validador($_POST))->enum('tipo_documento', 'El tipo de documento', Enums::TIPO_DOCUMENTO, 'CC'),
                         'ficha_id' => (int)($_POST['ficha_id'] ?? 0),
-                        'genero' => $_POST['genero'] ?? 'O',
+                        'genero' => (new Validador($_POST))->enum('genero', 'El género', Enums::APRENDIZ_GENERO, 'O'),
                         'telefono' => trim($_POST['telefono'] ?? ''),
                         'ciudad' => trim($_POST['ciudad'] ?? ''),
                         'fecha_nacimiento' => !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : null,
@@ -84,11 +88,11 @@ class MatriculaController extends BaseController {
                     $data = [
                         'nombre' => mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8'),
                         'email' => trim($_POST['email'] ?? ''),
-                        'tipo_documento' => $_POST['tipo_documento'] ?? 'CC',
+                        'tipo_documento' => (new Validador($_POST))->enum('tipo_documento', 'El tipo de documento', Enums::TIPO_DOCUMENTO, 'CC'),
                         'numero_documento' => trim($_POST['numero_documento'] ?? ''),
                         'ficha_id' => (int)($_POST['ficha_id'] ?? 0),
                         'estado' => $_POST['estado'] ?? 'matriculado',
-                        'genero' => $_POST['genero'] ?? 'O',
+                        'genero' => (new Validador($_POST))->enum('genero', 'El género', Enums::APRENDIZ_GENERO, 'O'),
                         'fecha_nacimiento' => !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : null,
                         'telefono' => trim($_POST['telefono'] ?? ''),
                         'ciudad' => trim($_POST['ciudad'] ?? ''),
@@ -126,7 +130,7 @@ class MatriculaController extends BaseController {
                     if ($ficha_id <= 0) {
                         throw new Exception('Debe seleccionar una ficha de destino válida.');
                     } elseif (!isset($_FILES['file_csv']) || $_FILES['file_csv']['error'] !== UPLOAD_ERR_OK) {
-                        throw new Exception('Error al subir el archivo CSV o no se seleccionó ninguno.');
+                        throw new ErrorDeNegocio('Error al subir el archivo CSV o no se seleccionó ninguno.');
                     }
 
                     $file = $_FILES['file_csv']['tmp_name'];
@@ -181,7 +185,7 @@ class MatriculaController extends BaseController {
 
                             // Limpiar tipo_doc y genero
                             if (!in_array($tipo_doc, ['CC', 'TI', 'CE', 'PEP', 'PA'])) $tipo_doc = 'CC';
-                            if (!in_array($genero, ['M', 'F', 'O'])) $genero = 'O';
+                            if (!in_array($genero, Enums::APRENDIZ_GENERO, true)) $genero = 'O';
 
                             // Verificar duplicados
                             $stmt = $db->prepare("SELECT id FROM usuarios WHERE email = ?");
@@ -257,7 +261,7 @@ class MatriculaController extends BaseController {
                     }
                 }
             } catch (Exception $e) {
-                $errors[] = $e->getMessage();
+                $errors[] = ErrorDeNegocio::mensajeSeguro($e);
             }
         }
 
@@ -304,7 +308,7 @@ class MatriculaController extends BaseController {
                 $paginacion->offset()
             );
         } catch (Exception $e) {
-            $errors[] = 'Error al cargar los aprendices: ' . $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los aprendices');
         }
 
         // Etiquetas de estado

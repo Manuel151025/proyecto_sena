@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Models\FichaModel;
 use Core\Database;
@@ -45,10 +46,10 @@ class FichaController extends BaseController {
                 if ($e->getCode() === '23000') {
                     setFlashMessage('No se puede eliminar la ficha porque tiene aprendices matriculados, actividades, o evaluaciones registradas.', 'danger');
                 } else {
-                    setFlashMessage('Error de base de datos al eliminar la ficha: ' . $e->getMessage(), 'danger');
+                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error de base de datos al eliminar la ficha'), 'danger');
                 }
             } catch (Exception $e) {
-                setFlashMessage('Error al eliminar la ficha: ' . $e->getMessage(), 'danger');
+                setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al eliminar la ficha'), 'danger');
             }
             $this->redirect(APP_URL . '/index.php/fichas');
         }
@@ -59,7 +60,7 @@ class FichaController extends BaseController {
             $fichas = $this->fichaModel->getDetailedList($instructorId);
         } catch (Exception $e) {
             $fichas = [];
-            $mensaje = 'Error al cargar fichas: ' . $e->getMessage();
+            $mensaje = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar fichas');
             $tipo_mensaje = 'danger';
         }
 
@@ -205,45 +206,35 @@ class FichaController extends BaseController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            requireCsrf();
-            $numero_ficha = trim($_POST['numero_ficha'] ?? '');
-            $proyecto_id  = (int) ($_POST['proyecto_id'] ?? 0) ?: null;
-            $programa_id  = (int) ($_POST['programa_id'] ?? 0);
-            $instructor_id = (int) ($_POST['instructor_id'] ?? 0);
-            $estado = $_POST['estado'] ?? 'planeacion';
-            $cantidad_aprendices = (int) ($_POST['cantidad_aprendices'] ?? 0);
-            $fecha_inicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
-            $fecha_fin = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
-            $cumplimiento_porcentaje = (float) ($_POST['cumplimiento_porcentaje'] ?? 0);
+            $v = new \Core\Support\Validador($_POST);
 
-            if (empty($numero_ficha)) {
-                $errors[] = 'El número de ficha es requerido';
-            } elseif (mb_strlen($numero_ficha, 'UTF-8') > 20) {
-                $errors[] = 'El número de ficha no puede exceder los 20 caracteres';
-            } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $numero_ficha)) {
-                $errors[] = 'El número de ficha contiene caracteres no permitidos';
+            $numero_ficha  = $v->texto('numero_ficha', 'El número de ficha', 1, 20);
+            $proyecto_id   = $v->id('proyecto_id', 'El proyecto', false) ?: null;
+            $programa_id   = $v->id('programa_id', 'El programa');
+            $instructor_id = $v->id('instructor_id', 'El instructor');
+            $estado        = $v->enum('estado', 'El estado', ['planeacion', 'induccion', 'ejecucion', 'cierre'], 'planeacion');
+            $fecha_inicio  = $v->fecha('fecha_inicio', 'La fecha de inicio', false);
+            $fecha_fin     = $v->fecha('fecha_fin', 'La fecha de fin', false);
+            $v->rangoFechas($fecha_inicio, $fecha_fin);
+
+            if ($numero_ficha !== '' && !preg_match('/^[a-zA-Z0-9\-]+$/', $numero_ficha)) {
+                $v->agregarError('El número de ficha contiene caracteres no permitidos.');
             }
 
-            if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa';
-            if ($instructor_id <= 0) $errors[] = 'Debe seleccionar un instructor';
-            if (!in_array($estado, ['planeacion', 'induccion', 'ejecucion', 'cierre'])) $errors[] = 'Estado inválido';
-            
-            if ($cantidad_aprendices < 0 || $cantidad_aprendices > 999) {
-                $errors[] = 'La cantidad de aprendices debe estar entre 0 y 999';
-            }
-            if ($cumplimiento_porcentaje < 0 || $cumplimiento_porcentaje > 100) {
-                $errors[] = 'El cumplimiento debe estar entre 0 y 100%';
-            }
+            // `cantidad_aprendices` ya no se acepta del formulario: es el
+            // número de aprendices matriculados, un dato derivado de la tabla
+            // `aprendices`. Poder teclearlo a mano es lo que lo desincronizó
+            // en 3 de las 7 fichas. Los listados lo calculan al leer.
+            $cantidad_aprendices = $this->fichaModel->contarAprendices($id);
 
-            if ($fecha_inicio && !strtotime($fecha_inicio)) {
-                $errors[] = 'La fecha de inicio no es válida';
-            }
-            if ($fecha_fin && !strtotime($fecha_fin)) {
-                $errors[] = 'La fecha de fin no es válida';
-            }
-            if ($fecha_inicio && $fecha_fin && strtotime($fecha_inicio) > strtotime($fecha_fin)) {
-                $errors[] = 'La fecha de inicio no puede ser posterior a la fecha de fin';
-            }
+            // `cumplimiento_porcentaje` tampoco: lo recalcula el sistema al
+            // calificar evidencias. Aceptarlo por formulario significaba que
+            // el valor mostrado dependía de quién hubiera escrito el último.
+            $cumplimiento_porcentaje = $id > 0
+                ? (float)($this->fichaModel->getFichaById($id)['cumplimiento_porcentaje'] ?? 0)
+                : 0.0;
+
+            $errors = array_merge($errors, $v->errores());
 
             if (empty($errors)) {
                 try {

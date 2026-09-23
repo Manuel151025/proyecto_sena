@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\CompetenciasModel;
@@ -41,7 +45,7 @@ class CompetenciasController extends BaseController {
                 $codigo = trim($_POST['codigo'] ?? '');
                 $descripcion = trim($_POST['descripcion'] ?? '');
                 $horas = (int)($_POST['horas'] ?? 0);
-                $estado = $_POST['estado'] ?? 'activo';
+                $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::COMPETENCIA_ESTADO, 'activo');
 
                 if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa válido.';
                 if (empty($nombre)) {
@@ -81,7 +85,7 @@ class CompetenciasController extends BaseController {
                         setFlashMessage('Competencia registrada exitosamente.', 'success');
                         $this->redirect(APP_URL . '/index.php/competencias');
                     } catch (Exception $e) {
-                        setFlashMessage($e->getMessage(), 'danger');
+                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
                     }
                 }
             }
@@ -98,7 +102,7 @@ class CompetenciasController extends BaseController {
                 $codigo      = trim($_POST['codigo'] ?? '');
                 $descripcion = trim($_POST['descripcion'] ?? '');
                 $horas       = (int)($_POST['horas'] ?? 0);
-                $estado      = $_POST['estado'] ?? 'activo';
+                $estado      = (new Validador($_POST))->enum('estado', 'El estado', Enums::COMPETENCIA_ESTADO, 'activo');
 
                 if ($id <= 0)          $errors[] = 'Competencia no válida.';
                 if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa válido.';
@@ -139,7 +143,7 @@ class CompetenciasController extends BaseController {
                         setFlashMessage('Competencia actualizada exitosamente.', 'success');
                         $this->redirect(APP_URL . '/index.php/competencias');
                     } catch (Exception $e) {
-                        setFlashMessage($e->getMessage(), 'danger');
+                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
                     }
                 }
             }
@@ -159,7 +163,7 @@ class CompetenciasController extends BaseController {
                         setFlashMessage('Competencia eliminada exitosamente.', 'success');
                         $this->redirect(APP_URL . '/index.php/competencias');
                     } catch (Exception $e) {
-                        setFlashMessage($e->getMessage(), 'danger');
+                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
                     }
                 }
             }
@@ -190,7 +194,7 @@ class CompetenciasController extends BaseController {
             $competencias = $this->competenciasModel->getFilteredList($filters);
         } catch (Exception $e) {
             $competencias = [];
-            $errors[] = $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e);
         }
 
         $this->render(
@@ -248,7 +252,7 @@ class CompetenciasController extends BaseController {
                         try {
                             $rows = XlsxParser::parse($fileTmpPath);
                         } catch (Exception $e) {
-                            $errors[] = 'Error al procesar el archivo Excel: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al procesar el archivo Excel');
                         }
                     }
 
@@ -367,7 +371,7 @@ class CompetenciasController extends BaseController {
                                         if ($this->db->inTransaction()) {
                                             $this->db->rollBack();
                                         }
-                                        $errors[] = 'Error al insertar competencias en la BD: ' . $e->getMessage();
+                                        $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al insertar competencias en la BD');
                                     }
                                 } else {
                                     $errors[] = 'El archivo no contiene filas válidas.';

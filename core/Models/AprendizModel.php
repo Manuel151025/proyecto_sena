@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
+use Core\Support\Validador;
 use Core\Database;
 use Exception;
 use PDO;
@@ -73,9 +74,9 @@ class AprendizModel {
 
         if (!empty($filters['search'])) {
             $from .= " AND (u.nombre LIKE ? OR a.numero_documento LIKE ? OR u.email LIKE ?)";
-            $params[] = "%{$filters['search']}%";
-            $params[] = "%{$filters['search']}%";
-            $params[] = "%{$filters['search']}%";
+            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
+            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
+            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
         }
 
         if (!empty($filters['ficha_id'])) {

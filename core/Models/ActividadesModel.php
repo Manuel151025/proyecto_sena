@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
+use Core\Support\Validador;
 use Core\Database;
 use PDO;
 use Exception;
@@ -145,8 +146,8 @@ class ActividadesModel {
 
         if (!empty($filters['search'])) {
             $sql .= " AND (act.nombre LIKE ? OR act.descripcion LIKE ?)";
-            $params[] = "%" . $filters['search'] . "%";
-            $params[] = "%" . $filters['search'] . "%";
+            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
+            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
         }
 
         if (!empty($filters['estado'])) {

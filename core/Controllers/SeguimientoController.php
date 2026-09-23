@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\SeguimientoModel;
@@ -33,7 +37,7 @@ class SeguimientoController extends BaseController {
             $allowed_actions = ['registrar_evaluacion', 'agregar_retroalimentacion'];
             
             if (!in_array($action, $allowed_actions, true)) {
-                throw new \Exception("Acción no permitida.");
+                throw new ErrorDeNegocio("Acción no permitida.");
             }
 
             if ($action === 'registrar_evaluacion') {
@@ -65,14 +69,14 @@ class SeguimientoController extends BaseController {
                         try {
                             if ($user_rol === ROL_INSTRUCTOR) {
                                 if (!$this->seguimientoModel->checkInstructorPermission($ra_id, $aprendiz_id_p, $ficha_id_p, $user_id)) {
-                                    throw new Exception('No tiene permisos para calificar esta competencia en la ficha seleccionada.');
+                                    throw new ErrorDeNegocio('No tiene permisos para calificar esta competencia en la ficha seleccionada.');
                                 }
                             }
                             $this->seguimientoModel->registrarEvaluacion($ra_id, $aprendiz_id_p, $ficha_id_p, $concepto, $comentario, $motivo, $user_id);
                             setFlashMessage('Evaluación académica guardada correctamente.', 'success');
                             $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            setFlashMessage('Error al registrar la evaluación: ' . $e->getMessage(), 'danger');
+                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al registrar la evaluación'), 'danger');
                         }
                     }
                 }
@@ -81,7 +85,7 @@ class SeguimientoController extends BaseController {
                     $errors[] = 'No tiene permisos para agregar anotaciones de seguimiento.';
                 } else {
                     $aprendiz_id_r = (int)($_POST['aprendiz_id'] ?? 0);
-                    $tipo          = $_POST['tipo'] ?? 'recomendacion';
+                    $tipo          = (new Validador($_POST))->enum('tipo', 'El tipo', Enums::RETROALIMENTACION_TIPO, 'recomendacion');
                     $contenido     = trim($_POST['contenido'] ?? '');
                     $privada       = isset($_POST['privada']) ? 1 : 0;
 
@@ -99,14 +103,14 @@ class SeguimientoController extends BaseController {
                         try {
                             if ($user_rol === ROL_INSTRUCTOR) {
                                 if (!$this->seguimientoModel->checkRetroalimentacionPermission($aprendiz_id_r, $user_id)) {
-                                    throw new Exception('El aprendiz no pertenece a ninguna de sus fichas asignadas ni está asignado a su seguimiento.');
+                                    throw new ErrorDeNegocio('El aprendiz no pertenece a ninguna de sus fichas asignadas ni está asignado a su seguimiento.');
                                 }
                             }
                             $this->seguimientoModel->agregarRetroalimentacion($aprendiz_id_r, $user_id, $tipo, $contenido, $privada);
                             setFlashMessage('Observación registrada exitosamente.', 'success');
                             $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            setFlashMessage('Error al registrar observación: ' . $e->getMessage(), 'danger');
+                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al registrar observación'), 'danger');
                         }
                     }
                 }
@@ -138,7 +142,7 @@ class SeguimientoController extends BaseController {
                     $mis_retroalimentaciones = $this->seguimientoModel->getMisRetroalimentaciones($ap_id);
                 }
             } catch (Exception $e) {
-                $errors[] = 'Error al cargar perfil de seguimiento: ' . $e->getMessage();
+                $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar perfil de seguimiento');
             }
         } else {
             try {
@@ -199,7 +203,7 @@ class SeguimientoController extends BaseController {
                     }
                 }
             } catch (Exception $e) {
-                $errors[] = 'Error al cargar los datos de las fichas: ' . $e->getMessage();
+                $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los datos de las fichas');
             }
         }
 

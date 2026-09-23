@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+
 use Core\BaseController;
 use Core\Database;
 use Core\Models\CalendarioModel;
@@ -35,7 +37,7 @@ class CalendarioController extends BaseController {
             if ($_POST['action'] === 'crear_evento') {
                 $titulo = trim($_POST['titulo'] ?? '');
                 $descripcion = trim($_POST['descripcion'] ?? '');
-                $fecha = $_POST['fecha'] ?? '';
+                $fecha = (new Validador($_POST))->fecha('fecha', 'La fecha del evento') ?? '';
                 $ficha_id = (int)($_POST['ficha_id'] ?? 0);
 
                 if ($titulo === '' || mb_strlen($titulo) > 150) {

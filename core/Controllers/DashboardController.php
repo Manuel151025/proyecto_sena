@@ -39,7 +39,7 @@ class DashboardController extends BaseController {
             $this->render(
                 BASE_PATH . 'modules/dashboard/views/instructor.view.php',
                 [
-                    'nombreUsuario' => htmlspecialchars($user['nombre']),
+                    'nombreUsuario' => $user['nombre'],
                     'kpis' => $kpis,
                     'fichasInstructor' => $fichasInstructor,
                     'pendientesPlanes' => $pendientesPlanes,
@@ -76,7 +76,7 @@ class DashboardController extends BaseController {
             $this->render(
                 BASE_PATH . 'modules/dashboard/views/aprendiz.view.php',
                 [
-                    'nombreUsuario' => htmlspecialchars($user['nombre']),
+                    'nombreUsuario' => $user['nombre'],
                     'aprendiz' => $aprendizInfo,
                     'progreso' => $progreso,
                     'progresoCompetencias' => $progresoCompetencias,
@@ -90,7 +90,9 @@ class DashboardController extends BaseController {
         }
 
         // Si es coordinador, cargar las métricas y la nueva vista
-        $nombreUsuario = htmlspecialchars($user['nombre']);
+        // El escapado lo hace la vista. Hacerlo tambien aqui producia doble
+        // escapado: un apostrofo en el nombre se veia como "O&#039;Brien".
+        $nombreUsuario = $user['nombre'];
 
         // Obtener KPIs e información agregada del modelo
         $kpis = $this->dashboardModel->getKpiMetrics();

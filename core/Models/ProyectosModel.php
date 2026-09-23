@@ -38,7 +38,9 @@ class ProyectosModel {
                 SELECT 
                     pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
                     COUNT(DISTINCT f.id) as total_fichas,
-                    SUM(f.cantidad_aprendices) as total_aprendices,
+                    (SELECT COUNT(*) FROM aprendices ap_c
+                      JOIN fichas f_c ON f_c.id = ap_c.ficha_id
+                     WHERE f_c.proyecto_id = pr.id AND ap_c.estado <> 'desertado') as total_aprendices,
                     COUNT(DISTINCT fp.id) as total_fases,
                     SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
                     AVG(fp.cumplimiento_porcentaje) as avance_promedio
@@ -57,7 +59,9 @@ class ProyectosModel {
                 SELECT 
                     pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
                     COUNT(DISTINCT f.id) as total_fichas,
-                    SUM(f.cantidad_aprendices) as total_aprendices,
+                    (SELECT COUNT(*) FROM aprendices ap_c
+                      JOIN fichas f_c ON f_c.id = ap_c.ficha_id
+                     WHERE f_c.proyecto_id = pr.id AND ap_c.estado <> 'desertado') as total_aprendices,
                     COUNT(DISTINCT fp.id) as total_fases,
                     SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
                     AVG(fp.cumplimiento_porcentaje) as avance_promedio
@@ -75,7 +79,9 @@ class ProyectosModel {
                 SELECT 
                     pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
                     COUNT(DISTINCT f.id) as total_fichas,
-                    SUM(f.cantidad_aprendices) as total_aprendices,
+                    (SELECT COUNT(*) FROM aprendices ap_c
+                      JOIN fichas f_c ON f_c.id = ap_c.ficha_id
+                     WHERE f_c.proyecto_id = pr.id AND ap_c.estado <> 'desertado') as total_aprendices,
                     COUNT(DISTINCT fp.id) as total_fases,
                     SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
                     AVG(fp.cumplimiento_porcentaje) as avance_promedio
