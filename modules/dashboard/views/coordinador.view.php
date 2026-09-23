@@ -3,391 +3,195 @@ declare(strict_types=1);
 
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+use Core\Support\Semaforo;
+
+$scriptsVista[] = 'modulos/graficos.js';
+$url = static fn(string $r) => e(APP_URL . '/index.php' . $r);
+$pct = static fn($v) => $v === null ? '—' : ((int)round((float)$v)) . '%';
+$fecha = static fn(?string $f) => $f ? date('d/m/Y', strtotime($f)) : '—';
+foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach;
+if (!empty($vacio)) { return; }
+$r = $resumen;
 ?>
-<!-- Hero Banner de Bienvenida Premium Compacto -->
-<div class="card on-dark border-0 mb-4 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 12px;">
-  <!-- Figuras orgánicas de fondo -->
-  <div class="position-absolute" style="width: 180px; height: 180px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -85px; right: -40px;"></div>
-  <div class="position-absolute" style="width: 120px; height: 120px; background: rgba(255, 255, 255, 0.02); border-radius: 50%; bottom: -45px; right: 90px;"></div>
-  
-  <div class="card-body p-3 p-md-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 position-relative" style="z-index: 2;">
-    <div>
-      <span class="badge bg-white text-success fw-bold px-2.5 py-1.5 mb-2" style="font-size: 0.65rem; border-radius: 30px; letter-spacing: 0.05em;">PORTAL DE COORDINACIÓN ACADÉMICA</span>
-      <h3 class="fw-bold mb-1 text-white" style="letter-spacing: -0.01em; font-size: 1.5rem;">¡Hola, <?= htmlspecialchars($nombreUsuario, ENT_QUOTES, 'UTF-8') ?>! 👋</h3>
-      <p class="mb-0 text-white-50" style="max-width: 580px; font-size: 0.88rem; line-height: 1.5;">
-        Monitorea los indicadores de cumplimiento, administra fichas de formación y controla la retención académica.
-      </p>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-      <a href="<?= e(APP_URL . '/index.php/usuarios?nuevo=1') ?>" class="btn btn-light text-dark fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-        <i class="bi bi-person-plus-fill me-1"></i> Nuevo Usuario
-      </a>
-      <a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-outline-light fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; border-width: 1.5px;">
-        <i class="bi bi-folder-fill me-1"></i> Ver Fichas
-      </a>
-    </div>
+<section class="panel-hero p-3 p-md-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+  <div>
+    <span class="etiqueta mb-2">COORDINACIÓN ACADÉMICA</span>
+    <h1 class="h4 fw-bold mb-1 text-white">Hola, <?= e($nombreUsuario) ?></h1>
+    <p class="mb-0 small">Situación del centro al <?= e(date('d/m/Y')) ?>: desempeño y avance de los aprendices, fichas y competencias que requieren atención y carga de los instructores.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="<?= $url('/reportes') ?>" class="btn btn-light btn-sm fw-bold"><i class="bi bi-file-earmark-bar-graph me-1"></i>Reportes</a>
+    <a href="<?= $url('/fichas') ?>" class="btn btn-outline-light btn-sm fw-bold"><i class="bi bi-folder me-1"></i>Fichas</a>
+  </div>
+</section>
+
+<div class="row g-3 mb-4">
+  <?php foreach ([
+      ['etiqueta' => 'Fichas activas', 'valor' => $r['fichas_activas'], 'icono' => 'bi-journal-bookmark', 'enlace' => '/fichas', 'nota' => $r['instructores'] . ' instructores activos'],
+      ['etiqueta' => 'Aprendices en formación', 'valor' => $r['aprendices'], 'icono' => 'bi-people', 'enlace' => '/matriculas', 'nota' => 'Deserción ' . $pct($r['desercion'])],
+      ['etiqueta' => 'Desempeño', 'valor' => $pct($r['desempeno']), 'icono' => 'bi-speedometer2', 'clase' => 'text-' . Semaforo::clase($r['semaforo']), 'nota' => 'RAP en A sobre lo evaluado'],
+      ['etiqueta' => 'Avance de RAP', 'valor' => $pct($r['avance']), 'icono' => 'bi-graph-up-arrow', 'nota' => number_format($r['pendientes'], 0, ',', '.') . ' juicios pendientes'],
+      ['etiqueta' => 'Planes vigentes', 'valor' => $r['planes_vigentes'], 'icono' => 'bi-arrow-repeat', 'enlace' => '/mejoramiento?estado=vigente',
+       'nota' => $r['planes_vencidos'] > 0 ? $r['planes_vencidos'] . ' vencidos' : $r['planes_cumplidos'] . ' cumplidos', 'clase' => $r['planes_vencidos'] > 0 ? 'text-danger' : ''],
+      ['etiqueta' => 'Evidencias por revisar', 'valor' => $r['evidencias_por_revisar'], 'icono' => 'bi-inbox', 'enlace' => '/evidencias?estado=enviada'],
+  ] as $kpi): ?>
+    <div class="col-6 col-md-4 col-xl-2"><?php require BASE_PATH . 'components/kpi.php'; ?></div>
+  <?php endforeach; ?>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-1">Semáforo de aprendices</h2>
+      <p class="small text-muted mb-2">Crítico: menos del 60 % en A o más de 2 RAP en D. Riesgo: menos del 80 % o algún D.</p>
+      <div class="grafico">
+        <canvas role="img" aria-label="Aprendices por semáforo" data-grafico="<?= datosJson(['tipo' => 'doughnut',
+            'etiquetas' => array_map([Semaforo::class, 'etiqueta'], array_keys($semaforo)),
+            'series' => [['nombre' => 'Aprendices', 'datos' => array_values($semaforo), 'colores' => ['#ef4444', '#f59e0b', '#22c55e', '#94a3b8']]]]) ?>"></canvas>
+        <div class="grafico-vacio" hidden>Sin aprendices en formación.</div>
+      </div>
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-1">Juicios emitidos por semana</h2>
+      <p class="small text-muted mb-2">Según el historial de evaluaciones de las últimas 12 semanas.</p>
+      <div class="grafico">
+        <canvas role="img" aria-label="Juicios A y D por semana" data-grafico="<?= datosJson(['tipo' => 'bar', 'apilado' => true, 'etiquetas' => $tendencia['etiquetas'],
+            'series' => [['nombre' => 'A', 'datos' => $tendencia['a'], 'color' => '#22c55e'], ['nombre' => 'D', 'datos' => $tendencia['d'], 'color' => '#ef4444']]]) ?>"></canvas>
+        <div class="grafico-vacio" hidden>No se emitieron juicios en las últimas 12 semanas.</div>
+      </div>
+    </div></div>
   </div>
 </div>
 
-<!-- Grid de Tarjetas KPI con Minigráficos (Sparklines) -->
+<div class="card border-0 shadow-sm mb-4"><div class="card-body">
+  <h2 class="h6 fw-bold mb-3">Por programa de formación</h2>
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="grafico">
+        <canvas role="img" aria-label="Desempeño y avance por programa" data-grafico="<?= datosJson(['tipo' => 'bar', 'sufijo' => '%', 'maximo' => 100,
+            'etiquetas' => array_column($programas, 'codigo'),
+            'series' => [['nombre' => 'Desempeño', 'datos' => array_map(static fn($p) => $p['desempeno'] ?? 0, $programas), 'color' => '#39A900'],
+                         ['nombre' => 'Avance', 'datos' => array_map(static fn($p) => $p['avance'] ?? 0, $programas), 'color' => '#0ea5e9']]]) ?>"></canvas>
+        <div class="grafico-vacio" hidden>Sin juicios registrados.</div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="table-wrap">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Programa</th><th class="text-end">Fichas</th><th class="text-end">Aprendices</th><th class="text-end">Desempeño</th><th class="text-end">Avance</th><th class="text-end">Deserción</th></tr></thead>
+          <tbody>
+            <?php foreach ($programas as $p): ?>
+            <tr>
+              <td><span class="fw-semibold"><?= e($p['codigo']) ?></span><small class="d-block text-muted texto-recortado-2"><?= e($p['nombre']) ?></small></td>
+              <td class="text-end"><?= (int)$p['fichas'] ?></td>
+              <td class="text-end"><?= (int)$p['aprendices'] ?></td>
+              <td class="text-end"><span class="badge-soft <?= e(Semaforo::clase(Semaforo::porcentaje($p['desempeno']))) ?>"><?= e($pct($p['desempeno'])) ?></span></td>
+              <td class="text-end"><?= e($pct($p['avance'])) ?></td>
+              <td class="text-end"><?= e($pct($p['desercion'])) ?></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div></div>
+
 <div class="row g-3 mb-4">
-  <!-- Fichas Activas -->
-  <div class="col-6 col-xl-3">
-    <div class="kpi">
-      <div class="kpi-content">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="label">Fichas Activas</div>
-            <div class="value"><?= $fichasActivas ?></div>
-          </div>
-          <div class="icon-bg"><i class="bi bi-journal-bookmark"></i></div>
-        </div>
-        <div class="mt-2">
-          <span class="trend up"><i class="bi bi-arrow-up-right me-1"></i>+4.2%</span>
-          <span class="text-muted ms-2 small">vs mes anterior</span>
-        </div>
-      </div>
-      <div class="sparkline-container">
-        <canvas id="sparkFichas" role="img" aria-label="Minigráfico de tendencia de fichas activas, valor actual: <?= $fichasActivas ?>"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Aprendices Matriculados -->
-  <div class="col-6 col-xl-3">
-    <div class="kpi">
-      <div class="kpi-content">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="label">Aprendices</div>
-            <div class="value"><?= $aprendicesMatriculados ?></div>
-          </div>
-          <div class="icon-bg" style="color: #3B82F6;"><i class="bi bi-people"></i></div>
-        </div>
-        <div class="mt-2">
-          <span class="trend up" style="background: var(--info-bg); color: var(--info-text);"><i class="bi bi-arrow-up-right me-1"></i>+1.8%</span>
-          <span class="text-muted ms-2 small">vs mes anterior</span>
-        </div>
-      </div>
-      <div class="sparkline-container">
-        <canvas id="sparkAprendices" role="img" aria-label="Minigráfico de tendencia de aprendices matriculados, valor actual: <?= $aprendicesMatriculados ?>"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Instructores Activos -->
-  <div class="col-6 col-xl-3">
-    <div class="kpi">
-      <div class="kpi-content">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="label">Instructores</div>
-            <div class="value"><?= $instructoresActivos ?></div>
-          </div>
-          <div class="icon-bg" style="color: #8B5CF6;"><i class="bi bi-person-workspace"></i></div>
-        </div>
-        <div class="mt-2">
-          <span class="trend"><i class="bi bi-dash me-1"></i>0.0%</span>
-          <span class="text-muted ms-2 small">vs mes anterior</span>
-        </div>
-      </div>
-      <div class="sparkline-container">
-        <canvas id="sparkInstructores" role="img" aria-label="Minigráfico de tendencia de instructores activos, valor actual: <?= $instructoresActivos ?>"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Promedio de Retención Académica -->
-  <div class="col-6 col-xl-3">
-    <div class="kpi">
-      <div class="kpi-content">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="label">Retención Prom.</div>
-            <div class="value"><?= $retencioPromedio ?>%</div>
-          </div>
-          <div class="icon-bg" style="color: #F59E0B;"><i class="bi bi-graph-up-arrow"></i></div>
-        </div>
-        <div class="mt-2">
-          <?php $esAlto = ($retencioPromedio >= 80); ?>
-          <span class="trend <?= $esAlto ? 'up' : 'down' ?>">
-            <i class="bi <?= $esAlto ? 'bi-arrow-up-right' : 'bi-arrow-down-right' ?> me-1"></i>
-            <?= $esAlto ? 'Estable' : 'Bajo Meta (80%)' ?>
-          </span>
-        </div>
-      </div>
-      <div class="sparkline-container">
-        <canvas id="sparkRetencion" role="img" aria-label="Minigráfico de tendencia de retención académica promedio, valor actual: <?= $retencioPromedio ?>%"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Sección Principal: Gráficos de Analítica e Indicadores -->
-<div class="row g-3 mb-4">
-  <!-- Gráfico de Dispersión y Volumen por Programa -->
-  <div class="col-lg-8">
-    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius: 12px;">
-      <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-0 pt-3 px-4">
-        <h5 class="mb-0 fw-semibold text-gradient">Analítica de Cumplimiento vs Volumen</h5>
-        <span class="badge-soft primary">Filtro Avanzado</span>
-      </div>
-      <div class="card-body px-4 pb-4">
-        <div style="position: relative; height: 280px;">
-          <canvas id="chartProg" role="img" aria-label="Gráfico de dispersión: cumplimiento académico frente al volumen de aprendices por programa de formación"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Distribución de Fichas por Estado -->
-  <div class="col-lg-4">
-    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius: 12px;">
-      <div class="card-header bg-transparent border-0 pt-3 px-4">
-        <h5 class="mb-0 fw-semibold text-gradient">Estado de Fichas</h5>
-      </div>
-      <div class="card-body px-4 pb-4">
-        <div style="position: relative; height: 210px;">
-          <canvas id="chartPie" role="img" aria-label="Gráfico circular: distribución de fichas de formación por estado"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Paneles de Analíticas Secundarias (Solo si hay datos críticos) -->
-<?php if (!empty($fichasCriticas)): ?>
-<div class="row g-3 mb-4">
-  <!-- Tasa de Deserción por Programa -->
-  <div class="col-lg-4">
-    <div class="card h-100 shadow-sm border-0 glass-card">
-      <div class="card-header bg-transparent border-0 pt-3 px-3">
-        <h6 class="mb-0 fw-semibold text-gradient">Tasa de Deserción por Programa</h6>
-      </div>
-      <div class="card-body px-3 pb-3">
-        <div style="position: relative; height: 220px;">
-          <canvas id="chartDesercionRate" role="img" aria-label="Gráfico de barras: tasa de deserción por programa de formación"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Relación Retención vs Deserción -->
-  <div class="col-lg-4">
-    <div class="card h-100 shadow-sm border-0 glass-card">
-      <div class="card-header bg-transparent border-0 pt-3 px-3">
-        <h6 class="mb-0 fw-semibold text-gradient">Retención vs Deserción</h6>
-      </div>
-      <div class="card-body px-3 pb-3">
-        <div style="position: relative; height: 220px;">
-          <canvas id="chartRetencion" role="img" aria-label="Gráfico comparativo: retención académica frente a tasa de deserción por programa"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Top Instructores con Excelente Nivel de Cumplimiento -->
-  <div class="col-lg-4">
-    <div class="card h-100 shadow-sm border-0 glass-card">
-      <div class="card-header bg-transparent border-0 pt-3 px-3">
-        <h6 class="mb-0 fw-semibold text-gradient"><i class="bi bi-trophy text-warning me-2"></i>Top Instructores</h6>
-      </div>
-      <div class="card-body p-0">
-        <ul class="list-group list-group-flush bg-transparent">
-          <?php foreach ($topInstructores as $inst): ?>
-          <li class="list-group-item d-flex align-items-center gap-3 p-3 bg-transparent" style="border-color: var(--border);">
-            <div class="avatar" style="background: <?= htmlspecialchars($inst['avatar_color']) ?>; width: 38px; height: 38px; font-size: 1rem; border-radius: 50%; display: grid; place-items: center; color: white;">
-              <?= strtoupper(substr($inst['nombre'], 0, 1)) ?>
-            </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 fw-bold mb-0">Fichas con menor desempeño</h2><a class="small" href="<?= $url('/fichas') ?>">Todas</a></div>
+      <div class="list-group list-group-flush">
+        <?php foreach ($fichas as $f): ?>
+          <a class="list-group-item list-group-item-action d-flex align-items-center gap-2 px-0" href="<?= $url('/fichas/ver?id=' . (int)$f['id']) ?>">
             <div class="flex-grow-1 min-w-0">
-              <h6 class="mb-0 fw-semibold text-truncate" style="font-size: 0.88rem;"><?= htmlspecialchars($inst['nombre']) ?></h6>
-              <small class="text-muted"><?= $inst['fichas_asignadas'] ?> fichas asignadas</small>
+              <div class="fw-semibold">Ficha <?= e($f['numero_ficha']) ?> <small class="text-muted fw-normal"><?= e($f['codigo_programa']) ?></small></div>
+              <small class="text-muted"><?= (int)$f['aprendices_activos'] ?> aprendices · <?= (int)$f['en_d'] ?> RAP en D · avance <?= e($pct($f['cumplimiento'])) ?></small>
             </div>
-            <div class="text-end">
-              <div class="fw-bold text-success" style="font-size: 0.95rem;"><?= round((float)$inst['promedio'], 1) ?>%</div>
-              <small class="text-muted" style="font-size: 0.72rem;">Cumplimiento</small>
-            </div>
-          </li>
-          <?php endforeach; ?>
-        </ul>
+            <span class="badge-soft <?= e(Semaforo::clase($f['semaforo'])) ?>"><?= e($pct($f['pct_a'])) ?></span>
+          </a>
+        <?php endforeach; ?>
+        <?php if (empty($fichas)): ?><div class="text-muted small py-3">No hay fichas.</div><?php endif; ?>
       </div>
-    </div>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 fw-bold mb-0">Aprendices en riesgo</h2><a class="small" href="<?= $url('/reportes') ?>">Reporte completo</a></div>
+      <div class="list-group list-group-flush">
+        <?php foreach ($enRiesgo as $a): ?>
+          <a class="list-group-item list-group-item-action d-flex align-items-center gap-2 px-0" href="<?= $url('/seguimiento?ficha_id=' . (int)$a['ficha_id'] . '&aprendiz_id=' . (int)$a['id'] . '#expediente') ?>">
+            <div class="flex-grow-1 min-w-0">
+              <div class="fw-semibold text-truncate"><?= e($a['nombre']) ?></div>
+              <small class="text-muted">Ficha <?= e($a['numero_ficha']) ?> · <?= (int)$a['en_d'] ?> en D · <?= (int)$a['planes'] ?> plan(es)</small>
+            </div>
+            <span class="badge-soft <?= e(Semaforo::clase($a['semaforo'])) ?>"><?= e(Semaforo::etiqueta($a['semaforo'])) ?> · <?= e($pct($a['pct_a'])) ?></span>
+          </a>
+        <?php endforeach; ?>
+        <?php if (empty($enRiesgo)): ?><div class="text-muted small py-3">Ningún aprendiz en riesgo.</div><?php endif; ?>
+      </div>
+    </div></div>
   </div>
 </div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-1">Carga de los instructores</h2>
+      <p class="small text-muted mb-2">Pendientes y D a su cargo, juicios emitidos en 30 días y planes que acompañan.</p>
+      <div class="table-wrap">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Instructor</th><th class="text-end">Fichas</th><th class="text-end">Pendientes</th><th class="text-end">En D</th><th class="text-end">Juicios 30 d</th><th class="text-end">Planes</th></tr></thead>
+          <tbody>
+            <?php foreach ($instructores as $i): ?>
+            <tr>
+              <td class="fw-semibold"><?= e($i['nombre']) ?></td>
+              <td class="text-end"><?= (int)$i['fichas_lider'] ?></td>
+              <td class="text-end"><?= number_format((int)$i['pendientes'], 0, ',', '.') ?></td>
+              <td class="text-end <?= (int)$i['en_d'] > 0 ? 'text-danger' : '' ?>"><?= (int)$i['en_d'] ?></td>
+              <td class="text-end"><?= (int)$i['juicios_30d'] ?></td>
+              <td class="text-end"><?= (int)$i['planes_vigentes'] ?><?= (int)$i['planes_vencidos'] > 0 ? ' <span class="badge-soft danger">' . (int)$i['planes_vencidos'] . ' venc.</span>' : '' ?></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-1">Competencias críticas</h2>
+      <p class="small text-muted mb-2">Mayor proporción de RAP en D entre lo evaluado.</p>
+      <?php foreach ($competencias as $c): ?>
+        <div class="mb-2">
+          <div class="d-flex justify-content-between small"><span class="texto-recortado-2 me-2"><span class="font-monospace"><?= e($c['codigo']) ?></span> · <?= e($c['nombre']) ?></span><strong class="text-danger text-nowrap"><?= e((string)$c['pct_d']) ?>% D</strong></div>
+          <div class="progress barra-avance" role="progressbar" aria-label="Proporción en D" aria-valuenow="<?= (int)round($c['pct_d']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-danger" style="width: <?= (int)round($c['pct_d']) ?>%"></div></div>
+        </div>
+      <?php endforeach; ?>
+      <?php if (empty($competencias)): ?><div class="text-muted small">Sin competencias con D.</div><?php endif; ?>
+    </div></div>
+  </div>
+</div>
+
+<?php if (!empty($actividades)): ?>
+<div class="card border-0 shadow-sm mb-4"><div class="card-body">
+  <h2 class="h6 fw-bold mb-2">Actividades del proyecto formativo por vencer</h2>
+  <div class="list-group list-group-flush">
+    <?php foreach ($actividades as $act): $dias = (int)$act['dias']; ?>
+      <div class="list-group-item d-flex align-items-center gap-2 px-0">
+        <div class="flex-grow-1 min-w-0"><div class="fw-semibold text-truncate"><?= e($act['nombre']) ?></div><small class="text-muted">Ficha <?= e($act['numero_ficha']) ?> · <?= (int)$act['cumplimiento_porcentaje'] ?>% de avance</small></div>
+        <span class="badge-soft <?= $dias < 0 ? 'danger' : ($dias <= 3 ? 'warning' : 'secondary') ?> text-nowrap"><?= $dias < 0 ? 'Venció el ' . e($fecha($act['fecha_fin'])) : 'Vence el ' . e($fecha($act['fecha_fin'])) ?></span>
+      </div>
+    <?php endforeach; ?>
+  </div>
+</div></div>
 <?php endif; ?>
-
-<!-- Sección Inferior: Alertas Críticas, Evaluaciones Recientes y Calendario -->
-<div class="row g-4 mb-4">
-  <!-- Fichas Críticas y Actividad Reciente -->
-  <div class="col-lg-8">
-    <!-- 1. Alertas Críticas (o banner de éxito si no hay) -->
-    <?php if (!empty($fichasCriticas)): ?>
-      <div class="card border-0 shadow-sm bg-elev mb-4" style="border-radius: 12px;">
-        <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom-0 pt-3 px-4">
-          <h5 class="mb-0 fw-semibold text-danger">
-            <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Alertas críticas (Cumplimiento < 60%)
-          </h5>
-          <a href="<?= MODULES_PATH ?>/fichas/" class="small text-danger fw-semibold">Ver todas</a>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table mb-0">
-              <thead>
-                <tr>
-                  <th class="ps-4">Ficha</th>
-                  <th class="d-none d-sm-table-cell">Programa</th>
-                  <th class="d-none d-md-table-cell">Instructor</th>
-                  <th>Cumplimiento</th>
-                  <th class="d-none d-sm-table-cell">Estado</th>
-                  <th class="pe-4"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($fichasCriticas as $ficha): ?>
-                <tr style="background: var(--danger-bg);">
-                  <td class="ps-4"><strong class="text-uppercase-visual">#<?= htmlspecialchars($ficha['numero_ficha']) ?></strong></td>
-                  <td class="d-none d-sm-table-cell text-truncate text-uppercase-visual" style="max-width: 180px;"><?= htmlspecialchars($ficha['programa']) ?></td>
-                  <td class="d-none d-md-table-cell"><?= htmlspecialchars($ficha['instructor']) ?></td>
-                  <td>
-                    <div class="d-flex align-items-center gap-2">
-                      <div class="progress-flat danger" style="width: 100px;">
-                        <div style="width: <?= $ficha['cumplimiento_porcentaje'] ?>%;"></div>
-                      </div>
-                      <span class="text-danger fw-semibold small"><?= round((float)$ficha['cumplimiento_porcentaje'], 1) ?>%</span>
-                    </div>
-                  </td>
-                  <td class="d-none d-sm-table-cell">
-                    <span class="badge-soft danger"><?= htmlspecialchars($ficha['estado']) ?></span>
-                  </td>
-                  <td class="pe-4 text-end">
-                    <a href="<?= MODULES_PATH ?>/fichas/ver.php?id=<?= $ficha['id'] ?>" class="btn btn-soft py-1 px-2 btn-sm">Ver</a>
-                  </td>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    <?php else: ?>
-      <!-- Tarjeta premium de "Institución al Día" -->
-      <div class="card border-0 shadow-sm mb-4" style="border-left: 5px solid var(--success) !important; border-radius: 12px; background: var(--success-bg);">
-        <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center h-100">
-          <div class="rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 54px; height: 54px; background-color: rgba(46, 139, 31, 0.1); color: var(--success-text); border: 2px solid rgba(46, 139, 31, 0.2);">
-            <i class="bi bi-shield-fill-check" style="font-size: 1.8rem;"></i>
-          </div>
-          <h4 class="mb-2 fw-bold text-success">¡Institución al Día!</h4>
-          <p class="text-muted mb-0" style="max-width: 420px; font-size: 0.88rem;">
-            Todas las fichas de formación académica superan el umbral del 60% de cumplimiento. No se reportan alertas ni anomalías en este momento.
-          </p>
-        </div>
-      </div>
-    <?php endif; ?>
-
-    <!-- 2. Widget de Actividad de Evaluaciones Recientes -->
-    <div class="card border-0 shadow-sm bg-elev" style="border-radius: 12px;">
-      <div class="card-header bg-transparent border-bottom-0 pt-3 px-4">
-        <h5 class="mb-0 fw-semibold text-gradient"><i class="bi bi-clock-history text-primary me-2"></i>Evaluaciones Recientes</h5>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table mb-0">
-            <thead>
-              <tr>
-                <th class="ps-4">Aprendiz</th>
-                <th>RAP</th>
-                <th>Instructor</th>
-                <th>Concepto</th>
-                <th class="pe-4 text-end">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($recentEvaluations as $eval): ?>
-              <tr>
-                <td class="ps-4"><strong><?= htmlspecialchars($eval['aprendiz']) ?></strong></td>
-                <td><code class="text-primary"><?= htmlspecialchars($eval['rap']) ?></code></td>
-                <td><?= htmlspecialchars($eval['instructor'] ?? 'Sistema') ?></td>
-                <td>
-                  <?php if ($eval['concepto'] === 'aprobado'): ?>
-                    <span class="badge-soft success">Aprobado</span>
-                  <?php elseif ($eval['concepto'] === 'deficiente'): ?>
-                    <span class="badge-soft danger">Deficiente</span>
-                  <?php else: ?>
-                    <span class="badge-soft warning">Pendiente</span>
-                  <?php endif; ?>
-                </td>
-                <td class="pe-4 text-end text-muted small"><?= timeAgo($eval['fecha_evaluacion']) ?></td>
-              </tr>
-              <?php endforeach; ?>
-              <?php if (empty($recentEvaluations)): ?>
-              <tr>
-                <td colspan="5" class="text-center py-4 text-muted">No se registran evaluaciones recientes en el sistema.</td>
-              </tr>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Próximos Eventos de Calendario -->
-  <div class="col-lg-4">
-    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius: 12px;">
-      <div class="card-header fw-bold d-flex justify-content-between align-items-center bg-transparent border-0 pt-3 px-3">
-        <h5 class="mb-0 fw-semibold text-gradient"><i class="bi bi-calendar3 text-primary me-2"></i>Eventos Previstos</h5>
-        <a href="<?= APP_URL ?>/modules/calendario/" class="text-primary small fw-semibold" style="font-size: 0.75rem;">Ver todo</a>
-      </div>
-      <div class="card-body px-3 pb-3 d-flex flex-column">
-        <div id="dashboard-events-list" class="flex-grow-1 overflow-y-auto" style="max-height: 420px;">
-          <div class="text-center py-5 text-muted" id="events-loader">
-            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
-            <div class="small">Sincronizando eventos...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Bloque de datos JSON transferido del servidor al script del cliente -->
-<script id="dashboard-data" type="application/json">
-{
-  "appUrl": <?= json_encode(APP_URL) ?>,
-  "fichasEstados": <?= json_encode([
-      $fichasEstadosMap['planeacion'] ?? 0,
-      $fichasEstadosMap['induccion'] ?? 0,
-      $fichasEstadosMap['ejecucion'] ?? 0,
-      $fichasEstadosMap['cierre'] ?? 0
-  ]) ?>,
-  "aprendicesEstados": <?= json_encode([
-      $aprendicesEstadosMap['matriculado'] ?? 0,
-      $aprendicesEstadosMap['suspendido'] ?? 0,
-      $aprendicesEstadosMap['desertado'] ?? 0,
-      $aprendicesEstadosMap['egresado'] ?? 0
-  ]) ?>,
-  "instructoresEstados": <?= json_encode([
-      $instructoresEstadosMap['activo'] ?? 0,
-      $instructoresEstadosMap['inactivo'] ?? 0,
-      $instructoresEstadosMap['bloqueado'] ?? 0
-  ]) ?>,
-  "fichasCumplimientoLabels": <?= json_encode(array_map(fn($f) => "Ficha #" . $f['numero_ficha'], $fichasCumplimientoData)) ?>,
-  "fichasCumplimientoData": <?= json_encode(array_map(fn($f) => round((float)$f['cumplimiento_porcentaje'], 1), $fichasCumplimientoData)) ?>,
-  "programasLabels": <?= json_encode(array_map(fn($p) => strlen($p['nombre']) > 20 ? substr($p['nombre'], 0, 20) . '...' : $p['nombre'], $cumplimientoProgramas)) ?>,
-  "programasPromedio": <?= json_encode(array_map(fn($p) => round((float)$p['promedio'], 1), $cumplimientoProgramas)) ?>,
-  "programasVolumen": <?= json_encode(array_map(fn($p) => (int)$p['total_aprendices'], $cumplimientoProgramas)) ?>,
-  "programasMin": <?= json_encode(array_map(fn($p) => round((float)$p['min_cumplimiento'], 1), $cumplimientoProgramas)) ?>,
-  "programasMax": <?= json_encode(array_map(fn($p) => round((float)$p['max_cumplimiento'], 1), $cumplimientoProgramas)) ?>,
-  "radarLabels": <?= json_encode(array_map(fn($p) => strlen($p['programa']) > 15 ? substr($p['programa'], 0, 15) . '...' : $p['programa'], $statsProgramas)) ?>,
-  "statsProgramas": <?= json_encode($statsProgramas) ?>
-}
-</script>
-
-<!-- Carga del Script del Dashboard del Cliente -->
-<script src="<?= APP_URL ?>/assets/js/dashboard/coordinador.js"></script>

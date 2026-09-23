@@ -177,67 +177,62 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
     // PANELES
     // =================================================================
 
-    #[TestDox('el panel del coordinador calcula todos sus indicadores')]
-    public function testDashboardCoordinador(): void {
-        $m = new Models\DashboardModel($this->db);
+    #[TestDox('la analítica del coordinador es coherente: el semáforo suma los aprendices y los juicios suman el total')]
+    public function testAnaliticaCoordinador(): void {
+        $m = new Models\AnaliticaModel($this->db);
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        $r = $this->ejecuta(fn() => $m->resumen($coord), 'resumen');
 
-        $this->ejecuta(fn() => $m->getKpiMetrics(), 'getKpiMetrics');
-        $this->ejecuta(fn() => $m->getSparklineData(), 'getSparklineData');
-        $this->ejecuta(fn() => $m->getCriticasFichas(5), 'getCriticasFichas');
-        $this->ejecuta(fn() => $m->getCumplimientoPorPrograma(), 'getCumplimientoPorPrograma');
-        $this->ejecuta(fn() => $m->getStatsProgramasDesercion(5), 'getStatsProgramasDesercion');
-        $this->ejecuta(fn() => $m->getTopInstructores(5), 'getTopInstructores');
-        $this->ejecuta(fn() => $m->getRecentEvaluations(5), 'getRecentEvaluations');
+        $this->assertSame($r['aprendices'], array_sum($m->semaforo($coord)), 'el semáforo no suma los aprendices en formación');
+        $this->assertSame($r['total'], $r['a'] + $r['d'] + $r['pendientes']);
+        $this->assertSame($this->contar('fichas', "estado <> 'cierre'"), $r['fichas_activas']);
+        foreach ([fn() => $m->porPrograma(), fn() => $m->porInstructor(), fn() => $m->competenciasCriticas($coord),
+                  fn() => $m->aprendicesEnRiesgo($coord), fn() => $m->actividadesProximas($coord)] as $consulta) {
+            $this->ejecuta($consulta, 'desglose');
+        }
+        $t = $m->tendencia($coord, 12);
+        $this->assertCount(12, $t['etiquetas']);
+        $this->assertCount(12, $t['a']);
+        foreach ($m->aprendicesEnRiesgo($coord, 50) as $a) {
+            $this->assertContains($a['semaforo'], [\Core\Support\Semaforo::CRITICO, \Core\Support\Semaforo::RIESGO]);
+        }
     }
 
-    #[TestDox('el panel del instructor calcula sus indicadores')]
-    public function testDashboardInstructor(): void {
-        $m = new Models\InstructorDashboardModel($this->db);
-        $inst = $this->idInstructorConFicha();
+    #[TestDox('la analítica del instructor se limita a sus fichas; la de un ajeno está vacía')]
+    public function testAnaliticaInstructor(): void {
+        $m = new Models\AnaliticaModel($this->db);
+        $coord = $m->resumen(new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR));
+        $inst = new \Core\Support\Actor($this->idInstructorConFicha(), ROL_INSTRUCTOR);
+        $r = $m->resumen($inst);
+        $this->assertGreaterThan(0, $r['fichas_activas']);
+        $this->assertLessThanOrEqual($coord['aprendices'], $r['aprendices']);
+        $this->ejecuta(fn() => $m->cargaInstructor($inst), 'carga del instructor');
 
-        $this->ejecuta(fn() => $m->getKpis($inst), 'getKpis');
-        $this->ejecuta(fn() => $m->getFichasAsignadas($inst), 'getFichasAsignadas');
-        $this->ejecuta(fn() => $m->getRecentDeficiencies($inst, 10), 'getRecentDeficiencies');
-        $this->ejecuta(fn() => $m->getConceptDistribution($inst), 'getConceptDistribution');
-        $this->ejecuta(fn() => $m->getAprendicesSeguimiento($inst), 'getAprendicesSeguimiento');
-    }
-
-    #[TestDox('el panel del aprendiz calcula su progreso')]
-    public function testDashboardAprendiz(): void {
-        $m = new Models\AprendizDashboardModel($this->db);
-        $info = $m->getAprendizInfo($this->idUsuarioAprendiz());
-
-        $this->assertNotNull($info, 'no se encuentra el perfil del aprendiz');
-
-        $this->ejecuta(fn() => $m->getProgresoGlobal((int)$info['id']), 'getProgresoGlobal');
-        $this->ejecuta(fn() => $m->getProgresoCompetencias((int)$info['ficha_id'], (int)$info['id']), 'getProgresoCompetencias');
-        $this->ejecuta(fn() => $m->getRecentEvaluations((int)$info['id'], 6), 'getRecentEvaluations');
-        $this->ejecuta(fn() => $m->getAlertasD((int)$info['id'], 3), 'getAlertasD');
+        $ajeno = new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR);
+        $this->assertSame(0, $m->resumen($ajeno)['aprendices']);
+        $this->assertSame([], $m->aprendicesEnRiesgo($ajeno));
+        $this->assertSame(0, $m->cargaInstructor($ajeno)['por_calificar']);
     }
 
     /**
      * El progreso que ve el aprendiz tiene que sumar exactamente sus RAP:
      * si no cuadra, está viendo los de otro o le faltan los suyos.
      */
-    #[TestDox('el progreso del aprendiz suma sus propias evaluaciones')]
+    #[TestDox('el progreso del aprendiz suma sus propias evaluaciones y el promedio de su ficha está en rango')]
     public function testProgresoDelAprendizCuadra(): void {
-        $m = new Models\AprendizDashboardModel($this->db);
-        $info = $m->getAprendizInfo($this->idUsuarioAprendiz());
+        $s = new Models\SeguimientoModel($this->db);
+        $id = $s->aprendizDeUsuario($this->idUsuarioAprendiz()) ?? $this->markTestSkipped('sin perfil de aprendiz');
+        $r = $s->resumen($id);
+        $this->assertSame((int)$r['total'], (int)$r['aprobados'] + (int)$r['en_d'] + (int)$r['pendientes']);
+        $this->assertSame($this->contar('evaluaciones', 'aprendiz_id = ? AND ficha_id = ?', [$id, (int)$r['ficha_id']]), (int)$r['total']);
 
-        if ($info === null) {
-            $this->markTestSkipped('sin perfil de aprendiz');
+        $prom = (new Models\AnaliticaModel($this->db))->promedioFicha((int)$r['ficha_id']);
+        if ($prom['avance'] !== null) {
+            $this->assertGreaterThanOrEqual(0, $prom['avance']);
+            $this->assertLessThanOrEqual(100, $prom['avance']);
         }
-
-        $p = $m->getProgresoGlobal((int)$info['id']);
-        $suma = (int)$p['aprobados'] + (int)$p['reprobados'] + (int)$p['pendientes'];
-
-        $this->assertSame((int)$p['total_ra'], $suma,
-            'los conceptos no suman el total: hay evaluaciones sin clasificar');
-        $this->assertSame(
-            $this->contar('evaluaciones', 'aprendiz_id = ?', [(int)$info['id']]),
-            (int)$p['total_ra'],
-            'el total del panel no coincide con las evaluaciones del aprendiz'
-        );
+        $alcance = (new Models\AnaliticaModel($this->db))->resumen(new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ));
+        $this->assertSame(1, $alcance['fichas_activas'] <= 1 ? 1 : 0, 'el aprendiz alcanza más de una ficha');
     }
 
     // =================================================================
