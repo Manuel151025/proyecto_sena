@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
+use Core\Support\Validador;
 use Core\Database;
 use PDO;
 use Exception;
@@ -61,10 +62,10 @@ class AsignacionesModel {
 
         if (!empty($search)) {
             $sql .= " AND (u.nombre LIKE ? OR c.nombre LIKE ? OR c.codigo LIKE ? OR f.numero_ficha LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
         }
         if ($filter_ficha > 0) {
             $sql .= " AND a.ficha_id = ?";

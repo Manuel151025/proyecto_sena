@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Interfaces\UsuarioRepositoryInterface;
 use Core\Models\UsuarioModel;
@@ -67,7 +71,7 @@ class UsuarioController extends BaseController {
         }
 
         // Validación de Rol
-        if (!in_array($data['rol'], ['coordinador', 'instructor', 'aprendiz'])) {
+        if (!in_array($data['rol'], Enums::USUARIO_ROL, true)) {
             $errors[] = 'Rol inválido';
         }
 
@@ -162,7 +166,7 @@ class UsuarioController extends BaseController {
                 'nombre' => strip_tags(mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8')),
                 'email' => strip_tags(trim($_POST['email'] ?? '')),
                 'password' => $_POST['password'] ?? '',
-                'rol' => $_POST['rol'] ?? 'aprendiz',
+                'rol' => (new Validador($_POST))->enum('rol', 'El rol', Enums::USUARIO_ROL, 'aprendiz'),
                 'avatar_color' => $_POST['avatar_color'] ?? '#39A900'
             ];
 
@@ -179,7 +183,7 @@ class UsuarioController extends BaseController {
                         $this->redirect(APP_URL . '/index.php/usuarios');
                     }
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                 }
             }
 
@@ -228,7 +232,7 @@ class UsuarioController extends BaseController {
             if ($isAjax) {
                 $this->json(['status' => 'error', 'message' => $e->getMessage()]);
             }
-            $errors[] = $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e);
         }
 
         // Si es una petición GET por AJAX, devolver los datos del usuario en JSON
@@ -241,7 +245,7 @@ class UsuarioController extends BaseController {
                 'nombre' => strip_tags(mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8')),
                 'email' => strip_tags(trim($_POST['email'] ?? '')),
                 'password' => $_POST['password'] ?? '', // opcional al editar
-                'rol' => $_POST['rol'] ?? 'aprendiz',
+                'rol' => (new Validador($_POST))->enum('rol', 'El rol', Enums::USUARIO_ROL, 'aprendiz'),
                 'estado' => $_POST['estado'] ?? 'activo',
                 'avatar_color' => $_POST['avatar_color'] ?? '#39A900'
             ];
@@ -259,7 +263,7 @@ class UsuarioController extends BaseController {
                         $this->redirect(APP_URL . '/index.php/usuarios');
                     }
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                 }
             }
 
@@ -320,7 +324,7 @@ class UsuarioController extends BaseController {
                         try {
                             $rows = XlsxParser::parse($fileTmpPath);
                         } catch (Exception $e) {
-                            $errors[] = 'Error al procesar el archivo Excel: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al procesar el archivo Excel');
                         }
                     }
 
@@ -363,7 +367,7 @@ class UsuarioController extends BaseController {
                                 } elseif (strlen($email) > 100) {
                                     $rowErrors[] = "Línea $linea: El email no puede exceder los 100 caracteres.";
                                 }
-                                if (!in_array($rol, ['coordinador', 'instructor', 'aprendiz'])) {
+                                if (!in_array($rol, Enums::USUARIO_ROL, true)) {
                                     $rowErrors[] = "Línea $linea: Rol '$rol' inválido. Debe ser coordinador, instructor o aprendiz.";
                                 }
 
@@ -407,7 +411,7 @@ class UsuarioController extends BaseController {
                                             $tipo_mensaje = 'warning';
                                         }
                                     } catch (Exception $e) {
-                                        $errors[] = $e->getMessage();
+                                        $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                                     }
                                 } else {
                                     $errors[] = 'El archivo no contiene datos válidos.';

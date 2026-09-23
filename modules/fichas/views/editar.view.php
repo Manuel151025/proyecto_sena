@@ -1,3 +1,13 @@
+<?php
+// Esta vista solo debe renderizarse desde un controlador, a traves del
+// layout. Abierta directamente por URL, se ejecutaria sin las variables
+// que espera y sin ninguna comprobacion de permisos: el resultado eran
+// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+if (!defined('VISTA_PERMITIDA')) {
+    http_response_code(404);
+    exit('404 - No encontrado');
+}
+?>
 <div class="mb-3">
   <h1><?= $id && $ficha ? 'Editar Ficha' : 'Crear Nueva Ficha' ?></h1>
   <p class="text-muted mb-0"><?= $id && $ficha ? 'Modifica los datos de la ficha' : 'Completa el formulario para registrar una nueva ficha de formación' ?>.</p>
@@ -92,14 +102,24 @@
             </select>
           </div>
 
+          <?php
+          // Estos dos valores son derivados y ya no se teclean: la cantidad
+          // de aprendices sale de la tabla `aprendices` y el cumplimiento lo
+          // recalcula el sistema al calificar. Poder editarlos a mano era lo
+          // que los desincronizaba de la realidad. Se muestran como lectura.
+          ?>
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label class="form-label">Cantidad de Aprendices</label>
-              <input type="number" name="cantidad_aprendices" class="form-control" min="0" max="999" oninput="this.value=this.value.replace(/[^0-9]/g, '')" value="<?= htmlspecialchars($ficha['cantidad_aprendices'] ?? $_POST['cantidad_aprendices'] ?? '') ?>">
+              <label class="form-label">Aprendices matriculados</label>
+              <input type="text" class="form-control" readonly disabled
+                     value="<?= (int)($ficha['cantidad_aprendices'] ?? 0) ?>">
+              <div class="form-text">Se calcula desde las matrículas de la ficha.</div>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Cumplimiento (%)</label>
-              <input type="number" name="cumplimiento_porcentaje" class="form-control" min="0" max="100" step="0.1" value="<?= htmlspecialchars($ficha['cumplimiento_porcentaje'] ?? $_POST['cumplimiento_porcentaje'] ?? '') ?>">
+              <input type="text" class="form-control" readonly disabled
+                     value="<?= number_format((float)($ficha['cumplimiento_porcentaje'] ?? 0), 1) ?>">
+              <div class="form-text">Lo actualiza el sistema al calificar evidencias.</div>
             </div>
           </div>
 

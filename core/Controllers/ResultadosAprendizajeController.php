@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\ResultadosAprendizajeModel;
@@ -95,7 +96,7 @@ class ResultadosAprendizajeController extends BaseController {
                         if ($this->db->inTransaction()) {
                             $this->db->rollBack();
                         }
-                        setFlashMessage('Error al registrar RAP: ' . $e->getMessage(), 'danger');
+                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al registrar RAP'), 'danger');
                     }
                 }
             }
@@ -154,7 +155,7 @@ class ResultadosAprendizajeController extends BaseController {
                         if ($this->db->inTransaction()) {
                             $this->db->rollBack();
                         }
-                        setFlashMessage('Error al actualizar RAP: ' . $e->getMessage(), 'danger');
+                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al actualizar RAP'), 'danger');
                     }
                 }
             }
@@ -174,7 +175,7 @@ class ResultadosAprendizajeController extends BaseController {
                         setFlashMessage('Resultado de Aprendizaje eliminado exitosamente.', 'success');
                         $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
                     } catch (Exception $e) {
-                        setFlashMessage($e->getMessage(), 'danger');
+                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
                     }
                 }
             }
@@ -185,7 +186,7 @@ class ResultadosAprendizajeController extends BaseController {
         try {
             $competencias = $this->resultadosModel->getCompetenciasWithRaps();
         } catch (Exception $e) {
-            $errors[] = 'Error al cargar las competencias o RAPs: ' . $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las competencias o RAPs');
         }
 
         $this->render(
@@ -239,7 +240,7 @@ class ResultadosAprendizajeController extends BaseController {
                         try {
                             $rows = XlsxParser::parse($fileTmpPath);
                         } catch (Exception $e) {
-                            $errors[] = 'Error al procesar el archivo Excel: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al procesar el archivo Excel');
                         }
                     }
 
@@ -354,7 +355,7 @@ class ResultadosAprendizajeController extends BaseController {
                                         if ($this->db->inTransaction()) {
                                             $this->db->rollBack();
                                         }
-                                        $errors[] = 'Error al insertar RAPs en la BD: ' . $e->getMessage();
+                                        $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al insertar RAPs en la BD');
                                     }
                                 } else {
                                     $errors[] = 'El archivo no contiene filas válidas.';

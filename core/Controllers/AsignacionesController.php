@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\AsignacionesModel;
@@ -48,7 +49,7 @@ class AsignacionesController extends BaseController {
                                 $this->redirect(APP_URL . '/index.php/asignaciones');
                             }
                         } catch (Exception $e) {
-                            $errors[] = 'Error al realizar la asignación: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al realizar la asignación');
                         }
                     }
                 } elseif ($_POST['action'] === 'eliminar') {
@@ -61,7 +62,7 @@ class AsignacionesController extends BaseController {
                             setFlashMessage('Asignación eliminada exitosamente.', 'success');
                             $this->redirect(APP_URL . '/index.php/asignaciones');
                         } catch (Exception $e) {
-                            $errors[] = 'Error al eliminar la asignación: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al eliminar la asignación');
                         }
                     }
                 }

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
+use Core\Support\Validador;
 use Core\Database;
 use PDO;
 
@@ -62,9 +63,9 @@ class LogsModel {
 
         if (!empty($search)) {
             $from .= " AND (u.nombre LIKE ? OR logs.descripcion LIKE ? OR logs.modulo LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
         }
 
         if (!empty($filter_accion)) {

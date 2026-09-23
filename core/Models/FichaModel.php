@@ -61,7 +61,12 @@ class FichaModel {
                 f.id, 
                 f.numero_ficha, 
                 f.estado, 
-                f.cantidad_aprendices, 
+                -- Recuento real, no el contador desnormalizado: `cantidad_aprendices`
+                -- se incrementaba en cuatro sitios, nadie lo recalculaba y ademas
+                -- era editable a mano desde el formulario de ficha. Estaba
+                -- desviado en 3 de las 7 fichas.
+                (SELECT COUNT(*) FROM aprendices ap_c
+                     WHERE ap_c.ficha_id = f.id AND ap_c.estado <> 'desertado') AS cantidad_aprendices,
                 f.fecha_fin,
                 f.cumplimiento_porcentaje,
                 p.nombre as programa,
@@ -106,7 +111,8 @@ class FichaModel {
                 f.id,
                 f.numero_ficha,
                 f.estado,
-                f.cantidad_aprendices,
+                (SELECT COUNT(*) FROM aprendices ap_c
+                     WHERE ap_c.ficha_id = f.id AND ap_c.estado <> 'desertado') AS cantidad_aprendices,
                 f.fecha_inicio,
                 f.fecha_fin,
                 f.cumplimiento_porcentaje,
@@ -170,6 +176,32 @@ class FichaModel {
 
     public function getProyectosActivos(): array {
         return $this->db->query("SELECT id, nombre, codigo FROM proyectos WHERE estado = 'activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Aprendices realmente matriculados en la ficha.
+     *
+     * Sustituye a leer `fichas.cantidad_aprendices`, que era un contador
+     * incrementado a mano en cuatro sitios distintos, editable desde el
+     * formulario y que nadie recalculaba. Los desertados no cuentan: dejan
+     * de ocupar cupo en la ficha.
+     */
+    public function contarAprendices(int $fichaId): int {
+        if ($fichaId <= 0) {
+            return 0;
+        }
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM aprendices WHERE ficha_id = ? AND estado <> 'desertado'"
+        );
+        $stmt->execute([$fichaId]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    /** Fila cruda de la ficha, para conservar campos que no toca el formulario. */
+    public function getFichaById(int $id): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM fichas WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function createFicha(string $numero_ficha, ?int $proyecto_id, int $programa_id, int $instructor_id, int $coordinador_id, string $estado, int $cantidad_aprendices, ?string $fecha_inicio, ?string $fecha_fin, float $cumplimiento_porcentaje): void {

@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\ActividadesModel;
@@ -41,10 +45,10 @@ class ActividadesController extends BaseController {
                     $competencia_id = (int)($_POST['competencia_id'] ?? 0);
                     $nombre = trim($_POST['nombre'] ?? '');
                     $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
-                    $fecha_fin = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
+                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
+                    $fecha_fin = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
                     $responsable_id = (int)($_POST['responsable_id'] ?? 0);
-                    $estado = $_POST['estado'] ?? 'pendiente';
+                    $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::ACTIVIDAD_ESTADO, 'pendiente');
 
                     if ($ficha_id <= 0) $errors[] = 'Debe seleccionar una ficha.';
                     if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia.';
@@ -78,7 +82,7 @@ class ActividadesController extends BaseController {
                             setFlashMessage('Actividad académica registrada exitosamente.', 'success');
                             $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            setFlashMessage($e->getMessage(), 'danger');
+                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
                         }
                     }
                 } else {
@@ -93,10 +97,10 @@ class ActividadesController extends BaseController {
                     $competencia_id = (int)($_POST['competencia_id'] ?? 0);
                     $nombre = trim($_POST['nombre'] ?? '');
                     $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
-                    $fecha_fin = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
+                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
+                    $fecha_fin = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
                     $responsable_id = (int)($_POST['responsable_id'] ?? 0);
-                    $estado = $_POST['estado'] ?? 'pendiente';
+                    $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::ACTIVIDAD_ESTADO, 'pendiente');
                     $cumplimiento = (float)($_POST['cumplimiento_porcentaje'] ?? 0);
 
                     if ($id <= 0) $errors[] = 'Actividad no válida.';
@@ -121,7 +125,7 @@ class ActividadesController extends BaseController {
                             setFlashMessage('Actividad actualizada exitosamente.', 'success');
                             $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            setFlashMessage($e->getMessage(), 'danger');
+                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
                         }
                     }
                 }
@@ -138,7 +142,7 @@ class ActividadesController extends BaseController {
                             setFlashMessage('Actividad eliminada exitosamente.', 'success');
                             $this->redirect($_SERVER['REQUEST_URI']);
                         } catch (Exception $e) {
-                            setFlashMessage($e->getMessage(), 'danger');
+                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
                         }
                     }
                 }

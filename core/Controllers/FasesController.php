@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\FasesModel;
@@ -37,10 +41,10 @@ class FasesController extends BaseController {
                     $numero_fase = (int)($_POST['numero_fase'] ?? 0);
                     $nombre = trim($_POST['nombre'] ?? '');
                     $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
-                    $fecha_fin = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
+                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
+                    $fecha_fin = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
                     $cumplimiento = (float)($_POST['cumplimiento_porcentaje'] ?? 0);
-                    $estado = $_POST['estado'] ?? 'planeada';
+                    $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::FASE_ESTADO, 'planeada');
 
                     if ($proyecto_id <= 0) $errors[] = 'Debe seleccionar un proyecto.';
                     if ($numero_fase <= 0 || $numero_fase > 99) $errors[] = 'El número de fase debe estar entre 1 y 99.';
@@ -70,7 +74,7 @@ class FasesController extends BaseController {
                             setFlashMessage('Fase de proyecto registrada exitosamente.', 'success');
                             $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $proyecto_id);
                         } catch (Exception $e) {
-                            $errors[] = 'Error al registrar la fase: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al registrar la fase');
                         }
                     }
                 }
@@ -83,10 +87,10 @@ class FasesController extends BaseController {
                     $numero_fase = (int)($_POST['numero_fase'] ?? 0);
                     $nombre      = trim($_POST['nombre'] ?? '');
                     $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
-                    $fecha_fin    = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
+                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
+                    $fecha_fin    = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
                     $cumplimiento = (float)($_POST['cumplimiento_porcentaje'] ?? 0);
-                    $estado       = $_POST['estado'] ?? 'planeada';
+                    $estado       = (new Validador($_POST))->enum('estado', 'El estado', Enums::FASE_ESTADO, 'planeada');
 
                     if ($id <= 0)          $errors[] = 'Fase no válida.';
                     if ($numero_fase <= 0 || $numero_fase > 99) $errors[] = 'El número de fase debe estar entre 1 y 99.';
@@ -116,7 +120,7 @@ class FasesController extends BaseController {
                             setFlashMessage('Fase actualizada exitosamente.', 'success');
                             $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $selected_proyecto_id);
                         } catch (Exception $e) {
-                            $errors[] = 'Error al actualizar la fase: ' . $e->getMessage();
+                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al actualizar la fase');
                         }
                     }
                 }

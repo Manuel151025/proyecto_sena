@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
 use Core\BaseController;
 use Core\Database;
 use Core\Models\RetroalimentacionModel;
@@ -31,7 +34,7 @@ class RetroalimentacionController extends BaseController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_feedback' && $user_rol !== ROL_APRENDIZ) {
             requireCsrf();
             $aprendiz_post = (int)($_POST['aprendiz_id'] ?? 0);
-            $tipo          = $_POST['tipo'] ?? '';
+            $tipo          = (new Validador($_POST))->enum('tipo', 'El tipo', Enums::RETROALIMENTACION_TIPO, 'recomendacion');
             $contenido     = trim($_POST['contenido'] ?? '');
             $privada       = !empty($_POST['privada']) ? 1 : 0;
 

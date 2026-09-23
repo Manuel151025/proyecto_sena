@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
+use Core\Support\Validador;
 use Core\Database;
 use PDO;
 use Exception;
@@ -47,8 +48,8 @@ class CompetenciasModel {
 
             if (!empty($filters['search'])) {
                 $sql .= " AND (c.nombre LIKE ? OR c.codigo LIKE ?)";
-                $params[] = "%{$filters['search']}%";
-                $params[] = "%{$filters['search']}%";
+                $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
+                $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
             }
             if (!empty($filters['programa_id'])) {
                 $sql .= " AND c.programa_id = ?";

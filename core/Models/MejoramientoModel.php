@@ -64,7 +64,7 @@ class MejoramientoModel {
                     OR
                     (
                         f.instructor_id = ?
-                        AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                        AND c.es_etapa_practica = 0
                         AND NOT EXISTS (
                             SELECT 1 FROM asignaciones asg 
                             WHERE asg.ficha_id = eval.ficha_id 
@@ -73,7 +73,7 @@ class MejoramientoModel {
                     )
                     OR
                     (
-                        (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                        c.es_etapa_practica = 1
                         AND ap.instructor_seguimiento_id = ?
                     )
                 )

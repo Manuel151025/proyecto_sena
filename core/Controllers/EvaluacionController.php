@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Services\JuiciosImportService;
 use Exception;
@@ -55,7 +56,7 @@ class EvaluacionController extends BaseController {
                         $originalName = $_POST['file_name'];
                         $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
                         if ($ext !== 'xls') {
-                            throw new Exception('El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).');
+                            throw new ErrorDeNegocio('El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).');
                         }
 
                         $fileData = base64_decode($_POST['file_data'], true);
@@ -78,7 +79,7 @@ class EvaluacionController extends BaseController {
                     } else {
                         if (isset($_FILES['excel_file'])) {
                             if ($_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
-                                throw new Exception('Error al subir el archivo. Código: ' . $_FILES['excel_file']['error']);
+                                throw new ErrorDeNegocio('Error al subir el archivo. Código: ' . $_FILES['excel_file']['error']);
                             }
                             $tempPath = $_FILES['excel_file']['tmp_name'];
                             $originalName = $_FILES['excel_file']['name'];
@@ -103,7 +104,7 @@ class EvaluacionController extends BaseController {
                         $this->json(['success' => true, 'message' => $successMessage]);
                     }
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                     if ($is_ajax) {
                         $this->json(['success' => false, 'errors' => $errors]);
                     }

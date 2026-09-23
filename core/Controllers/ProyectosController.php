@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\Validador;
+use Core\Support\Enums;
+
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\ProyectosModel;
@@ -59,7 +63,7 @@ class ProyectosController extends BaseController {
                     setFlashMessage('Proyecto formativo creado exitosamente.', 'success');
                     $this->redirect(APP_URL . '/index.php/proyectos');
                 } catch (Exception $e) {
-                    setFlashMessage('Error: ' . $e->getMessage(), 'danger');
+                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error'), 'danger');
                 }
             }
             if ($_POST['action'] === 'delete' && $user_rol === ROL_COORDINADOR) {
@@ -79,7 +83,7 @@ class ProyectosController extends BaseController {
                     $codigo      = trim($_POST['codigo'] ?? '');
                     $objetivo    = trim($_POST['objetivo'] ?? '');
                     $descripcion = trim($_POST['descripcion'] ?? '');
-                    $estado      = $_POST['estado'] ?? 'activo';
+                    $estado      = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROYECTO_ESTADO, 'activo');
 
                     if (empty($nombre) || empty($codigo)) {
                         throw new Exception('El nombre y código son obligatorios.');
@@ -109,7 +113,7 @@ class ProyectosController extends BaseController {
                     setFlashMessage('Proyecto actualizado correctamente.', 'success');
                     $this->redirect(APP_URL . '/index.php/proyectos');
                 } catch (Exception $e) {
-                    setFlashMessage('Error: ' . $e->getMessage(), 'danger');
+                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error'), 'danger');
                 }
             }
         }
@@ -118,7 +122,7 @@ class ProyectosController extends BaseController {
         try {
             $proyectos = $this->proyectosModel->getProyectos($user_rol, $user_id);
         } catch (Exception $e) {
-            $errors[] = 'Error al cargar los proyectos: ' . $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los proyectos');
         }
 
         $this->render(

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\EvaluacionesModel;
@@ -58,21 +59,21 @@ class EvaluacionesController extends BaseController {
                     $motivo = strip_tags($motivo);
 
                     if ($eval_id <= 0) {
-                        throw new Exception('ID de evaluación inválido.');
+                        throw new ErrorDeNegocio('ID de evaluación inválido.');
                     }
 
                     if (!in_array($nuevo_concepto, ['A', 'D', 'pendiente'])) {
-                        throw new Exception('Concepto no válido.');
+                        throw new ErrorDeNegocio('Concepto no válido.');
                     }
 
                     $conceptoAnterior = $this->evaluacionesModel->getEvaluacionAnterior($eval_id, $user_rol, $user_id);
 
                     if ($conceptoAnterior === false) {
-                        throw new Exception('Evaluación no encontrada o sin permiso para editarla.');
+                        throw new ErrorDeNegocio('Evaluación no encontrada o sin permiso para editarla.');
                     }
 
                     if ($conceptoAnterior !== $nuevo_concepto && in_array($conceptoAnterior, ['A', 'D']) && empty($motivo)) {
-                        throw new Exception('El motivo del cambio de calificación es requerido.');
+                        throw new ErrorDeNegocio('El motivo del cambio de calificación es requerido.');
                     }
 
                     $this->evaluacionesModel->actualizarEvaluacion($eval_id, $nuevo_concepto, $comentario, $motivo, $user_id, $conceptoAnterior);
@@ -80,7 +81,7 @@ class EvaluacionesController extends BaseController {
                     setFlashMessage('Evaluación actualizada correctamente. Concepto: ' . $nuevo_concepto, 'success');
                     $this->redirect($_SERVER['REQUEST_URI']);
                 } catch (Exception $e) {
-                    setFlashMessage('Error al guardar evaluación: ' . $e->getMessage(), 'danger');
+                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al guardar evaluación'), 'danger');
                 }
             }
         }
@@ -109,7 +110,7 @@ class EvaluacionesController extends BaseController {
                 $paginacion->offset()
             );
         } catch (Exception $e) {
-            $errors[] = 'Error al cargar evaluaciones: ' . $e->getMessage();
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar evaluaciones');
         }
 
         $statsEval = ['total' => 0, 'aprobados' => 0, 'reprobados' => 0, 'pendientes' => 0];
@@ -186,7 +187,7 @@ class EvaluacionesController extends BaseController {
                         $originalName = $_POST['file_name'];
                         $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
                         if ($ext !== 'xls') {
-                            throw new Exception('El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).');
+                            throw new ErrorDeNegocio('El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).');
                         }
 
                         $fileData = base64_decode($_POST['file_data'], true);
@@ -209,7 +210,7 @@ class EvaluacionesController extends BaseController {
                     } else {
                         if (isset($_FILES['excel_file'])) {
                             if ($_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
-                                throw new Exception('Error al subir el archivo. Código: ' . $_FILES['excel_file']['error']);
+                                throw new ErrorDeNegocio('Error al subir el archivo. Código: ' . $_FILES['excel_file']['error']);
                             }
                             $rutaTemporal = $_FILES['excel_file']['tmp_name'];
                             $originalName = $_FILES['excel_file']['name'];
@@ -235,7 +236,7 @@ class EvaluacionesController extends BaseController {
                         $jsonResponse = ['success' => true, 'message' => $successMessage];
                     }
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                     if ($is_ajax) {
                         $jsonResponse = ['success' => false, 'errors' => $errors];
                     }

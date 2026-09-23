@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
+use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
 use Core\Database;
 use Core\Models\ConfiguracionModel;
@@ -56,7 +57,7 @@ class ConfiguracionController extends BaseController {
                     setFlashMessage('Configuración guardada exitosamente en el sistema.', 'success');
                     $this->redirect(APP_URL . '/index.php/configuracion');
                 } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
                 }
             }
         } else {
