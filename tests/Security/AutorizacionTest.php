@@ -299,38 +299,42 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
 
     #[TestDox('un instructor no puede exportar el reporte de una ficha ajena')]
     public function testExportacionDeFichaAjena(): void {
-        $modelo = new ReportesModel($this->db);
-        $ajeno  = $this->idInstructorAjeno();
+        $servicio = new \Core\Services\ReportesService($this->db);
+        $ajeno = new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR);
 
         $fichas = $this->db->query("SELECT id FROM fichas")->fetchAll(PDO::FETCH_COLUMN);
         foreach ($fichas as $f) {
-            $this->assertFalse(
-                $modelo->checkFichaInstructorAccess((int)$f, $ajeno),
-                "puede exportar el reporte de la ficha #$f sin tenerla asignada"
-            );
+            try {
+                $servicio->generar('ficha', $ajeno, ['ficha_id' => (int)$f]);
+                $this->fail("puede exportar el reporte de la ficha #$f sin tenerla asignada");
+            } catch (\Core\Support\ErrorDeNegocio) {
+                $this->addToAssertionCount(1);
+            }
         }
     }
 
     #[TestDox('el reporte de un instructor abarca menos que el del coordinador')]
     public function testAlcanceDeLosReportes(): void {
         $modelo = new ReportesModel($this->db);
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        $inst = new \Core\Support\Actor($this->idInstructorConFicha(), ROL_INSTRUCTOR);
 
-        $delCoordinador = count($modelo->getReportHistorialCambios($this->idCoordinador(), ROL_COORDINADOR));
-        $delInstructor  = count($modelo->getReportHistorialCambios($this->idInstructorConFicha(), ROL_INSTRUCTOR));
-
-        $this->assertLessThanOrEqual(
-            $delCoordinador, $delInstructor,
-            'un instructor ve más trazabilidad que la coordinación'
-        );
+        $desde = '2000-01-01';
+        $hasta = date('Y-m-d');
+        $this->assertLessThanOrEqual(count($modelo->historial($coord, $desde, $hasta)), count($modelo->historial($inst, $desde, $hasta)),
+            'un instructor ve más trazabilidad que la coordinación');
+        $this->assertLessThanOrEqual(array_sum(array_column($modelo->porCompetencia($coord), 5)), array_sum(array_column($modelo->porCompetencia($inst), 5)),
+            'un instructor ve más juicios que la coordinación');
     }
 
     #[TestDox('un instructor sin fichas no obtiene ningún reporte con datos')]
     public function testReportesDeInstructorAjenoVacios(): void {
         $modelo = new ReportesModel($this->db);
-        $ajeno  = $this->idInstructorAjeno();
+        $ajeno = new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR);
 
-        $this->assertCount(0, $modelo->getReportHistorialCambios($ajeno, ROL_INSTRUCTOR));
-        $this->assertCount(0, $modelo->getReportCumplimientoInstructor($ajeno, ROL_INSTRUCTOR));
+        $this->assertCount(0, $modelo->historial($ajeno, '2000-01-01', date('Y-m-d')));
+        $this->assertCount(0, $modelo->porInstructor($ajeno));
+        $this->assertCount(0, $modelo->porCompetencia($ajeno));
     }
 
     // =================================================================

@@ -137,7 +137,7 @@ class AnaliticaModel {
                  GROUP BY a.id) t
              WHERE " . Semaforo::sqlAprendiz('t.pct_a', 't.en_d') . " IN ('" . Semaforo::CRITICO . "','" . Semaforo::RIESGO . "')
              ORDER BY t.en_d DESC, t.pct_a ASC
-             LIMIT " . max(1, min($limite, 100)), $p);
+             LIMIT " . max(1, min($limite, 5000)), $p);
         return array_map(static function (array $r): array {
             $r['pct_a'] = $r['pct_a'] !== null ? round((float)$r['pct_a'], 1) : null;
             $r['semaforo'] = Semaforo::aprendiz($r['pct_a'], (int)$r['en_d']);

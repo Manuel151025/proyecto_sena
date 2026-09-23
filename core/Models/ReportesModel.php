@@ -4,8 +4,18 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
+use Core\Services\InstructorAccessService;
+use Core\Support\Actor;
 use PDO;
 
+/**
+ * Consultas de los reportes (RF05). Devuelven filas por posición, en el
+ * orden de las columnas que declara ReportesService.
+ *
+ * Alcance: coordinación, todo; instructor, lo que califica (la misma
+ * condición que el listado de juicios y el permiso de calificar). Antes
+ * cada reporte llevaba su propia copia de esa condición.
+ */
 class ReportesModel {
     private PDO $db;
 
@@ -13,338 +23,103 @@ class ReportesModel {
         $this->db = $db ?? Database::getConnection();
     }
 
-    public function getInstructorStats(int $user_id): array {
-        $stmtStats = $this->db->prepare("
-            SELECT 
-                COUNT(*) as total_evaluaciones,
-                SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-                SUM(CASE WHEN e.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
-                SUM(CASE WHEN e.concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
-            FROM evaluaciones e
-            JOIN fichas f ON e.ficha_id = f.id
-            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
-            JOIN competencias c ON ra.competencia_id = c.id
-            JOIN aprendices ap ON e.aprendiz_id = ap.id
-            WHERE (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg 
-                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND c.es_etapa_practica = 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    c.es_etapa_practica = 1
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )
-        ");
-        $stmtStats->execute([$user_id, $user_id, $user_id]);
-        $rowStats = $stmtStats->fetch(PDO::FETCH_ASSOC);
-
-        $stats = [];
-        $stats['total_evaluaciones'] = (int)($rowStats['total_evaluaciones'] ?? 0);
-        $stats['aprobados']          = (int)($rowStats['aprobados'] ?? 0);
-        $stats['reprobados']         = (int)($rowStats['reprobados'] ?? 0);
-        $stats['pendientes']         = (int)($rowStats['pendientes'] ?? 0);
-        
-        $stmtFichas = $this->db->prepare("
-            SELECT COUNT(DISTINCT f.id) 
-            FROM fichas f 
-            LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
-            LEFT JOIN aprendices ap ON ap.ficha_id = f.id
-            WHERE f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?
-        ");
-        $stmtFichas->execute([$user_id, $user_id, $user_id]);
-        $stats['total_fichas'] = (int)$stmtFichas->fetchColumn();
-        
-        $stmtHist = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM historial_evaluaciones he
-            JOIN evaluaciones e ON he.evaluacion_id = e.id
-            JOIN fichas f ON e.ficha_id = f.id
-            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
-            JOIN competencias c ON ra.competencia_id = c.id
-            JOIN aprendices ap ON e.aprendiz_id = ap.id
-            WHERE (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg 
-                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND c.es_etapa_practica = 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    c.es_etapa_practica = 1
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )
-        ");
-        $stmtHist->execute([$user_id, $user_id, $user_id]);
-        $stats['cambios_historial'] = (int)$stmtHist->fetchColumn();
-
-        return $stats;
+    /** Condición sobre los alias e, c, f, ap. @return array{0:string, 1:array} */
+    private function alcance(Actor $actor): array {
+        if ($actor->esCoordinador()) {
+            return ['1=1', []];
+        }
+        if ($actor->esInstructor()) {
+            return ['(' . InstructorAccessService::sqlCondicionAcceso() . ')', [$actor->id, $actor->id, $actor->id]];
+        }
+        return ['1=0', []];
     }
 
-    public function getGlobalStats(): array {
-        $stats = [];
-        $stats['total_evaluaciones'] = (int)$this->db->query("SELECT COUNT(*) FROM evaluaciones")->fetchColumn();
-        $stats['aprobados'] = (int)$this->db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'A'")->fetchColumn();
-        $stats['reprobados'] = (int)$this->db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'D'")->fetchColumn();
-        $stats['pendientes'] = (int)$this->db->query("SELECT COUNT(*) FROM evaluaciones WHERE concepto = 'pendiente'")->fetchColumn();
-        $stats['total_fichas'] = (int)$this->db->query("SELECT COUNT(*) FROM fichas")->fetchColumn();
-        $stats['cambios_historial'] = (int)$this->db->query("SELECT COUNT(*) FROM historial_evaluaciones")->fetchColumn();
-        return $stats;
+    private function filas(string $sql, array $p): array {
+        $st = $this->db->prepare($sql);
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_NUM);
     }
 
-    public function getFichasForInstructor(int $user_id): array {
-        $stmtF = $this->db->prepare("
-            SELECT DISTINCT f.id, f.numero_ficha, p.nombre as programa 
-            FROM fichas f 
-            JOIN programas p ON f.programa_id = p.id 
-            LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
-            LEFT JOIN aprendices ap ON ap.ficha_id = f.id
-            WHERE f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?
-            ORDER BY f.numero_ficha
-        ");
-        $stmtF->execute([$user_id, $user_id, $user_id]);
-        return $stmtF->fetchAll(PDO::FETCH_ASSOC);
-    }
+    private const DESDE = "
+        FROM evaluaciones e
+        JOIN aprendices ap ON ap.id = e.aprendiz_id
+        JOIN usuarios u ON u.id = ap.usuario_id
+        JOIN fichas f ON f.id = e.ficha_id
+        JOIN programas p ON p.id = f.programa_id
+        JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+        JOIN competencias c ON c.id = ra.competencia_id
+        LEFT JOIN usuarios ui ON ui.id = e.instructor_id";
 
-    public function getAllFichas(): array {
-        return $this->db->query("
-            SELECT f.id, f.numero_ficha, p.nombre as programa 
-            FROM fichas f 
-            JOIN programas p ON f.programa_id = p.id 
-            ORDER BY f.numero_ficha
-        ")->fetchAll(PDO::FETCH_ASSOC);
+    /** Juicios de una ficha, aprendiz por aprendiz. */
+    public function juiciosDeFicha(int $fichaId, Actor $actor): array {
+        [$w, $p] = $this->alcance($actor);
+        return $this->filas("
+            SELECT u.nombre, ap.numero_documento, ap.estado, c.codigo, ra.codigo, ra.denominacion, e.concepto,
+                   COALESCE(DATE_FORMAT(e.fecha_evaluacion, '%Y-%m-%d'), ''), COALESCE(ui.nombre, '')
+            " . self::DESDE . " WHERE e.ficha_id = ? AND $w
+            ORDER BY u.nombre, c.codigo, ra.codigo", array_merge([$fichaId], $p));
     }
 
     /**
-     * Datos de cabecera de una ficha, para rotular el PDF exportado.
+     * Cumplimiento por instructor responsable, ficha y competencia. Se
+     * agrupa por quien califica (`evaluaciones.instructor_id`), no por el
+     * líder de la ficha: con asignaciones, el líder no califica todo.
      */
-    public function getFichaResumen(int $ficha_id): ?array {
-        $stmt = $this->db->prepare("
-            SELECT f.numero_ficha, p.nombre AS programa
-              FROM fichas f
-              JOIN programas p ON f.programa_id = p.id
-             WHERE f.id = ?
-        ");
-        $stmt->execute([$ficha_id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    public function porInstructor(Actor $actor): array {
+        [$w, $p] = $this->alcance($actor);
+        return array_map([self::class, 'conPorcentajes'], $this->filas("
+            SELECT COALESCE(ui.nombre, '—'), f.numero_ficha, p.codigo, c.codigo, c.nombre,
+                   COUNT(*), SUM(e.concepto = 'A'), SUM(e.concepto = 'D'), SUM(e.concepto = 'pendiente')
+            " . self::DESDE . " WHERE ap.estado IN ('matriculado','suspendido','etapa_practica') AND $w
+            GROUP BY ui.id, f.id, c.id
+            ORDER BY ui.nombre, f.numero_ficha, c.codigo", $p));
     }
 
-    public function checkFichaInstructorAccess(int $ficha_id, int $user_id): bool {
-        $stmt = $this->db->prepare("
-            SELECT COUNT(*) FROM fichas f
-            LEFT JOIN asignaciones asg ON asg.ficha_id = f.id
-            LEFT JOIN aprendices ap ON ap.ficha_id = f.id
-            WHERE f.id = ? AND (f.instructor_id = ? OR asg.instructor_id = ? OR ap.instructor_seguimiento_id = ?)
-        ");
-        $stmt->execute([$ficha_id, $user_id, $user_id, $user_id]);
-        return (int)$stmt->fetchColumn() > 0;
+    /** Cumplimiento por competencia (todas las fichas del alcance). */
+    public function porCompetencia(Actor $actor): array {
+        [$w, $p] = $this->alcance($actor);
+        return array_map([self::class, 'conPorcentajes'], $this->filas("
+            SELECT p.codigo, c.codigo, c.nombre, COUNT(DISTINCT e.ficha_id), COUNT(DISTINCT e.aprendiz_id),
+                   COUNT(*), SUM(e.concepto = 'A'), SUM(e.concepto = 'D'), SUM(e.concepto = 'pendiente')
+            " . self::DESDE . " WHERE ap.estado IN ('matriculado','suspendido','etapa_practica') AND $w
+            GROUP BY c.id
+            ORDER BY p.codigo, c.codigo", $p));
     }
 
-    public function getReportEvaluacionesFicha(int $ficha_id, int $user_id, string $user_rol): array {
-        $sql = "
-            SELECT u.nombre as aprendiz, ap.numero_documento, ra.codigo as ra_codigo, ra.denominacion,
-                   c.nombre as competencia, e.concepto, e.fecha_evaluacion, ui.nombre as instructor
-             FROM evaluaciones e
-             JOIN aprendices ap ON e.aprendiz_id = ap.id
-             JOIN usuarios u ON ap.usuario_id = u.id
-             JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
-             JOIN competencias c ON ra.competencia_id = c.id
-             JOIN usuarios ui ON e.instructor_id = ui.id
-             JOIN fichas f ON e.ficha_id = f.id
-             WHERE e.ficha_id = ?
-        ";
-        $params = [$ficha_id];
-        if ($user_rol === ROL_INSTRUCTOR) {
-            $sql .= " AND (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg 
-                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND c.es_etapa_practica = 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    c.es_etapa_practica = 1
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )";
-            $params[] = $user_id;
-            $params[] = $user_id;
-            $params[] = $user_id;
-        }
-        $sql .= " ORDER BY u.nombre, ra.codigo";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_NUM);
+    /**
+     * Cambios de juicio entre dos fechas (RNF02): quién, cuándo, de qué a
+     * qué y por qué.
+     */
+    public function historial(Actor $actor, string $desde, string $hasta): array {
+        [$w, $p] = $this->alcance($actor);
+        return $this->filas("
+            SELECT DATE_FORMAT(h.fecha_cambio, '%Y-%m-%d %H:%i'), f.numero_ficha, u.nombre, ap.numero_documento, ra.codigo,
+                   h.concepto_anterior, h.concepto_nuevo, COALESCE(h.motivo, ''), COALESCE(uh.nombre, '')
+              FROM historial_evaluaciones h
+              JOIN evaluaciones e ON e.id = h.evaluacion_id
+              JOIN aprendices ap ON ap.id = e.aprendiz_id
+              JOIN usuarios u ON u.id = ap.usuario_id
+              JOIN fichas f ON f.id = e.ficha_id
+              JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c ON c.id = ra.competencia_id
+              LEFT JOIN usuarios uh ON uh.id = h.usuario_id
+             WHERE h.fecha_cambio >= ? AND h.fecha_cambio < ? + INTERVAL 1 DAY AND $w
+             ORDER BY h.fecha_cambio DESC, h.id DESC", array_merge([$desde, $hasta], $p));
     }
 
-    public function getReportCumplimientoInstructor(int $user_id, string $user_rol): array {
-        $sql = "
-            SELECT ui.nombre as instructor, f.numero_ficha, p.nombre as programa, c.nombre as competencia,
-                   COUNT(e.id) as total_ra,
-                   SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-                   SUM(CASE WHEN e.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
-                   SUM(CASE WHEN e.concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes,
-                   ROUND(SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(e.id), 0), 1) as pct
-            FROM evaluaciones e
-            JOIN fichas f ON e.ficha_id = f.id
-            JOIN programas p ON f.programa_id = p.id
-            JOIN usuarios ui ON f.instructor_id = ui.id
-            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
-            JOIN competencias c ON ra.competencia_id = c.id
-            JOIN aprendices ap ON e.aprendiz_id = ap.id
-        ";
-        $params = [];
-        if ($user_rol === ROL_INSTRUCTOR) {
-            // Misma regla de alcance por competencia usada en el resto de reportes:
-            // agregar solo las evaluaciones de la(s) competencia(s) que este instructor
-            // realmente tiene asignadas, no todas las de la ficha.
-            $sql .= " WHERE (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg
-                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND c.es_etapa_practica = 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg
-                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    c.es_etapa_practica = 1
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )";
-            $params[] = $user_id;
-            $params[] = $user_id;
-            $params[] = $user_id;
-        }
-        $sql .= " GROUP BY ui.id, f.id, c.id ORDER BY ui.nombre, f.numero_ficha, c.nombre";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_NUM);
-    }
-
-    public function getReportCumplimientoCompetencia(int $user_id, string $user_rol): array {
-        $sql = "
-            SELECT p.nombre as programa, c.nombre as competencia, c.codigo,
-                   COUNT(e.id) as total,
-                   SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-                   SUM(CASE WHEN e.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
-                   ROUND(SUM(CASE WHEN e.concepto = 'A' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(e.id), 0), 1) as pct
-            FROM evaluaciones e
-            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
-            JOIN competencias c ON ra.competencia_id = c.id
-            JOIN programas p ON c.programa_id = p.id
-            JOIN fichas f ON e.ficha_id = f.id
-            JOIN aprendices ap ON e.aprendiz_id = ap.id
-            WHERE e.concepto != 'pendiente'
-        ";
-        $params = [];
-        if ($user_rol === ROL_INSTRUCTOR) {
-            $sql .= " AND (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg 
-                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND c.es_etapa_practica = 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    c.es_etapa_practica = 1
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )";
-            $params[] = $user_id;
-            $params[] = $user_id;
-            $params[] = $user_id;
-        }
-        $sql .= " GROUP BY c.id ORDER BY p.nombre, c.codigo";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_NUM);
-    }
-
-    public function getReportHistorialCambios(int $user_id, string $user_rol): array {
-        $sql = "
-            SELECT he.evaluacion_id, u_ap.nombre as aprendiz, ra.codigo,
-                   he.concepto_anterior, he.concepto_nuevo, he.motivo,
-                   u_mod.nombre as modificado_por, he.fecha_cambio
-            FROM historial_evaluaciones he
-            JOIN evaluaciones e ON he.evaluacion_id = e.id
-            JOIN fichas f ON e.ficha_id = f.id
-            JOIN aprendices ap ON e.aprendiz_id = ap.id
-            JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
-            JOIN resultados_aprendizaje ra ON e.resultado_aprendizaje_id = ra.id
-            JOIN competencias c ON ra.competencia_id = c.id
-            JOIN usuarios u_mod ON he.usuario_id = u_mod.id
-        ";
-        $params = [];
-        if ($user_rol === ROL_INSTRUCTOR) {
-            $sql .= " WHERE (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg 
-                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND c.es_etapa_practica = 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    c.es_etapa_practica = 1
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )";
-            $params[] = $user_id;
-            $params[] = $user_id;
-            $params[] = $user_id;
-        }
-        $sql .= " ORDER BY he.fecha_cambio DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_NUM);
+    /**
+     * Añade % de desempeño (A sobre A+D) y % de avance (A sobre el total)
+     * a una fila cuyas cuatro últimas columnas son total, A, D, pendientes.
+     */
+    private static function conPorcentajes(array $f): array {
+        $n = count($f);
+        [$total, $a, $d] = [(int)$f[$n - 4], (int)$f[$n - 3], (int)$f[$n - 2]];
+        $f[$n - 4] = $total;
+        $f[$n - 3] = $a;
+        $f[$n - 2] = $d;
+        $f[$n - 1] = (int)$f[$n - 1];
+        $f[] = $a + $d > 0 ? round($a * 100 / ($a + $d), 1) : '';
+        $f[] = $total > 0 ? round($a * 100 / $total, 1) : '';
+        return $f;
     }
 }

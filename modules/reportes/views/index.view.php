@@ -1,172 +1,77 @@
 <?php
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+use Core\Services\ReportesService;
+use Core\Support\Semaforo;
+
+/** @var \Core\Support\Actor $actor */
+$pct = static fn($v) => $v === null ? '—' : ((int)round((float)$v)) . '%';
+$accion = e(APP_URL . '/index.php/reportes/descargar');
+$hoy = date('Y-m-d');
+$hace90 = date('Y-m-d', strtotime('-90 days'));
 ?>
 <div class="page-header">
   <div>
-  <h1 class="mb-1">Centro de Reportes</h1>
-  <p class="text-muted mb-0">Genera reportes de cumplimiento por instructor, ficha y competencia. Exporta en CSV y Excel.</p>
+    <h1 class="mb-1">Reportes</h1>
+    <p class="text-muted mb-0"><?= $actor->esCoordinador()
+        ? 'Reportes del centro por ficha, instructor y competencia, en Excel (.xlsx), CSV o PDF.'
+        : 'Reportes de lo que calificas y de tus fichas, en Excel (.xlsx), CSV o PDF.' ?></p>
   </div>
 </div>
 
-<?php if (!empty($errors)): ?>
-<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?></div></div>
+<?php foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach; ?>
+
+<?php if ($resumen): ?>
+<div class="row g-3 mb-4">
+  <?php foreach ([
+      ['etiqueta' => 'Fichas activas', 'valor' => $resumen['fichas_activas'], 'icono' => 'bi-journal-bookmark'],
+      ['etiqueta' => 'Aprendices en formación', 'valor' => $resumen['aprendices'], 'icono' => 'bi-people'],
+      ['etiqueta' => 'Desempeño', 'valor' => $pct($resumen['desempeno']), 'icono' => 'bi-speedometer2', 'clase' => 'text-' . Semaforo::clase($resumen['semaforo'])],
+      ['etiqueta' => 'Avance de RAP', 'valor' => $pct($resumen['avance']), 'icono' => 'bi-graph-up-arrow'],
+  ] as $kpi): ?>
+    <div class="col-6 col-lg-3"><?php require BASE_PATH . 'components/kpi.php'; ?></div>
+  <?php endforeach; ?>
+</div>
 <?php endif; ?>
 
-<!-- KPIs -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-2">
-    <div class="kpi text-center" style="border-top: 3px solid var(--sena-primary);">
-      <div class="kpi-content"><div class="label">Evaluaciones</div><div class="value"><?= (int)$stats['total_evaluaciones'] ?></div></div>
-    </div>
+<div class="row g-3">
+  <?php foreach ($tipos as $tipo => [$titulo, $descripcion, $icono]): ?>
+  <div class="col-md-6 col-xl-4">
+    <form method="GET" action="<?= $accion ?>" class="card border-0 shadow-sm h-100">
+      <input type="hidden" name="tipo" value="<?= e($tipo) ?>">
+      <div class="card-body d-flex flex-column">
+        <h2 class="h6 fw-bold"><i class="bi <?= e($icono) ?> text-success me-2"></i><?= e($titulo) ?></h2>
+        <p class="small text-muted"><?= e($descripcion) ?></p>
+        <?php if ($tipo === 'ficha'): ?>
+          <label class="form-label small fw-semibold" for="rep_ficha">Ficha</label>
+          <select name="ficha_id" id="rep_ficha" class="form-select mb-3" required data-picker data-picker-label="Ficha">
+            <option value="" disabled selected>Seleccione…</option>
+            <?php foreach ($fichas as $f): ?><option value="<?= (int)$f['id'] ?>">Ficha <?= e($f['numero_ficha']) ?></option><?php endforeach; ?>
+          </select>
+        <?php elseif ($tipo === 'historial'): ?>
+          <div class="row g-2 mb-3">
+            <div class="col-6"><label class="form-label small fw-semibold" for="rep_desde">Desde</label>
+              <input type="date" name="desde" id="rep_desde" class="form-control" value="<?= e($hace90) ?>" max="<?= e($hoy) ?>"></div>
+            <div class="col-6"><label class="form-label small fw-semibold" for="rep_hasta">Hasta</label>
+              <input type="date" name="hasta" id="rep_hasta" class="form-control" value="<?= e($hoy) ?>" max="<?= e($hoy) ?>"></div>
+            <div class="col-12"><small class="text-muted">Hasta <?= ReportesService::MAX_DIAS_HISTORIAL ?> días por archivo.</small></div>
+          </div>
+        <?php endif; ?>
+        <div class="d-flex gap-2 mt-auto" role="group" aria-label="Formato de <?= e($titulo) ?>">
+          <button type="submit" name="formato" value="xlsx" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+          <button type="submit" name="formato" value="pdf" class="btn btn-sm btn-soft flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
+          <button type="submit" name="formato" value="csv" class="btn btn-sm btn-soft flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+        </div>
+      </div>
+    </form>
   </div>
-  <div class="col-6 col-md-2">
-    <div class="kpi text-center" style="border-top: 3px solid #22c55e;">
-      <div class="kpi-content"><div class="label">Aprobados</div><div class="value" style="color:#22c55e;"><?= (int)$stats['aprobados'] ?></div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="kpi text-center" style="border-top: 3px solid #ef4444;">
-      <div class="kpi-content"><div class="label">No Aprobados</div><div class="value" style="color:#ef4444;"><?= (int)$stats['reprobados'] ?></div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="kpi text-center" style="border-top: 3px solid #eab308;">
-      <div class="kpi-content"><div class="label">Pendientes</div><div class="value" style="color:#eab308;"><?= (int)$stats['pendientes'] ?></div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="kpi text-center" style="border-top: 3px solid #3b82f6;">
-      <div class="kpi-content"><div class="label">Fichas</div><div class="value" style="color:#3b82f6;"><?= (int)$stats['total_fichas'] ?></div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="kpi text-center" style="border-top: 3px solid #8b5cf6;">
-      <div class="kpi-content"><div class="label">Cambios</div><div class="value" style="color:#8b5cf6;"><?= (int)$stats['cambios_historial'] ?></div></div>
-    </div>
-  </div>
+  <?php endforeach; ?>
 </div>
-
-<div class="row g-4">
-  <!-- Reporte 1: Evaluaciones por Ficha -->
-  <div class="col-md-6">
-    <div class="card glass-card h-100 border-0 shadow-sm" style="border-top: 4px solid var(--sena-primary); border-radius: 12px;">
-      <div class="card-body p-4">
-        <div class="mb-3"><i class="bi bi-folder2-open text-primary" style="font-size: 2.5rem;"></i></div>
-        <h5 class="fw-bold text-dark">Evaluaciones por Ficha</h5>
-        <p class="text-muted small">Detalle de todos los juicios evaluativos (A/D) para cada aprendiz de una ficha específica.</p>
-        <form method="POST">
-          <?= csrfField() ?>
-          <input type="hidden" name="export" value="evaluaciones_ficha">
-          <div class="mb-3">
-            <select name="ficha_id" class="form-select form-select-sm" required
-                    data-picker
-                    data-picker-label="Seleccionar ficha"
-                    data-picker-placeholder="Número de ficha o programa...">
-              <option value="" disabled selected>Seleccionar ficha...</option>
-              <?php foreach ($fichas as $f): ?>
-              <option value="<?= $f['id'] ?>"
-                      data-search="<?= htmlspecialchars($f['numero_ficha'] . ' ' . $f['programa']) ?>">
-                Ficha #<?= htmlspecialchars($f['numero_ficha']) ?> — <?= htmlspecialchars($f['programa']) ?>
-              </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="d-flex gap-2">
-            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
-            <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Reporte 2: Cumplimiento por Instructor -->
-  <div class="col-md-6">
-    <div class="card glass-card h-100 border-0 shadow-sm" style="border-top: 4px solid #3b82f6; border-radius: 12px;">
-      <div class="card-body p-4">
-        <div class="mb-3"><i class="bi bi-person-workspace" style="font-size: 2.5rem; color: #3b82f6;"></i></div>
-        <h5 class="fw-bold text-dark">Cumplimiento por Instructor Líder</h5>
-        <p class="text-muted small">Cantidad de RAs evaluados vs faltantes agrupados por instructor líder y ficha asignada.</p>
-        <form method="POST">
-          <?= csrfField() ?>
-          <input type="hidden" name="export" value="cumplimiento_instructor">
-          <div class="d-flex gap-2 mt-4">
-            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
-            <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Reporte 3: Cumplimiento por Competencia -->
-  <div class="col-md-6">
-    <div class="card glass-card h-100 border-0 shadow-sm" style="border-top: 4px solid #22c55e; border-radius: 12px;">
-      <div class="card-body p-4">
-        <div class="mb-3"><i class="bi bi-diagram-3" style="font-size: 2.5rem; color: #22c55e;"></i></div>
-        <h5 class="fw-bold text-dark">Cumplimiento por Competencia</h5>
-        <p class="text-muted small">Porcentaje de aprobación por cada competencia y programa formativo a nivel institucional.</p>
-        <form method="POST">
-          <?= csrfField() ?>
-          <input type="hidden" name="export" value="cumplimiento_competencia">
-          <div class="d-flex gap-2 mt-4">
-            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
-            <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Reporte 4: Historial / Trazabilidad -->
-  <div class="col-md-6">
-    <div class="card glass-card h-100 border-0 shadow-sm" style="border-top: 4px solid #8b5cf6; border-radius: 12px;">
-      <div class="card-body p-4">
-        <div class="mb-3"><i class="bi bi-clock-history" style="font-size: 2.5rem; color: #8b5cf6;"></i></div>
-        <h5 class="fw-bold text-dark">Historial de Cambios (Trazabilidad)</h5>
-        <p class="text-muted small">Registro de todos los cambios de concepto evaluativo con fecha, responsable y motivo (RNF02).</p>
-        <form method="POST">
-          <?= csrfField() ?>
-          <input type="hidden" name="export" value="historial_cambios">
-          <div class="d-flex gap-2 mt-4">
-            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
-            <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Formatos disponibles -->
-<div class="card glass-card border-0 mt-4 p-4" style="border-radius: 12px;">
-  <h5 class="fw-bold mb-3"><i class="bi bi-download me-2"></i>Formatos de exportación</h5>
-  <div class="row g-3 small text-muted">
-    <div class="col-md-4 d-flex gap-2">
-      <i class="bi bi-file-earmark-pdf text-danger fs-5"></i>
-      <div><span class="fw-semibold text-dark d-block">PDF</span>
-        Documento institucional paginado, con semáforo de cumplimiento. Para archivar, firmar o entregar.</div>
-    </div>
-    <div class="col-md-4 d-flex gap-2">
-      <i class="bi bi-file-earmark-excel text-success fs-5"></i>
-      <div><span class="fw-semibold text-dark d-block">Excel</span>
-        Hoja de cálculo con el mismo semáforo de color. Para revisar y filtrar.</div>
-    </div>
-    <div class="col-md-4 d-flex gap-2">
-      <i class="bi bi-filetype-csv text-primary fs-5"></i>
-      <div><span class="fw-semibold text-dark d-block">CSV</span>
-        Datos planos separados por punto y coma. Para cargar en otra herramienta.</div>
-    </div>
-  </div>
-</div>
+<p class="small text-muted mt-3">Los planes de mejoramiento y los juicios con filtros se exportan desde sus pantallas (<a href="<?= e(APP_URL . '/index.php/mejoramiento') ?>">Planes</a>, <a href="<?= e(APP_URL . '/index.php/evaluaciones') ?>">Juicios</a>).</p>

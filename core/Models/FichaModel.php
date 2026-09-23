@@ -41,7 +41,8 @@ class FichaModel {
         (SELECT COUNT(*) FROM evaluaciones e JOIN aprendices a ON a.id = e.aprendiz_id
           WHERE e.ficha_id = f.id AND a.estado <> 'desertado' AND e.concepto = 'D') AS en_d,
         (SELECT AVG(CASE WHEN act.estado = 'completada' THEN 100 ELSE act.cumplimiento_porcentaje END)
-           FROM actividades act WHERE act.ficha_id = f.id AND act.estado <> 'cancelada') AS avance_proyecto";
+           FROM actividades act WHERE act.ficha_id = f.id AND act.estado <> 'cancelada') AS avance_proyecto,
+        (SELECT COUNT(*) FROM planes_mejoramiento pm WHERE pm.ficha_id = f.id AND pm.estado IN ('abierto','en_curso')) AS planes_abiertos";
 
     /** @return array{0:string, 1:array} */
     private function construirFiltro(Actor $actor, array $f): array {
@@ -110,8 +111,7 @@ class FichaModel {
         $st = $this->db->prepare("
             SELECT f.*, p.nombre AS programa, p.codigo AS codigo_programa, u.nombre AS instructor,
                    pr.nombre AS proyecto_nombre, pr.codigo AS proyecto_codigo, pr.objetivo AS proyecto_objetivo,
-                   " . self::INDICADORES . ",
-                   (SELECT COUNT(*) FROM planes_mejoramiento pm WHERE pm.ficha_id = f.id AND pm.estado IN ('abierto','en_curso')) AS planes_abiertos
+                   " . self::INDICADORES . "
               FROM fichas f
               JOIN programas p ON p.id = f.programa_id
               JOIN usuarios u ON u.id = f.instructor_id
