@@ -43,13 +43,22 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         $ficha = $this->idFicha();
         $inst = $this->idInstructorConFicha();
 
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        $instructor = new \Core\Support\Actor($inst, ROL_INSTRUCTOR);
+        $aprendiz = new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ);
+
         $this->ejecuta(fn() => $m->getAll(), 'getAll');
         $this->ejecuta(fn() => $m->getByInstructor($inst), 'getByInstructor');
-        $this->ejecuta(fn() => $m->getDetailedList(null), 'getDetailedList (coordinador)');
-        $this->ejecuta(fn() => $m->getDetailedList($inst), 'getDetailedList (instructor)');
-        $this->ejecuta(fn() => $m->getFichaCompleta($ficha), 'getFichaCompleta');
-        $this->ejecuta(fn() => $m->getAprendicesFicha($ficha), 'getAprendicesFicha');
-        $this->ejecuta(fn() => $m->getFichaParaEditar($ficha), 'getFichaParaEditar');
+        $this->ejecuta(fn() => $m->listar($coord, [], 25, 0), 'listar (coordinador)');
+        $this->ejecuta(fn() => $m->listar($instructor, ['search' => 'a', 'estado' => 'ejecucion'], 25, 0), 'listar (instructor)');
+        $this->ejecuta(fn() => $m->detalle($ficha), 'detalle');
+        $this->ejecuta(fn() => $m->aprendicesConIndicadores($ficha), 'aprendicesConIndicadores');
+        $this->ejecuta(fn() => $m->opciones($coord), 'opciones');
+        $this->ejecuta(fn() => $m->dependencias($ficha), 'dependencias');
+
+        $this->assertSame($this->contar('fichas'), $m->contar($coord));
+        $this->assertLessThanOrEqual(1, $m->contar($aprendiz), 'el aprendiz solo alcanza su ficha');
+        $this->assertSame(0, $m->contar($coord, ['estado' => 'inventado']), 'un estado inventado no debe devolver filas');
         $this->ejecuta(fn() => $m->getProgramasActivos(), 'getProgramasActivos');
         $this->ejecuta(fn() => $m->getInstructoresActivos(), 'getInstructoresActivos');
         $this->ejecuta(fn() => $m->getProyectosActivos(), 'getProyectosActivos');
@@ -64,7 +73,8 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
     public function testRecuentoDeAprendicesCoherente(): void {
         $m = new Models\FichaModel($this->db);
 
-        foreach ($m->getDetailedList(null) as $ficha) {
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        foreach ($m->listar($coord, [], 100, 0) as $ficha) {
             $real = $this->contar(
                 'aprendices',
                 "ficha_id = ? AND estado <> 'desertado'",
@@ -72,7 +82,7 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
             );
             $this->assertSame(
                 $real,
-                (int)$ficha['cantidad_aprendices'],
+                (int)$ficha['aprendices_activos'],
                 "la ficha #{$ficha['id']} muestra un número de aprendices que no cuadra"
             );
         }

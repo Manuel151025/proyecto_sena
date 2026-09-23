@@ -3,110 +3,88 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
 use Core\Models\AsignacionesModel;
-use PDO;
-use Exception;
+use Core\Services\AsignacionesService;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Asignación de instructores por competencia.
+ *
+ *   GET  /asignaciones?search=&ficha_id=&instructor_id=   coordinación (todas) e instructor (las de sus fichas)
+ *   POST /asignaciones  action=asignar|reasignar|eliminar  coordinación
+ */
 class AsignacionesController extends BaseController {
-    private PDO $db;
-    private AsignacionesModel $asignacionesModel;
+    private AsignacionesModel $modelo;
+    private AsignacionesService $servicio;
 
-    public function __construct(?PDO $db = null, ?AsignacionesModel $asignacionesModel = null) {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-        $this->db = $db ?? Database::getConnection();
-        $this->asignacionesModel = $asignacionesModel ?? new AsignacionesModel($this->db);
+    public function __construct(?AsignacionesModel $modelo = null, ?AsignacionesService $servicio = null) {
+        $this->modelo = $modelo ?? new AsignacionesModel();
+        $this->servicio = $servicio ?? new AsignacionesService();
     }
 
     public function index(): void {
+        $actor = Actor::actual();
+        $busqueda = $this->consulta()->busquedaCruda('search');
+        $fichaId = $this->idDeConsulta('ficha_id');
+        $instructorId = $this->idDeConsulta('instructor_id');
         $errors = [];
-        $successMessage = '';
-        $user_id = (int)getCurrentUser()['id'];
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            requireCsrf();
-            if (!hasRole(ROL_COORDINADOR)) {
-                $errors[] = 'Solo los coordinadores pueden gestionar asignaciones.';
-            } else {
-                if ($_POST['action'] === 'asignar') {
-                    $ficha_id = (int)($_POST['ficha_id'] ?? 0);
-                    $competencia_id = (int)($_POST['competencia_id'] ?? 0);
-                    $instructor_id = (int)($_POST['instructor_id'] ?? 0);
-
-                    if ($ficha_id <= 0) $errors[] = 'Debe seleccionar una ficha válida.';
-                    if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia válida.';
-                    if ($instructor_id <= 0) $errors[] = 'Debe seleccionar un instructor válido.';
-
-                    if (empty($errors)) {
-                        try {
-                            if ($this->asignacionesModel->checkAsignacionExiste($ficha_id, $competencia_id)) {
-                                $errors[] = 'Ya existe un instructor asignado a esta competencia en esta ficha. Elimine la asignación previa primero.';
-                            } else {
-                                $this->asignacionesModel->crearAsignacion($ficha_id, $competencia_id, $instructor_id, $user_id);
-                                setFlashMessage('Instructor asignado exitosamente a la competencia.', 'success');
-                                $this->redirect(APP_URL . '/index.php/asignaciones');
-                            }
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al realizar la asignación');
-                        }
-                    }
-                } elseif ($_POST['action'] === 'eliminar') {
-                    $asignacion_id = (int)($_POST['asignacion_id'] ?? 0);
-                    if ($asignacion_id <= 0) {
-                        $errors[] = 'ID de asignación no válido.';
-                    } else {
-                        try {
-                            $this->asignacionesModel->eliminarAsignacion($asignacion_id, $user_id);
-                            setFlashMessage('Asignación eliminada exitosamente.', 'success');
-                            $this->redirect(APP_URL . '/index.php/asignaciones');
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al eliminar la asignación');
-                        }
-                    }
-                }
+        $asignaciones = $fichas = $competencias = $instructores = [];
+        try {
+            $asignaciones = $this->modelo->listar($actor, $busqueda, $fichaId, $instructorId);
+            $instructores = $this->modelo->getInstructores();
+            if ($actor->esCoordinador()) {
+                $fichas = $this->modelo->getFichas();
+                $competencias = array_values(array_filter($this->modelo->getCompetencias(), static fn($c) => (int)$c['es_etapa_practica'] === 0));
             }
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las asignaciones');
         }
+        $this->render(BASE_PATH . 'modules/asignaciones/views/index.view.php', [
+            'errors'        => $errors,
+            'asignaciones'  => $asignaciones,
+            'fichas'        => $fichas,
+            'competencias'  => $competencias,
+            'instructores'  => $instructores,
+            'busqueda'      => $busqueda,
+            'fichaId'       => $fichaId,
+            'instructorId'  => $instructorId,
+            'esCoordinador' => $actor->esCoordinador(),
+        ], 'Asignaciones · SENA');
+    }
 
-        $search = trim($_GET['search'] ?? '');
-        $filter_ficha = (int)($_GET['ficha_id'] ?? 0);
-        $filter_instructor = (int)($_GET['instructor_id'] ?? 0);
+    public function asignar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $ficha = $v->id('ficha_id', 'La ficha');
+        $comp = $v->id('competencia_id', 'La competencia');
+        $inst = $v->id('instructor_id', 'El instructor');
+        $vuelta = $this->rutaDeVuelta('/asignaciones');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->asignar($ficha, $comp, $inst, Actor::actual()), $vuelta,
+            'Instructor asignado. Sus evaluaciones pendientes de esa competencia pasan a él.', 'No se pudo asignar');
+    }
 
-        $asignaciones = [];
-        try {
-            $asignaciones = $this->asignacionesModel->getAsignaciones($search, $filter_ficha, $filter_instructor);
-        } catch (Exception $e) {
-            error_log('AsignacionesController::index getAsignaciones - ' . $e->getMessage());
-            $errors[] = 'Error al cargar asignaciones.';
-        }
+    public function reasignar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La asignación');
+        $inst = $v->id('instructor_id', 'El instructor');
+        $vuelta = $this->rutaDeVuelta('/asignaciones');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->cambiarInstructor($id, $inst, Actor::actual()), $vuelta,
+            'Instructor cambiado.', 'No se pudo cambiar el instructor');
+    }
 
-        $fichas = [];
-        $competencias = [];
-        $instructores = [];
-        try {
-            $fichas = $this->asignacionesModel->getFichas();
-            $competencias = $this->asignacionesModel->getCompetencias();
-            $instructores = $this->asignacionesModel->getInstructores();
-        } catch (Exception $e) {
-            error_log('AsignacionesController::index datos auxiliares - ' . $e->getMessage());
-            $errors[] = 'Error al cargar datos auxiliares.';
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/asignaciones/views/index.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'search' => $search,
-                'filter_ficha' => $filter_ficha,
-                'filter_instructor' => $filter_instructor,
-                'asignaciones' => $asignaciones,
-                'fichas' => $fichas,
-                'competencias' => $competencias,
-                'instructores' => $instructores
-            ],
-            'Asignaciones de Instructores · SENA'
-        );
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La asignación');
+        $vuelta = $this->rutaDeVuelta('/asignaciones');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->eliminar($id, Actor::actual()), $vuelta,
+            'Asignación eliminada: la competencia vuelve al instructor líder de la ficha.', 'No se pudo eliminar la asignación');
     }
 }

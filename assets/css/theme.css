@@ -558,6 +558,7 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 }
 .avatar{width:36px;height:36px;border-radius:50%;background:var(--sena-primary);color:#fff;display:grid;place-items:center;font-weight:600;font-size:.85rem;flex-shrink:0;}
 .avatar.lg{width:64px;height:64px;font-size:1.4rem;}
+.avatar.sm{width:32px;height:32px;font-size:.75rem;}
 .sidebar-user .meta{display:none;}
 
 /* Ocultar botón de toggle sidebar */
@@ -1703,6 +1704,12 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
   color: var(--text-muted);
 }
 .estado-vacio > .bi { display: block; font-size: 3rem; opacity: .3; margin-bottom: .5rem; }
+/* Fila «sin resultados» de una tabla con desplazamiento horizontal: el
+   texto se queda en la parte visible en vez de centrarse en todo el ancho
+   de la tabla (en el móvil quedaba cortado fuera de la pantalla). */
+.celda-vacia { padding: 0 !important; }
+.celda-vacia > div { position: sticky; left: 0; max-width: calc(100vw - 3rem); padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); white-space: normal; }
+.celda-vacia .bi { display: block; font-size: 1.75rem; opacity: .5; margin-bottom: .5rem; }
 
 /* Chips de fichas vinculadas y similares. */
 .lista-chips { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: flex-end; }

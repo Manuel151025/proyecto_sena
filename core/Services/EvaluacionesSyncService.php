@@ -32,6 +32,18 @@ class EvaluacionesSyncService {
      */
     private const ESTADOS_EN_FORMACION = ['matriculado', 'suspendido', 'etapa_practica'];
 
+    /**
+     * Quién responde por una evaluación pendiente, con los alias `a`, `f` y
+     * `c` en el ámbito. Es la misma prelación que InstructorAccessService
+     * usa para el permiso de calificar: el instructor asignado a la
+     * competencia en esa ficha; en etapa práctica, el de seguimiento del
+     * aprendiz; y si no, el líder de la ficha.
+     */
+    private const RESPONSABLE = "COALESCE(
+            (SELECT asg.instructor_id FROM asignaciones asg WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id LIMIT 1),
+            CASE WHEN c.es_etapa_practica = 1 THEN a.instructor_seguimiento_id END,
+            f.instructor_id)";
+
     private PDO $db;
 
     public function __construct(?PDO $db = null) {
@@ -80,7 +92,7 @@ class EvaluacionesSyncService {
         $stmt = $this->db->prepare("
             INSERT INTO evaluaciones
                 (resultado_aprendizaje_id, aprendiz_id, instructor_id, ficha_id, concepto, comentario, fecha_evaluacion)
-            SELECT ra.id, a.id, f.instructor_id, a.ficha_id, 'pendiente', NULL, NULL
+            SELECT ra.id, a.id, " . self::RESPONSABLE . ", a.ficha_id, 'pendiente', NULL, NULL
             $desde
               AND f.instructor_id IS NOT NULL
               AND f.instructor_id <> 0
@@ -91,6 +103,33 @@ class EvaluacionesSyncService {
             'creadas' => $stmt->rowCount(),
             'omitidas_sin_instructor' => $sinInstructor,
         ];
+    }
+
+    /**
+     * Pone a cada evaluación PENDIENTE el instructor que hoy responde por
+     * ella (ver RESPONSABLE). Se llama tras cualquier cambio que mueva esa
+     * responsabilidad: asignar o quitar una competencia, cambiar el líder de
+     * una ficha, trasladar a un aprendiz o cambiar su instructor de
+     * seguimiento. Los juicios ya emitidos conservan a su autor.
+     *
+     * @param array $scope Mismas claves que sincronizar().
+     * @return int Evaluaciones que cambiaron de responsable.
+     */
+    public function actualizarResponsables(array $scope = []): int {
+        [$where, $params] = $this->construirFiltro($scope);
+        $stmt = $this->db->prepare("
+            UPDATE evaluaciones e
+              JOIN aprendices a              ON a.id = e.aprendiz_id
+              JOIN fichas f                  ON f.id = a.ficha_id
+              JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c            ON c.id = ra.competencia_id
+               SET e.instructor_id = " . self::RESPONSABLE . "
+             WHERE e.concepto = 'pendiente'
+               AND f.instructor_id IS NOT NULL AND f.instructor_id <> 0
+               $where
+        ");
+        $stmt->execute($params);
+        return $stmt->rowCount();
     }
 
     /**

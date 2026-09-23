@@ -56,10 +56,10 @@ final class RutasYPermisosTest extends CasoDePrueba {
             'estas rutas no declaran permiso: ' . implode(', ', $sinRoles));
     }
 
-    #[TestDox('toda ruta apunta a una clase y un método que existen')]
+    #[TestDox('toda ruta y toda acción apuntan a una clase y un método que existen')]
     public function testDestinosExisten(): void {
         $rotas = [];
-        foreach ($this->rutas() as $clave => $r) {
+        foreach ($this->destinos() as $clave => $r) {
             if (!class_exists($r['controller']) || !method_exists($r['controller'], $r['action'])) {
                 $rotas[] = "$clave -> {$r['controller']}::{$r['action']}";
             }
@@ -112,9 +112,8 @@ final class RutasYPermisosTest extends CasoDePrueba {
         $rutas = $this->rutas();
 
         $soloCoordinador = [
-            '/usuarios', '/usuarios/exportar', '/usuarios/importar',
+            '/usuarios', '/usuarios/exportar', '/usuarios/importar', '/matriculas/importar',
             '/estructura', '/estructura/importar', '/configuracion', '/logs',
-            '/fichas/crear', '/fichas/editar',
         ];
 
         foreach ($soloCoordinador as $ruta) {
@@ -128,26 +127,50 @@ final class RutasYPermisosTest extends CasoDePrueba {
         }
     }
 
-    #[TestDox('ninguna ruta de escritura está abierta al aprendiz por descuido')]
-    public function testEscriturasSensiblesCerradasAlAprendiz(): void {
-        $rutas = $this->rutas();
-
-        $noParaAprendiz = [
-            'POST /usuarios', 'POST /usuarios/crear', 'POST /usuarios/editar',
-            'POST /matriculas', 'POST /asignaciones', 'POST /configuracion',
-            'POST /estructura', 'POST /reportes',
-        ];
-
-        foreach ($noParaAprendiz as $clave) {
-            if (!isset($rutas[$clave])) {
+    /**
+     * La administración académica (qué se cursa, quién está matriculado y
+     * quién califica qué) la decide coordinación: toda operación de escritura
+     * de estas pantallas tiene que ser exclusiva de ese rol.
+     */
+    #[TestDox('las operaciones de administración académica son exclusivas de coordinación')]
+    public function testOperacionesAdministrativasSoloCoordinacion(): void {
+        $prefijos = ['/usuarios', '/programas', '/competencias', '/resultados-aprendizaje', '/estructura',
+                     '/fichas', '/matriculas', '/asignaciones', '/proyectos', '/configuracion'];
+        $abiertas = [];
+        foreach ($this->destinos() as $clave => $r) {
+            if (!str_starts_with($clave, 'POST ')) {
                 continue;
             }
-            $this->assertNotContains(
-                ROL_APRENDIZ,
-                $rutas[$clave]['roles'],
-                "$clave está abierta al rol aprendiz"
-            );
+            $ruta = explode('#', substr($clave, 5))[0];
+            foreach ($prefijos as $p) {
+                if ($ruta === $p || str_starts_with($ruta, $p . '/')) {
+                    if ($r['roles'] !== [ROL_COORDINADOR]) {
+                        $abiertas[] = "$clave [" . implode(',', $r['roles']) . ']';
+                    }
+                    break;
+                }
+            }
         }
+        $this->assertSame([], $abiertas, 'abiertas a más roles: ' . implode(' | ', $abiertas));
+    }
+
+    #[TestDox('ninguna escritura está abierta al aprendiz por descuido')]
+    public function testEscriturasSensiblesCerradasAlAprendiz(): void {
+        // Lo único que escribe el aprendiz: sus evidencias, su perfil, sus
+        // avisos, su calendario y el cierre de sesión.
+        $permitidas = ['/evidencias', '/perfil', '/api/notificaciones', '/calendario', '/logout',
+                       '/evaluaciones', '/seguimiento', '/retroalimentacion'];
+        $abiertas = [];
+        foreach ($this->destinos() as $clave => $r) {
+            if (!str_starts_with($clave, 'POST ') || !in_array(ROL_APRENDIZ, $r['roles'], true)) {
+                continue;
+            }
+            $ruta = explode('#', substr($clave, 5))[0];
+            if (!in_array($ruta, $permitidas, true)) {
+                $abiertas[] = $clave;
+            }
+        }
+        $this->assertSame([], $abiertas, 'escrituras abiertas al aprendiz: ' . implode(', ', $abiertas));
     }
 
     #[TestDox('la importación de juicios no está abierta al aprendiz')]
@@ -164,7 +187,7 @@ final class RutasYPermisosTest extends CasoDePrueba {
     public function testNumeroDeRutas(): void {
         // Es un canario: si alguien añade o quita una ruta, esta prueba
         // falla y obliga a revisar conscientemente el permiso que declara.
-        $this->assertCount(59, $this->rutas(),
+        $this->assertCount(96, $this->destinos(),
             'ha cambiado el número de rutas: revisa los permisos declarados y actualiza esta cifra');
     }
 }

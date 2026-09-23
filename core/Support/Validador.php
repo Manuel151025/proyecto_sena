@@ -68,9 +68,28 @@ final class Validador {
         return $n;
     }
 
-    /** Identificador de registro: entero positivo. */
+    /**
+     * Identificador de registro: entero positivo.
+     *
+     * "0" es el valor de las opciones «Ninguno» / «Sin asignar» de los
+     * selectores: en un campo opcional equivale a no elegir nada; en uno
+     * obligatorio, a no haberlo llenado. Antes un proyecto opcional sin
+     * elegir devolvía "debe estar entre 1 y 9223372036854775807".
+     */
     public function id(string $campo, string $etiqueta, bool $obligatorio = true): int {
-        return $this->entero($campo, $etiqueta, 1, PHP_INT_MAX, $obligatorio);
+        $bruto = trim((string)($this->bruto($campo) ?? ''));
+        if ($bruto === '' || $bruto === '0') {
+            if ($obligatorio) {
+                $this->error($etiqueta . ' es obligatorio.');
+            }
+            return 0;
+        }
+        $n = filter_var($bruto, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($n === false) {
+            $this->error($etiqueta . ' no es una opción válida.');
+            return 0;
+        }
+        return $n;
     }
 
     /**

@@ -88,6 +88,18 @@ final class ValidadorTest extends CasoDePrueba {
         }
     }
 
+    #[TestDox('id() opcional trata "0" y vacío como «sin elegir»')]
+    public function testIdOpcionalSinElegir(): void {
+        foreach (['', '0', ' 0 '] as $vacio) {
+            $v = new Validador(['id' => $vacio]);
+            $this->assertSame(0, $v->id('id', 'ID', false));
+            $this->assertFalse($v->hayErrores(), "rechazó '$vacio' en un id opcional");
+        }
+        $v = new Validador(['id' => '12abc']);
+        $this->assertSame(0, $v->id('id', 'ID', false));
+        $this->assertTrue($v->hayErrores(), 'un id opcional con basura debe rechazarse');
+    }
+
     // =================================================================
     // TEXTO
     // =================================================================
