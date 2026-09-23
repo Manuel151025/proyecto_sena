@@ -17,28 +17,31 @@ use Tests\CasoDePrueba;
  */
 final class RutasYPermisosTest extends CasoDePrueba {
 
-    /** Carga la tabla de rutas ejecutando la parte declarativa de index.php. */
-    private function rutas(): array {
+    /** Enrutador con la tabla real de `config/rutas.php`. */
+    private function router(): Router {
         $router = new Router();
+        (require dirname(__DIR__, 2) . '/config/rutas.php')($router);
+        return $router;
+    }
 
-        // Los mismos atajos que usa index.php.
-        $TODOS       = [ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ];
-        $GESTION     = [ROL_COORDINADOR, ROL_INSTRUCTOR];
-        $COORDINADOR = [ROL_COORDINADOR];
-        $ambos = static function (string $ruta, string $ctrl, string $accion, array $roles) use ($router): void {
-            $router->add('GET', $ruta, $ctrl, $accion, $roles);
-            $router->add('POST', $ruta, $ctrl, $accion, $roles);
-        };
+    /** Rutas (pantallas y envíos sin `action`), por "MÉTODO /ruta". */
+    private function rutas(): array {
+        return $this->router()->rutas();
+    }
 
-        $fuente = (string)file_get_contents(dirname(__DIR__, 2) . '/index.php');
-        $desde = strpos($fuente, '// PANEL');
-        $hasta = strpos($fuente, '$router->dispatch(');
-        $this->assertNotFalse($desde, 'no se localiza el inicio de la tabla de rutas');
-        $this->assertNotFalse($hasta);
-
-        eval(substr($fuente, $desde, $hasta - $desde));
-
-        return $router->rutas();
+    /**
+     * Todo destino alcanzable: rutas y acciones POST, estas últimas con
+     * clave "POST /ruta#accion".
+     */
+    private function destinos(): array {
+        $router = $this->router();
+        $todos = $router->rutas();
+        foreach ($router->acciones() as $ruta => $acciones) {
+            foreach ($acciones as $nombre => $destino) {
+                $todos["POST $ruta#$nombre"] = $destino;
+            }
+        }
+        return $todos;
     }
 
     #[TestDox('toda ruta declara explícitamente qué roles la alcanzan')]

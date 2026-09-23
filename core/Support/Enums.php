@@ -17,7 +17,7 @@ namespace Core\Support;
  * valor al esquema, hay exactamente un archivo que actualizar.
  *
  * Las constantes siguen el orden declarado en la base de datos. Si cambia
- * el ENUM, hay que reflejarlo aquí: `php migrations/verificar_enums.php`
+ * el ENUM, hay que reflejarlo aquí: `php bin/verificar-esquema.php`
  * compara las dos listas y avisa si se han separado.
  */
 final class Enums {
@@ -36,6 +36,8 @@ final class Enums {
 
     public const FASE_ESTADO  = ['planeada', 'en_ejecucion', 'completada'];
     public const FICHA_ESTADO = ['planeacion', 'induccion', 'ejecucion', 'cierre'];
+
+    public const PLAN_ESTADO = ['abierto', 'en_curso', 'cumplido', 'no_cumplido'];
 
     public const PROGRAMA_ESTADO = ['activo', 'inactivo', 'archivado'];
     public const PROYECTO_ESTADO = ['activo', 'inactivo', 'finalizado'];
@@ -65,6 +67,7 @@ final class Enums {
             'fichas.estado'                         => self::FICHA_ESTADO,
             'historial_evaluaciones.concepto_anterior' => self::CONCEPTO,
             'historial_evaluaciones.concepto_nuevo' => self::CONCEPTO,
+            'planes_mejoramiento.estado'            => self::PLAN_ESTADO,
             'programas.estado'                      => self::PROGRAMA_ESTADO,
             'proyectos.estado'                      => self::PROYECTO_ESTADO,
             'resultados_aprendizaje.estado'         => self::RAP_ESTADO,

@@ -56,7 +56,7 @@ final class SuperficieWebTest extends CasoDePrueba {
 
     #[TestDox('las carpetas internas versionadas llevan su propia denegación')]
     public function testSegundaCapa(): void {
-        foreach (['core', 'includes', 'config', 'migrations', 'tests', 'docs', 'layouts', 'components', 'logs', 'bin'] as $carpeta) {
+        foreach (['core', 'includes', 'config', 'database', 'tests', 'docs', 'layouts', 'components', 'logs', 'bin'] as $carpeta) {
             $archivo = $this->raiz() . "/$carpeta/.htaccess";
             $this->assertFileExists($archivo, "$carpeta/ no tiene .htaccess propio");
             $this->assertStringContainsString('Require all denied', (string)file_get_contents($archivo), "$carpeta/.htaccess no deniega");
@@ -78,7 +78,7 @@ final class SuperficieWebTest extends CasoDePrueba {
     #[TestDox('ninguna migración se puede ejecutar desde el navegador')]
     public function testMigracionesSoloPorConsola(): void {
         $sinGuarda = [];
-        foreach (glob($this->raiz() . '/{migrations,database,bin}/**.php', GLOB_BRACE) ?: [] as $archivo) {
+        foreach (glob($this->raiz() . '/{database/migraciones,database/semillas,bin}/*.php', GLOB_BRACE) ?: [] as $archivo) {
             $fuente = (string)file_get_contents($archivo);
             if (!str_contains($fuente, "PHP_SAPI !== 'cli'")) {
                 $sinGuarda[] = basename($archivo);

@@ -6,7 +6,7 @@ name: Pruebas
 
 on:
   push:
-    branches: [main, 'feat/**', 'fix/**', 'docs/**']
+    branches: [main, 'feat/**', 'fix/**', 'docs/**', 'refactor/**', 'release/**']
   pull_request:
     branches: [main]
 
@@ -57,8 +57,7 @@ jobs:
 
       - name: Comprobar sintaxis de todo el PHP
         run: |
-          find core includes modules components layouts config migrations tests \
-               -name "*.php" -print0 | xargs -0 -n1 php -l > /dev/null
+          find core includes modules components layouts config database bin tests -name "*.php" -print0 | xargs -0 -n1 php -l > /dev/null
           php -l index.php && php -l login.php && php -l recover.php
 
       - name: Configurar el entorno
@@ -69,21 +68,14 @@ jobs:
           sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
           sed -i 's/^DEV_MODE=.*/DEV_MODE=false/' .env
 
-      - name: Crear el esquema
-        run: php install.php --confirmar-borrado-total
+      # Una sola fuente del esquema: database/esquema.sql más las migraciones
+      # versionadas. La semilla de demostración da datos a TODAS las tablas,
+      # para que las pruebas de acceso no pasen en vacío.
+      - name: Instalar la base con datos de demostración
+        run: php bin/instalar.php --confirmar-borrado-total --demo
 
-      - name: Aplicar migraciones
-        run: |
-          php migrations/create_configuraciones_sistema.php
-          php migrations/create_intentos_acceso.php
-          php migrations/create_asignaciones.php
-          php migrations/create_eventos_calendario.php
-          php migrations/create_notificaciones.php
-          php migrations/add_competencias_etapa_practica.php
-          php migrations/add_indices_compuestos.php
-
-      - name: Verificar que Enums coincide con el esquema
-        run: php migrations/verificar_enums.php
+      - name: Verificar migraciones y enums contra el esquema
+        run: php bin/verificar-esquema.php
 
       - name: Pruebas unitarias
         run: vendor/bin/phpunit --testsuite unitarias
