@@ -270,8 +270,10 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         $apUid = $this->idUsuarioAprendiz();
 
         $ev = new Models\EvidenciasModel($this->db);
-        foreach ([ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ] as $rol) {
-            $this->ejecuta(fn() => $ev->getEvidencias($rol, $apUid, $apId), "getEvidencias ($rol)");
+        foreach ([[ROL_COORDINADOR, $this->idCoordinador()], [ROL_INSTRUCTOR, $this->idInstructorConFicha()], [ROL_APRENDIZ, $apUid]] as [$rol, $uid]) {
+            $actor = new \Core\Support\Actor($uid, $rol);
+            $this->ejecuta(fn() => $ev->listar($actor, ['search' => 'a', 'estado' => 'enviada'], 20, 0), "evidencias ($rol)");
+            $this->ejecuta(fn() => $ev->contar($actor, []), "contar evidencias ($rol)");
         }
 
         $mj = new Models\MejoramientoModel($this->db);
