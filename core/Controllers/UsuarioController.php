@@ -3,437 +3,151 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-use Core\Support\Enums;
-
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
+use Core\Formularios\UsuarioFormulario;
 use Core\Interfaces\UsuarioRepositoryInterface;
 use Core\Models\UsuarioModel;
 use Core\Services\Paginator;
-use Core\XlsxParser;
-use Exception;
+use Core\Services\UsuariosService;
+use Core\Support\Actor;
+use Core\Support\Enums;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Administración de cuentas (solo coordinación).
+ *
+ *   GET  /usuarios?search=&rol=&estado=&pagina=
+ *   POST /usuarios  action=crear | editar | estado | restablecer
+ *
+ * Antes crear y editar eran a la vez pantallas propias (/usuarios/crear,
+ * /usuarios/editar) y extremos AJAX de dos modales que el layout incluía en
+ * TODAS las páginas del coordinador; el GET por AJAX de /usuarios/editar
+ * devolvía la ficha del usuario en JSON. Ahora son acciones de esta
+ * pantalla, con Post/Redirect/Get.
+ */
 class UsuarioController extends BaseController {
-    private UsuarioRepositoryInterface $usuarioModel;
+    private const RUTA = '/usuarios';
+    private const CLAVE_CREDENCIAL = 'credencial_temporal';
 
-    public function __construct(?UsuarioRepositoryInterface $usuarioModel = null) {
-        // Exigir sesión y rol de coordinador para todo este controlador
-        requireRole(ROL_COORDINADOR);
-        $this->usuarioModel = $usuarioModel ?? new UsuarioModel();
+    private UsuarioRepositoryInterface $repo;
+    private UsuariosService $servicio;
+
+    public function __construct(?UsuarioRepositoryInterface $repo = null, ?UsuariosService $servicio = null) {
+        $this->repo = $repo ?? new UsuarioModel();
+        $this->servicio = $servicio ?? new UsuariosService(null, $this->repo);
     }
 
-    /**
-     * Valida los datos de un usuario. (Cumple SRP: Single Responsibility Principle)
-     */
-    private function validateUser(array $data, bool $isEdit): array {
-        $errors = [];
-        
-        // Validación de Nombre
-        if (empty($data['nombre'])) {
-            $errors[] = 'El nombre es requerido';
-        } else {
-            if (mb_strlen($data['nombre'], 'UTF-8') > 100) {
-                $errors[] = 'El nombre no puede exceder los 100 caracteres';
-            }
-            if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u', $data['nombre'])) {
-                $errors[] = 'El nombre solo puede contener letras y espacios';
-            }
-        }
-
-        // Validación de Email
-        if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Email inválido';
-        } elseif (strlen($data['email']) > 100) {
-            $errors[] = 'El email no puede exceder los 100 caracteres';
-        }
-        
-        // Validación de Contraseña y Estado
-        if ($isEdit) {
-            if (!empty($data['password'])) {
-                if (strlen($data['password']) < 6) {
-                    $errors[] = 'Si deseas cambiar la contraseña, debe tener al menos 6 caracteres';
-                }
-                if (strlen($data['password']) > 60) {
-                    $errors[] = 'La contraseña no puede exceder los 60 caracteres';
-                }
-            }
-            if (!in_array($data['estado'], ['activo', 'inactivo', 'bloqueado'])) {
-                $errors[] = 'Estado inválido';
-            }
-        } else {
-            if (strlen($data['password']) < 6) {
-                $errors[] = 'La contraseña debe tener al menos 6 caracteres';
-            }
-            if (strlen($data['password']) > 60) {
-                $errors[] = 'La contraseña no puede exceder los 60 caracteres';
-            }
-        }
-
-        // Validación de Rol
-        if (!in_array($data['rol'], Enums::USUARIO_ROL, true)) {
-            $errors[] = 'Rol inválido';
-        }
-
-        return $errors;
-    }
-
-    /**
-     * Orquesta la vista principal de listar usuarios y maneja acciones simples como eliminar.
-     */
     public function index(): void {
-        $mensaje = '';
-        $tipo_mensaje = '';
-
-        // Procesar acción de eliminar
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
-            try {
-                $id = (int) $_POST['id'];
-                if ($this->usuarioModel->delete($id)) {
-                    setFlashMessage('Usuario desactivado correctamente', 'success');
-                }
-            } catch (Exception $e) {
-                setFlashMessage('Error al desactivar usuario', 'danger');
-            }
-            $this->redirect(APP_URL . '/index.php/usuarios');
-        }
-
-        // Filtros y paginación del listado. La búsqueda pasó de JavaScript
-        // a SQL: con el listado paginado, filtrar en el cliente solo
-        // alcanzaría a las filas de la página actual.
+        $q = $this->consulta();
         $filtros = [
-            'search' => trim($_GET['search'] ?? ''),
-            'rol'    => $_GET['rol'] ?? '',
-            'estado' => $_GET['estado'] ?? '',
+            'search' => $q->busquedaCruda('search'),
+            'rol'    => is_string($_GET['rol'] ?? null) ? $_GET['rol'] : '',
+            'estado' => is_string($_GET['estado'] ?? null) ? $_GET['estado'] : '',
         ];
-
+        $errors = [];
         $usuarios = [];
         $paginacion = null;
         try {
-            $total = $this->usuarioModel->contarFiltrados($filtros);
-            $paginacion = Paginator::desdePeticion($total);
-            $usuarios = $this->usuarioModel->getFilteredList(
-                $filtros,
-                $paginacion->perPage(),
-                $paginacion->offset()
-            );
-        } catch (Exception $e) {
-            $usuarios = [];
-            $mensaje = 'Error al cargar usuarios';
-            $tipo_mensaje = 'danger';
+            $paginacion = Paginator::desdePeticion($this->repo->contar($filtros));
+            $usuarios = $this->repo->listar($filtros, $paginacion->perPage(), $paginacion->offset());
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los usuarios');
         }
 
-        // Definiciones para la vista
-        $roles_label = [
-            'coordinador' => 'Coordinador',
-            'instructor' => 'Instructor',
-            'aprendiz' => 'Aprendiz'
-        ];
+        // Contraseña temporal recién generada: se muestra una sola vez.
+        $credencial = $_SESSION[self::CLAVE_CREDENCIAL] ?? null;
+        unset($_SESSION[self::CLAVE_CREDENCIAL]);
 
-        $estados_label = [
-            'activo' => ['Activo', 'success'],
-            'inactivo' => ['Inactivo', 'warning'],
-            'bloqueado' => ['Bloqueado', 'danger']
-        ];
-
-        $this->render(
-            BASE_PATH . 'modules/usuarios/views/index.view.php',
-            [
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'usuarios' => $usuarios,
-                'roles_label' => $roles_label,
-                'estados_label' => $estados_label,
-                'filtros' => $filtros,
-                'paginacion' => $paginacion
-            ],
-            'Usuarios · SENA'
-        );
+        $this->render(BASE_PATH . 'modules/usuarios/views/index.view.php', [
+            'errors'        => $errors,
+            'usuarios'      => $usuarios,
+            'paginacion'    => $paginacion,
+            'filtros'       => $filtros,
+            'credencial'    => $credencial,
+            'actor_id'      => $this->usuarioId(),
+            'abrir_nuevo'   => isset($_GET['nuevo']),
+            'colores'       => UsuarioFormulario::COLORES,
+            'roles_label'   => ['coordinador' => 'Coordinador', 'instructor' => 'Instructor', 'aprendiz' => 'Aprendiz'],
+            'estados_label' => ['activo' => ['Activo', 'success'], 'inactivo' => ['Inactivo', 'warning'], 'bloqueado' => ['Bloqueado', 'danger']],
+            'limites'       => ['nombre' => UsuarioFormulario::MAX_NOMBRE, 'email' => UsuarioFormulario::MAX_EMAIL],
+        ], 'Usuarios · SENA');
     }
 
-    /**
-     * Orquesta la vista de crear usuario y maneja la petición POST de creación.
-     */
-    public function create(): void {
-        $mensaje = '';
-        $tipo_mensaje = '';
-        $errors = [];
-        $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    /** GET /usuarios/exportar?formato=xlsx|csv (con los mismos filtros del listado). */
+    public function exportar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $filtros = [
+            'search' => $this->consulta()->busquedaCruda('search'),
+            'rol'    => is_string($_GET['rol'] ?? null) ? $_GET['rol'] : '',
+            'estado' => is_string($_GET['estado'] ?? null) ? $_GET['estado'] : '',
+        ];
+        $formato = ($_GET['formato'] ?? '') === 'csv' ? 'csv' : 'xlsx';
+        $filas = array_map(static fn($u) => [
+            $u['nombre'], $u['email'], ucfirst($u['rol']), ucfirst($u['estado']), date('Y-m-d', strtotime((string)$u['fecha_creacion'])),
+        ], $this->repo->paraExportar($filtros, \Core\Exportacion\Exportador::MAX_FILAS));
+        $enc = ['Nombre', 'Correo', 'Rol', 'Estado', 'Creación'];
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = [
-                'nombre' => strip_tags(mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8')),
-                'email' => strip_tags(trim($_POST['email'] ?? '')),
-                'password' => $_POST['password'] ?? '',
-                'rol' => (new Validador($_POST))->enum('rol', 'El rol', Enums::USUARIO_ROL, 'aprendiz'),
-                'avatar_color' => $_POST['avatar_color'] ?? '#39A900'
-            ];
-
-            // Validar usando el método extraído
-            $errors = $this->validateUser($data, false);
-
-            if (empty($errors)) {
-                try {
-                    if ($this->usuarioModel->create($data)) {
-                        if ($isAjax) {
-                            $this->json(['status' => 'success', 'message' => 'Usuario creado correctamente']);
-                        }
-                        setFlashMessage('Usuario creado correctamente', 'success');
-                        $this->redirect(APP_URL . '/index.php/usuarios');
-                    }
-                } catch (Exception $e) {
-                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
-                }
-            }
-
-            if ($isAjax && !empty($errors)) {
-                $this->json(['status' => 'error', 'errors' => $errors]);
-            }
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/usuarios/views/crear.view.php',
-            [
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'errors' => $errors,
-                'colors' => $colors
-            ],
-            'Crear Usuario · SENA'
-        );
+        (new \Core\Services\Auditoria())->operacion(Actor::actual(), 'Exportar', 'Usuarios', 'usuarios', null,
+            count($filas) . " cuentas exportadas en $formato");
+        $nombre = 'usuarios_' . date('Ymd_His') . '.' . $formato;
+        \Core\Exportacion\Exportador::descargar(
+            $formato === 'csv'
+                ? \Core\Exportacion\Exportador::csv($nombre, $enc, $filas)
+                : \Core\Exportacion\Exportador::xlsx('Usuarios', $enc, $filas, ['titulo' => 'Usuarios del sistema · ' . date('d/m/Y'), 'anchos' => [36, 34, 14, 12, 12]]),
+            $nombre, $formato);
     }
 
-    /**
-     * Orquesta la vista de editar usuario y maneja la petición POST de actualización.
-     */
-    public function edit(?int $id = null): void {
-        if ($id === null) {
-            $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-        }
-
-        $mensaje = '';
-        $tipo_mensaje = '';
-        $errors = [];
-        $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-
-        // Cargar datos actuales
-        $usuario = null;
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $d = UsuarioFormulario::validar($v);
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
         try {
-            $usuario = $this->usuarioModel->findById($id);
-            if (!$usuario) {
-                if ($isAjax) {
-                    $this->json(['status' => 'error', 'message' => 'Usuario no encontrado']);
-                }
-                $this->redirect(APP_URL . '/index.php/usuarios');
-            }
-        } catch (Exception $e) {
-            if ($isAjax) {
-                $this->json(['status' => 'error', 'message' => $e->getMessage()]);
-            }
-            $errors[] = ErrorDeNegocio::mensajeSeguro($e);
+            $r = $this->servicio->crear($d, Actor::actual());
+        } catch (Throwable $e) {
+            $this->fallo(ErrorDeNegocio::mensajeSeguro($e, 'No se pudo crear la cuenta'), $vuelta);
         }
-
-        // Si es una petición GET por AJAX, devolver los datos del usuario en JSON
-        if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'GET') {
-            $this->json(['status' => 'success', 'data' => $usuario]);
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $usuario) {
-            $data = [
-                'nombre' => strip_tags(mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8')),
-                'email' => strip_tags(trim($_POST['email'] ?? '')),
-                'password' => $_POST['password'] ?? '', // opcional al editar
-                'rol' => (new Validador($_POST))->enum('rol', 'El rol', Enums::USUARIO_ROL, 'aprendiz'),
-                'estado' => $_POST['estado'] ?? 'activo',
-                'avatar_color' => $_POST['avatar_color'] ?? '#39A900'
-            ];
-
-            // Validar usando el método extraído
-            $errors = $this->validateUser($data, true);
-
-            if (empty($errors)) {
-                try {
-                    if ($this->usuarioModel->update($id, $data)) {
-                        if ($isAjax) {
-                            $this->json(['status' => 'success', 'message' => 'Usuario actualizado correctamente']);
-                        }
-                        setFlashMessage('Usuario actualizado correctamente', 'success');
-                        $this->redirect(APP_URL . '/index.php/usuarios');
-                    }
-                } catch (Exception $e) {
-                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
-                }
-            }
-
-            if ($isAjax && !empty($errors)) {
-                $this->json(['status' => 'error', 'errors' => $errors]);
-            }
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/usuarios/views/editar.view.php',
-            [
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'errors' => $errors,
-                'colors' => $colors,
-                'usuario' => $usuario
-            ],
-            'Editar Usuario · SENA'
-        );
+        $_SESSION[self::CLAVE_CREDENCIAL] = ['nombre' => $d['nombre'], 'email' => $d['email'], 'password' => $r['temporal'], 'motivo' => 'creada'];
+        $this->exito('Cuenta creada.', $vuelta);
     }
 
-    /**
-     * Orquesta la vista de importación masiva y procesa el archivo CSV/XLSX.
-     */
-    public function import(): void {
-        $mensaje = '';
-        $tipo_mensaje = '';
-        $errors = [];
-        $resultados = [];
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El usuario');
+        $d = UsuarioFormulario::validar($v, true);
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->editar($id, $d, Actor::actual()), $vuelta, 'Cuenta actualizada.', 'No se pudo actualizar la cuenta');
+    }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_FILES['archivo_csv']) && $_FILES['archivo_csv']['error'] === UPLOAD_ERR_OK) {
-                $fileTmpPath = $_FILES['archivo_csv']['tmp_name'];
-                $fileName = $_FILES['archivo_csv']['name'];
-                $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    public function estado(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El usuario');
+        $estado = $v->enum('estado', 'El estado', Enums::USUARIO_ESTADO);
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->cambiarEstado($id, $estado, Actor::actual()), $vuelta,
+            $estado === 'activo' ? 'Cuenta activada.' : 'Cuenta desactivada: ya no podrá iniciar sesión, y sus registros se conservan.',
+            'No se pudo cambiar el estado');
+    }
 
-                if ($fileExtension === 'xls') {
-                    $errors[] = 'El formato .xls (Excel antiguo) no está soportado. Por favor, guarde su archivo como .xlsx o expórtelo como .csv.';
-                } elseif (!in_array($fileExtension, ['csv', 'xlsx'])) {
-                    $errors[] = 'El archivo debe ser un archivo de Excel (.xlsx) o un archivo de texto separado por comas (.csv).';
-                } else {
-                    $rows = [];
-                    if ($fileExtension === 'csv') {
-                        $handle = fopen($fileTmpPath, 'r');
-                        if ($handle !== false) {
-                            $firstLine = fgets($handle);
-                            $separator = (strpos($firstLine, ';') !== false) ? ';' : ',';
-                            rewind($handle);
-
-                            while (($data = fgetcsv($handle, 1000, $separator)) !== false) {
-                                $rows[] = $data;
-                            }
-                            fclose($handle);
-                        } else {
-                            $errors[] = 'No se pudo abrir el archivo CSV.';
-                        }
-                    } else { // xlsx
-                        try {
-                            $rows = XlsxParser::parse($fileTmpPath);
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al procesar el archivo Excel');
-                        }
-                    }
-
-                    if (empty($errors)) {
-                        if (count($rows) <= 1) {
-                            $errors[] = 'El archivo está vacío o solo contiene la cabecera.';
-                        } else {
-                            array_shift($rows);
-                            
-                            $linea = 2;
-                            $usersData = [];
-                            $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-                            
-                            foreach ($rows as $data) {
-                                if (empty($data) || (empty($data[0]) && empty($data[1]) && empty($data[2]))) {
-                                    $linea++;
-                                    continue;
-                                }
-
-                                if (count($data) < 3) {
-                                    $errors[] = "Línea $linea: Faltan columnas. Se requiere Nombre, Email, y Rol.";
-                                    $linea++;
-                                    continue;
-                                }
-                                
-                                $nombre = mb_strtoupper(trim((string)($data[0] ?? '')), 'UTF-8');
-                                $email = trim((string)($data[1] ?? ''));
-                                $rol = strtolower(trim((string)($data[2] ?? '')));
-
-                                $rowErrors = [];
-                                if (empty($nombre)) {
-                                    $rowErrors[] = "Línea $linea: El nombre está vacío.";
-                                } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
-                                    $rowErrors[] = "Línea $linea: El nombre no puede exceder los 100 caracteres.";
-                                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u', $nombre)) {
-                                    $rowErrors[] = "Línea $linea: El nombre '$nombre' contiene caracteres no permitidos.";
-                                }
-                                if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                                    $rowErrors[] = "Línea $linea: Email '$email' inválido.";
-                                } elseif (strlen($email) > 100) {
-                                    $rowErrors[] = "Línea $linea: El email no puede exceder los 100 caracteres.";
-                                }
-                                if (!in_array($rol, Enums::USUARIO_ROL, true)) {
-                                    $rowErrors[] = "Línea $linea: Rol '$rol' inválido. Debe ser coordinador, instructor o aprendiz.";
-                                }
-
-                                if (empty($rowErrors)) {
-                                    $usersData[] = [
-                                        'nombre' => $nombre,
-                                        'email' => $email,
-                                        'password' => generateTempPassword(),
-                                        'rol' => $rol,
-                                        'avatar_color' => $colors[array_rand($colors)]
-                                    ];
-                                } else {
-                                    $errors = array_merge($errors, $rowErrors);
-                                }
-                                $linea++;
-                            }
-
-                            if (empty($errors)) {
-                                if (count($usersData) > 0) {
-                                    try {
-                                        // Importación idempotente: las filas cuyo email ya
-                                        // existe se omiten (no se toca el usuario existente).
-                                        $resultado = $this->usuarioModel->importMultiple($usersData);
-                                        $nuevos = count($resultado['insertados']);
-                                        $omitidos = count($resultado['omitidos']);
-
-                                        // Solo se listan las contraseñas de los usuarios
-                                        // realmente creados: mostrar la de uno omitido daría
-                                        // una credencial que no sirve.
-                                        $resultados = array_map(
-                                            fn($u) => ['nombre' => $u['nombre'], 'email' => $u['email'], 'password' => $u['password']],
-                                            $resultado['insertados']
-                                        );
-
-                                        $mensaje = "Importados $nuevos nuevos, omitidos $omitidos ya existentes.";
-                                        if ($nuevos > 0) {
-                                            $mensaje .= ' Copia o comparte estas contraseñas temporales ahora: no volverán a mostrarse.';
-                                            $tipo_mensaje = 'success';
-                                        } else {
-                                            $mensaje .= ' No se creó ningún usuario nuevo: todos los registros del archivo ya estaban en el sistema.';
-                                            $tipo_mensaje = 'warning';
-                                        }
-                                    } catch (Exception $e) {
-                                        $errors[] = ErrorDeNegocio::mensajeSeguro($e);
-                                    }
-                                } else {
-                                    $errors[] = 'El archivo no contiene datos válidos.';
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                $errors[] = 'No se ha subido ningún archivo o hubo un error en la subida.';
-            }
+    public function restablecer(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El usuario');
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        try {
+            $temporal = $this->servicio->restablecerContrasena($id, Actor::actual());
+            $u = $this->repo->findById($id);
+        } catch (Throwable $e) {
+            $this->fallo(ErrorDeNegocio::mensajeSeguro($e, 'No se pudo restablecer la contraseña'), $vuelta);
         }
-
-        $this->render(
-            BASE_PATH . 'modules/usuarios/views/importar.view.php',
-            [
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'errors' => $errors,
-                'resultados' => $resultados
-            ],
-            'Importar Usuarios · SENA'
-        );
+        $_SESSION[self::CLAVE_CREDENCIAL] = ['nombre' => $u['nombre'] ?? '', 'email' => $u['email'] ?? '', 'password' => $temporal, 'motivo' => 'restablecida'];
+        $this->exito('Contraseña restablecida.', $vuelta);
     }
 }

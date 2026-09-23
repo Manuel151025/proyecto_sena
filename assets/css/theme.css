@@ -1735,3 +1735,34 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .upload-dropzone.con-archivo .filename { color: var(--success-text); font-weight: 600; font-style: normal; }
 
 .min-w-0 { min-width: 0; }
+
+/* Vista previa de importaciones */
+.tabla-previa { min-width: 640px; }
+.tabla-previa td { vertical-align: top; }
+.tabla-previa tr.fila-con-error > td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+
+/* =====================================================================
+   IMPRESIÓN
+   Sin barra lateral, barra superior ni botones: solo el contenido
+   (credenciales de una importación, formato del plan de mejoramiento).
+   ===================================================================== */
+@media print {
+  .sidebar, .navbar-top, .page-header .d-flex, .btn, .paginacion, form[method="POST"] .btn,
+  .modal, .toolbar, [data-no-imprimir] { display: none !important; }
+  .app-shell, .main, .content { display: block !important; margin: 0 !important; padding: 0 !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+  .table-wrap { overflow: visible !important; }
+  a[href]::after { content: none !important; }
+}
+
+/* Selector de color del avatar (sustituye a los onclick que pintaban el borde) */
+.selector-colores { display: flex; flex-wrap: wrap; gap: .5rem; }
+.muestra-color {
+  width: 44px; height: 44px; border-radius: 10px; background: var(--color);
+  border: 3px solid transparent; cursor: pointer; position: relative;
+}
+.muestra-color input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.muestra-color:has(input:checked) { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
+.muestra-color:has(input:focus-visible) { outline: 2px solid var(--sena-primary); outline-offset: 2px; }
+.credencial-temporal { border-left: 4px solid var(--warning) !important; }

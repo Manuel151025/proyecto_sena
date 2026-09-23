@@ -54,9 +54,9 @@ final class InyeccionTest extends CasoConBaseDeDatos {
     #[TestDox('la búsqueda de usuarios trata la carga como texto')]
     public function testBusquedaDeUsuarios(string $carga): void {
         $modelo = new UsuarioModel($this->db);
-        $total  = $modelo->contarFiltrados([]);
+        $total  = $modelo->contar([]);
 
-        $conCarga = $modelo->contarFiltrados(['search' => $carga]);
+        $conCarga = $modelo->contar(['search' => $carga]);
 
         $this->assertLessThan(
             $total,
@@ -94,7 +94,7 @@ final class InyeccionTest extends CasoConBaseDeDatos {
     public function testElEsquemaSobrevive(): void {
         $modelo = new UsuarioModel($this->db);
         foreach (self::cargasSql() as [$carga]) {
-            $modelo->contarFiltrados(['search' => $carga]);
+            $modelo->contar(['search' => $carga]);
         }
 
         foreach (['usuarios', 'evaluaciones', 'fichas', 'aprendices', 'historial_evaluaciones'] as $tabla) {
@@ -114,7 +114,7 @@ final class InyeccionTest extends CasoConBaseDeDatos {
         $modelo = new UsuarioModel($this->db);
 
         $t = microtime(true);
-        $modelo->contarFiltrados(['search' => "' OR SLEEP(5)--"]);
+        $modelo->contar(['search' => "' OR SLEEP(5)--"]);
         $tardo = microtime(true) - $t;
 
         $this->assertLessThan(2.0, $tardo, 'la consulta se retrasó: la carga se ejecutó');
@@ -131,12 +131,12 @@ final class InyeccionTest extends CasoConBaseDeDatos {
     #[TestDox('un filtro con una carga devuelve cero filas, no todas')]
     public function testFiltrosConCarga(): void {
         $modelo = new UsuarioModel($this->db);
-        $total = $modelo->contarFiltrados([]);
+        $total = $modelo->contar([]);
 
         foreach (["coordinador' OR '1'='1", "' OR 1=1--", 'inventado'] as $carga) {
             $this->assertSame(
                 0,
-                $modelo->contarFiltrados(['rol' => $carga]),
+                $modelo->contar(['rol' => $carga]),
                 "el filtro de rol aceptó «$carga»"
             );
         }
@@ -155,7 +155,7 @@ final class InyeccionTest extends CasoConBaseDeDatos {
         // Los tipos declarados ya impiden pasar una cadena; se comprueba
         // que valores extremos tampoco rompan la consulta.
         foreach ([[25, 0], [1, 0], [100, 999999], [1, 0]] as [$limite, $desplazamiento]) {
-            $filas = $modelo->getFilteredList([], $limite, $desplazamiento);
+            $filas = $modelo->listar([], $limite, $desplazamiento);
             $this->assertIsArray($filas);
             $this->assertLessThanOrEqual($limite, count($filas));
         }

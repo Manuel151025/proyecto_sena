@@ -34,8 +34,8 @@
   var FILTROS = {
     // Nombres de entidades: letras, números y puntuación básica.
     nombre:   { quitar: /[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-_.,()]/g },
-    // Nombres de persona: solo letras y espacios.
-    persona:  { quitar: /[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g },
+    // Nombres de persona: letras, espacios, apóstrofo, punto y guion.
+    persona:  { quitar: /[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s'.\-]/g },
     // Códigos: letras, números y guion, en mayúsculas.
     codigo:   { quitar: /[^a-zA-Z0-9\-]/g, mayusculas: true },
     'codigo-espacios': { quitar: /[^a-zA-Z0-9\-\s]/g, mayusculas: true },
@@ -167,7 +167,12 @@
     var el = e.target.closest('[data-pulsar]');
     if (!el) return;
     var destino = document.querySelector(el.getAttribute('data-pulsar'));
-    if (destino) { e.preventDefault(); destino.click(); }
+    // El clic que se dispara sobre el destino también burbujea hasta aquí:
+    // sin esta guarda, una zona que contiene su propio <input> se
+    // reenviaría el clic a sí misma.
+    if (!destino || destino === e.target || destino.contains(e.target)) return;
+    e.preventDefault();
+    destino.click();
   });
 
   document.addEventListener('change', function (e) {
@@ -177,6 +182,17 @@
     if (destino) {
       destino.textContent = el.files && el.files.length ? el.files[0].name : '';
     }
+  });
+
+  // -------------------------------------------------------------------
+  // MODAL QUE SE ABRE AL CARGAR (enlace "Nuevo usuario" desde el panel)
+  // <button data-bs-target="#modal" data-abrir-al-cargar>
+  // -------------------------------------------------------------------
+  document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.querySelector('[data-abrir-al-cargar]');
+    if (!btn || !window.bootstrap) return;
+    var modal = document.querySelector(btn.getAttribute('data-bs-target') || btn.getAttribute('data-modal'));
+    if (modal) window.bootstrap.Modal.getOrCreateInstance(modal).show();
   });
 
   // -------------------------------------------------------------------

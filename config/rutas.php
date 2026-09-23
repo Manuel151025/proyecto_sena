@@ -48,10 +48,30 @@ return static function (Router $router): void {
     // ---------------------------------------------------------------------
     // GESTIÓN DE USUARIOS — solo coordinación
     // ---------------------------------------------------------------------
-    $ambos('/usuarios',          'Core\Controllers\UsuarioController', 'index',  $COORDINADOR);
-    $ambos('/usuarios/crear',    'Core\Controllers\UsuarioController', 'create', $COORDINADOR);
-    $ambos('/usuarios/editar',   'Core\Controllers\UsuarioController', 'edit',   $COORDINADOR);
-    $ambos('/usuarios/importar', 'Core\Controllers\UsuarioController', 'import', $COORDINADOR);
+    $U = 'Core\Controllers\UsuarioController';
+    $router->add('GET', '/usuarios',          $U, 'index',    $COORDINADOR);
+    $router->add('GET', '/usuarios/exportar', $U, 'exportar', $COORDINADOR);
+    $router->accion('/usuarios', 'crear',       $U, 'crear',       $COORDINADOR);
+    $router->accion('/usuarios', 'editar',      $U, 'editar',      $COORDINADOR);
+    $router->accion('/usuarios', 'estado',      $U, 'estado',      $COORDINADOR);
+    $router->accion('/usuarios', 'restablecer', $U, 'restablecer', $COORDINADOR);
+
+    // ---------------------------------------------------------------------
+    // IMPORTACIONES TABULARES (CSV / XLSX / XLS) — dos pasos: analizar y confirmar
+    // ---------------------------------------------------------------------
+    $IMP = 'Core\Controllers\ImportacionController';
+    $importacion = static function (string $base, array $roles) use ($router, $IMP): void {
+        $router->add('GET',  $base,                $IMP, 'formulario', $roles);
+        $router->add('GET',  $base . '/plantilla', $IMP, 'plantilla',  $roles);
+        $router->add('POST', $base,                $IMP, 'analizar',   $roles);
+        $router->accion($base, 'confirmar', $IMP, 'confirmar', $roles);
+        $router->accion($base, 'cancelar',  $IMP, 'cancelar',  $roles);
+    };
+    $importacion('/usuarios/importar',               $COORDINADOR);
+    $importacion('/competencias/importar',           $COORDINADOR);
+    $importacion('/resultados-aprendizaje/importar', $COORDINADOR);
+    // El instructor matricula en sus fichas; el importador lo comprueba.
+    $importacion('/matriculas/importar',             $GESTION);
 
     // ---------------------------------------------------------------------
     // ESTRUCTURA CURRICULAR — la define coordinación
@@ -70,10 +90,8 @@ return static function (Router $router): void {
     $router->accion('/programas', 'eliminar', $P, 'eliminar', $COORDINADOR);
 
     $ambos('/competencias',          'Core\Controllers\CompetenciasController', 'index',  $GESTION);
-    $ambos('/competencias/importar', 'Core\Controllers\CompetenciasController', 'import', $COORDINADOR);
 
     $ambos('/resultados-aprendizaje',          'Core\Controllers\ResultadosAprendizajeController', 'index',  $GESTION);
-    $ambos('/resultados-aprendizaje/importar', 'Core\Controllers\ResultadosAprendizajeController', 'import', $COORDINADOR);
 
     // ---------------------------------------------------------------------
     // FICHAS Y MATRÍCULAS

@@ -34,11 +34,11 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
     #[TestDox('un comodín en la búsqueda no devuelve la tabla entera')]
     public function testComodinesNoDevuelvenTodo(string $comodin): void {
         $modelo = new UsuarioModel($this->db);
-        $total = $modelo->contarFiltrados([]);
+        $total = $modelo->contar([]);
 
         $this->assertLessThan(
             $total,
-            $modelo->contarFiltrados(['search' => $comodin]),
+            $modelo->contar(['search' => $comodin]),
             "buscar «$comodin» devuelve toda la tabla: el filtro no sirve de nada"
         );
     }
@@ -80,7 +80,7 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
 
         $this->assertGreaterThan(
             0,
-            $modelo->contarFiltrados(['search' => $fragmento]),
+            $modelo->contar(['search' => $fragmento]),
             "escapar los comodines rompió la búsqueda de «$fragmento»"
         );
     }
@@ -134,9 +134,9 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
     #[TestDox('un filtro con valor inventado no devuelve nada, en vez de todo')]
     public function testFiltroManipuladoNoDevuelveTodo(string $campo, string $valor): void {
         $modelo = new UsuarioModel($this->db);
-        $total = $modelo->contarFiltrados([]);
+        $total = $modelo->contar([]);
 
-        $resultado = $modelo->contarFiltrados([$campo => $valor]);
+        $resultado = $modelo->contar([$campo => $valor]);
 
         $this->assertSame(0, $resultado, "el filtro $campo=«$valor» se ignoró y mostró $total usuarios");
     }
@@ -156,7 +156,7 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
         $modelo = new UsuarioModel($this->db);
 
         foreach (Enums::USUARIO_ROL as $rol) {
-            $conFiltro = $modelo->contarFiltrados(['rol' => $rol]);
+            $conFiltro = $modelo->contar(['rol' => $rol]);
             $enBase = $this->contar('usuarios', 'rol = ?', [$rol]);
             $this->assertSame($enBase, $conFiltro, "el filtro de rol '$rol' no cuadra");
         }
@@ -167,7 +167,7 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
         $modelo = new UsuarioModel($this->db);
         $this->assertSame(
             $this->contar('usuarios'),
-            $modelo->contarFiltrados(['rol' => '', 'estado' => ''])
+            $modelo->contar(['rol' => '', 'estado' => ''])
         );
     }
 
@@ -181,8 +181,8 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
         $modelo = new UsuarioModel($this->db);
 
         foreach ([[], ['rol' => 'instructor'], ['search' => 'a'], ['rol' => 'aprendiz', 'estado' => 'activo']] as $f) {
-            $total = $modelo->contarFiltrados($f);
-            $filas = $modelo->getFilteredList($f, 1000, 0);
+            $total = $modelo->contar($f);
+            $filas = $modelo->paraExportar($f, 100000);
             $this->assertCount($total, $filas, 'el conteo no cuadra con el listado: ' . json_encode($f));
         }
     }
