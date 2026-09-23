@@ -559,6 +559,7 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .avatar{width:36px;height:36px;border-radius:50%;background:var(--sena-primary);color:#fff;display:grid;place-items:center;font-weight:600;font-size:.85rem;flex-shrink:0;}
 .avatar.lg{width:64px;height:64px;font-size:1.4rem;}
 .avatar.sm{width:32px;height:32px;font-size:.75rem;}
+.texto-multilinea{white-space:pre-line;}
 .sidebar-user .meta{display:none;}
 
 /* Ocultar botón de toggle sidebar */

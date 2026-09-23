@@ -277,8 +277,13 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         }
 
         $mj = new Models\MejoramientoModel($this->db);
-        foreach ([ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ] as $rol) {
-            $this->ejecuta(fn() => $mj->getPlanesMejoramiento($rol, $apUid, $apId), "getPlanes ($rol)");
+        foreach ([[ROL_COORDINADOR, $this->idCoordinador()], [ROL_INSTRUCTOR, $this->idInstructorConFicha()], [ROL_APRENDIZ, $apUid]] as [$rol, $uid]) {
+            $actor = new \Core\Support\Actor($uid, $rol);
+            foreach (Models\MejoramientoModel::FILTROS as $estado) {
+                $this->ejecuta(fn() => $mj->listar($actor, ['estado' => $estado, 'search' => 'a'], 20, 0), "planes $estado ($rol)");
+            }
+            $this->ejecuta(fn() => $mj->cifras($actor), "cifras de planes ($rol)");
+            $this->ejecuta(fn() => $mj->sinPlan($actor), "RAP sin plan ($rol)");
         }
 
         $us = new Models\UsuarioModel($this->db);
