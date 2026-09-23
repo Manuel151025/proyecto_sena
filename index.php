@@ -20,13 +20,18 @@ require_once __DIR__ . '/includes/session.php';
 
 use Core\Router;
 
-// Sin sesión no se entra a ninguna ruta.
+$path = Router::normalizarRuta($_SERVER['REQUEST_URI'] ?? '');
+
+// Sin sesión no se entra a ninguna ruta. Una API responde 401 en JSON: una
+// redirección al login la seguiría el `fetch` y recibiría HTML.
 if (!isAuthenticated()) {
+    if (Router::esRutaApi($path)) {
+        Router::responder(401, 'Sesión requerida', 'La sesión ha expirado. Vuelve a iniciar sesión.', [], true);
+        exit;
+    }
     header('Location: ' . APP_URL . '/login.php');
     exit;
 }
-
-$path = Router::normalizarRuta($_SERVER['REQUEST_URI'] ?? '');
 
 if ($path === '/' || $path === '') {
     header('Location: ' . APP_URL . '/index.php/dashboard');
@@ -124,6 +129,12 @@ $router->add('GET', '/logs', 'Core\Controllers\LogsController', 'index', $COORDI
 $ambos('/perfil',       'Core\Controllers\PerfilController',       'index', $TODOS);
 $ambos('/calendario',   'Core\Controllers\CalendarioController',   'index', $TODOS);
 $router->add('GET', '/calendario/api', 'Core\Controllers\CalendarioController', 'apiEvents', $TODOS);
+
+// Sesión y avisos. Pasan por el enrutador para que ningún archivo de
+// `includes/` tenga que ser accesible desde el navegador.
+$router->add('POST', '/logout',             'Core\Controllers\SesionController',         'cerrar', $TODOS);
+$router->add('GET',  '/api/notificaciones', 'Core\Controllers\NotificacionesController', 'listar', $TODOS);
+$router->add('POST', '/api/notificaciones', 'Core\Controllers\NotificacionesController', 'marcar', $TODOS);
 $ambos('/configuracion', 'Core\Controllers\ConfiguracionController', 'index', $COORDINADOR);
 
 $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

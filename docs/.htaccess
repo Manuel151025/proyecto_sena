@@ -1,0 +1,10 @@
+# Carpeta interna: nunca se sirve al navegador. La raíz del proyecto ya lo
+# impide con mod_rewrite; esta regla es la segunda capa, por si no estuviera
+# activo.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order Deny,Allow
+    Deny from all
+</IfModule>

@@ -1,0 +1,34 @@
+# Lo que no debe entrar en la imagen de producción.
+#
+# El Dockerfile copia la carpeta entera a la raíz web de Apache, así que
+# cualquier archivo que llegue aquí es, en principio, descargable. El
+# .htaccess lo niega, pero lo que no está en la imagen no se puede filtrar.
+
+# Control de versiones: con .git dentro, el repositorio completo (historial
+# incluido) quedaba publicado.
+.git
+.github
+.gitignore
+
+# Secretos locales. En producción las variables llegan del entorno.
+.env
+.env.*
+!.env.example
+
+# Datos y volcados locales.
+*.sql
+uploads/*
+!uploads/.htaccess
+logs/*.log
+cache/*
+!cache/.htaccess
+
+# Desarrollo.
+tests
+phpunit.xml
+.phpunit.cache
+scratch
+.vscode
+.claude
+vendor
+docker-compose.yml

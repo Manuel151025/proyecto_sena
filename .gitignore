@@ -15,7 +15,8 @@ assets/uploads/
 !uploads/.htaccess
 
 # === Caché y temporales ===
-cache/
+cache/*
+!cache/.htaccess
 tmp/
 temp/
 *.tmp
@@ -53,8 +54,6 @@ scratch/
 # Script de depuracion puntual, no forma parte del sistema
 test_accents.php
 
-# Cache generada en ejecucion (metricas de fuentes de dompdf)
-cache/
 
 # Cache de PHPUnit
 .phpunit.cache/

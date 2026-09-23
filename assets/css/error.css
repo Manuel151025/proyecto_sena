@@ -1,0 +1,24 @@
+/* Página de error del enrutador (404, 405, 403, 500).
+   Hoja propia y no <style> en línea: la CSP no admite estilos incrustados. */
+:root { --fondo: #f5f7fa; --caja: #fff; --texto: #1f2933; --suave: #52606d; --titulo: #00324D; --marca: #39A900; }
+@media (prefers-color-scheme: dark) {
+  :root { --fondo: #0f172a; --caja: #1e293b; --texto: #e2e8f0; --suave: #94a3b8; --titulo: #e2e8f0; }
+}
+* { box-sizing: border-box; }
+body.pagina-error {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--fondo); color: var(--texto);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; margin: 0; padding: 16px;
+}
+.caja {
+  background: var(--caja); border-radius: 14px; box-shadow: 0 8px 28px rgba(16,24,40,.09);
+  padding: 40px 28px; max-width: 480px; width: 100%; text-align: center;
+}
+.cod { font-size: 52px; font-weight: 800; color: var(--marca); line-height: 1; margin-bottom: 8px; }
+h1 { font-size: 19px; color: var(--titulo); margin: 0 0 10px; }
+p { color: var(--suave); line-height: 1.6; margin: 0; }
+a {
+  display: inline-block; margin-top: 22px; background: var(--marca); color: #fff; text-decoration: none;
+  padding: 12px 26px; border-radius: 8px; font-weight: 600; min-height: 44px;
+}

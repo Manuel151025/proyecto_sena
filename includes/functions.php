@@ -15,11 +15,7 @@ function isActiveMenu(string $url): string {
  * Generar breadcrumb array
  */
 function getBreadcrumbs(): array {
-    $role = getCurrentRole();
-    $startUrl = ($role === ROL_COORDINADOR) 
-        ? APP_URL . '/index.php/dashboard' 
-        : APP_URL . '/modules/dashboard/' . $role . '.php';
-    $crumbs = [['label' => 'Inicio', 'url' => $startUrl]];
+    $crumbs = [['label' => 'Inicio', 'url' => APP_URL . '/index.php/dashboard']];
     $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
     $segments = explode('/', $uri);
     

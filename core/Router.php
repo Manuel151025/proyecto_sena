@@ -40,6 +40,13 @@ class Router {
     private array $metodosPorRuta = [];
 
     /**
+     * Acciones POST por ruta: `[ruta][nombre] => destino`.
+     *
+     * @var array<string, array<string, array{controller:string, action:string, roles:string[]}>>
+     */
+    private array $acciones = [];
+
+    /**
      * Registra una ruta.
      *
      * @param string[] $roles Roles con acceso. Vacío significa "cualquier
@@ -57,32 +64,82 @@ class Router {
         $this->metodosPorRuta[$path][] = $method;
     }
 
+    /**
+     * Registra una acción POST de una pantalla: el formulario envía
+     * `action=<nombre>` a la misma dirección que la lista.
+     *
+     * Antes cada controlador tenía un único `index()` que atendía GET y POST
+     * y, dentro, una cadena de `if ($_POST['action'] === ...)` con la
+     * validación, el permiso y la escritura de cada operación mezclados.
+     * Con esto cada operación es un método propio y **su permiso se declara
+     * aquí**, por separado del de la pantalla: `/proyectos` lo ven los tres
+     * roles, pero `crear` en `/proyectos` solo lo tiene coordinación. Esa
+     * diferencia antes vivía enterrada en un `&& $user_rol === ...`.
+     *
+     * @param string[] $roles
+     */
+    public function accion(string $path, string $nombre, string $controller, string $method, array $roles): void {
+        $path = '/' . trim($path, '/');
+        $this->acciones[$path][$nombre] = [
+            'controller' => $controller,
+            'action'     => $method,
+            'roles'      => $roles,
+        ];
+        $this->metodosPorRuta[$path][] = 'POST';
+    }
+
     public function dispatch(string $method, string $uri): void {
         $path   = self::normalizarRuta($uri);
         $method = strtoupper($method);
+        $esApi  = self::esRutaApi($path);
 
-        $ruta = $this->routes[$method . ' ' . $path] ?? null;
+        $ruta = $this->resolver($method, $path);
 
         if ($ruta === null) {
+            if ($method === 'POST' && isset($this->acciones[$path])) {
+                // La pantalla existe y tiene acciones, pero no esta. Suele
+                // ser un formulario manipulado: se responde 400 en vez de
+                // caer en silencio al listado como antes.
+                self::responder(400, 'Acción no válida',
+                    'La operación solicitada no existe en esta sección.', [], $esApi);
+                return;
+            }
             if (isset($this->metodosPorRuta[$path])) {
-                $this->responder(
+                self::responder(
                     405,
                     'Método no permitido',
-                    'Esta dirección no admite peticiones ' . htmlspecialchars($method, ENT_QUOTES, 'UTF-8') . '.',
-                    ['Allow: ' . implode(', ', array_unique($this->metodosPorRuta[$path]))]
+                    'Esta dirección no admite peticiones ' . $method . '.',
+                    ['Allow: ' . implode(', ', array_unique($this->metodosPorRuta[$path]))],
+                    $esApi
                 );
                 return;
             }
-            $this->responder(404, 'Página no encontrada',
-                'La dirección solicitada no existe en el sistema.');
+            self::responder(404, 'Página no encontrada',
+                'La dirección solicitada no existe en el sistema.', [], $esApi);
             return;
         }
 
-        // Permiso declarado en la ruta. requireRole() ya audita el rechazo
-        // y redirige al panel del usuario.
-        if ($ruta['roles'] !== []) {
+        // Permiso declarado en la ruta.
+        if ($ruta['roles'] !== [] && !in_array(getCurrentRole(), $ruta['roles'], true)) {
+            if ($esApi) {
+                // Una API no puede responder con una redirección al panel:
+                // el `fetch` la seguiría y recibiría HTML donde espera JSON.
+                $u = getCurrentUser();
+                (new \Core\Services\Auditoria())->permisoDenegado(
+                    $u !== null ? (int)$u['id'] : null, $path,
+                    'Rol actual: ' . getCurrentRole()
+                );
+                self::responder(403, 'Acceso denegado', 'No tienes permiso para esta operación.', [], true);
+                return;
+            }
+            // requireRole() audita el rechazo y redirige al panel del usuario.
             requireRole(...$ruta['roles']);
         }
+
+        // Sesión válida contra la base (usuario activo, rol vigente) y
+        // contraseña temporal cambiada. Se hace aquí para todas las rutas y
+        // no solo en los constructores que se acordaban de llamarlo.
+        requireAuth();
 
         $clase  = $ruta['controller'];
         $accion = $ruta['action'];
@@ -91,12 +148,37 @@ class Router {
             // Es un fallo de configuración de rutas, no del usuario: se
             // registra con nombres concretos para poder arreglarlo.
             error_log("Router: la ruta $method $path apunta a $clase::$accion, que no existe.");
-            $this->responder(500, 'Error de configuración',
-                'La sección solicitada no está disponible.');
+            self::responder(500, 'Error de configuración',
+                'La sección solicitada no está disponible.', [], $esApi);
             return;
         }
 
         (new $clase())->$accion();
+    }
+
+    /**
+     * Destino de una petición: primero la acción POST concreta
+     * (`action=crear`), después la ruta general del método.
+     *
+     * @return array{controller:string, action:string, roles:string[]}|null
+     */
+    public function resolver(string $method, string $path, ?array $post = null): ?array {
+        $post ??= $_POST;
+        if ($method === 'POST' && isset($this->acciones[$path])) {
+            $nombre = $post['action'] ?? null;
+            if (is_string($nombre) && isset($this->acciones[$path][$nombre])) {
+                return $this->acciones[$path][$nombre];
+            }
+            // Formularios de la misma pantalla que no usan `action` (p. ej.
+            // una importación) siguen yendo a la ruta POST general.
+            return $this->routes['POST ' . $path] ?? null;
+        }
+        return $this->routes[$method . ' ' . $path] ?? null;
+    }
+
+    /** Las API responden siempre JSON, también los errores. */
+    public static function esRutaApi(string $path): bool {
+        return str_starts_with($path, '/api/') || $path === '/calendario/api';
     }
 
     /**
@@ -122,36 +204,35 @@ class Router {
 
     /**
      * Respuesta de error del enrutador, con el mismo aspecto que el resto
-     * del sistema. Antes era `echo "404 - Página no encontrada"` en texto
-     * plano sobre fondo blanco.
+     * del sistema (o en JSON, si la ruta es una API).
      *
      * @param string[] $cabeceras
      */
-    private function responder(int $codigo, string $titulo, string $detalle, array $cabeceras = []): void {
+    public static function responder(int $codigo, string $titulo, string $detalle, array $cabeceras = [], bool $json = false): void {
         http_response_code($codigo);
         foreach ($cabeceras as $c) {
             header($c);
         }
 
-        $inicio = defined('APP_URL') ? APP_URL . '/index.php/dashboard' : '/';
+        if ($json) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'error' => $detalle], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $base   = defined('APP_URL') ? APP_URL : '';
+        $inicio = $base . '/index.php/dashboard';
 
         echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
            . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-           . '<title>' . htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') . '</title><style>'
-           . 'body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f7fa;'
-           . 'color:#1f2933;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px}'
-           . '.caja{background:#fff;border-radius:14px;box-shadow:0 8px 28px rgba(16,24,40,.09);'
-           . 'padding:40px;max-width:480px;text-align:center}'
-           . '.cod{font-size:52px;font-weight:800;color:#39A900;line-height:1;margin-bottom:8px}'
-           . 'h1{font-size:19px;color:#00324D;margin:0 0 10px}p{color:#52606d;line-height:1.6;margin:0}'
-           . 'a{display:inline-block;margin-top:22px;background:#39A900;color:#fff;text-decoration:none;'
-           . 'padding:11px 26px;border-radius:8px;font-weight:600}'
-           . '</style></head><body><div class="caja">'
+           . '<title>' . htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') . '</title>'
+           . '<link rel="stylesheet" href="' . htmlspecialchars($base . '/assets/css/error.css', ENT_QUOTES, 'UTF-8') . '">'
+           . '</head><body class="pagina-error"><main class="caja">'
            . '<div class="cod">' . $codigo . '</div>'
            . '<h1>' . htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') . '</h1>'
            . '<p>' . htmlspecialchars($detalle, ENT_QUOTES, 'UTF-8') . '</p>'
            . '<a href="' . htmlspecialchars($inicio, ENT_QUOTES, 'UTF-8') . '">Volver al inicio</a>'
-           . '</div></body></html>';
+           . '</main></body></html>';
     }
 
     /**
@@ -161,5 +242,14 @@ class Router {
      */
     public function rutas(): array {
         return $this->routes;
+    }
+
+    /**
+     * Acciones POST registradas, por ruta.
+     *
+     * @return array<string, array<string, array{controller:string, action:string, roles:string[]}>>
+     */
+    public function acciones(): array {
+        return $this->acciones;
     }
 }

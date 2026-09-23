@@ -122,26 +122,3 @@ function logout(): void {
     header('Location: ' . APP_URL . '/login.php');
     exit;
 }
-
-// Cierre de sesión.
-//
-// Iba por GET y sin token: bastaba con que un tercero indujera al navegador
-// a cargar `?action=logout` (una imagen incrustada en cualquier página) para
-// expulsar al usuario. No es grave, pero es un cambio de estado provocado
-// desde fuera, que es justo lo que CSRF debe impedir.
-//
-// Se admite POST con token, y se conserva el GET *solo* si trae un token
-// válido, para no romper los enlaces de cierre de sesión que ya existen en
-// la barra lateral mientras se migran a formulario.
-if (($_GET['action'] ?? '') === 'logout' || ($_POST['action'] ?? '') === 'logout') {
-    $token = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? '';
-    if (is_array($token)) {
-        $token = '';
-    }
-    if (validateCsrfToken((string)$token)) {
-        logout();
-    }
-    // Sin token válido no se cierra nada: se devuelve al usuario a su panel.
-    header('Location: ' . APP_URL . '/index.php/dashboard');
-    exit;
-}

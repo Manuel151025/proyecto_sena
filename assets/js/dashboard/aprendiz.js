@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
         next30Days.setDate(today.getDate() + 30);
         const end = formatDate(next30Days);
         
-        const url = `${appUrl}/modules/calendario/api_events.php?start=${start}&end=${end}`;
+        const url = `${appUrl}/index.php/calendario/api?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
         
         fetch(url)
             .then(res => res.json())

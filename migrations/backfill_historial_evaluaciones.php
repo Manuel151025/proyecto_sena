@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 
+
+// Solo por consola. Estos scripts alteran el esquema o reescriben datos;
+// accesibles por URL, cualquiera podía ejecutarlos desde el navegador.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
 /**
  * Reconstruye las filas que faltan en `historial_evaluaciones`.
  *

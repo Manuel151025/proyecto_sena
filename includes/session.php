@@ -231,9 +231,11 @@ function requirePasswordChangeIfPending(): void {
         return;
     }
 
-    $isLogout = isset($_GET['action']) && $_GET['action'] === 'logout';
-    $uri = $_SERVER['REQUEST_URI'] ?? '';
-    if ($isLogout || strpos($uri, '/perfil') !== false) {
+    // Cerrar sesión y cambiar la contraseña son lo único que se permite
+    // mientras la contraseña temporal siga vigente.
+    $ruta = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
+    $uri  = $ruta;
+    if (str_ends_with($ruta, '/logout') || str_ends_with($ruta, '/perfil')) {
         return;
     }
 
