@@ -3,288 +3,226 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
+use Core\Exportacion\Exportador;
+use Core\Formularios\FichaFormulario;
+use Core\Models\FasesModel;
 use Core\Models\FichaModel;
-use Core\Database;
-use Exception;
-use PDOException;
+use Core\Services\Auditoria;
+use Core\Services\FichasService;
+use Core\Services\InstructorAccessService;
+use Core\Services\Paginator;
+use Core\Support\Actor;
+use Core\Support\Enums;
+use Core\Support\ErrorDeNegocio;
+use Core\Support\Semaforo;
+use Throwable;
 
+/**
+ * Fichas de formación.
+ *
+ *   GET  /fichas?search=&programa_id=&estado=         listado (coordinación e instructor)
+ *   GET  /fichas/ver?id=                              detalle y seguimiento del proyecto
+ *   GET  /fichas/exportar?id=&formato=                aprendices con su situación
+ *   POST /fichas  action=crear|editar|eliminar        coordinación
+ *
+ * El aprendiz que entra a /fichas va directo a la suya.
+ */
 class FichaController extends BaseController {
-    private FichaModel $fichaModel;
+    private FichaModel $fichas;
+    private FichasService $servicio;
+    private InstructorAccessService $acceso;
 
-    public function __construct(?FichaModel $fichaModel = null) {
-        // Exigir roles
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ);
-        $this->fichaModel = $fichaModel ?? new FichaModel();
+    public const ESTADOS = [
+        'planeacion' => ['Planeación', 'primary'],
+        'induccion'  => ['Inducción', 'info'],
+        'ejecucion'  => ['Ejecución', 'warning'],
+        'cierre'     => ['Cierre', 'success'],
+    ];
+    public const ESTADOS_APRENDIZ = [
+        'matriculado'    => ['Matriculado', 'success'],
+        'suspendido'     => ['Suspendido', 'warning'],
+        'desertado'      => ['Desertado', 'danger'],
+        'egresado'       => ['Egresado', 'info'],
+        'etapa_practica' => ['Etapa práctica', 'primary'],
+    ];
+
+    public function __construct(?FichaModel $fichas = null, ?FichasService $servicio = null, ?InstructorAccessService $acceso = null) {
+        $this->fichas = $fichas ?? new FichaModel();
+        $this->servicio = $servicio ?? new FichasService();
+        $this->acceso = $acceso ?? new InstructorAccessService();
     }
 
     public function index(): void {
-        $user = getCurrentUser();
-        $role = getCurrentRole();
-
-        // Si es aprendiz, redirigir directamente al panel de su ficha
-        if ($role === ROL_APRENDIZ) {
-            $ficha_id = $this->fichaModel->getFichaIdByUsuarioId((int)$user['id']);
-            if ($ficha_id !== null && $ficha_id > 0) {
-                $this->redirect(MODULES_PATH . '/fichas/ver.php?id=' . $ficha_id);
-            }
-            denyAccess();
+        $actor = Actor::actual();
+        if ($actor->esAprendiz()) {
+            $id = $this->fichas->getFichaIdByUsuarioId($actor->id);
+            $id ? $this->irA('/fichas/ver?id=' . $id) : denyAccess('No estás matriculado en ninguna ficha.');
         }
-
-        $mensaje = '';
-        $tipo_mensaje = '';
-
-        // Eliminar ficha (solo coordinador)
-        if ($role === ROL_COORDINADOR && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
-            try {
-                $id = (int) $_POST['id'];
-                if ($this->fichaModel->delete($id)) {
-                    setFlashMessage('Ficha eliminada correctamente', 'success');
-                }
-            } catch (PDOException $e) {
-                if ($e->getCode() === '23000') {
-                    setFlashMessage('No se puede eliminar la ficha porque tiene aprendices matriculados, actividades, o evaluaciones registradas.', 'danger');
-                } else {
-                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error de base de datos al eliminar la ficha'), 'danger');
-                }
-            } catch (Exception $e) {
-                setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al eliminar la ficha'), 'danger');
-            }
-            $this->redirect(APP_URL . '/index.php/fichas');
-        }
-
-        // Obtener fichas con información de programa e instructor
+        $filtros = $this->filtros();
+        $errors = [];
+        $fichas = $programas = $instructores = $proyectos = [];
+        $paginacion = null;
         try {
-            $instructorId = ($role === ROL_INSTRUCTOR) ? (int)$user['id'] : null;
-            $fichas = $this->fichaModel->getDetailedList($instructorId);
-        } catch (Exception $e) {
-            $fichas = [];
-            $mensaje = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar fichas');
-            $tipo_mensaje = 'danger';
+            $paginacion = Paginator::desdePeticion($this->fichas->contar($actor, $filtros), 24);
+            $fichas = $this->fichas->listar($actor, $filtros, $paginacion->perPage(), $paginacion->offset());
+            $programas = $this->fichas->getProgramasActivos();
+            if ($actor->esCoordinador()) {
+                $instructores = $this->fichas->getInstructoresActivos();
+                $proyectos = $this->fichas->getProyectosActivos();
+            }
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las fichas');
         }
-
-        $estados_label = [
-            'planeacion' => ['Planeación', 'primary'],
-            'induccion' => ['Inducción', 'info'],
-            'ejecucion' => ['Ejecución', 'warning'],
-            'cierre' => ['Cierre', 'success']
-        ];
-
-        // Obtener programas para el filtro de la vista
-        $db = Database::getConnection();
-        $programas = [];
-        try {
-            $stmtProg = $db->prepare("SELECT DISTINCT codigo, nombre FROM programas ORDER BY nombre");
-            $stmtProg->execute();
-            $programas = $stmtProg->fetchAll();
-        } catch (Exception $e) {
-            // Ignorar o registrar error
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/fichas/views/index.view.php',
-            [
-                'role' => $role,
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'fichas' => $fichas,
-                'estados_label' => $estados_label,
-                'programas' => $programas
-            ],
-            'Fichas de formación · SENA'
-        );
+        $this->render(BASE_PATH . 'modules/fichas/views/index.view.php', [
+            'errors'        => $errors,
+            'fichas'        => $fichas,
+            'paginacion'    => $paginacion,
+            'filtros'       => $filtros,
+            'programas'     => $programas,
+            'instructores'  => $instructores,
+            'proyectos'     => $proyectos,
+            'esCoordinador' => $actor->esCoordinador(),
+            'estados_label' => self::ESTADOS,
+        ], 'Fichas de formación · SENA');
     }
 
-    public function view(): void {
-        $id = (int) ($_GET['id'] ?? 0);
-        $errors = [];
-        
-        $user = getCurrentUser();
-        $role = getCurrentRole();
+    public function ver(): void {
+        $actor = Actor::actual();
+        $id = $this->idDeConsulta('id');
+        $this->exigirAccesoFicha($actor, $id);
 
-        if ($role === ROL_APRENDIZ) {
-            try {
-                $user_ficha_id = $this->fichaModel->getFichaIdByUsuarioId((int)$user['id']);
-                if ($user_ficha_id <= 0 || $id !== $user_ficha_id) {
-                    if ($user_ficha_id > 0) {
-                        $this->redirect(APP_URL . '/index.php/fichas/ver?id=' . $user_ficha_id);
-                    } else {
-                        denyAccess();
-                    }
-                }
-            } catch (Exception $e) {
-                denyAccess();
-            }
+        $ficha = $this->fichas->detalle($id);
+        if ($ficha === null) {
+            $this->fallo('La ficha no existe.', '/fichas');
         }
+        $aprendices = $this->fichas->aprendicesConIndicadores($id);
+        $fases = $ficha['proyecto_id'] ? (new FasesModel())->listarDeProyecto((int)$ficha['proyecto_id'], [$id]) : [];
 
-        $ficha = null;
-        try {
-            $ficha = $this->fichaModel->getFichaCompleta($id);
-            if (!$ficha) {
-                $errors[] = 'Ficha no encontrada';
-            } elseif ($role === ROL_INSTRUCTOR && (int)$ficha['instructor_id'] !== (int)$user['id']) {
-                denyAccess('No tienes permiso para ver una ficha que no tienes asignada.');
-            }
-        } catch (Exception $e) {
-            $errors[] = 'Error al cargar ficha';
+        // El aprendiz ve su propia fila, no la situación de sus compañeros.
+        if ($actor->esAprendiz()) {
+            $aprendices = array_values(array_filter($aprendices, static fn($a) => (int)$a['usuario_id'] === $actor->id));
         }
+        $conteo = array_count_values(array_map(static fn($a) => $a['semaforo'], $aprendices));
 
-        if (!empty($errors)) {
-            setFlashMessage($errors[0], 'danger');
-            $this->redirect(APP_URL . '/index.php/fichas');
-            exit;
-        }
-
-        $aprendices = [];
-        if ($ficha) {
-            try {
-                $aprendices = $this->fichaModel->getAprendicesFicha($id);
-            } catch (Exception $e) {
-                $aprendices = [];
-            }
-        }
-
-        $estados_label = [
-            'planeacion' => ['Planeación', 'primary'],
-            'induccion' => ['Inducción', 'info'],
-            'ejecucion' => ['Ejecución', 'warning'],
-            'cierre' => ['Cierre', 'success']
-        ];
-
-        $estados_aprendiz = [
-            'matriculado' => ['Matriculado', 'success'],
-            'suspendido' => ['Suspendido', 'warning'],
-            'desertado' => ['Desertado', 'danger'],
-            'egresado' => ['Egresado', 'info'],
-            'etapa_practica' => ['Etapa Práctica', 'primary']
-        ];
-
-        $this->render(
-            BASE_PATH . 'modules/fichas/views/ver.view.php',
-            [
-                'id' => $id,
-                'errors' => $errors,
-                'ficha' => $ficha,
-                'aprendices' => $aprendices,
-                'estados_label' => $estados_label,
-                'estados_aprendiz' => $estados_aprendiz
-            ],
-            $ficha ? 'Ficha Detalle · SENA' : 'Ficha no encontrada · SENA'
-        );
+        $this->render(BASE_PATH . 'modules/fichas/views/ver.view.php', [
+            'ficha'            => $ficha,
+            'aprendices'       => $aprendices,
+            'fases'            => $fases,
+            'conteo'           => $conteo,
+            'rol'              => $actor->rol,
+            'estados_label'    => self::ESTADOS,
+            'estados_aprendiz' => self::ESTADOS_APRENDIZ,
+        ], 'Ficha ' . $ficha['numero_ficha'] . ' · SENA');
     }
 
-    public function edit(): void {
-        requireRole(ROL_COORDINADOR);
-
-        $id = (int) ($_GET['id'] ?? 0);
-        $mensaje = '';
-        $tipo_mensaje = '';
-        $errors = [];
-        $ficha = null;
-
-        if ($id > 0) {
-            try {
-                $ficha = $this->fichaModel->getFichaParaEditar($id);
-                if (!$ficha) {
-                    $errors[] = 'Ficha no encontrada';
-                }
-            } catch (Exception $e) {
-                $errors[] = 'Error al cargar ficha';
-            }
+    /**
+     * Sin `id`: el listado de fichas con sus indicadores (con los filtros de
+     * la pantalla). Con `id`: los aprendices de esa ficha y su situación.
+     */
+    public function exportar(): never {
+        $actor = Actor::actual();
+        $id = $this->idDeConsulta('id');
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $formato = ($_GET['formato'] ?? '') === 'csv' ? 'csv' : 'xlsx';
+        if ($id === 0) {
+            $this->exportarListado($actor, $formato);
         }
+        $this->exigirAccesoFicha($actor, $id);
+        $ficha = $this->fichas->detalle($id) ?? $this->fallo('La ficha no existe.', '/fichas');
 
-        $programas = [];
-        $instructores = [];
-        $proyectos = [];
-        try {
-            $programas = $this->fichaModel->getProgramasActivos();
-            $instructores = $this->fichaModel->getInstructoresActivos();
-            $proyectos = $this->fichaModel->getProyectosActivos();
-        } catch (Exception $e) {
-            // log error
+        $filas = array_map(static fn($a) => [
+            $a['nombre'], $a['tipo_documento'] . ' ' . $a['numero_documento'], $a['email'],
+            self::ESTADOS_APRENDIZ[$a['estado']][0] ?? $a['estado'],
+            (int)$a['aprobados'], (int)$a['en_d'], (int)$a['pendientes'],
+            $a['pct_a'] !== null ? (float)$a['pct_a'] : '', Semaforo::etiqueta($a['semaforo']), (int)$a['planes_abiertos'],
+        ], $this->fichas->aprendicesConIndicadores($id));
+        $enc = ['Aprendiz', 'Documento', 'Correo', 'Estado', 'RAP en A', 'RAP en D', 'Pendientes', '% A sobre evaluados', 'Semáforo', 'Planes abiertos'];
+
+        (new Auditoria())->operacion($actor, 'Exportar', 'Fichas', 'fichas', $id, 'Exportó los aprendices de la ficha ' . $ficha['numero_ficha']);
+        $nombre = 'ficha_' . $ficha['numero_ficha'] . '_' . date('Ymd') . '.' . $formato;
+        Exportador::descargar(
+            $formato === 'csv'
+                ? Exportador::csv($nombre, $enc, $filas)
+                : Exportador::xlsx('Ficha ' . $ficha['numero_ficha'], $enc, $filas, [
+                    'titulo' => 'Ficha ' . $ficha['numero_ficha'] . ' · ' . $ficha['programa'] . ' · ' . date('d/m/Y'),
+                    'anchos' => [34, 18, 32, 14, 9, 9, 11, 12, 12, 10]]),
+            $nombre, $formato);
+    }
+
+    private function exportarListado(Actor $actor, string $formato): never {
+        $pct = static fn($v) => $v !== null ? (float)$v : '';
+        $filas = array_map(static fn($f) => [
+            $f['numero_ficha'], $f['codigo_programa'] . ' — ' . $f['programa'], $f['instructor'],
+            self::ESTADOS[$f['estado']][0] ?? $f['estado'], $f['fecha_inicio'] ?? '', $f['fecha_fin'] ?? '',
+            (int)$f['aprendices_activos'], (int)$f['aprobados'], (int)$f['en_d'], $pct($f['pct_a']), Semaforo::etiqueta($f['semaforo']), $pct($f['cumplimiento']),
+            $f['proyecto_codigo'] ?? '', $pct($f['avance_proyecto']),
+        ], $this->fichas->paraExportar($actor, $this->filtros(), Exportador::MAX_FILAS));
+        $enc = ['Ficha', 'Programa', 'Instructor líder', 'Estado', 'Inicio', 'Fin', 'Aprendices activos',
+                'RAP en A', 'RAP en D', '% A sobre evaluados', 'Semáforo', '% avance de RAP', 'Proyecto', '% avance proyecto'];
+
+        (new Auditoria())->operacion($actor, 'Exportar', 'Fichas', 'fichas', null, count($filas) . " fichas exportadas en $formato");
+        $nombre = 'fichas_' . date('Ymd_His') . '.' . $formato;
+        Exportador::descargar(
+            $formato === 'csv'
+                ? Exportador::csv($nombre, $enc, $filas)
+                : Exportador::xlsx('Fichas', $enc, $filas, [
+                    'titulo' => 'Fichas de formación · ' . date('d/m/Y'),
+                    'anchos' => [11, 40, 30, 12, 11, 11, 10, 9, 9, 12, 12, 12, 12, 12]]),
+            $nombre, $formato);
+    }
+
+    /** Filtros del listado, compartidos por la pantalla y la exportación. */
+    private function filtros(): array {
+        return [
+            'search'      => $this->consulta()->busquedaCruda('search'),
+            'programa_id' => $this->idDeConsulta('programa_id'),
+            'estado'      => in_array($_GET['estado'] ?? '', Enums::FICHA_ESTADO, true) ? $_GET['estado'] : '',
+        ];
+    }
+
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $d = FichaFormulario::validar($v);
+        $this->siHayErrores($v, '/fichas');
+        $this->ejecutar(fn() => $this->servicio->crear($d, Actor::actual()), '/fichas', 'Ficha creada.', 'No se pudo crear la ficha');
+    }
+
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La ficha');
+        $d = FichaFormulario::validar($v);
+        $vuelta = $this->rutaDeVuelta('/fichas');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->editar($id, $d, Actor::actual()), $vuelta,
+            static fn(int $n) => 'Ficha actualizada.' . ($n > 0 ? " Se habilitaron $n evaluaciones pendientes para sus aprendices." : ''),
+            'No se pudo actualizar la ficha');
+    }
+
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La ficha');
+        $this->siHayErrores($v, '/fichas');
+        $this->ejecutar(fn() => $this->servicio->eliminar($id, Actor::actual()), '/fichas', 'Ficha eliminada.', 'No se pudo eliminar la ficha');
+    }
+
+    /**
+     * El coordinador ve todas; el instructor, las de sus tres vías de
+     * autoridad; el aprendiz, la suya. Antes el instructor solo podía abrir
+     * las fichas que LIDERABA, aunque el listado le mostrara también las de
+     * sus asignaciones: el enlace le llevaba a un "acceso denegado".
+     */
+    private function exigirAccesoFicha(Actor $actor, int $id): void {
+        $ok = match (true) {
+            $actor->esCoordinador() => $id > 0,
+            $actor->esInstructor()  => $this->acceso->tieneAccesoFicha($id, $actor->id),
+            default                 => $id > 0 && $this->fichas->getFichaIdByUsuarioId($actor->id) === $id,
+        };
+        if (!$ok) {
+            denyAccess('No tienes acceso a esa ficha.');
         }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $v = new \Core\Support\Validador($_POST);
-
-            $numero_ficha  = $v->texto('numero_ficha', 'El número de ficha', 1, 20);
-            $proyecto_id   = $v->id('proyecto_id', 'El proyecto', false) ?: null;
-            $programa_id   = $v->id('programa_id', 'El programa');
-            $instructor_id = $v->id('instructor_id', 'El instructor');
-            $estado        = $v->enum('estado', 'El estado', ['planeacion', 'induccion', 'ejecucion', 'cierre'], 'planeacion');
-            $fecha_inicio  = $v->fecha('fecha_inicio', 'La fecha de inicio', false);
-            $fecha_fin     = $v->fecha('fecha_fin', 'La fecha de fin', false);
-            $v->rangoFechas($fecha_inicio, $fecha_fin);
-
-            if ($numero_ficha !== '' && !preg_match('/^[a-zA-Z0-9\-]+$/', $numero_ficha)) {
-                $v->agregarError('El número de ficha contiene caracteres no permitidos.');
-            }
-
-            // `cantidad_aprendices` ya no se acepta del formulario: es el
-            // número de aprendices matriculados, un dato derivado de la tabla
-            // `aprendices`. Poder teclearlo a mano es lo que lo desincronizó
-            // en 3 de las 7 fichas. Los listados lo calculan al leer.
-            $cantidad_aprendices = $this->fichaModel->contarAprendices($id);
-
-            // `cumplimiento_porcentaje` tampoco: lo recalcula el sistema al
-            // calificar evidencias. Aceptarlo por formulario significaba que
-            // el valor mostrado dependía de quién hubiera escrito el último.
-            $cumplimiento_porcentaje = $id > 0
-                ? (float)($this->fichaModel->getFichaById($id)['cumplimiento_porcentaje'] ?? 0)
-                : 0.0;
-
-            $errors = array_merge($errors, $v->errores());
-
-            if (empty($errors)) {
-                try {
-                    if ($id > 0) {
-                        $this->fichaModel->updateFicha($id, $numero_ficha, $proyecto_id, $programa_id, $instructor_id, $estado, $cantidad_aprendices, $fecha_inicio, $fecha_fin, $cumplimiento_porcentaje);
-
-                        // Editar una ficha puede cambiarle el programa —y con
-                        // él, el juego de RAP que deben evaluarse— o asignarle
-                        // por primera vez un instructor líder, que es
-                        // obligatorio para poder crear evaluaciones. En ambos
-                        // casos sus aprendices necesitan las filas del nuevo
-                        // conjunto. No se borra nada de lo ya evaluado: los RAP
-                        // del programa anterior conservan su historial.
-                        $sync = (new \Core\Services\EvaluacionesSyncService(Database::getConnection()))
-                            ->sincronizar(['ficha_id' => $id]);
-
-                        $mensaje = 'Ficha actualizada correctamente';
-                        if ($sync['creadas'] > 0) {
-                            $mensaje .= ". Se habilitaron {$sync['creadas']} evaluaciones pendientes para sus aprendices.";
-                        }
-                        setFlashMessage($mensaje, 'success');
-                    } else {
-                        $coordinador_id = getCurrentUser()['id'];
-                        $this->fichaModel->createFicha($numero_ficha, $proyecto_id, $programa_id, $instructor_id, $coordinador_id, $estado, $cantidad_aprendices, $fecha_inicio, $fecha_fin, $cumplimiento_porcentaje);
-                        setFlashMessage('Ficha creada correctamente', 'success');
-                    }
-                    $this->redirect(APP_URL . '/index.php/fichas');
-                } catch (Exception $e) {
-                    if (strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), '1062') !== false) {
-                        $errors[] = 'Este número de ficha ya existe';
-                    } else {
-                        $errors[] = $id > 0 ? 'Error al actualizar ficha' : 'Error al crear ficha';
-                    }
-                }
-            }
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/fichas/views/editar.view.php',
-            [
-                'id' => $id,
-                'ficha' => $ficha,
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'errors' => $errors,
-                'programas' => $programas,
-                'instructores' => $instructores,
-                'proyectos' => $proyectos
-            ],
-            ($id && $ficha) ? 'Editar Ficha · SENA' : 'Crear Ficha · SENA'
-        );
     }
 }

@@ -70,8 +70,7 @@ return static function (Router $router): void {
     $importacion('/usuarios/importar',               $COORDINADOR);
     $importacion('/competencias/importar',           $COORDINADOR);
     $importacion('/resultados-aprendizaje/importar', $COORDINADOR);
-    // El instructor matricula en sus fichas; el importador lo comprueba.
-    $importacion('/matriculas/importar',             $GESTION);
+    $importacion('/matriculas/importar',             $COORDINADOR);
 
     // ---------------------------------------------------------------------
     // ESTRUCTURA CURRICULAR — la define coordinación
@@ -107,13 +106,26 @@ return static function (Router $router): void {
     // FICHAS Y MATRÍCULAS
     // ---------------------------------------------------------------------
     // El aprendiz entra a /fichas: el controlador lo redirige a la suya.
-    $ambos('/fichas',        'Core\Controllers\FichaController', 'index', $TODOS);
-    $router->add('GET', '/fichas/ver', 'Core\Controllers\FichaController', 'view', $TODOS);
-    $ambos('/fichas/crear',  'Core\Controllers\FichaController', 'edit',  $COORDINADOR);
-    $ambos('/fichas/editar', 'Core\Controllers\FichaController', 'edit',  $COORDINADOR);
+    $FI = 'Core\Controllers\FichaController';
+    $router->add('GET', '/fichas',          $FI, 'index',    $TODOS);
+    $router->add('GET', '/fichas/ver',      $FI, 'ver',      $TODOS);
+    $router->add('GET', '/fichas/exportar', $FI, 'exportar', $GESTION);
+    $router->accion('/fichas', 'crear',    $FI, 'crear',    $COORDINADOR);
+    $router->accion('/fichas', 'editar',   $FI, 'editar',   $COORDINADOR);
+    $router->accion('/fichas', 'eliminar', $FI, 'eliminar', $COORDINADOR);
 
-    $ambos('/matriculas',   'Core\Controllers\MatriculaController',   'index', $GESTION);
-    $ambos('/asignaciones', 'Core\Controllers\AsignacionesController', 'index', $GESTION);
+    $M = 'Core\Controllers\MatriculaController';
+    $router->add('GET', '/matriculas',          $M, 'index',    $GESTION);
+    $router->add('GET', '/matriculas/exportar', $M, 'exportar', $GESTION);
+    $router->accion('/matriculas', 'matricular', $M, 'matricular', $COORDINADOR);
+    $router->accion('/matriculas', 'editar',     $M, 'editar',     $COORDINADOR);
+    $router->accion('/matriculas', 'retirar',    $M, 'retirar',    $COORDINADOR);
+
+    $AS = 'Core\Controllers\AsignacionesController';
+    $router->add('GET', '/asignaciones', $AS, 'index', $GESTION);
+    $router->accion('/asignaciones', 'asignar',   $AS, 'asignar',   $COORDINADOR);
+    $router->accion('/asignaciones', 'reasignar', $AS, 'reasignar', $COORDINADOR);
+    $router->accion('/asignaciones', 'eliminar',  $AS, 'eliminar',  $COORDINADOR);
 
     // ---------------------------------------------------------------------
     // PROYECTO FORMATIVO

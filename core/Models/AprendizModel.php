@@ -3,11 +3,17 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
-use Core\Support\Validador;
 use Core\Database;
-use Exception;
+use Core\Services\InstructorAccessService;
+use Core\Support\Actor;
+use Core\Support\Enums;
+use Core\Support\Validador;
 use PDO;
 
+/**
+ * Acceso a `aprendices` (y a la cuenta de usuario de cada uno).
+ * Reglas de negocio en MatriculasService.
+ */
 class AprendizModel {
     private PDO $db;
 
@@ -15,296 +21,150 @@ class AprendizModel {
         $this->db = $db ?? Database::getConnection();
     }
 
-    /**
-     * Get learners with filters and search
-     */
-    public function getFilteredList(array $filters = [], ?int $instructorId = null, ?int $limit = null, int $offset = 0): array {
-        [$from, $params] = $this->construirConsulta($filters, $instructorId);
-
-        $sql = "
-            SELECT a.*, u.nombre, u.email, u.avatar_color, f.numero_ficha, p.nombre as programa_nombre,
-                   u2.nombre as instructor_seguimiento_nombre
-            $from
-            ORDER BY u.nombre, a.id
-        ";
-
-        if ($limit !== null) {
-            // Interpolados como enteros: con ATTR_EMULATE_PREPARES en false,
-            // MariaDB no acepta parámetros ligados en LIMIT/OFFSET.
-            $sql .= ' LIMIT ' . (int)$limit . ' OFFSET ' . max(0, $offset);
-        }
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Total de aprendices que cumplen los mismos filtros, para paginar.
-     */
-    public function contarFiltrados(array $filters = [], ?int $instructorId = null): int {
-        [$from, $params] = $this->construirConsulta($filters, $instructorId);
-        $stmt = $this->db->prepare("SELECT COUNT(*) $from");
-        $stmt->execute($params);
-        return (int)$stmt->fetchColumn();
-    }
-
-    /**
-     * FROM + WHERE compartidos por el listado y el conteo, para que el
-     * total de la paginación no pueda desalinearse de las filas mostradas.
-     *
-     * @return array{0:string, 1:array}
-     */
-    private function construirConsulta(array $filters, ?int $instructorId): array {
+    /** @return array{0:string, 1:array} */
+    private function construirConsulta(array $f, Actor $actor): array {
         $from = "
             FROM aprendices a
             JOIN usuarios u ON a.usuario_id = u.id
             LEFT JOIN fichas f ON a.ficha_id = f.id
             LEFT JOIN programas p ON f.programa_id = p.id
             LEFT JOIN usuarios u2 ON a.instructor_seguimiento_id = u2.id
-            WHERE 1=1
-        ";
+            WHERE 1=1";
         $params = [];
-
-        if ($instructorId !== null) {
-            $from .= " AND (f.instructor_id = ? OR a.instructor_seguimiento_id = ?)";
-            $params[] = $instructorId;
-            $params[] = $instructorId;
+        if ($actor->esInstructor()) {
+            // Misma definición de "sus aprendices" que el resto del sistema:
+            // antes aquí solo contaban la ficha liderada y el seguimiento,
+            // y un instructor asignado por competencia no veía a nadie.
+            $from .= " AND (a.ficha_id IN (" . InstructorAccessService::sqlFichasDelInstructor() . ") OR a.instructor_seguimiento_id = ?)";
+            array_push($params, $actor->id, $actor->id, $actor->id, $actor->id);
+        } elseif (!$actor->esCoordinador()) {
+            $from .= " AND 1 = 0";
         }
-
-        if (!empty($filters['search'])) {
+        if (($f['search'] ?? '') !== '') {
+            $t = '%' . Validador::escaparLike((string)$f['search']) . '%';
             $from .= " AND (u.nombre LIKE ? OR a.numero_documento LIKE ? OR u.email LIKE ?)";
-            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
-            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
-            $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
+            array_push($params, $t, $t, $t);
         }
-
-        if (!empty($filters['ficha_id'])) {
+        if (!empty($f['ficha_id'])) {
             $from .= " AND a.ficha_id = ?";
-            $params[] = (int)$filters['ficha_id'];
+            $params[] = (int)$f['ficha_id'];
         }
-
-        if (!empty($filters['estado'])) {
+        if (($f['estado'] ?? '') !== '') {
             $from .= " AND a.estado = ?";
-            $params[] = $filters['estado'];
+            $params[] = in_array($f['estado'], Enums::APRENDIZ_ESTADO, true) ? $f['estado'] : "\x00";
         }
-
         return [$from, $params];
     }
 
-    /**
-     * Enroll a new apprentice (Transaction: User + Apprentice + Evaluations + Ficha count)
-     *
-     * @return array{id:int, temp_password:string}
-     */
-    public function matricular(array $data, int $createdByUserId): array {
-        $db = $this->db;
-        
-        // Validar duplicados
-        $stmt = $db->prepare("SELECT id FROM usuarios WHERE email = ?");
-        $stmt->execute([$data['email']]);
-        if ($stmt->fetch()) {
-            throw new Exception('El correo electrónico ya se encuentra registrado.');
-        }
+    public function contar(array $filtros, Actor $actor): int {
+        [$from, $p] = $this->construirConsulta($filtros, $actor);
+        $st = $this->db->prepare("SELECT COUNT(*) $from");
+        $st->execute($p);
+        return (int)$st->fetchColumn();
+    }
 
-        $stmt = $db->prepare("SELECT id FROM aprendices WHERE numero_documento = ?");
-        $stmt->execute([$data['numero_documento']]);
-        if ($stmt->fetch()) {
-            throw new Exception('El número de documento ya se encuentra matriculado.');
-        }
+    public function listar(array $filtros, Actor $actor, int $limite, int $offset): array {
+        [$from, $p] = $this->construirConsulta($filtros, $actor);
+        $limite = max(1, min($limite, 100));
+        $offset = max(0, $offset);
+        $st = $this->db->prepare("
+            SELECT a.*, u.nombre, u.email, u.avatar_color, u.estado AS estado_usuario,
+                   f.numero_ficha, p.nombre AS programa_nombre, u2.nombre AS instructor_seguimiento_nombre
+            $from
+            ORDER BY u.nombre
+            LIMIT $limite OFFSET $offset
+        ");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-        try {
-            $db->beginTransaction();
+    public function paraExportar(array $filtros, Actor $actor, int $maximo): array {
+        [$from, $p] = $this->construirConsulta($filtros, $actor);
+        $maximo = max(1, $maximo);
+        $st = $this->db->prepare("SELECT a.*, u.nombre, u.email, f.numero_ficha, p.nombre AS programa_nombre $from ORDER BY f.numero_ficha, u.nombre LIMIT $maximo");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-            // 1. Crear el usuario
-            $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-            $avatar_color = $colors[array_rand($colors)];
-            $temp_password = generateTempPassword();
-            $password_hash = password_hash($temp_password, PASSWORD_DEFAULT);
+    public function findById(int $id): ?array {
+        $st = $this->db->prepare("SELECT a.*, u.nombre, u.email FROM aprendices a JOIN usuarios u ON u.id = a.usuario_id WHERE a.id = ?");
+        $st->execute([$id]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
 
-            $stmt = $db->prepare("
-                INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado, debe_cambiar_password)
-                VALUES (?, ?, ?, 'aprendiz', ?, 'activo', 1)
-            ");
-            $stmt->execute([$data['nombre'], $data['email'], $password_hash, $avatar_color]);
-            $usuario_id = (int)$db->lastInsertId();
+    public function existeDocumento(string $doc, ?int $exceptoId = null): bool {
+        $st = $this->db->prepare("SELECT 1 FROM aprendices WHERE numero_documento = ? AND id <> ?");
+        $st->execute([$doc, $exceptoId ?? 0]);
+        return (bool)$st->fetchColumn();
+    }
 
-            // 2. Crear aprendiz
-            $stmt = $db->prepare("
-                INSERT INTO aprendices (usuario_id, ficha_id, instructor_seguimiento_id, numero_documento, tipo_documento, genero, fecha_nacimiento, telefono, ciudad, estado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'matriculado')
-            ");
-            $stmt->execute([
-                $usuario_id, 
-                $data['ficha_id'], 
-                $data['instructor_seguimiento_id'], 
-                $data['numero_documento'], 
-                $data['tipo_documento'], 
-                $data['genero'], 
-                $data['fecha_nacimiento'] ?: null, 
-                $data['telefono'] ?: '', 
-                $data['ciudad'] ?: ''
-            ]);
-            $new_aprendiz_id = (int)$db->lastInsertId();
+    public function existeEmail(string $email, ?int $exceptoUsuarioId = null): bool {
+        $st = $this->db->prepare("SELECT 1 FROM usuarios WHERE email = ? AND id <> ?");
+        $st->execute([$email, $exceptoUsuarioId ?? 0]);
+        return (bool)$st->fetchColumn();
+    }
 
-            // 3. Inicializar evaluaciones como 'pendiente'.
-            // Ver la nota en MatriculaController: la guardia
-            // `function_exists` ocultaba el fallo en vez de evitarlo.
-            inicializarEvaluacionesAprendiz($db, $new_aprendiz_id, (int)$data['ficha_id']);
+    /** Crea la cuenta y la matrícula. @return int id del aprendiz */
+    public function crear(array $d, string $hash, string $color): int {
+        $this->db->prepare("
+            INSERT INTO usuarios (nombre, email, password, debe_cambiar_password, rol, avatar_color, estado)
+            VALUES (?, ?, ?, 1, 'aprendiz', ?, 'activo')
+        ")->execute([$d['nombre'], $d['email'], $hash, $color]);
+        $usuarioId = (int)$this->db->lastInsertId();
+        $this->db->prepare("
+            INSERT INTO aprendices (usuario_id, ficha_id, instructor_seguimiento_id, numero_documento, tipo_documento, genero,
+                                    fecha_nacimiento, telefono, ciudad, estado)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'matriculado')
+        ")->execute([$usuarioId, $d['ficha_id'], $d['instructor_seguimiento_id'], $d['numero_documento'], $d['tipo_documento'],
+                     $d['genero'], $d['fecha_nacimiento'], $d['telefono'] !== '' ? $d['telefono'] : null, $d['ciudad'] !== '' ? $d['ciudad'] : null]);
+        return (int)$this->db->lastInsertId();
+    }
 
-            // 4. Incrementar contador en la ficha
-            $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$data['ficha_id']]);
-
-            // 5. Registrar log
-            $stmtLog = $db->prepare("
-                INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
-                VALUES (?, 'Crear', 'Matriculas', 'aprendices', ?, ?)
-            ");
-            $stmtLog->execute([$createdByUserId, $new_aprendiz_id, "Matriculó al aprendiz {$data['nombre']} en ficha ID {$data['ficha_id']}"]);
-
-            $db->commit();
-            return ['id' => $new_aprendiz_id, 'temp_password' => $temp_password];
-        } catch (Exception $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            throw $e;
-        }
+    public function actualizar(int $id, int $usuarioId, array $d): void {
+        $this->db->prepare("UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?")->execute([$d['nombre'], $d['email'], $usuarioId]);
+        $this->db->prepare("
+            UPDATE aprendices SET ficha_id = ?, instructor_seguimiento_id = ?, estado = ?, tipo_documento = ?, numero_documento = ?,
+                                  genero = ?, fecha_nacimiento = ?, telefono = ?, ciudad = ?
+             WHERE id = ?
+        ")->execute([$d['ficha_id'], $d['instructor_seguimiento_id'], $d['estado'], $d['tipo_documento'], $d['numero_documento'],
+                     $d['genero'], $d['fecha_nacimiento'], $d['telefono'] !== '' ? $d['telefono'] : null, $d['ciudad'] !== '' ? $d['ciudad'] : null, $id]);
     }
 
     /**
-     * Update apprentice enrollment details
+     * Mueve los registros académicos del aprendiz a la nueva ficha (el
+     * `ficha_id` de evaluaciones y evidencias está desnormalizado): sin esto,
+     * recalificar un RAP tras el traslado chocaba con la unicidad.
      */
-    public function editarMatricula(int $aprendizId, array $data, int $updatedByUserId): void {
-        $db = $this->db;
-
-        // Obtener datos actuales
-        $stmt = $db->prepare("SELECT ficha_id, usuario_id FROM aprendices WHERE id = ?");
-        $stmt->execute([$aprendizId]);
-        $old_ap = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$old_ap) {
-            throw new Exception('No se encontró el registro del aprendiz.');
-        }
-
-        $old_ficha_id = (int)$old_ap['ficha_id'];
-        $usuario_id = (int)$old_ap['usuario_id'];
-
-        // Verificar duplicados
-        $stmt = $db->prepare("SELECT id FROM usuarios WHERE email = ? AND id != ?");
-        $stmt->execute([$data['email'], $usuario_id]);
-        if ($stmt->fetch()) {
-            throw new Exception('El correo electrónico ya se encuentra registrado por otro usuario.');
-        }
-
-        $stmt = $db->prepare("SELECT id FROM aprendices WHERE numero_documento = ? AND id != ?");
-        $stmt->execute([$data['numero_documento'], $aprendizId]);
-        if ($stmt->fetch()) {
-            throw new Exception('El número de documento ya se encuentra registrado por otro aprendiz.');
-        }
-
-        try {
-            $db->beginTransaction();
-
-            // 1. Actualizar usuarios
-            $stmt = $db->prepare("UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?");
-            $stmt->execute([$data['nombre'], $data['email'], $usuario_id]);
-
-            // 2. Actualizar aprendices
-            $stmt = $db->prepare("
-                UPDATE aprendices 
-                SET ficha_id = ?, instructor_seguimiento_id = ?, estado = ?, tipo_documento = ?, numero_documento = ?, 
-                    genero = ?, fecha_nacimiento = ?, telefono = ?, ciudad = ? 
-                WHERE id = ?
-            ");
-            $stmt->execute([
-                $data['ficha_id'],
-                $data['instructor_seguimiento_id'],
-                $data['estado'],
-                $data['tipo_documento'],
-                $data['numero_documento'],
-                $data['genero'],
-                $data['fecha_nacimiento'] ?: null,
-                $data['telefono'] ?: '',
-                $data['ciudad'] ?: '',
-                $aprendizId
-            ]);
-
-            // 3. Si cambió de ficha, actualizar los contadores y sincronizar el
-            //    ficha_id denormalizado de sus evaluaciones/evidencias existentes
-            //    (de lo contrario quedan con el ficha_id viejo y, por ejemplo,
-            //    recalificar un RA ya evaluado deja de encontrar la fila y viola
-            //    la restricción UNIQUE(resultado_aprendizaje_id, aprendiz_id) al
-            //    intentar insertarla de nuevo).
-            if ($old_ficha_id !== (int)$data['ficha_id']) {
-                $db->prepare("UPDATE fichas SET cantidad_aprendices = GREATEST(0, cantidad_aprendices - 1) WHERE id = ?")->execute([$old_ficha_id]);
-                $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$data['ficha_id']]);
-
-                $db->prepare("UPDATE evaluaciones SET ficha_id = ? WHERE aprendiz_id = ?")->execute([$data['ficha_id'], $aprendizId]);
-                $db->prepare("UPDATE evidencias SET ficha_id = ? WHERE aprendiz_id = ?")->execute([$data['ficha_id'], $aprendizId]);
-            }
-
-            // 4. Registrar log
-            $stmtLog = $db->prepare("
-                INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
-                VALUES (?, 'Editar', 'Matriculas', 'aprendices', ?, ?)
-            ");
-            $stmtLog->execute([$updatedByUserId, $aprendizId, "Actualizó información de matrícula y datos personales del aprendiz: {$data['nombre']}"]);
-
-            $db->commit();
-        } catch (Exception $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            throw $e;
-        }
+    public function trasladarRegistros(int $aprendizId, int $fichaNueva): void {
+        $this->db->prepare("UPDATE evaluaciones SET ficha_id = ? WHERE aprendiz_id = ?")->execute([$fichaNueva, $aprendizId]);
+        $this->db->prepare("UPDATE evidencias SET ficha_id = ? WHERE aprendiz_id = ?")->execute([$fichaNueva, $aprendizId]);
+        $this->db->prepare("UPDATE planes_mejoramiento SET ficha_id = ? WHERE aprendiz_id = ?")->execute([$fichaNueva, $aprendizId]);
     }
 
-    /**
-     * Delete/unregister an apprentice
-     */
-    public function eliminar(int $aprendizId, int $deletedByUserId): void {
-        $db = $this->db;
+    public function marcarDesertado(int $id): void {
+        $this->db->prepare("UPDATE aprendices SET estado = 'desertado' WHERE id = ?")->execute([$id]);
+    }
 
-        $stmt = $db->prepare("SELECT ficha_id, usuario_id FROM aprendices WHERE id = ?");
-        $stmt->execute([$aprendizId]);
-        $ap = $stmt->fetch(PDO::FETCH_ASSOC);
+    public function cambiarEstadoCuenta(int $usuarioId, string $estado): void {
+        $this->db->prepare("UPDATE usuarios SET estado = ? WHERE id = ?")->execute([$estado, $usuarioId]);
+    }
 
-        if (!$ap) {
-            throw new Exception('No se encontró el registro del aprendiz.');
-        }
+    public function juiciosEmitidos(int $aprendizId): int {
+        $st = $this->db->prepare("SELECT COUNT(*) FROM evaluaciones WHERE aprendiz_id = ? AND concepto IN ('A','D')");
+        $st->execute([$aprendizId]);
+        return (int)$st->fetchColumn();
+    }
 
-        $ficha_id = (int)$ap['ficha_id'];
-        $usuario_id = (int)$ap['usuario_id'];
+    /** Programa, proyecto y líder de una ficha. */
+    public function datosFicha(int $fichaId): ?array {
+        $st = $this->db->prepare("SELECT id, numero_ficha, programa_id, instructor_id, estado FROM fichas WHERE id = ?");
+        $st->execute([$fichaId]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
 
-        try {
-            $db->beginTransaction();
-
-            // Marcar como desertado en vez de borrar físicamente: el aprendiz ya
-            // tiene evaluaciones/evidencias asociadas (creadas al matricularse) y
-            // esas tablas no tienen ON DELETE CASCADE, por lo que un DELETE físico
-            // siempre fallaba por restricción de llave foránea.
-            $db->prepare("UPDATE aprendices SET estado = 'desertado' WHERE id = ?")->execute([$aprendizId]);
-
-            // Desactivar el usuario
-            $db->prepare("UPDATE usuarios SET estado = 'inactivo' WHERE id = ?")->execute([$usuario_id]);
-
-            // Decrementar contador
-            $db->prepare("UPDATE fichas SET cantidad_aprendices = GREATEST(0, cantidad_aprendices - 1) WHERE id = ?")->execute([$ficha_id]);
-
-            // Registrar log
-            $stmtLog = $db->prepare("
-                INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
-                VALUES (?, 'Eliminar', 'Matriculas', 'aprendices', ?, ?)
-            ");
-            $stmtLog->execute([$deletedByUserId, $aprendizId, "Eliminó la matrícula del aprendiz ID $aprendizId y desactivó su usuario"]);
-
-            $db->commit();
-        } catch (Exception $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            throw $e;
-        }
+    public function esInstructorActivo(int $id): bool {
+        $st = $this->db->prepare("SELECT 1 FROM usuarios WHERE id = ? AND rol = 'instructor' AND estado = 'activo'");
+        $st->execute([$id]);
+        return (bool)$st->fetchColumn();
     }
 }

@@ -78,7 +78,7 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
     </thead>
     <tbody>
       <?php if (empty($usuarios)): ?>
-      <tr><td colspan="6" class="text-center text-muted py-5"><i class="bi bi-search d-block mb-2 fs-3 opacity-50"></i>No hay usuarios que coincidan.</td></tr>
+      <tr><td colspan="6" class="celda-vacia"><div><i class="bi bi-search d-block mb-2 fs-3 opacity-50"></i>No hay usuarios que coincidan.</div></td></tr>
       <?php endif; ?>
       <?php foreach ($usuarios as $u):
           $esYo = (int)$u['id'] === $actor_id;

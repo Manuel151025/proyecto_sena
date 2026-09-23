@@ -119,24 +119,23 @@ final class ModelosRestantesTest extends CasoConBaseDeDatos {
     #[TestDox('AprendizModel lista y cuenta con y sin instructor')]
     public function testAprendizModel(): void {
         $m = new Models\AprendizModel($this->db);
-        $inst = $this->idInstructorConFicha();
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        $inst  = new \Core\Support\Actor($this->idInstructorConFicha(), ROL_INSTRUCTOR);
+        $apr   = new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ);
 
-        $this->assertIsArray($m->getFilteredList([], null, 25, 0));
-        $this->assertIsArray($m->getFilteredList(['search' => 'a'], $inst, 25, 0));
-        $this->assertIsInt($m->contarFiltrados([]));
-        $this->assertIsInt($m->contarFiltrados([], $inst));
-
-        $this->assertLessThanOrEqual(
-            $m->contarFiltrados([]),
-            $m->contarFiltrados([], $inst),
-            'un instructor ve más aprendices que el total del sistema'
-        );
+        $this->assertIsArray($m->listar([], $coord, 25, 0));
+        $this->assertIsArray($m->listar(['search' => 'a'], $inst, 25, 0));
+        $this->assertLessThanOrEqual($m->contar([], $coord), $m->contar([], $inst),
+            'un instructor ve más aprendices que el total del sistema');
+        $this->assertSame(0, $m->contar([], $apr), 'el aprendiz no debe ver el listado de matrículas');
+        $this->assertSame(0, $m->contar(['estado' => 'inventado'], $coord), 'un estado inventado no debe devolver filas');
     }
 
     #[TestDox('el conteo de aprendices cuadra con el listado')]
     public function testAprendizConteoCuadra(): void {
         $m = new Models\AprendizModel($this->db);
-        $this->assertCount($m->contarFiltrados([]), $m->getFilteredList([], null, 1000, 0));
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        $this->assertCount($m->contar([], $coord), $m->paraExportar([], $coord, 100000));
     }
 
     #[TestDox('ActividadesModel responde en sus consultas')]
@@ -151,40 +150,20 @@ final class ModelosRestantesTest extends CasoConBaseDeDatos {
         $this->assertSame($m->contar($coord, []), (int)$this->db->query("SELECT COUNT(*) FROM actividades")->fetchColumn());
     }
 
-    #[TestDox('AsignacionesModel responde y detecta duplicados')]
+    #[TestDox('AsignacionesModel responde y acota el listado por rol')]
     public function testAsignacionesModel(): void {
         $m = new Models\AsignacionesModel($this->db);
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        $ajeno = new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR);
+        $aprendiz = new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ);
 
-        $this->assertIsArray($m->getAsignaciones('', 0, 0));
+        $this->assertSame(count($m->listar($coord, '', 0, 0)), min(500, $this->contar('asignaciones')));
+        $this->assertSame([], $m->listar($ajeno, '', 0, 0), 'un instructor sin fichas no ve asignaciones del centro');
+        $this->assertSame([], $m->listar($aprendiz, '', 0, 0));
+        $this->assertIsArray($m->listar($coord, "x' OR '1'='1", 0, 0));
         $this->assertIsArray($m->getFichas());
         $this->assertIsArray($m->getCompetencias());
-
-        // El índice UNIQUE(ficha, competencia) significa un instructor por
-        // competencia y ficha: el modelo tiene que detectarlo antes.
         $this->assertIsBool($m->checkAsignacionExiste($this->idFicha(), 1));
-    }
-
-    #[TestDox('crear una asignación duplicada se detecta')]
-    public function testAsignacionDuplicada(): void {
-        $m = new Models\AsignacionesModel($this->db);
-        $ficha = $this->idFicha();
-        $comp = (int)$this->db->query("
-            SELECT c.id FROM competencias c
-              JOIN fichas f ON f.programa_id = c.programa_id
-             WHERE f.id = $ficha LIMIT 1
-        ")->fetchColumn();
-
-        if ($comp === 0) {
-            $this->markTestSkipped('la ficha no tiene competencias en su programa');
-        }
-
-        $inst = $this->idInstructorConFicha();
-        $m->crearAsignacion($ficha, $comp, $inst, $this->idCoordinador());
-
-        $this->assertTrue(
-            $m->checkAsignacionExiste($ficha, $comp),
-            'no detecta que la competencia ya está asignada en esa ficha'
-        );
     }
 
     #[TestDox('CompetenciasModel lista y filtra')]

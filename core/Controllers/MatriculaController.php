@@ -3,340 +3,128 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-use Core\Support\Enums;
-
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
+use Core\Exportacion\Exportador;
+use Core\Formularios\MatriculaFormulario;
 use Core\Models\AprendizModel;
 use Core\Models\FichaModel;
-use Core\Database;
-use Exception;
-use PDO;
+use Core\Services\Auditoria;
+use Core\Services\MatriculasService;
+use Core\Services\Paginator;
+use Core\Support\Actor;
+use Core\Support\Enums;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Matrículas.
+ *
+ *   GET  /matriculas?search=&ficha_id=&estado=     coordinación (todas) e instructor (las suyas)
+ *   GET  /matriculas/exportar                      el mismo listado en XLSX o CSV
+ *   POST /matriculas  action=matricular|editar|retirar   coordinación
+ *
+ * La carga masiva está en /matriculas/importar (ImportacionController).
+ */
 class MatriculaController extends BaseController {
-    private PDO $db;
-    private FichaModel $fichaModel;
-    private AprendizModel $aprendizModel;
+    private const RUTA = '/matriculas';
+    private const CLAVE_CREDENCIAL = 'credencial_matricula';
 
-    public function __construct(?PDO $db = null, ?FichaModel $fichaModel = null, ?AprendizModel $aprendizModel = null) {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-        $this->db = $db ?? Database::getConnection();
-        $this->fichaModel = $fichaModel ?? new FichaModel($this->db);
-        $this->aprendizModel = $aprendizModel ?? new AprendizModel($this->db);
+    private AprendizModel $aprendices;
+    private MatriculasService $servicio;
+
+    public function __construct(?AprendizModel $aprendices = null, ?MatriculasService $servicio = null) {
+        $this->aprendices = $aprendices ?? new AprendizModel();
+        $this->servicio = $servicio ?? new MatriculasService();
+    }
+
+    private function filtros(): array {
+        return [
+            'search'   => $this->consulta()->busquedaCruda('search'),
+            'ficha_id' => $this->idDeConsulta('ficha_id'),
+            'estado'   => in_array($_GET['estado'] ?? '', Enums::APRENDIZ_ESTADO, true) ? $_GET['estado'] : '',
+        ];
     }
 
     public function index(): void {
-        $db = $this->db;
+        $actor = Actor::actual();
+        $filtros = $this->filtros();
         $errors = [];
-        $successMessage = '';
-        $passwordResultados = [];
-
-        // Recuperar resultados de matrícula/CSV guardados en sesión tras el
-        // redirect (PRG): las contraseñas temporales solo se pueden mostrar
-        // una vez y no caben en un mensaje flash simple.
-        $tabId = getTabId();
-        if (isset($_SESSION['tabs'][$tabId]['matricula_success'])) {
-            $successMessage = $_SESSION['tabs'][$tabId]['matricula_success'];
-            $passwordResultados = $_SESSION['tabs'][$tabId]['matricula_passwords'] ?? [];
-            unset($_SESSION['tabs'][$tabId]['matricula_success'], $_SESSION['tabs'][$tabId]['matricula_passwords']);
-        }
-
-        // 1. PROCESAR ACCIONES (POST)
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            $action = $_POST['action'];
-
-            try {
-                if ($action === 'matricular') {
-                    if (!hasRole(ROL_COORDINADOR)) {
-                        throw new Exception('Solo los coordinadores pueden realizar matrículas.');
-                    }
-                    
-                    $data = [
-                        'nombre' => mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8'),
-                        'email' => trim($_POST['email'] ?? ''),
-                        'numero_documento' => trim($_POST['numero_documento'] ?? ''),
-                        'tipo_documento' => (new Validador($_POST))->enum('tipo_documento', 'El tipo de documento', Enums::TIPO_DOCUMENTO, 'CC'),
-                        'ficha_id' => (int)($_POST['ficha_id'] ?? 0),
-                        'genero' => (new Validador($_POST))->enum('genero', 'El género', Enums::APRENDIZ_GENERO, 'O'),
-                        'telefono' => trim($_POST['telefono'] ?? ''),
-                        'ciudad' => trim($_POST['ciudad'] ?? ''),
-                        'fecha_nacimiento' => !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : null,
-                        'instructor_seguimiento_id' => !empty($_POST['instructor_seguimiento_id']) ? (int)$_POST['instructor_seguimiento_id'] : null
-                    ];
-
-                    if (empty($data['nombre'])) throw new Exception('El nombre completo es obligatorio.');
-                    if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) throw new Exception('Email inválido.');
-                    if (empty($data['numero_documento'])) throw new Exception('El número de documento es obligatorio.');
-                    if ($data['ficha_id'] <= 0) throw new Exception('Debe seleccionar una ficha de formación.');
-
-                    $resultMatricula = $this->aprendizModel->matricular($data, (int)getCurrentUser()['id']);
-                    $_SESSION['tabs'][$tabId]['matricula_success'] = 'Aprendiz matriculado exitosamente. Su contraseña temporal aparece abajo: cópiala ahora, no volverá a mostrarse.';
-                    $_SESSION['tabs'][$tabId]['matricula_passwords'] = [[
-                        'nombre' => $data['nombre'],
-                        'email' => $data['email'],
-                        'password' => $resultMatricula['temp_password'],
-                    ]];
-                    $this->redirect(APP_URL . '/index.php/matriculas');
-
-                } elseif ($action === 'editar_matricula') {
-                    if (!hasRole(ROL_COORDINADOR)) {
-                        throw new Exception('Solo los coordinadores pueden modificar matrículas.');
-                    }
-
-                    $aprendiz_id = (int)($_POST['aprendiz_id'] ?? 0);
-                    $data = [
-                        'nombre' => mb_strtoupper(trim($_POST['nombre'] ?? ''), 'UTF-8'),
-                        'email' => trim($_POST['email'] ?? ''),
-                        'tipo_documento' => (new Validador($_POST))->enum('tipo_documento', 'El tipo de documento', Enums::TIPO_DOCUMENTO, 'CC'),
-                        'numero_documento' => trim($_POST['numero_documento'] ?? ''),
-                        'ficha_id' => (int)($_POST['ficha_id'] ?? 0),
-                        'estado' => $_POST['estado'] ?? 'matriculado',
-                        'genero' => (new Validador($_POST))->enum('genero', 'El género', Enums::APRENDIZ_GENERO, 'O'),
-                        'fecha_nacimiento' => !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : null,
-                        'telefono' => trim($_POST['telefono'] ?? ''),
-                        'ciudad' => trim($_POST['ciudad'] ?? ''),
-                        'instructor_seguimiento_id' => !empty($_POST['instructor_seguimiento_id']) ? (int)$_POST['instructor_seguimiento_id'] : null
-                    ];
-
-                    if ($aprendiz_id <= 0) throw new Exception('Aprendiz no válido.');
-                    if (empty($data['nombre'])) throw new Exception('El nombre completo es obligatorio.');
-                    if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) throw new Exception('Email inválido.');
-                    if (empty($data['numero_documento'])) throw new Exception('El número de documento es obligatorio.');
-                    if ($data['ficha_id'] <= 0) throw new Exception('Debe seleccionar una ficha de formación.');
-
-                    $this->aprendizModel->editarMatricula($aprendiz_id, $data, (int)getCurrentUser()['id']);
-                    setFlashMessage('Matrícula y datos del aprendiz actualizados exitosamente.', 'success');
-                    $this->redirect(APP_URL . '/index.php/matriculas');
-
-                } elseif ($action === 'eliminar_matricula') {
-                    if (!hasRole(ROL_COORDINADOR)) {
-                        throw new Exception('Solo los coordinadores pueden eliminar matrículas.');
-                    }
-
-                    $aprendiz_id = (int)($_POST['aprendiz_id'] ?? 0);
-                    if ($aprendiz_id <= 0) throw new Exception('Aprendiz no válido.');
-
-                    $this->aprendizModel->eliminar($aprendiz_id, (int)getCurrentUser()['id']);
-                    setFlashMessage('Matrícula eliminada exitosamente.', 'success');
-                    $this->redirect(APP_URL . '/index.php/matriculas');
-
-                } elseif ($action === 'cargar_csv') {
-                    if (!hasRole(ROL_COORDINADOR)) {
-                        throw new Exception('Solo los coordinadores pueden realizar esta acción.');
-                    }
-
-                    $ficha_id = (int)($_POST['ficha_id'] ?? 0);
-                    if ($ficha_id <= 0) {
-                        throw new Exception('Debe seleccionar una ficha de destino válida.');
-                    } elseif (!isset($_FILES['file_csv']) || $_FILES['file_csv']['error'] !== UPLOAD_ERR_OK) {
-                        throw new ErrorDeNegocio('Error al subir el archivo CSV o no se seleccionó ninguno.');
-                    }
-
-                    $file = $_FILES['file_csv']['tmp_name'];
-                    $handle = fopen($file, 'r');
-                    if ($handle === false) {
-                        throw new Exception('No se pudo abrir el archivo CSV.');
-                    }
-
-                    // Detectar delimitador (coma o punto y coma)
-                    $firstLine = fgets($handle);
-                    $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
-                    rewind($handle);
-
-                    $successCount = 0;
-                    $warnings = [];
-                    $rowNum = 0;
-                    $colors = ['#39A900', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444'];
-                    $csvPasswordResultados = [];
-
-                    try {
-                        $db->beginTransaction();
-
-                        while (($csvData = fgetcsv($handle, 1000, $delimiter)) !== false) {
-                            $rowNum++;
-                            // Saltar cabecera
-                            if ($rowNum === 1 && (
-                                stripos($csvData[0], 'nombre') !== false ||
-                                stripos($csvData[0], 'nombre_completo') !== false ||
-                                stripos($csvData[1], 'email') !== false ||
-                                stripos($csvData[3], 'documento') !== false
-                            )) {
-                                continue;
-                            }
-
-                            if (count($csvData) < 4) {
-                                $warnings[] = "Fila $rowNum: Columnas insuficientes. Fila omitida.";
-                                continue;
-                            }
-
-                            $nombre = mb_strtoupper(trim($csvData[0] ?? ''), 'UTF-8');
-                            $email = trim($csvData[1] ?? '');
-                            $tipo_doc = strtoupper(trim($csvData[2] ?? 'CC'));
-                            $num_doc = trim($csvData[3] ?? '');
-                            $genero = strtoupper(trim($csvData[4] ?? 'O'));
-                            $telefono = trim($csvData[5] ?? '');
-                            $ciudad = trim($csvData[6] ?? '');
-
-                            if (empty($nombre) || empty($email) || empty($num_doc)) {
-                                $warnings[] = "Fila $rowNum: Campos obligatorios vacíos. Fila omitida.";
-                                continue;
-                            }
-
-                            // Limpiar tipo_doc y genero
-                            if (!in_array($tipo_doc, ['CC', 'TI', 'CE', 'PEP', 'PA'])) $tipo_doc = 'CC';
-                            if (!in_array($genero, Enums::APRENDIZ_GENERO, true)) $genero = 'O';
-
-                            // Verificar duplicados
-                            $stmt = $db->prepare("SELECT id FROM usuarios WHERE email = ?");
-                            $stmt->execute([$email]);
-                            if ($stmt->fetch()) {
-                                $warnings[] = "Fila $rowNum: Correo '$email' ya registrado. Omitido.";
-                                continue;
-                            }
-
-                            $stmt = $db->prepare("SELECT id FROM aprendices WHERE numero_documento = ?");
-                            $stmt->execute([$num_doc]);
-                            if ($stmt->fetch()) {
-                                $warnings[] = "Fila $rowNum: Documento '$num_doc' ya registrado. Omitido.";
-                                continue;
-                            }
-
-                            // 1. Crear el usuario
-                            $avatar_color = $colors[array_rand($colors)];
-                            $temp_password = generateTempPassword();
-                            $password_hash = password_hash($temp_password, PASSWORD_DEFAULT);
-                            $stmt = $db->prepare("
-                                INSERT INTO usuarios (nombre, email, password, rol, avatar_color, estado, debe_cambiar_password)
-                                VALUES (?, ?, ?, 'aprendiz', ?, 'activo', 1)
-                            ");
-                            $stmt->execute([$nombre, $email, $password_hash, $avatar_color]);
-                            $usuario_id = (int)$db->lastInsertId();
-                            $csvPasswordResultados[] = ['nombre' => $nombre, 'email' => $email, 'password' => $temp_password];
-
-                            // 2. Crear aprendiz
-                            $stmt = $db->prepare("
-                                INSERT INTO aprendices (usuario_id, ficha_id, numero_documento, tipo_documento, genero, estado, telefono, ciudad)
-                                VALUES (?, ?, ?, ?, ?, 'matriculado', ?, ?)
-                            ");
-                            $stmt->execute([$usuario_id, $ficha_id, $num_doc, $tipo_doc, $genero, $telefono, $ciudad]);
-                            $new_ap_id = (int)$db->lastInsertId();
-
-                            // 3. Inicializar evaluaciones.
-                            // Sin guardia `function_exists`: la tenía porque
-                            // functions.php se cargaba tarde en el arranque, y
-                            // el efecto real era saltarse la inicialización en
-                            // silencio (31 aprendices acabaron sin ninguna
-                            // evaluación). El arranque ya la carga siempre, así
-                            // que si vuelve a faltar debe fallar de forma
-                            // visible en vez de dejar el dato a medias.
-                            inicializarEvaluacionesAprendiz($db, $new_ap_id, $ficha_id);
-
-                            // 4. Incrementar contador en la ficha
-                            $db->prepare("UPDATE fichas SET cantidad_aprendices = cantidad_aprendices + 1 WHERE id = ?")->execute([$ficha_id]);
-
-                            $successCount++;
-                        }
-
-                        fclose($handle);
-
-                        if ($successCount > 0) {
-                            $db->commit();
-                            $csvSuccessMessage = "Se matricularon exitosamente $successCount aprendices y se inicializaron sus evaluaciones. Sus contraseñas temporales aparecen abajo: cópialas ahora, no volverán a mostrarse.";
-                            if (!empty($warnings)) {
-                                $csvSuccessMessage .= "<br><strong>Nota:</strong> Se omitieron algunas filas:<br>" . implode("<br>", array_slice($warnings, 0, 10));
-                            }
-                            $_SESSION['tabs'][$tabId]['matricula_success'] = $csvSuccessMessage;
-                            $_SESSION['tabs'][$tabId]['matricula_passwords'] = $csvPasswordResultados;
-                            $this->redirect(APP_URL . '/index.php/matriculas');
-                        } else {
-                            $db->rollBack();
-                            throw new Exception("No se matriculó ningún aprendiz. Revise los errores:<br>" . implode("<br>", $warnings));
-                        }
-                    } catch (Exception $e) {
-                        if ($db->inTransaction()) {
-                            $db->rollBack();
-                        }
-                        throw $e;
-                    }
-                }
-            } catch (Exception $e) {
-                $errors[] = ErrorDeNegocio::mensajeSeguro($e);
-            }
-        }
-
-        // 2. OBTENER DATOS PARA LA VISTA
-        $fichas = [];
-        $instructores = [];
-        $aprendices = [];
-
-        try {
-            if (getCurrentRole() === ROL_INSTRUCTOR) {
-                $fichas = $this->fichaModel->getByInstructor((int)getCurrentUser()['id']);
-            } else {
-                $fichas = $this->fichaModel->getAll();
-            }
-
-            // Instructores activos
-            $stmtInst = $db->prepare("SELECT id, nombre FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' ORDER BY nombre");
-            $stmtInst->execute();
-            $instructores = $stmtInst->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            $errors[] = 'Error al cargar fichas o instructores.';
-        }
-
-        // Filtros
-        $search = trim($_GET['search'] ?? '');
-        $filter_ficha = (int)($_GET['ficha_id'] ?? 0);
-        $filter_estado = $_GET['estado'] ?? '';
-
-        $filters = [
-            'search' => $search,
-            'ficha_id' => $filter_ficha,
-            'estado' => $filter_estado
-        ];
-
+        $aprendices = $fichas = $instructores = [];
         $paginacion = null;
         try {
-            $instructorIdScope = (getCurrentRole() === ROL_INSTRUCTOR) ? (int)getCurrentUser()['id'] : null;
-            $total = $this->aprendizModel->contarFiltrados($filters, $instructorIdScope);
-            $paginacion = \Core\Services\Paginator::desdePeticion($total);
-            $aprendices = $this->aprendizModel->getFilteredList(
-                $filters,
-                $instructorIdScope,
-                $paginacion->perPage(),
-                $paginacion->offset()
-            );
-        } catch (Exception $e) {
-            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los aprendices');
+            $paginacion = Paginator::desdePeticion($this->aprendices->contar($filtros, $actor));
+            $aprendices = $this->aprendices->listar($filtros, $actor, $paginacion->perPage(), $paginacion->offset());
+            $fm = new FichaModel();
+            $fichas = $fm->opciones($actor);
+            $instructores = $fm->getInstructoresActivos();
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las matrículas');
         }
+        $credencial = $_SESSION[self::CLAVE_CREDENCIAL] ?? null;
+        unset($_SESSION[self::CLAVE_CREDENCIAL]);
 
-        // Etiquetas de estado
-        $estados_label = [
-            'matriculado' => ['Matriculado', 'success'],
-            'suspendido' => ['Suspendido', 'warning'],
-            'desertado' => ['Desertado', 'danger'],
-            'egresado' => ['Egresado', 'info'],
-            'etapa_practica' => ['Etapa Práctica', 'primary']
-        ];
+        $this->render(BASE_PATH . 'modules/matriculas/views/index.view.php', [
+            'errors'        => $errors,
+            'aprendices'    => $aprendices,
+            'paginacion'    => $paginacion,
+            'filtros'       => $filtros,
+            'fichas'        => $fichas,
+            'instructores'  => $instructores,
+            'credencial'    => $credencial,
+            'esCoordinador' => $actor->esCoordinador(),
+            'estados_label' => FichaController::ESTADOS_APRENDIZ,
+            'tipos_doc'     => Enums::TIPO_DOCUMENTO,
+        ], 'Matrículas · SENA');
+    }
 
-        // Renderizar la vista
-        $this->render(
-            BASE_PATH . 'modules/matriculas/views/index.view.php',
-            [
-                'fichas' => $fichas,
-                'instructores' => $instructores,
-                'aprendices' => $aprendices,
-                'search' => $search,
-                'filter_ficha' => $filter_ficha,
-                'filter_estado' => $filter_estado,
-                'estados_label' => $estados_label,
-                'successMessage' => $successMessage,
-                'errors' => $errors,
-                'passwordResultados' => $passwordResultados,
-                'paginacion' => $paginacion
-            ],
-            'Gestión de Matrículas · SENA'
-        );
+    public function exportar(): never {
+        $actor = Actor::actual();
+        $formato = ($_GET['formato'] ?? '') === 'csv' ? 'csv' : 'xlsx';
+        $filas = array_map(static fn($a) => [
+            $a['numero_ficha'], $a['nombre'], $a['tipo_documento'], $a['numero_documento'], $a['email'],
+            FichaController::ESTADOS_APRENDIZ[$a['estado']][0] ?? $a['estado'], $a['genero'], $a['telefono'], $a['ciudad'],
+            $a['fecha_matricula'] ? date('Y-m-d', strtotime((string)$a['fecha_matricula'])) : '',
+        ], $this->aprendices->paraExportar($this->filtros(), $actor, Exportador::MAX_FILAS));
+        $enc = ['Ficha', 'Aprendiz', 'Tipo doc.', 'Documento', 'Correo', 'Estado', 'Género', 'Teléfono', 'Ciudad', 'Matrícula'];
+        (new Auditoria())->operacion($actor, 'Exportar', 'Matrículas', 'aprendices', null, count($filas) . " matrículas exportadas en $formato");
+        $nombre = 'matriculas_' . date('Ymd_His') . '.' . $formato;
+        Exportador::descargar($formato === 'csv' ? Exportador::csv($nombre, $enc, $filas)
+            : Exportador::xlsx('Matrículas', $enc, $filas, ['titulo' => 'Matrículas · ' . date('d/m/Y'), 'anchos' => [10, 34, 8, 14, 32, 14, 8, 14, 16, 12]]),
+            $nombre, $formato);
+    }
+
+    public function matricular(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $d = MatriculaFormulario::validar($v);
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        try {
+            $r = $this->servicio->matricular($d, Actor::actual());
+        } catch (Throwable $e) {
+            $this->fallo(ErrorDeNegocio::mensajeSeguro($e, 'No se pudo matricular'), $vuelta);
+        }
+        $_SESSION[self::CLAVE_CREDENCIAL] = ['nombre' => $d['nombre'], 'email' => $d['email'], 'password' => $r['temporal']];
+        $this->exito('Aprendiz matriculado.' . ($r['habilitadas'] > 0 ? " Se habilitaron {$r['habilitadas']} evaluaciones pendientes." : ''), $vuelta);
+    }
+
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El aprendiz');
+        $d = MatriculaFormulario::validar($v, true);
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->editar($id, $d, Actor::actual()), $vuelta, 'Matrícula actualizada.', 'No se pudo actualizar la matrícula');
+    }
+
+    public function retirar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El aprendiz');
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->retirar($id, Actor::actual()), $vuelta,
+            'Matrícula retirada: el aprendiz queda como desertado y sin acceso. Su historial se conserva.', 'No se pudo retirar la matrícula');
     }
 }
