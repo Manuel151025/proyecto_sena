@@ -112,7 +112,7 @@ class CompetenciasModel {
      * Se combinan dos mecanismos a propósito:
      *  - El SELECT previo detecta las que ya existían y funciona incluso si
      *    el índice UNIQUE compuesto no se ha aplicado en ese entorno
-     *    (migrations/add_unique_codigos.php lo omite si encuentra duplicados).
+     *    (la migración 0006_codigos_unicos se detiene si encuentra duplicados).
      *  - INSERT IGNORE cubre las repetidas dentro del propio archivo y las
      *    carreras entre importaciones simultáneas, sin abortar la transacción.
      */

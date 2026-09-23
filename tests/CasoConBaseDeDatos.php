@@ -68,12 +68,23 @@ abstract class CasoConBaseDeDatos extends CasoDePrueba {
         return $this->unId("SELECT instructor_id FROM fichas WHERE instructor_id IS NOT NULL LIMIT 1");
     }
 
-    /** Un instructor que no es líder de ninguna ficha: el "ajeno" de las pruebas de acceso. */
+    /**
+     * Un instructor sin ninguna relación con fichas ni aprendices: el "ajeno"
+     * de las pruebas de acceso.
+     *
+     * No basta con que no sea líder de ninguna ficha: un instructor puede
+     * tener autoridad por una asignación de competencia o por ser el de
+     * seguimiento de un aprendiz. Con la tabla `asignaciones` vacía las dos
+     * definiciones coincidían, y por eso esta ayuda funcionó hasta que hubo
+     * datos reales de asignación.
+     */
     protected function idInstructorAjeno(): int {
         return $this->unId("
             SELECT id FROM usuarios
              WHERE rol = 'instructor' AND estado = 'activo'
                AND id NOT IN (SELECT instructor_id FROM fichas WHERE instructor_id IS NOT NULL)
+               AND id NOT IN (SELECT instructor_id FROM asignaciones)
+               AND id NOT IN (SELECT instructor_seguimiento_id FROM aprendices WHERE instructor_seguimiento_id IS NOT NULL)
              LIMIT 1
         ");
     }

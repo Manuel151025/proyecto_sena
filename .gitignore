@@ -43,6 +43,9 @@ error_log
 
 # === Base de datos local (no subir dumps personales) ===
 *.sql
+# El esquema sí se versiona: es la fuente única de la estructura (solo DDL,
+# sin datos). Lo genera bin/volcar-esquema.php.
+!database/esquema.sql
 
 # === install.php (peligroso en producción) ===
 install.php

@@ -39,6 +39,15 @@ if (!function_exists('loadEnv')) {
                     $value = $matches[2];
                 }
 
+                // Una variable que ya viene del entorno real (la definida en
+                // Dokploy/Docker, o `DB_NAME=x php bin/...`) manda sobre el
+                // .env: es la convención de dotenv, y sin ella no había
+                // forma de apuntar un comando a otra base sin editar el
+                // archivo.
+                if (getenv($key) !== false) {
+                    continue;
+                }
+
                 // Registrar en getenv(), $_ENV y $_SERVER
                 putenv("{$key}={$value}");
                 $_ENV[$key] = $value;
