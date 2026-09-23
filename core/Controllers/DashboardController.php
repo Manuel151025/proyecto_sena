@@ -4,125 +4,95 @@ declare(strict_types=1);
 namespace Core\Controllers;
 
 use Core\BaseController;
-use Core\Models\DashboardModel;
-use Core\Models\InstructorDashboardModel;
-use Core\Models\AprendizDashboardModel;
-use Exception;
+use Core\Models\AnaliticaModel;
+use Core\Models\FichaModel;
+use Core\Models\MejoramientoModel;
+use Core\Models\RetroalimentacionModel;
+use Core\Models\SeguimientoModel;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Panel de inicio con la analítica de cada rol (RF04).
+ *
+ *  - Coordinación: el centro completo, por programa, instructor y competencia.
+ *  - Instructor: sus fichas y lo que tiene pendiente de atender.
+ *  - Aprendiz: su progreso, comparado con el promedio de su ficha.
+ *
+ * Todas las cifras salen de AnaliticaModel (calculadas al leer).
+ */
 class DashboardController extends BaseController {
-    private DashboardModel $dashboardModel;
+    private AnaliticaModel $analitica;
 
-    public function __construct(?DashboardModel $dashboardModel = null) {
-        // Exigir autenticación y cualquiera de los roles válidos
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ);
-        $this->dashboardModel = $dashboardModel ?? new DashboardModel();
+    public function __construct(?AnaliticaModel $analitica = null) {
+        $this->analitica = $analitica ?? new AnaliticaModel();
     }
 
-    /**
-     * Muestra el dashboard según el rol del usuario autenticado
-     */
     public function index(): void {
-        $role = getCurrentRole();
-        $user = getCurrentUser();
-
-        // Si es instructor, cargar métricas de su panel y renderizar la vista del instructor
-        if ($role === ROL_INSTRUCTOR) {
-            $instructorModel = new InstructorDashboardModel();
-            $instructorId = (int)$user['id'];
-
-            $kpis = $instructorModel->getKpis($instructorId);
-            $fichasInstructor = $instructorModel->getFichasAsignadas($instructorId);
-            $pendientesPlanes = $instructorModel->getRecentDeficiencies($instructorId, 10);
-            $evalConceptos = $instructorModel->getConceptDistribution($instructorId);
-            $aprendicesSeguimientoLista = $instructorModel->getAprendicesSeguimiento($instructorId);
-
-            $this->render(
-                BASE_PATH . 'modules/dashboard/views/instructor.view.php',
-                [
-                    'nombreUsuario' => $user['nombre'],
-                    'kpis' => $kpis,
-                    'fichasInstructor' => $fichasInstructor,
-                    'pendientesPlanes' => $pendientesPlanes,
-                    'evalConceptos' => $evalConceptos,
-                    'aprendicesSeguimientoLista' => $aprendicesSeguimientoLista
-                ],
-                'Dashboard Instructor · SENA'
-            );
-            return;
+        $actor = Actor::actual();
+        $nombre = (string)(getCurrentUser()['nombre'] ?? '');
+        try {
+            [$vista, $datos] = match (true) {
+                $actor->esCoordinador() => ['coordinador', $this->coordinador($actor)],
+                $actor->esInstructor()  => ['instructor', $this->instructor($actor)],
+                default                 => ['aprendiz', $this->aprendiz($actor)],
+            };
+            $datos['errors'] = [];
+        } catch (Throwable $e) {
+            $vista = $actor->esCoordinador() ? 'coordinador' : ($actor->esInstructor() ? 'instructor' : 'aprendiz');
+            $datos = ['errors' => [ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar el panel')], 'vacio' => true];
         }
+        $this->render(BASE_PATH . "modules/dashboard/views/$vista.view.php",
+            $datos + ['nombreUsuario' => $nombre, 'actor' => $actor], 'Inicio · SENA');
+    }
 
-        // Si es aprendiz, cargar métricas académicas de su panel y renderizar su vista
-        if ($role === ROL_APRENDIZ) {
-            $aprendizModel = new AprendizDashboardModel();
-            $aprendizInfo = $aprendizModel->getAprendizInfo((int)$user['id']);
+    private function coordinador(Actor $actor): array {
+        $fichas = (new FichaModel())->listar($actor, [], 100, 0);
+        return [
+            'resumen'       => $this->analitica->resumen($actor),
+            'semaforo'      => $this->analitica->semaforo($actor),
+            'tendencia'     => $this->analitica->tendencia($actor),
+            'programas'     => $this->analitica->porPrograma(),
+            'instructores'  => $this->analitica->porInstructor(),
+            'competencias'  => $this->analitica->competenciasCriticas($actor),
+            'enRiesgo'      => $this->analitica->aprendicesEnRiesgo($actor, 8),
+            'fichas'        => self::peoresFichas($fichas, 8),
+            'actividades'   => $this->analitica->actividadesProximas($actor),
+        ];
+    }
 
-            $progreso = ['total_ra' => 0, 'aprobados' => 0, 'reprobados' => 0, 'pendientes' => 0];
-            $progresoCompetencias = [];
-            $fasesProyecto = [];
-            $evaluacionesRecientes = [];
-            $alertasD = [];
+    private function instructor(Actor $actor): array {
+        return [
+            'resumen'      => $this->analitica->resumen($actor),
+            'carga'        => $this->analitica->cargaInstructor($actor),
+            'semaforo'     => $this->analitica->semaforo($actor),
+            'tendencia'    => $this->analitica->tendencia($actor),
+            'fichas'       => (new FichaModel())->listar($actor, [], 24, 0),
+            'competencias' => $this->analitica->competenciasCriticas($actor, 6),
+            'enRiesgo'     => $this->analitica->aprendicesEnRiesgo($actor, 8),
+            'actividades'  => $this->analitica->actividadesProximas($actor),
+        ];
+    }
 
-            if ($aprendizInfo !== null) {
-                $aprendizId = (int)$aprendizInfo['id'];
-                $progreso = $aprendizModel->getProgresoGlobal($aprendizId);
-                $progresoCompetencias = $aprendizModel->getProgresoCompetencias((int)$aprendizInfo['ficha_id'], $aprendizId);
-                if ((int)$aprendizInfo['proyecto_id'] > 0) {
-                    $fasesProyecto = $aprendizModel->getFasesProyecto((int)$aprendizInfo['proyecto_id']);
-                }
-                $evaluacionesRecientes = $aprendizModel->getRecentEvaluations($aprendizId, 6);
-                $alertasD = $aprendizModel->getAlertasD($aprendizId, 3);
-            }
+    private function aprendiz(Actor $actor): array {
+        $seguimiento = new SeguimientoModel();
+        $id = $seguimiento->aprendizDeUsuario($actor->id) ?? throw new ErrorDeNegocio('Tu cuenta no tiene una matrícula asociada.');
+        $resumen = $seguimiento->resumen($id);
+        return [
+            'resumen'      => $resumen,
+            'promedio'     => $this->analitica->promedioFicha((int)$resumen['ficha_id']),
+            'competencias' => $seguimiento->competencias($id, $actor),
+            'planes'       => (new MejoramientoModel())->listar($actor, ['estado' => 'vigente'], 5, 0),
+            'retros'       => (new RetroalimentacionModel())->listar($actor, [], 3, 0),
+            'actividades'  => $this->analitica->actividadesProximas($actor, 21, 6),
+        ];
+    }
 
-            $this->render(
-                BASE_PATH . 'modules/dashboard/views/aprendiz.view.php',
-                [
-                    'nombreUsuario' => $user['nombre'],
-                    'aprendiz' => $aprendizInfo,
-                    'progreso' => $progreso,
-                    'progresoCompetencias' => $progresoCompetencias,
-                    'fasesProyecto' => $fasesProyecto,
-                    'evaluacionesRecientes' => $evaluacionesRecientes,
-                    'alertasD' => $alertasD
-                ],
-                'Dashboard Aprendiz · SENA'
-            );
-            return;
-        }
-
-        // Si es coordinador, cargar las métricas y la nueva vista
-        // El escapado lo hace la vista. Hacerlo tambien aqui producia doble
-        // escapado: un apostrofo en el nombre se veia como "O&#039;Brien".
-        $nombreUsuario = $user['nombre'];
-
-        // Obtener KPIs e información agregada del modelo
-        $kpis = $this->dashboardModel->getKpiMetrics();
-        $sparklineData = $this->dashboardModel->getSparklineData();
-        $fichasCriticas = $this->dashboardModel->getCriticasFichas(5);
-        $cumplimientoProgramas = $this->dashboardModel->getCumplimientoPorPrograma();
-        $statsProgramas = $this->dashboardModel->getStatsProgramasDesercion(5);
-        $topInstructores = $this->dashboardModel->getTopInstructores(5);
-        $recentEvaluations = $this->dashboardModel->getRecentEvaluations(5);
-
-        // Desestructurar datos para la vista
-        $this->render(
-            BASE_PATH . 'modules/dashboard/views/coordinador.view.php',
-            [
-                'nombreUsuario' => $nombreUsuario,
-                'fichasActivas' => $kpis['fichas_activas'],
-                'aprendicesMatriculados' => $kpis['aprendices_matriculados'],
-                'instructoresActivos' => $kpis['instructores_activos'],
-                'retencioPromedio' => $kpis['retencion_promedio'],
-                'fichasCriticas' => $fichasCriticas,
-                'cumplimientoProgramas' => $cumplimientoProgramas,
-                'statsProgramas' => $statsProgramas,
-                'topInstructores' => $topInstructores,
-                'recentEvaluations' => $recentEvaluations,
-                'fichasEstadosMap' => $sparklineData['fichas_estados'],
-                'aprendicesEstadosMap' => $sparklineData['aprendices_estados'],
-                'instructoresEstadosMap' => $sparklineData['instructores_estados'],
-                'fichasCumplimientoData' => $sparklineData['fichas_cumplimiento']
-            ],
-            'Dashboard Coordinador · SENA'
-        );
+    /** Fichas con menor desempeño primero (las que no tienen juicios, al final). */
+    private static function peoresFichas(array $fichas, int $n): array {
+        usort($fichas, static fn($a, $b) => [$a['pct_a'] === null, $a['pct_a'] ?? 0, -(int)$a['en_d']]
+                                          <=> [$b['pct_a'] === null, $b['pct_a'] ?? 0, -(int)$b['en_d']]);
+        return array_slice($fichas, 0, $n);
     }
 }

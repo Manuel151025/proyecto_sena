@@ -1786,3 +1786,14 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .competencia-expediente[open] > summary::after { transform: rotate(180deg); }
 @media (min-width: 992px) { .lista-aprendices { max-height: 75vh; overflow-y: auto; } }
 .list-group-item.active { background-color: var(--sena-primary); border-color: var(--sena-primary); color: #fff; }
+
+/* Gráficos de los paneles (assets/js/modulos/graficos.js) */
+.grafico { position: relative; height: 260px; }
+.grafico.alto { height: 320px; }
+.grafico-vacio { display: grid; place-items: center; height: 100%; color: var(--text-muted); font-size: .9rem; text-align: center; }
+.semaforo-leyenda .punto { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .35rem; vertical-align: middle; }
+
+/* Encabezado de bienvenida de los paneles */
+.panel-hero { background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); border-radius: 12px; color: #fff; overflow: hidden; }
+.panel-hero .etiqueta { background: #fff; color: var(--sena-primary); font-size: .65rem; letter-spacing: .05em; border-radius: 30px; padding: .25rem .6rem; font-weight: 700; display: inline-block; }
+.panel-hero p { color: rgba(255,255,255,.75); max-width: 620px; }

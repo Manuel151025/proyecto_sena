@@ -3,321 +3,131 @@ declare(strict_types=1);
 
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+use Core\Support\Semaforo;
+
+$scriptsVista[] = 'modulos/graficos.js';
+$url = static fn(string $r) => e(APP_URL . '/index.php' . $r);
+$pct = static fn($v) => $v === null ? '—' : ((int)round((float)$v)) . '%';
+$fecha = static fn(?string $f) => $f ? date('d/m/Y', strtotime($f)) : '—';
+foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach;
+if (!empty($vacio)) { return; }
+$r = $resumen;
+$c = $carga;
 ?>
-<!-- Hero Banner de Bienvenida Premium Compacto -->
-<div class="card on-dark border-0 mb-4 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); position: relative; border-radius: 12px;">
-  <!-- Figuras orgánicas de fondo -->
-  <div class="position-absolute" style="width: 180px; height: 180px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -85px; right: -40px;"></div>
-  <div class="position-absolute" style="width: 120px; height: 120px; background: rgba(255, 255, 255, 0.02); border-radius: 50%; bottom: -45px; right: 90px;"></div>
-  
-  <div class="card-body p-3 p-md-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 position-relative" style="z-index: 2;">
-    <div>
-      <span class="badge bg-white text-success fw-bold px-2.5 py-1.5 mb-2" style="font-size: 0.65rem; border-radius: 30px; letter-spacing: 0.05em;">PORTAL DE INSTRUCTORES</span>
-      <h3 class="fw-bold mb-1 text-white" style="letter-spacing: -0.01em; font-size: 1.5rem;">Buen día, <?= htmlspecialchars($nombreUsuario, ENT_QUOTES, 'UTF-8') ?> 👋</h3>
-      <p class="mb-0 text-white-50" style="max-width: 580px; font-size: 0.88rem; line-height: 1.5;">
-        Monitorea el avance de tus fichas asignadas, califica evaluaciones pendientes y realiza el seguimiento a tus aprendices.
-      </p>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-      <a href="<?= MODULES_PATH ?>/evaluaciones/" class="btn btn-light text-dark fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-        <i class="bi bi-pencil-square me-1"></i> Calificar
-      </a>
-      <a href="<?= MODULES_PATH ?>/mejoramiento/" class="btn btn-outline-light fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; border-width: 1.5px;">
-        <i class="bi bi-person-exclamation me-1"></i> Planes Mejora
-      </a>
-    </div>
+<section class="panel-hero p-3 p-md-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+  <div>
+    <span class="etiqueta mb-2">INSTRUCTOR</span>
+    <h1 class="h4 fw-bold mb-1 text-white">Hola, <?= e($nombreUsuario) ?></h1>
+    <p class="mb-0 small">Tienes <?= (int)$r['fichas_activas'] ?> ficha(s) y <?= (int)$r['aprendices'] ?> aprendices en formación. Esto es lo que requiere tu atención hoy.</p>
   </div>
-</div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="<?= $url('/seguimiento') ?>" class="btn btn-light btn-sm fw-bold"><i class="bi bi-person-lines-fill me-1"></i>Seguimiento</a>
+    <a href="<?= $url('/evaluaciones/importar') ?>" class="btn btn-outline-light btn-sm fw-bold"><i class="bi bi-upload me-1"></i>Importar juicios</a>
+  </div>
+</section>
 
-<!-- ===== KPIs ===== -->
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <?php if ($kpis['evaluaciones_pendientes'] > 0): ?>
-      <div class="alert-flat danger h-100">
-        <i class="bi bi-clipboard-x"></i>
-        <div>
-          <strong><?= number_format($kpis['evaluaciones_pendientes']) ?>
-            <?= $kpis['evaluaciones_pendientes'] === 1 ? 'evaluación pendiente' : 'evaluaciones pendientes' ?></strong>
-          requieren tu calificación.
-          <a href="<?= MODULES_PATH ?>/evaluaciones/" class="ms-2 fw-semibold d-block text-decoration-underline" style="color:inherit">Ir a evaluar →</a>
-        </div>
+  <?php foreach ([
+      ['etiqueta' => 'Por calificar', 'valor' => number_format($c['por_calificar'], 0, ',', '.'), 'icono' => 'bi-hourglass-split', 'enlace' => '/evaluaciones?concepto=pendiente', 'nota' => 'RAP pendientes que calificas'],
+      ['etiqueta' => 'RAP en D sin plan', 'valor' => $c['d_sin_plan'], 'icono' => 'bi-exclamation-diamond', 'enlace' => '/mejoramiento#sin-plan', 'clase' => $c['d_sin_plan'] > 0 ? 'text-warning-emphasis' : ''],
+      ['etiqueta' => 'Planes vencidos', 'valor' => $c['planes_vencidos'], 'icono' => 'bi-alarm', 'enlace' => '/mejoramiento?estado=vencido', 'clase' => $c['planes_vencidos'] > 0 ? 'text-danger' : ''],
+      ['etiqueta' => 'Evidencias por revisar', 'valor' => $c['evidencias_por_revisar'], 'icono' => 'bi-inbox', 'enlace' => '/evidencias?estado=enviada'],
+      ['etiqueta' => 'Desempeño de tus fichas', 'valor' => $pct($r['desempeno']), 'icono' => 'bi-speedometer2', 'clase' => 'text-' . Semaforo::clase($r['semaforo'])],
+      ['etiqueta' => 'Avance de RAP', 'valor' => $pct($r['avance']), 'icono' => 'bi-graph-up-arrow', 'nota' => 'Deserción ' . $pct($r['desercion'])],
+  ] as $kpi): ?>
+    <div class="col-6 col-md-4 col-xl-2"><?php require BASE_PATH . 'components/kpi.php'; ?></div>
+  <?php endforeach; ?>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-2">Semáforo de tus aprendices</h2>
+      <div class="grafico">
+        <canvas role="img" aria-label="Aprendices por semáforo" data-grafico="<?= datosJson(['tipo' => 'doughnut',
+            'etiquetas' => array_map([Semaforo::class, 'etiqueta'], array_keys($semaforo)),
+            'series' => [['nombre' => 'Aprendices', 'datos' => array_values($semaforo), 'colores' => ['#ef4444', '#f59e0b', '#22c55e', '#94a3b8']]]]) ?>"></canvas>
+        <div class="grafico-vacio" hidden>Sin aprendices en formación.</div>
       </div>
-    <?php else: ?>
-      <div class="alert-flat success h-100">
-        <i class="bi bi-check2-circle"></i>
-        <div><strong>Sin evaluaciones pendientes.</strong> ¡Estás al día!</div>
-      </div>
-    <?php endif; ?>
+    </div></div>
   </div>
-  <div class="col-md-4">
-    <?php if ($kpis['planes_requeridos'] > 0): ?>
-      <div class="alert-flat warning h-100">
-        <i class="bi bi-person-exclamation"></i>
-        <div>
-          <strong><?= number_format($kpis['planes_requeridos']) ?>
-            <?= $kpis['planes_requeridos'] === 1 ? 'aprendiz necesita' : 'aprendices necesitan' ?> plan de mejoramiento</strong>
-          en tus fichas.
-          <a href="<?= MODULES_PATH ?>/mejoramiento/" class="ms-2 fw-semibold d-block text-decoration-underline" style="color:inherit">Revisar →</a>
-        </div>
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-2">Juicios emitidos por semana en tus fichas</h2>
+      <div class="grafico">
+        <canvas role="img" aria-label="Juicios A y D por semana" data-grafico="<?= datosJson(['tipo' => 'bar', 'apilado' => true, 'etiquetas' => $tendencia['etiquetas'],
+            'series' => [['nombre' => 'A', 'datos' => $tendencia['a'], 'color' => '#22c55e'], ['nombre' => 'D', 'datos' => $tendencia['d'], 'color' => '#ef4444']]]) ?>"></canvas>
+        <div class="grafico-vacio" hidden>No se emitieron juicios en las últimas 12 semanas.</div>
       </div>
-    <?php else: ?>
-      <div class="alert-flat success h-100">
-        <i class="bi bi-patch-check"></i>
-        <div><strong>Ningún aprendiz</strong> requiere plan de mejoramiento.</div>
-      </div>
-    <?php endif; ?>
-  </div>
-  <div class="col-md-4">
-    <?php if ($kpis['aprendices_seguimiento'] > 0): ?>
-      <div class="alert-flat info h-100" style="background: rgba(31, 111, 235, 0.05); border-left: 4px solid var(--info); color: var(--info-text);">
-        <i class="bi bi-person-video3" style="color: var(--info-text);"></i>
-        <div>
-          <strong><?= number_format($kpis['aprendices_seguimiento']) ?>
-            <?= $kpis['aprendices_seguimiento'] === 1 ? 'aprendiz' : 'aprendices' ?> en Etapa Práctica</strong>
-          bajo tu seguimiento.
-          <a href="#practica-seguimiento" class="ms-2 fw-semibold d-block text-decoration-underline" style="color:inherit">Ver listado ↓</a>
-        </div>
-      </div>
-    <?php else: ?>
-      <div class="alert-flat success h-100">
-        <i class="bi bi-person-video3"></i>
-        <div><strong>0 aprendices</strong> asignados en Etapa Práctica.</div>
-      </div>
-    <?php endif; ?>
+    </div></div>
   </div>
 </div>
 
-<!-- ===== Fichas asignadas ===== -->
-<h4 class="mt-4 mb-3 fw-bold text-gradient"><i class="bi bi-folder2-open me-2 text-primary"></i>Mis fichas asignadas</h4>
-
-<?php if (empty($fichasInstructor)): ?>
-  <div class="card border-0 bg-elev shadow-sm" style="border-radius:12px;">
-    <div class="card-body text-center text-muted py-4">
-      <i class="bi bi-inbox d-block mb-2" style="font-size:2rem"></i>
-      No tienes fichas asignadas todavía. Cuando un coordinador te asigne una, aparecerá aquí.
-    </div>
+<h2 class="h6 fw-bold mb-2">Tus fichas</h2>
+<div class="row g-3 mb-4">
+  <?php foreach ($fichas as $f): ?>
+  <div class="col-md-6 col-xl-4">
+    <a class="card border-0 shadow-sm h-100 text-reset text-decoration-none tarjeta-elevable" href="<?= $url('/seguimiento?ficha_id=' . (int)$f['id']) ?>">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div class="fw-bold">Ficha <?= e($f['numero_ficha']) ?></div>
+          <span class="badge-soft <?= e(Semaforo::clase($f['semaforo'])) ?>"><?= e(Semaforo::etiqueta($f['semaforo'])) ?></span>
+        </div>
+        <div class="small text-muted text-uppercase-visual mb-2"><?= e($f['programa']) ?></div>
+        <div class="d-flex justify-content-between small"><span>Desempeño</span><strong><?= e($pct($f['pct_a'])) ?></strong></div>
+        <div class="d-flex justify-content-between small"><span>Avance de RAP</span><strong><?= e($pct($f['cumplimiento'])) ?></strong></div>
+        <div class="progress barra-avance my-1" role="progressbar" aria-label="Avance de RAP" aria-valuenow="<?= (int)round((float)$f['cumplimiento']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-success" style="width: <?= (int)round((float)$f['cumplimiento']) ?>%"></div></div>
+        <div class="d-flex justify-content-between small"><span>Proyecto formativo</span><strong><?= e($pct($f['avance_proyecto'])) ?></strong></div>
+        <div class="small text-muted mt-1"><?= (int)$f['aprendices_activos'] ?> aprendices · <?= (int)$f['en_d'] ?> RAP en D</div>
+      </div>
+    </a>
   </div>
-<?php else: ?>
-  <div class="row g-3">
-    <?php foreach ($fichasInstructor as $ficha): ?>
-      <div class="col-md-6 col-xl-3">
-        <div class="card h-100 hover-scale-sm border-0 shadow-sm bg-elev" style="border-radius:12px; transition: transform 0.2s ease-in-out;">
-          <div class="card-body d-flex flex-column justify-content-between">
-            <div>
-              <div class="d-flex justify-content-between mb-2">
-                <span class="badge-soft <?= $ficha['badge'] ?>"><?= htmlspecialchars($ficha['estado']) ?></span>
-                <small class="text-muted text-uppercase-visual">#<?= htmlspecialchars($ficha['numero']) ?></small>
-              </div>
-              <h5 class="mb-1 fw-bold text-truncate text-uppercase-visual" title="<?= htmlspecialchars($ficha['programa']) ?>" style="font-size: 0.95rem;"><?= htmlspecialchars($ficha['programa']) ?></h5>
-              <small class="text-muted d-block mb-3">
-                <i class="bi bi-people me-1"></i><?= $ficha['aprendices'] ?> aprendices
-              </small>
+  <?php endforeach; ?>
+  <?php if (empty($fichas)): ?><div class="col-12 estado-vacio"><i class="bi bi-folder2-open"></i>No tienes fichas asignadas.</div><?php endif; ?>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-2">Aprendices en riesgo</h2>
+      <div class="list-group list-group-flush">
+        <?php foreach ($enRiesgo as $a): ?>
+          <a class="list-group-item list-group-item-action d-flex align-items-center gap-2 px-0" href="<?= $url('/seguimiento?ficha_id=' . (int)$a['ficha_id'] . '&aprendiz_id=' . (int)$a['id'] . '#expediente') ?>">
+            <div class="flex-grow-1 min-w-0">
+              <div class="fw-semibold text-truncate"><?= e($a['nombre']) ?></div>
+              <small class="text-muted">Ficha <?= e($a['numero_ficha']) ?> · <?= (int)$a['en_d'] ?> en D · <?= (int)$a['planes'] ?> plan(es)</small>
             </div>
-            <div>
-              <div class="d-flex justify-content-between small mb-1">
-                <span class="text-muted">Cumplimiento</span><strong><?= $ficha['cumplimiento'] ?>%</strong>
-              </div>
-              <div class="progress-flat <?= in_array($ficha['badge'], ['danger','warning']) ? $ficha['badge'] : '' ?>">
-                <div style="width:<?= $ficha['cumplimiento'] ?>%"></div>
-              </div>
-              <a href="<?= MODULES_PATH ?>/fichas/ver.php?id=<?= $ficha['id'] ?>" class="btn btn-soft w-100 mt-3 btn-sm">Ver detalle</a>
-            </div>
-          </div>
-        </div>
+            <span class="badge-soft <?= e(Semaforo::clase($a['semaforo'])) ?> text-nowrap"><?= e($pct($a['pct_a'])) ?></span>
+          </a>
+        <?php endforeach; ?>
+        <?php if (empty($enRiesgo)): ?><div class="text-muted small py-3">Ningún aprendiz en riesgo.</div><?php endif; ?>
       </div>
-    <?php endforeach; ?>
+    </div></div>
   </div>
-<?php endif; ?>
-
-<!-- ===== Sección de Analítica ===== -->
-<div class="row g-3 mt-3 mb-4">
-  <!-- Gráfico de Cumplimiento por Ficha -->
-  <div class="col-md-8">
-    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius:12px;">
-      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-        <h5 class="fw-bold mb-0 text-gradient"><i class="bi bi-bar-chart-line text-primary me-2"></i>Avance de Cumplimiento por Ficha</h5>
-        <small class="text-muted">Progreso integralizado de resultados de aprendizaje evaluados con 'A' por cada una de tus fichas.</small>
-      </div>
-      <div class="card-body p-4">
-        <div style="height: 280px; position: relative;">
-          <canvas id="chartFichasCumplimiento"></canvas>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-2">Competencias con más D</h2>
+      <?php foreach ($competencias as $co): ?>
+        <div class="mb-2">
+          <div class="d-flex justify-content-between small"><span class="texto-recortado-2 me-2"><span class="font-monospace"><?= e($co['codigo']) ?></span> · <?= e($co['nombre']) ?></span><strong class="text-danger text-nowrap"><?= e((string)$co['pct_d']) ?>% D</strong></div>
+          <div class="progress barra-avance" role="progressbar" aria-label="Proporción en D" aria-valuenow="<?= (int)round($co['pct_d']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-danger" style="width: <?= (int)round($co['pct_d']) ?>%"></div></div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Gráfico de Distribución de Juicios -->
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm border-0 bg-elev" style="border-radius:12px;">
-      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-        <h5 class="fw-bold mb-0 text-gradient"><i class="bi bi-pie-chart text-success me-2"></i>Distribución de Evaluaciones</h5>
-        <small class="text-muted">Estado actual de todos los juicios de tu cohorte.</small>
-      </div>
-      <div class="card-body p-4 d-flex align-items-center justify-content-center">
-        <div style="width: 100%; max-width: 240px; height: 240px; position: relative;">
-          <canvas id="chartConceptosDistribucion"></canvas>
-        </div>
-      </div>
-    </div>
+      <?php endforeach; ?>
+      <?php if (empty($competencias)): ?><div class="text-muted small">Sin competencias con D.</div><?php endif; ?>
+      <?php if (!empty($actividades)): ?>
+        <h2 class="h6 fw-bold mt-4 mb-2">Actividades por vencer</h2>
+        <?php foreach ($actividades as $act): $dias = (int)$act['dias']; ?>
+          <div class="d-flex justify-content-between small mb-1 gap-2"><span class="text-truncate"><?= e($act['nombre']) ?> · Ficha <?= e($act['numero_ficha']) ?></span>
+            <span class="badge-soft <?= $dias < 0 ? 'danger' : ($dias <= 3 ? 'warning' : 'secondary') ?> text-nowrap"><?= e($fecha($act['fecha_fin'])) ?></span></div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div></div>
   </div>
 </div>
-
-<!-- ===== Aprendices con concepto D ===== -->
-<div class="row g-4 mt-4 mb-4">
-  <div class="col-lg-8">
-    <div class="card h-100 border-0 shadow-sm bg-elev" style="border-radius: 12px;">
-      <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-0 pt-3 px-4">
-        <h5 class="mb-0 fw-semibold text-gradient"><i class="bi bi-person-exclamation text-warning me-2"></i>Requieren Plan de Mejoramiento (Concepto D)</h5>
-        <?php if (count($pendientesPlanes) === 10): ?>
-          <a href="<?= MODULES_PATH ?>/mejoramiento/" class="small text-muted">Ver todos →</a>
-        <?php endif; ?>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table mb-0 align-middle">
-            <thead>
-              <tr>
-                <th class="ps-4">Aprendiz</th>
-                <th>Ficha</th>
-                <th>RAP</th>
-                <th>Fecha D</th>
-                <th class="pe-4 text-end"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php if (empty($pendientesPlanes)): ?>
-                <tr>
-                  <td colspan="5" class="text-center text-muted py-5">
-                    <i class="bi bi-patch-check-fill text-success d-block mb-2" style="font-size:2rem"></i>
-                    No hay aprendices con concepto D pendiente.
-                  </td>
-                </tr>
-              <?php else: ?>
-                <?php foreach ($pendientesPlanes as $p): ?>
-                  <tr>
-                    <td class="ps-4">
-                      <div class="d-flex align-items-center gap-2">
-                        <div class="avatar" style="width:32px;height:32px;font-size:.75rem">
-                          <?= getInitials($p['aprendiz']) ?>
-                        </div>
-                        <span class="fw-bold"><?= htmlspecialchars($p['aprendiz']) ?></span>
-                      </div>
-                    </td>
-                    <td class="text-uppercase-visual">#<?= htmlspecialchars($p['ficha']) ?></td>
-                    <td>
-                      <span class="badge-soft primary text-uppercase-visual" title="<?= htmlspecialchars($p['ra_nombre']) ?>">
-                        <?= htmlspecialchars($p['ra_codigo']) ?>
-                      </span>
-                    </td>
-                    <td class="text-muted small"><?= !empty($p['fecha']) ? date('d/m/Y', strtotime($p['fecha'])) : '—' ?></td>
-                    <td class="pe-4 text-end">
-                      <a href="<?= MODULES_PATH ?>/mejoramiento/" class="btn btn-sm btn-primary py-1 px-2.5" style="border-radius: 6px;">
-                        <i class="bi bi-arrow-right"></i> Atender
-                      </a>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Próximos Eventos -->
-  <div class="col-lg-4">
-    <div class="card h-100 border-0 shadow-sm bg-elev" style="border-radius: 12px;">
-      <div class="card-header fw-bold d-flex justify-content-between align-items-center bg-transparent border-0 pt-3 px-3">
-        <h5 class="mb-0 fw-semibold text-gradient"><i class="bi bi-calendar3 text-primary me-2"></i>Eventos Previstos</h5>
-        <a href="<?= APP_URL ?>/modules/calendario/" class="text-primary small fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-calendar3 me-1"></i>Ver todo</a>
-      </div>
-      <div class="card-body px-3 pb-3 d-flex flex-column">
-        <div class="flex-grow-1 overflow-y-auto" id="dashboard-events-list" style="max-height: 380px;">
-          <div class="text-center py-4 text-muted" id="events-loader">
-            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
-            <div class="small">Sincronizando eventos...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Aprendices en Etapa Práctica (Seguimiento) ===== -->
-<div class="card border-0 shadow-sm bg-elev mb-4" id="practica-seguimiento" style="border-radius: 12px;">
-  <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-    <h5 class="fw-bold text-gradient mb-0"><i class="bi bi-person-video3 text-primary me-2"></i>Mis Aprendices en Etapa Práctica (Seguimiento)</h5>
-    <small class="text-muted">Listado de aprendices asignados para seguimiento de etapa productiva.</small>
-  </div>
-  <div class="card-body p-0 mt-3">
-    <div class="table-responsive">
-      <table class="table mb-0 align-middle">
-        <thead>
-          <tr>
-            <th class="ps-4">Aprendiz</th>
-            <th>Ficha</th>
-            <th>Programa</th>
-            <th>Teléfono / Ciudad</th>
-            <th class="pe-4 text-end">Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php if (empty($aprendicesSeguimientoLista)): ?>
-            <tr>
-              <td colspan="5" class="text-center text-muted py-5">
-                <i class="bi bi-person-badge-fill text-muted d-block mb-2" style="font-size:2rem; opacity:0.3;"></i>
-                No tienes aprendices en etapa práctica asignados.
-              </td>
-            </tr>
-          <?php else: ?>
-            <?php foreach ($aprendicesSeguimientoLista as $ap_seg): ?>
-              <tr>
-                <td class="ps-4">
-                  <div class="d-flex align-items-center gap-2">
-                    <div class="avatar bg-soft-primary text-primary" style="width:32px;height:32px;font-size:.75rem">
-                      <?= getInitials($ap_seg['nombre']) ?>
-                    </div>
-                    <strong><?= htmlspecialchars($ap_seg['nombre']) ?></strong>
-                  </div>
-                </td>
-                <td class="text-uppercase-visual">#<?= htmlspecialchars($ap_seg['numero_ficha']) ?></td>
-                <td><small class="text-muted text-uppercase-visual"><?= htmlspecialchars($ap_seg['programa']) ?></small></td>
-                <td>
-                  <div><?= htmlspecialchars($ap_seg['telefono'] ?: '—') ?></div>
-                  <small class="text-muted"><?= htmlspecialchars($ap_seg['ciudad'] ?: '—') ?></small>
-                </td>
-                <td class="pe-4 text-end">
-                  <a href="<?= MODULES_PATH ?>/seguimiento/index.php?ficha_id=<?= $ap_seg['ficha_id'] ?>&ver_aprendiz_id=<?= $ap_seg['id'] ?>" class="btn btn-sm btn-soft">
-                    <i class="bi bi-chat-dots me-1"></i> Seguimiento
-                  </a>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-          <?php endif; ?>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- Bloque de datos JSON transferido del servidor al script del cliente -->
-<script id="dashboard-data" type="application/json">
-{
-  "appUrl": <?= json_encode(APP_URL) ?>,
-  "fichasLabels": <?= json_encode(array_map(fn($f) => '#' . $f['numero'], $fichasInstructor)) ?>,
-  "fichasCumplimiento": <?= json_encode(array_column($fichasInstructor, 'cumplimiento')) ?>,
-  "countA": <?= (int)$evalConceptos['A'] ?>,
-  "countD": <?= (int)$evalConceptos['D'] ?>,
-  "countPendiente": <?= (int)$evalConceptos['pendiente'] ?>
-}
-</script>
-
-<!-- Carga del Script del Dashboard del Cliente -->
-<script src="<?= APP_URL ?>/assets/js/dashboard/instructor.js?v=<?= filemtime(BASE_PATH . 'assets/js/dashboard/instructor.js') ?>"></script>
