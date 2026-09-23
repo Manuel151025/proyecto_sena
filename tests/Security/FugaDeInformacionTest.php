@@ -153,20 +153,26 @@ final class FugaDeInformacionTest extends CasoConBaseDeDatos {
         $this->assertSame([], $sinGuarda, 'vistas alcanzables por URL: ' . implode(', ', $sinGuarda));
     }
 
+    /**
+     * El instalador (bin/instalar.php, que sustituye al antiguo install.php
+     * de la raíz web) empieza por DROP DATABASE: tiene que exigir consola y
+     * una confirmación explícita ANTES de llegar ahí.
+     */
     #[TestDox('el instalador no puede ejecutarse desde el navegador')]
     public function testInstaladorProtegido(): void {
-        $fuente = $this->codigo('install.php');
+        $instalador = $this->codigo('bin/instalar.php');
+        $arranque   = $this->codigo('bin/_arranque.php');
 
-        $posicionGuarda = strpos($fuente, "PHP_SAPI !== 'cli'");
-        // La primera aparición en CODIGO (no en comentarios) es el mensaje
-        // de aviso del propio guard; la que importa es el exec() real.
-        $posicionDrop   = strpos($fuente, 'DROP DATABASE IF EXISTS');
+        $posicionGuarda = strpos($instalador, "PHP_SAPI !== 'cli'");
+        $posicionConfirmacion = strpos($instalador, "--confirmar-borrado-total");
+        $posicionDrop = strpos($instalador, 'DROP DATABASE IF EXISTS');
 
-        $this->assertNotFalse($posicionGuarda, 'install.php no comprueba que se ejecute en consola');
+        $this->assertNotFalse($posicionGuarda, 'bin/instalar.php no comprueba que se ejecute en consola');
+        $this->assertStringContainsString("PHP_SAPI !== 'cli'", $arranque);
         $this->assertNotFalse($posicionDrop);
-        $this->assertLessThan($posicionDrop, $posicionGuarda,
-            'la comprobación debe ir ANTES del DROP DATABASE');
-        $this->assertStringContainsString('--confirmar-borrado-total', $fuente);
+        $this->assertNotFalse($posicionConfirmacion);
+        $this->assertLessThan($posicionDrop, $posicionGuarda, 'la comprobación de consola debe ir ANTES del DROP DATABASE');
+        $this->assertLessThan($posicionDrop, $posicionConfirmacion, 'la confirmación debe exigirse ANTES del DROP DATABASE');
     }
 
     #[TestDox('las carpetas de subidas y de logs no se sirven por web')]
