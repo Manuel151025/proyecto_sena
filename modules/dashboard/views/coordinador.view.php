@@ -25,7 +25,7 @@ if (!defined('VISTA_PERMITIDA')) {
       </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a href="#" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario" class="btn btn-light text-dark fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+      <a href="<?= e(APP_URL . '/index.php/usuarios?nuevo=1') ?>" class="btn btn-light text-dark fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
         <i class="bi bi-person-plus-fill me-1"></i> Nuevo Usuario
       </a>
       <a href="<?= MODULES_PATH ?>/fichas/" class="btn btn-outline-light fw-bold px-3 py-2 btn-sm" style="border-radius: 8px; font-size: 0.82rem; border-width: 1.5px;">

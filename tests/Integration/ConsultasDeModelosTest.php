@@ -267,8 +267,8 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         }
 
         $us = new Models\UsuarioModel($this->db);
-        $this->ejecuta(fn() => $us->getFilteredList([], 25, 0), 'getFilteredList');
-        $this->ejecuta(fn() => $us->contarFiltrados([]), 'contarFiltrados');
+        $this->ejecuta(fn() => $us->listar([], 25, 0), 'listar');
+        $this->ejecuta(fn() => $us->contar([]), 'contar');
         $this->ejecuta(fn() => $us->findById($this->idCoordinador()), 'findById');
 
         $lg = new Models\LogsModel($this->db);

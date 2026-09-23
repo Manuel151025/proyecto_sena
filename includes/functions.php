@@ -83,13 +83,10 @@ function sanitize(string $str): string {
  * en su primer inicio de sesión (ver `debe_cambiar_password`).
  */
 function generateTempPassword(int $length = 10): string {
-    $chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    $password = '';
-    $max = strlen($chars) - 1;
-    for ($i = 0; $i < $length; $i++) {
-        $password .= $chars[random_int(0, $max)];
-    }
-    return $password;
+    // Delegada: la regla (letras y números, sin caracteres ambiguos) vive
+    // en PoliticaContrasena para que la temporal cumpla la misma política
+    // que se exige al cambiarla.
+    return \Core\Support\PoliticaContrasena::temporal($length);
 }
 
 /**
