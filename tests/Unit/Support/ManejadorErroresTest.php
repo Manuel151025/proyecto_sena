@@ -91,7 +91,7 @@ final class ManejadorErroresTest extends CasoDePrueba {
             $this->assertTrue((bool)$this->invocar('esperaJson', []), 'no detecta una llamada AJAX');
 
             unset($_SERVER['HTTP_X_REQUESTED_WITH']);
-            $_SERVER['REQUEST_URI'] = '/proyecto_sena/includes/api_notificaciones.php';
+            $_SERVER['REQUEST_URI'] = '/proyecto_sena/index.php/api/notificaciones';
             $this->assertTrue((bool)$this->invocar('esperaJson', []), 'no detecta una ruta de API');
 
             $_SERVER['REQUEST_URI'] = '/proyecto_sena/index.php/dashboard';

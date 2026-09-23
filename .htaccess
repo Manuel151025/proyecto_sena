@@ -1,0 +1,62 @@
+# =====================================================================
+# Superficie web del sistema
+#
+# Toda la carpeta del proyecto queda bajo la raíz web (así la despliegan
+# XAMPP y la imagen Docker), de modo que sin estas reglas el navegador
+# alcanzaba archivos que nunca debieron ser públicos. Comprobado en local
+# antes de este cambio, todos respondían 200:
+#
+#   .env                    credenciales de la base y del correo SMTP
+#   .git/config             y con él, todo el repositorio descargable
+#   sena_seguimiento.sql    volcado completo con los hash de contraseñas
+#   migrations/*.php        se EJECUTABAN al pedirlos por URL
+#   vendor/, cache/         con listado de directorio
+#
+# Criterio: se publica solo lo que el navegador necesita pedir —los tres
+# puntos de entrada (index.php, login.php, recover.php), los recursos
+# estáticos de assets/ y los archivos de la PWA— y todo lo demás se niega.
+# Las mismas carpetas llevan además su propio .htaccess de denegación,
+# por si mod_rewrite no estuviera activo.
+# =====================================================================
+
+# Sin listados de directorio en ninguna carpeta.
+Options -Indexes
+
+# Sin firma del servidor en las páginas de error.
+ServerSignature Off
+
+# Archivos ocultos (.env, .git, .htaccess, .dockerignore...).
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Archivos del proyecto que no son para el navegador.
+<FilesMatch "\.(sql|md|lock|xml|dist|yml|yaml|ini|log|txt|sh|ps1|bak|old|orig|swp|cache|env|phar)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^(Dockerfile|docker-compose\.yml|composer\.json|install\.php|phpunit\.xml)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Carpetas internas. La regla se evalúa relativa a esta carpeta, así
+    # que `index.php/logs` (la pantalla de auditoría) no la dispara.
+    RewriteRule ^(\.git|\.github|\.vscode|\.claude|\.phpunit\.cache|core|includes|config|migrations|database|tests|vendor|cache|logs|scratch|docs|layouts|components|imports|bin)(/|$) - [F,L]
+
+    # Las vistas solo se pintan desde un controlador.
+    RewriteRule ^modules/[^/]+/views(/|$) - [F,L]
+</IfModule>
+
+# Cabeceras que también deben acompañar a los recursos estáticos, que no
+# pasan por PHP (Core\Support\Seguridad cubre las respuestas dinámicas).
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+</IfModule>
+
+# Errores de Apache con la misma página que usa el enrutador.
+ErrorDocument 403 "Acceso denegado."
+ErrorDocument 404 "Recurso no encontrado."

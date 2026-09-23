@@ -1,9 +1,16 @@
 <?php
+declare(strict_types=1);
+
+// Solo por consola. Estos scripts alteran el esquema o reescriben datos;
+// accesibles por URL, cualquiera podía ejecutarlos desde el navegador.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
 /**
  * Script de migración — Crear tabla notificaciones e insertar datos de ejemplo
  * Ejecutar: php create_notificaciones.php
  */
-declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../core/Database.php';

@@ -2,6 +2,7 @@
     "name": "sena/seguimiento",
     "description": "Sistema de Seguimiento de Proyectos Formativos SENA",
     "type": "project",
+    "license": "proprietary",
     "require": {
         "phpmailer/phpmailer": "^7.1",
         "shuchkin/simplexls": "^1.0",
@@ -24,6 +25,9 @@
         "test": "phpunit",
         "test:unit": "phpunit --testsuite unitarias",
         "test:security": "phpunit --testsuite seguridad",
-        "test:integration": "phpunit --testsuite integracion"
+        "test:integration": "phpunit --testsuite integracion",
+        "post-autoload-dump": [
+            "@php bin/proteger-carpetas.php"
+        ]
     }
 }

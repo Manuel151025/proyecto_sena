@@ -3,7 +3,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/../includes/notificaciones.php';
 
 $user = getCurrentUser();
 $breadcrumbs = getBreadcrumbs();
@@ -12,8 +11,14 @@ $breadcrumbs = getBreadcrumbs();
 $notifCount = 0;
 $notificaciones = [];
 if ($user) {
-    $notifCount = contarNotificacionesNoLeidas((int) $user['id']);
-    $notificaciones = getNotificacionesNoLeidas((int) $user['id']);
+    try {
+        $notifModel = new Core\Models\NotificacionesModel();
+        $notifCount = $notifModel->contarNoLeidas((int) $user['id']);
+        $notificaciones = $notifModel->noLeidas((int) $user['id']);
+    } catch (Throwable $e) {
+        // La campana es accesoria: un fallo aquí no debe tumbar la página.
+        error_log('navbar notificaciones: ' . $e->getMessage());
+    }
 }
 
 // Mapeo de tipo a icono y color
@@ -54,14 +59,15 @@ $tipoIconos = [
           <span class="dot" id="notifBadge"><?= $notifCount > 99 ? '99+' : $notifCount ?></span>
         <?php endif; ?>
       </button>
-      <div class="dropdown-menu dropdown-menu-end shadow border-0 p-0" style="width:360px;max-height:480px;margin-top:10px" id="notifDropdown">
+      <div class="dropdown-menu dropdown-menu-end shadow border-0 p-0 notif-menu" id="notifDropdown"
+           data-api="<?= htmlspecialchars(APP_URL . '/index.php/api/notificaciones', ENT_QUOTES, 'UTF-8') ?>">
         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
           <h6 class="mb-0 fw-semibold">Notificaciones</h6>
-          <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" id="btnMarcarTodas" title="Marcar todas como leídas" <?= $notifCount === 0 ? 'style="display:none"' : '' ?>>
+          <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" id="btnMarcarTodas" title="Marcar todas como leídas" <?= $notifCount === 0 ? 'hidden' : '' ?>>
             <i class="bi bi-check2-all me-1"></i>Marcar todas
           </button>
         </div>
-        <div class="overflow-auto" style="max-height:380px" id="notifListContainer">
+        <div class="overflow-auto notif-lista" id="notifListContainer">
           <?php if (empty($notificaciones)): ?>
             <div class="text-center text-muted py-4" id="notifEmpty">
               <i class="bi bi-bell-slash fs-2 d-block mb-2"></i>
@@ -71,7 +77,7 @@ $tipoIconos = [
             <?php foreach ($notificaciones as $notif):
                 $tipo = $tipoIconos[$notif['tipo']] ?? $tipoIconos['info'];
             ?>
-              <a href="<?= htmlspecialchars($notif['url'] ?? '#') ?>"
+              <a href="<?= htmlspecialchars(Core\Services\Notificador::urlSegura($notif['url'] ?? null) ?? '#', ENT_QUOTES, 'UTF-8') ?>"
                  class="dropdown-item d-flex gap-3 py-2 px-3 border-bottom notif-item"
                  data-notif-id="<?= (int)$notif['id'] ?>"
                  style="white-space:normal">
@@ -81,7 +87,7 @@ $tipoIconos = [
                 <div class="flex-grow-1 overflow-hidden">
                   <div class="fw-semibold small"><?= htmlspecialchars($notif['titulo']) ?></div>
                   <div class="text-muted small text-truncate"><?= htmlspecialchars(mb_substr($notif['mensaje'], 0, 80)) ?></div>
-                  <div class="text-muted" style="font-size:.7rem"><?= timeAgo($notif['fecha_creacion']) ?></div>
+                  <div class="text-muted notif-tiempo"><?= htmlspecialchars(timeAgo((string)$notif['fecha_creacion'])) ?></div>
                 </div>
               </a>
             <?php endforeach; ?>
@@ -99,9 +105,8 @@ $tipoIconos = [
         <li><a class="dropdown-item" href="<?= APP_URL ?>/index.php/perfil"><i class="bi bi-person me-2"></i>Mi perfil</a></li>
         <li><hr class="dropdown-divider"></li>
         <li>
-          <form method="POST" action="<?= APP_URL ?>/includes/auth.php" class="m-0">
+          <form method="POST" action="<?= APP_URL ?>/index.php/logout" class="m-0">
             <?= csrfField() ?>
-            <input type="hidden" name="action" value="logout">
             <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button>
           </form>
         </li>
@@ -110,114 +115,4 @@ $tipoIconos = [
   </div>
 </header>
 
-<script>
-(function() {
-  const API_URL = '<?= APP_URL ?>/includes/api_notificaciones.php';
-  const badge = document.getElementById('notifBadge');
-  const btnTodas = document.getElementById('btnMarcarTodas');
-  const listContainer = document.getElementById('notifListContainer');
-
-  // Marcar una notificación como leída al hacer clic
-  document.getElementById('notifDropdown')?.addEventListener('click', function(e) {
-    const item = e.target.closest('.notif-item');
-    if (!item) return;
-
-    const id = item.getAttribute('data-notif-id');
-    if (!id) return;
-
-    // Enviar petición para marcar como leída (fire-and-forget)
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'action=marcar_leida&id=' + encodeURIComponent(id) + '&_tab=' + encodeURIComponent(window.__tabId || 'default') + '&csrf_token=' + encodeURIComponent('<?= getCsrfToken() ?>')
-    });
-
-    // Eliminar visualmente
-    item.remove();
-    updateBadgeCount(-1);
-  });
-
-  // Marcar todas como leídas
-  btnTodas?.addEventListener('click', function() {
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'action=marcar_todas&_tab=' + encodeURIComponent(window.__tabId || 'default') + '&csrf_token=' + encodeURIComponent('<?= getCsrfToken() ?>')
-    }).then(() => {
-      listContainer.innerHTML = '<div class="text-center text-muted py-4" id="notifEmpty"><i class="bi bi-bell-slash fs-2 d-block mb-2"></i>No tienes notificaciones nuevas</div>';
-      updateBadgeCount(0, true);
-      btnTodas.style.display = 'none';
-    });
-  });
-
-  function updateBadgeCount(delta, absolute) {
-    let current = badge ? parseInt(badge.textContent || '0', 10) : 0;
-    let newCount = absolute ? delta : Math.max(0, current + delta);
-
-    if (newCount <= 0) {
-      badge?.remove();
-      if (btnTodas) btnTodas.style.display = 'none';
-      // Si no quedan items, mostrar mensaje vacío
-      if (!listContainer.querySelector('.notif-item')) {
-        listContainer.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-bell-slash fs-2 d-block mb-2"></i>No tienes notificaciones nuevas</div>';
-      }
-    } else if (badge) {
-      badge.textContent = newCount > 99 ? '99+' : String(newCount);
-    }
-  }
-
-  // Refresco periódico cada 60 segundos
-  setInterval(function() {
-    fetch(API_URL + '?_tab=' + encodeURIComponent(window.__tabId || 'default'))
-      .then(r => r.json())
-      .then(data => {
-        if (!data.ok) return;
-
-        // Actualizar badge
-        const btn = document.getElementById('btnNotificaciones');
-        let b = document.getElementById('notifBadge');
-
-        if (data.count > 0) {
-          if (!b) {
-            b = document.createElement('span');
-            b.className = 'dot';
-            b.id = 'notifBadge';
-            btn?.appendChild(b);
-          }
-          b.textContent = data.count > 99 ? '99+' : String(data.count);
-          if (btnTodas) btnTodas.style.display = '';
-        } else if (b) {
-          b.remove();
-          if (btnTodas) btnTodas.style.display = 'none';
-        }
-
-        // Reconstruir lista
-        if (data.notificaciones.length === 0) {
-          listContainer.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-bell-slash fs-2 d-block mb-2"></i>No tienes notificaciones nuevas</div>';
-        } else {
-          const iconMap = {
-            info:    { icon: 'bi-info-circle-fill',          color: 'text-primary' },
-            success: { icon: 'bi-check-circle-fill',         color: 'text-success' },
-            warning: { icon: 'bi-exclamation-triangle-fill', color: 'text-warning' },
-            danger:  { icon: 'bi-exclamation-circle-fill',   color: 'text-danger' }
-          };
-          let html = '';
-          data.notificaciones.forEach(n => {
-            const t = iconMap[n.tipo] || iconMap.info;
-            const msg = n.mensaje.length > 80 ? n.mensaje.substring(0, 80) + '…' : n.mensaje;
-            html += `<a href="${n.url || '#'}" class="dropdown-item d-flex gap-3 py-2 px-3 border-bottom notif-item" data-notif-id="${n.id}" style="white-space:normal">
-              <div class="flex-shrink-0 mt-1"><i class="bi ${t.icon} ${t.color}"></i></div>
-              <div class="flex-grow-1 overflow-hidden">
-                <div class="fw-semibold small">${n.titulo}</div>
-                <div class="text-muted small text-truncate">${msg}</div>
-                <div class="text-muted" style="font-size:.7rem">${n.tiempo_relativo}</div>
-              </div>
-            </a>`;
-          });
-          listContainer.innerHTML = html;
-        }
-      })
-      .catch(() => {});
-  }, 60000);
-})();
-</script>
+<script src="<?= APP_URL ?>/assets/js/notificaciones.js?v=<?= filemtime(BASE_PATH . 'assets/js/notificaciones.js') ?>" defer></script>

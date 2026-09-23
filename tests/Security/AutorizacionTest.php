@@ -6,6 +6,7 @@ namespace Tests\Security;
 use Core\Models\EvaluacionesModel;
 use Core\Models\EvidenciasModel;
 use Core\Models\MejoramientoModel;
+use Core\Models\NotificacionesModel;
 use Core\Models\ReportesModel;
 use Core\Models\SeguimientoModel;
 use Core\Services\InstructorAccessService;
@@ -340,7 +341,7 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
         $id = (int)$this->db->lastInsertId();
 
         $this->assertFalse(
-            marcarNotificacionLeida($id, $intruso),
+            (new NotificacionesModel($this->db))->marcarLeida($id, $intruso),
             'un usuario ajeno pudo marcar la notificación de otro'
         );
         $this->assertSame(
@@ -349,7 +350,7 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
             'la notificación quedó marcada por un tercero'
         );
 
-        $this->assertTrue(marcarNotificacionLeida($id, $propietario), 'el dueño sí debe poder');
+        $this->assertTrue((new NotificacionesModel($this->db))->marcarLeida($id, $propietario), 'el dueño sí debe poder');
     }
 
     #[TestDox('marcar todas solo afecta a las propias')]
@@ -365,7 +366,7 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
         $stmt->execute([$b]);
         $idDeB = (int)$this->db->lastInsertId();
 
-        marcarTodasLeidas($a);
+        (new NotificacionesModel($this->db))->marcarTodas($a);
 
         $this->assertSame(
             0,

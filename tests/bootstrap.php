@@ -28,11 +28,9 @@ require_once $raiz . '/includes/session.php';
 require_once $raiz . '/includes/functions.php';
 
 // auth.php trae attemptLogin() y logout(), que las pruebas de seguridad
-// ejercitan. Al final del archivo hay un bloque que cierra la sesión si
-// llega `action=logout`; con la petición simulada de arriba no se dispara,
-// pero conviene saber que está ahí antes de tocar $_GET en el bootstrap.
+// ejercitan. Ya no atiende peticiones por sí mismo: el cierre de sesión
+// pasa por la ruta POST /logout (SesionController).
 require_once $raiz . '/includes/auth.php';
-require_once $raiz . '/includes/notificaciones.php';
 
 // La sesión de CLI no persiste entre procesos; se asegura que exista el
 // contenedor que esperan las funciones de sesión.

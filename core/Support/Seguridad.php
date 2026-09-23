@@ -34,6 +34,10 @@ final class Seguridad {
             return;
         }
 
+        // La versión exacta de PHP solo le sirve a quien busca un exploit
+        // para ella.
+        header_remove('X-Powered-By');
+
         // Evita que el navegador "adivine" el tipo de un archivo subido y
         // acabe ejecutando como HTML algo que se sirvió como texto.
         header('X-Content-Type-Options: nosniff');

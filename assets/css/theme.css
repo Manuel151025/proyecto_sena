@@ -135,6 +135,13 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Campana de notificaciones. En móvil el menú no puede medir 360px fijos:
+   en una pantalla de 360-390px se salía por el borde izquierdo. */
+.notif-menu { width: 360px; max-width: calc(100vw - 24px); max-height: 480px; margin-top: 10px; }
+.notif-lista { max-height: 380px; }
+.notif-item { white-space: normal; }
+.notif-tiempo { font-size: .7rem; }
+
 /* La barra de progreso de Bootstrap toma el gris "secondary" como fondo, que
    ahora es --surface-2; dentro de los paneles (que usan ese mismo tono) el
    canal quedaba invisible, así que se usa el color de borde. */
