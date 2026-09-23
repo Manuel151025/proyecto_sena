@@ -56,14 +56,18 @@ return static function (Router $router): void {
     // ---------------------------------------------------------------------
     // ESTRUCTURA CURRICULAR — la define coordinación
     // ---------------------------------------------------------------------
-    $ambos('/estructura',                  'Core\Controllers\EstructuraController', 'index',         $COORDINADOR);
-    $ambos('/estructura/editar_programa',  'Core\Controllers\EstructuraController', 'editPrograma',  $COORDINADOR);
-    $ambos('/estructura/editar_proyecto',  'Core\Controllers\EstructuraController', 'editProyecto',  $COORDINADOR);
-    $ambos('/estructura/importar',         'Core\Controllers\EstructuraController', 'import',        $COORDINADOR);
+    $E = 'Core\Controllers\EstructuraController';
+    $router->add('GET',  '/estructura',          $E, 'index',    $COORDINADOR);
+    $router->add('GET',  '/estructura/importar', $E, 'importar', $COORDINADOR);
+    $router->add('POST', '/estructura/importar', $E, 'analizar', $COORDINADOR);   // paso 1: subir y analizar
+    $router->accion('/estructura/importar', 'confirmar', $E, 'confirmar', $COORDINADOR);
+    $router->accion('/estructura/importar', 'cancelar',  $E, 'cancelar',  $COORDINADOR);
 
-    $ambos('/programas',        'Core\Controllers\ProgramasController', 'index',  $GESTION);
-    $ambos('/programas/crear',  'Core\Controllers\ProgramasController', 'create', $COORDINADOR);
-    $ambos('/programas/editar', 'Core\Controllers\ProgramasController', 'edit',   $COORDINADOR);
+    $P = 'Core\Controllers\ProgramasController';
+    $router->add('GET', '/programas', $P, 'index', $GESTION);
+    $router->accion('/programas', 'crear',    $P, 'crear',    $COORDINADOR);
+    $router->accion('/programas', 'editar',   $P, 'editar',   $COORDINADOR);
+    $router->accion('/programas', 'eliminar', $P, 'eliminar', $COORDINADOR);
 
     $ambos('/competencias',          'Core\Controllers\CompetenciasController', 'index',  $GESTION);
     $ambos('/competencias/importar', 'Core\Controllers\CompetenciasController', 'import', $COORDINADOR);
@@ -88,9 +92,23 @@ return static function (Router $router): void {
     // ---------------------------------------------------------------------
     // Proyectos, fases y actividades los consulta también el aprendiz; los
     // controladores filtran la escritura por rol.
-    $ambos('/proyectos',    'Core\Controllers\ProyectosController',    'index', $TODOS);
-    $ambos('/fases',        'Core\Controllers\FasesController',        'index', $TODOS);
-    $ambos('/actividades',  'Core\Controllers\ActividadesController',  'index', $TODOS);
+    $router->add('GET', '/proyectos', 'Core\Controllers\ProyectosController', 'index', $TODOS);
+    $router->accion('/proyectos', 'crear',    'Core\Controllers\ProyectosController', 'crear',    $COORDINADOR);
+    $router->accion('/proyectos', 'editar',   'Core\Controllers\ProyectosController', 'editar',   $COORDINADOR);
+    $router->accion('/proyectos', 'eliminar', 'Core\Controllers\ProyectosController', 'eliminar', $COORDINADOR);
+
+    $F = 'Core\Controllers\FasesController';
+    $router->add('GET', '/fases', $F, 'index', $TODOS);
+    $router->accion('/fases', 'crear',    $F, 'crear',    $GESTION);
+    $router->accion('/fases', 'editar',   $F, 'editar',   $GESTION);
+    $router->accion('/fases', 'eliminar', $F, 'eliminar', $COORDINADOR);
+
+    $A = 'Core\Controllers\ActividadesController';
+    $router->add('GET', '/actividades', $A, 'index', $TODOS);
+    $router->accion('/actividades', 'crear',    $A, 'crear',    $GESTION);
+    $router->accion('/actividades', 'editar',   $A, 'editar',   $GESTION);
+    $router->accion('/actividades', 'avance',   $A, 'avance',   $GESTION);
+    $router->accion('/actividades', 'eliminar', $A, 'eliminar', $GESTION);
 
     // ---------------------------------------------------------------------
     // EVALUACIÓN Y SEGUIMIENTO

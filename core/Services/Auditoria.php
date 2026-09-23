@@ -68,8 +68,8 @@ final class Auditoria {
         try {
             $stmt = $this->db->prepare("
                 INSERT INTO logs_sistema
-                    (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion, ip_address)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $usuarioId,
@@ -78,11 +78,30 @@ final class Auditoria {
                 $tabla !== null ? mb_substr($tabla, 0, 50) : null,
                 $registro,
                 mb_substr($descripcion, 0, 500),
+                self::ip(),
             ]);
         } catch (Throwable $e) {
             // Ver la nota de la cabecera: auditar no puede tumbar la acción.
             error_log('Auditoria: no se pudo registrar "' . $accion . '" — ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Operación de negocio sobre un registro (crear, editar, eliminar...).
+     * Es la forma corta de `registrar()` que usan los servicios.
+     */
+    public function operacion(\Core\Support\Actor $actor, string $accion, string $modulo, string $tabla, ?int $registro, string $descripcion): void {
+        $this->registrar($actor->id > 0 ? $actor->id : null, $accion, $modulo, $descripcion, $tabla, $registro);
+    }
+
+    /**
+     * IP del cliente. Se toma REMOTE_ADDR y no X-Forwarded-For: esa cabecera
+     * la escribe el cliente y, sin un proxy de confianza configurado,
+     * permitiría firmar la bitácora con cualquier dirección.
+     */
+    private static function ip(): ?string {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        return is_string($ip) && filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null;
     }
 
     // -----------------------------------------------------------------

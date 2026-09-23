@@ -4,9 +4,23 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
+use Core\Services\InstructorAccessService;
+use Core\Support\Actor;
 use PDO;
-use Exception;
 
+/**
+ * Proyectos formativos.
+ *
+ * Un proyecto es la plantilla: sus fases valen para todas las fichas que
+ * lo desarrollan. Lo que cambia de una ficha a otra son las actividades, y
+ * por eso el avance se calcula a partir de ellas y dentro del alcance de
+ * quien consulta: el aprendiz ve el avance de SU ficha, el instructor el de
+ * las suyas y el coordinador el de todas.
+ *
+ * Antes el avance era el promedio de `fases_proyecto.cumplimiento_porcentaje`,
+ * un número tecleado a mano en el formulario de fase, igual para todas las
+ * fichas y sin relación con lo que de verdad se había ejecutado.
+ */
 class ProyectosModel {
     private PDO $db;
 
@@ -14,109 +28,119 @@ class ProyectosModel {
         $this->db = $db ?? Database::getConnection();
     }
 
-    public function crearProyecto(string $nombre, string $codigo, string $objetivo, string $descripcion): void {
-        $stmt = $this->db->prepare("INSERT INTO proyectos (nombre, codigo, objetivo, descripcion) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$nombre, $codigo, $objetivo, $descripcion]);
+    public function crear(array $d): int {
+        $this->db->prepare("INSERT INTO proyectos (nombre, codigo, objetivo, descripcion, estado) VALUES (?, ?, ?, ?, ?)")
+                 ->execute([$d['nombre'], $d['codigo'], $d['objetivo'], $d['descripcion'], $d['estado']]);
+        return (int)$this->db->lastInsertId();
     }
 
-    public function eliminarProyecto(int $id): void {
-        $stmt = $this->db->prepare("DELETE FROM proyectos WHERE id = ?");
-        $stmt->execute([$id]);
+    public function actualizar(int $id, array $d): bool {
+        $st = $this->db->prepare("UPDATE proyectos SET nombre = ?, codigo = ?, objetivo = ?, descripcion = ?, estado = ? WHERE id = ?");
+        $st->execute([$d['nombre'], $d['codigo'], $d['objetivo'], $d['descripcion'], $d['estado'], $id]);
+        return $st->rowCount() > 0 || $this->existe($id);
     }
 
-    public function editarProyecto(int $id, string $nombre, string $codigo, string $objetivo, string $descripcion, string $estado): void {
-        $stmt = $this->db->prepare("
-            UPDATE proyectos SET nombre=?, codigo=?, objetivo=?, descripcion=?, estado=?
-            WHERE id=?
-        ");
-        $stmt->execute([$nombre, $codigo, $objetivo, $descripcion, $estado, $id]);
+    public function eliminar(int $id): bool {
+        $st = $this->db->prepare("DELETE FROM proyectos WHERE id = ?");
+        $st->execute([$id]);
+        return $st->rowCount() > 0;
     }
 
-    public function getProyectos(string $user_rol, int $user_id): array {
-        if ($user_rol === ROL_APRENDIZ) {
-            $stmt = $this->db->prepare("
-                SELECT 
-                    pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
-                    COUNT(DISTINCT f.id) as total_fichas,
-                    (SELECT COUNT(*) FROM aprendices ap_c
-                      JOIN fichas f_c ON f_c.id = ap_c.ficha_id
-                     WHERE f_c.proyecto_id = pr.id AND ap_c.estado <> 'desertado') as total_aprendices,
-                    COUNT(DISTINCT fp.id) as total_fases,
-                    SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
-                    AVG(fp.cumplimiento_porcentaje) as avance_promedio
-                FROM proyectos pr
-                JOIN fichas f ON f.proyecto_id = pr.id
-                JOIN aprendices ap ON ap.ficha_id = f.id
-                LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
-                WHERE ap.usuario_id = ?
-                GROUP BY pr.id
-                ORDER BY pr.nombre
-            ");
-            $stmt->execute([$user_id]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } elseif ($user_rol === ROL_INSTRUCTOR) {
-            $stmt = $this->db->prepare("
-                SELECT 
-                    pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
-                    COUNT(DISTINCT f.id) as total_fichas,
-                    (SELECT COUNT(*) FROM aprendices ap_c
-                      JOIN fichas f_c ON f_c.id = ap_c.ficha_id
-                     WHERE f_c.proyecto_id = pr.id AND ap_c.estado <> 'desertado') as total_aprendices,
-                    COUNT(DISTINCT fp.id) as total_fases,
-                    SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
-                    AVG(fp.cumplimiento_porcentaje) as avance_promedio
-                FROM proyectos pr
-                JOIN fichas f ON f.proyecto_id = pr.id
-                LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
-                WHERE f.instructor_id = ?
-                GROUP BY pr.id
-                ORDER BY pr.nombre
-            ");
-            $stmt->execute([$user_id]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } else {
-            return $this->db->query("
-                SELECT 
-                    pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.estado,
-                    COUNT(DISTINCT f.id) as total_fichas,
-                    (SELECT COUNT(*) FROM aprendices ap_c
-                      JOIN fichas f_c ON f_c.id = ap_c.ficha_id
-                     WHERE f_c.proyecto_id = pr.id AND ap_c.estado <> 'desertado') as total_aprendices,
-                    COUNT(DISTINCT fp.id) as total_fases,
-                    SUM(CASE WHEN fp.estado = 'completada' THEN 1 ELSE 0 END) as fases_completadas,
-                    AVG(fp.cumplimiento_porcentaje) as avance_promedio
-                FROM proyectos pr
-                LEFT JOIN fichas f ON f.proyecto_id = pr.id
-                LEFT JOIN fases_proyecto fp ON fp.proyecto_id = pr.id
-                GROUP BY pr.id
-                ORDER BY pr.nombre
-            ")->fetchAll(PDO::FETCH_ASSOC);
-        }
-    }
-
-    public function getAll(): array {
-        return $this->getProyectos(ROL_COORDINADOR, 0);
+    public function existe(int $id): bool {
+        $st = $this->db->prepare("SELECT 1 FROM proyectos WHERE id = ?");
+        $st->execute([$id]);
+        return (bool)$st->fetchColumn();
     }
 
     public function findById(int $id): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM proyectos WHERE id = ?");
-        $stmt->execute([$id]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ?: null;
+        $st = $this->db->prepare("SELECT * FROM proyectos WHERE id = ?");
+        $st->execute([$id]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    public function delete(int $id): void {
-        $this->eliminarProyecto($id);
+    /** Fichas que impiden borrar el proyecto. */
+    public function contarFichas(int $id): int {
+        $st = $this->db->prepare("SELECT COUNT(*) FROM fichas WHERE proyecto_id = ?");
+        $st->execute([$id]);
+        return (int)$st->fetchColumn();
     }
 
-    public function update(int $id, array $data): void {
-        $this->editarProyecto(
-            $id,
-            $data['nombre'] ?? '',
-            $data['codigo'] ?? '',
-            $data['objetivo'] ?? '',
-            $data['descripcion'] ?? '',
-            $data['estado'] ?? 'activo'
-        );
+    /**
+     * Condición y parámetros que limitan las fichas al alcance del actor.
+     *
+     * @return array{0:string, 1:array}
+     */
+    private function alcanceFichas(Actor $actor, string $alias = 'f'): array {
+        if ($actor->esCoordinador()) {
+            return ['1=1', []];
+        }
+        if ($actor->esInstructor()) {
+            return ["$alias.id IN (" . InstructorAccessService::sqlFichasDelInstructor() . ")",
+                    [$actor->id, $actor->id, $actor->id]];
+        }
+        return ["$alias.id IN (SELECT ficha_id FROM aprendices WHERE usuario_id = ? AND ficha_id IS NOT NULL)", [$actor->id]];
+    }
+
+    /**
+     * Proyectos visibles para el actor, con sus cifras dentro de su alcance.
+     *
+     * El coordinador ve también los proyectos sin fichas (para poder
+     * asignarlos); instructor y aprendiz, solo los de sus fichas.
+     */
+    public function listar(Actor $actor): array {
+        [$cond, $params] = $this->alcanceFichas($actor);
+
+        $filtroProyecto = $actor->esCoordinador()
+            ? ''
+            : "WHERE pr.id IN (SELECT f.proyecto_id FROM fichas f WHERE f.proyecto_id IS NOT NULL AND $cond)";
+
+        // Las subconsultas repiten la condición de alcance: cada cifra se
+        // calcula solo con las fichas que el actor puede ver.
+        $sql = "
+            SELECT pr.id, pr.nombre, pr.codigo, pr.objetivo, pr.descripcion, pr.estado,
+                   (SELECT COUNT(*) FROM fichas f WHERE f.proyecto_id = pr.id AND $cond) AS total_fichas,
+                   (SELECT COUNT(*) FROM aprendices ap JOIN fichas f ON f.id = ap.ficha_id
+                     WHERE f.proyecto_id = pr.id AND ap.estado <> 'desertado' AND $cond) AS total_aprendices,
+                   (SELECT COUNT(*) FROM fases_proyecto fp WHERE fp.proyecto_id = pr.id) AS total_fases,
+                   (SELECT COUNT(*) FROM fases_proyecto fp WHERE fp.proyecto_id = pr.id AND fp.estado = 'completada') AS fases_completadas,
+                   (SELECT COUNT(*) FROM actividades a JOIN fichas f ON f.id = a.ficha_id
+                     WHERE f.proyecto_id = pr.id AND a.estado <> 'cancelada' AND $cond) AS total_actividades,
+                   (SELECT AVG(CASE WHEN a.estado = 'completada' THEN 100 ELSE a.cumplimiento_porcentaje END)
+                      FROM actividades a JOIN fichas f ON f.id = a.ficha_id
+                     WHERE f.proyecto_id = pr.id AND a.estado <> 'cancelada' AND $cond) AS avance
+              FROM proyectos pr
+              $filtroProyecto
+             ORDER BY pr.estado = 'activo' DESC, pr.nombre
+        ";
+        // La condición aparece cuatro veces en el SELECT y, para quien no es
+        // coordinador, una más en el WHERE.
+        $todos = array_merge($params, $params, $params, $params, $actor->esCoordinador() ? [] : $params);
+
+        $st = $this->db->prepare($sql);
+        $st->execute($todos);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Lista corta para selectores. */
+    public function opciones(Actor $actor): array {
+        if ($actor->esCoordinador()) {
+            return $this->db->query("SELECT id, codigo, nombre FROM proyectos ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+        }
+        return array_map(static fn($p) => ['id' => $p['id'], 'codigo' => $p['codigo'], 'nombre' => $p['nombre']], $this->listar($actor));
+    }
+
+    /** Fichas que desarrollan el proyecto, dentro del alcance del actor. */
+    public function fichasDelProyecto(int $proyectoId, Actor $actor): array {
+        [$cond, $params] = $this->alcanceFichas($actor);
+        $st = $this->db->prepare("SELECT f.id, f.numero_ficha, f.estado FROM fichas f WHERE f.proyecto_id = ? AND $cond ORDER BY f.numero_ficha");
+        $st->execute(array_merge([$proyectoId], $params));
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function puedeVer(int $proyectoId, Actor $actor): bool {
+        if ($actor->esCoordinador()) {
+            return $this->existe($proyectoId);
+        }
+        return $this->fichasDelProyecto($proyectoId, $actor) !== [];
     }
 }

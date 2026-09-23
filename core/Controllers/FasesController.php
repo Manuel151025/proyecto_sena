@@ -3,213 +3,120 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-use Core\Support\Enums;
-
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Formularios\FaseFormulario;
 use Core\Models\FasesModel;
-use PDO;
-use Exception;
+use Core\Models\ProyectosModel;
+use Core\Services\FasesService;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Fases del proyecto formativo.
+ *
+ *   GET  /fases?proyecto_id=&ficha_id=   fases con el avance de sus actividades
+ *   POST /fases  action=crear|editar     coordinación e instructor (en su alcance)
+ *   POST /fases  action=eliminar         coordinación
+ */
 class FasesController extends BaseController {
-    private PDO $db;
-    private FasesModel $fasesModel;
+    private FasesModel $fases;
+    private ProyectosModel $proyectos;
+    private FasesService $servicio;
 
-    public function __construct(?PDO $db = null, ?FasesModel $fasesModel = null) {
-        requireAuth();
-        $this->db = $db ?? Database::getConnection();
-        $this->fasesModel = $fasesModel ?? new FasesModel($this->db);
+    public function __construct(?FasesModel $fases = null, ?ProyectosModel $proyectos = null, ?FasesService $servicio = null) {
+        $this->fases = $fases ?? new FasesModel();
+        $this->proyectos = $proyectos ?? new ProyectosModel();
+        $this->servicio = $servicio ?? new FasesService();
     }
 
     public function index(): void {
+        $actor = Actor::actual();
         $errors = [];
-        $successMessage = '';
-        $user_rol = getCurrentRole();
-        $user_id = (int)getCurrentUser()['id'];
-
-        $selected_proyecto_id = (int)($_GET['proyecto_id'] ?? 0);
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            requireCsrf();
-            if ($_POST['action'] === 'crear') {
-                if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-                    $errors[] = 'No tiene permisos para administrar fases.';
-                } else {
-                    $proyecto_id = (int)($_POST['proyecto_id'] ?? 0);
-                    $numero_fase = (int)($_POST['numero_fase'] ?? 0);
-                    $nombre = trim($_POST['nombre'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
-                    $fecha_fin = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
-                    $cumplimiento = (float)($_POST['cumplimiento_porcentaje'] ?? 0);
-                    $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::FASE_ESTADO, 'planeada');
-
-                    if ($proyecto_id <= 0) $errors[] = 'Debe seleccionar un proyecto.';
-                    if ($numero_fase <= 0 || $numero_fase > 99) $errors[] = 'El número de fase debe estar entre 1 y 99.';
-                    if (empty($nombre)) {
-                        $errors[] = 'El nombre de la fase es obligatorio.';
-                    } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
-                        $errors[] = 'El nombre no puede exceder los 100 caracteres.';
-                    } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                        $errors[] = 'El nombre contiene caracteres no permitidos.';
-                    }
-                    if (mb_strlen($descripcion, 'UTF-8') > 1000) {
-                        $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
-                    }
-                    $descripcion = strip_tags($descripcion);
-                    if ($cumplimiento < 0 || $cumplimiento > 100) $errors[] = 'El cumplimiento debe estar entre 0 y 100%.';
-                    if (!in_array($estado, ['planeada', 'en_ejecucion', 'completada'])) $errors[] = 'Estado inválido.';
-                    
-                    if ($fecha_inicio && !strtotime($fecha_inicio)) $errors[] = 'Fecha de inicio inválida.';
-                    if ($fecha_fin && !strtotime($fecha_fin)) $errors[] = 'Fecha de fin inválida.';
-                    if ($fecha_inicio && $fecha_fin && strtotime($fecha_inicio) > strtotime($fecha_fin)) {
-                        $errors[] = 'La fecha de inicio no puede ser mayor a la fecha de fin.';
-                    }
-
-                    if (empty($errors)) {
-                        try {
-                            $this->fasesModel->crearFase($proyecto_id, $numero_fase, $nombre, $descripcion, $fecha_inicio, $fecha_fin, $cumplimiento, $estado);
-                            setFlashMessage('Fase de proyecto registrada exitosamente.', 'success');
-                            $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $proyecto_id);
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al registrar la fase');
-                        }
-                    }
-                }
-            }
-            if ($_POST['action'] === 'editar') {
-                if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-                    $errors[] = 'No tiene permisos para editar fases.';
-                } else {
-                    $id          = (int)($_POST['id'] ?? 0);
-                    $numero_fase = (int)($_POST['numero_fase'] ?? 0);
-                    $nombre      = trim($_POST['nombre'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
-                    $fecha_fin    = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
-                    $cumplimiento = (float)($_POST['cumplimiento_porcentaje'] ?? 0);
-                    $estado       = (new Validador($_POST))->enum('estado', 'El estado', Enums::FASE_ESTADO, 'planeada');
-
-                    if ($id <= 0)          $errors[] = 'Fase no válida.';
-                    if ($numero_fase <= 0 || $numero_fase > 99) $errors[] = 'El número de fase debe estar entre 1 y 99.';
-                    if (empty($nombre)) {
-                        $errors[] = 'El nombre de la fase es obligatorio.';
-                    } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
-                        $errors[] = 'El nombre no puede exceder los 100 caracteres.';
-                    } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                        $errors[] = 'El nombre contiene caracteres no permitidos.';
-                    }
-                    if (mb_strlen($descripcion, 'UTF-8') > 1000) {
-                        $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
-                    }
-                    $descripcion = strip_tags($descripcion);
-                    if ($cumplimiento < 0 || $cumplimiento > 100) $errors[] = 'El cumplimiento debe estar entre 0 y 100%.';
-                    if (!in_array($estado, ['planeada', 'en_ejecucion', 'completada'])) $errors[] = 'Estado inválido.';
-                    
-                    if ($fecha_inicio && !strtotime($fecha_inicio)) $errors[] = 'Fecha de inicio inválida.';
-                    if ($fecha_fin && !strtotime($fecha_fin)) $errors[] = 'Fecha de fin inválida.';
-                    if ($fecha_inicio && $fecha_fin && strtotime($fecha_inicio) > strtotime($fecha_fin)) {
-                        $errors[] = 'La fecha de inicio no puede ser mayor a la fecha de fin.';
-                    }
-
-                    if (empty($errors)) {
-                        try {
-                            $this->fasesModel->editarFase($id, $numero_fase, $nombre, $descripcion, $fecha_inicio, $fecha_fin, $cumplimiento, $estado);
-                            setFlashMessage('Fase actualizada exitosamente.', 'success');
-                            $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $selected_proyecto_id);
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al actualizar la fase');
-                        }
-                    }
-                }
-            }
-            if ($_POST['action'] === 'eliminar') {
-                if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-                    $errors[] = 'No tiene permisos para eliminar fases.';
-                } else {
-                    $id = (int)($_POST['id'] ?? 0);
-                    if ($id <= 0) {
-                        $errors[] = 'Fase no válida.';
-                    } else {
-                        try {
-                            $this->fasesModel->eliminarFase($id);
-                            setFlashMessage('Fase eliminada exitosamente.', 'success');
-                            $this->redirect(APP_URL . '/index.php/fases?proyecto_id=' . $selected_proyecto_id);
-                        } catch (Exception $e) {
-                            $errors[] = 'No se puede eliminar: la fase tiene registros asociados.';
-                        }
-                    }
-                }
-            }
-        }
-
-        $proyectos = [];
-        $aprendiz_proyecto_id = 0;
-
-        if ($user_rol === ROL_APRENDIZ) {
-            try {
-                $aprendiz_proyecto_id = $this->fasesModel->getAprendizProyectoId($user_id);
-            } catch (Exception $e) {
-                $errors[] = 'Error al obtener el proyecto del aprendiz.';
-            }
-        }
+        $proyectos = $fases = $fichas = [];
+        $proyectoActual = null;
+        $proyectoId = $this->idDeConsulta('proyecto_id');
+        $fichaId = $this->idDeConsulta('ficha_id');
 
         try {
-            if ($user_rol === ROL_APRENDIZ) {
-                if ($aprendiz_proyecto_id > 0) {
-                    $proyectos = $this->fasesModel->getProyecto($aprendiz_proyecto_id) ?? [];
-                } else {
-                    $proyectos = [];
-                }
-                $selected_proyecto_id = $aprendiz_proyecto_id;
-            } else {
-                $proyectos = $this->fasesModel->getTodosProyectos();
-                if ($selected_proyecto_id === 0 && !empty($proyectos)) {
-                    $selected_proyecto_id = (int)$proyectos[0]['id'];
-                }
+            $proyectos = $this->proyectos->opciones($actor);
+            $ids = array_map(static fn($p) => (int)$p['id'], $proyectos);
+            // Un proyecto fuera del alcance se trata como no elegido, igual
+            // que uno que no existe: no se confirma su existencia.
+            if (!in_array($proyectoId, $ids, true)) {
+                $proyectoId = $ids[0] ?? 0;
             }
-        } catch (Exception $e) {
-            $errors[] = 'Error al cargar proyectos.';
-        }
-
-        $proyectoActual = null;
-        if ($selected_proyecto_id > 0) {
-            try {
-                $proyectoActual = $this->fasesModel->getProyectoActual($selected_proyecto_id);
-            } catch (Exception $e) {}
-        }
-
-        $fases = [];
-        if ($selected_proyecto_id > 0) {
-            try {
-                $fases = $this->fasesModel->getFases($selected_proyecto_id);
-            } catch (Exception $e) {
-                $errors[] = 'Error al cargar fases del proyecto.';
+            if ($proyectoId > 0) {
+                $proyectoActual = $this->proyectos->findById($proyectoId);
+                $fichas = $this->proyectos->fichasDelProyecto($proyectoId, $actor);
+                $idsFichas = array_map(static fn($f) => (int)$f['id'], $fichas);
+                if (!in_array($fichaId, $idsFichas, true)) {
+                    $fichaId = 0;
+                }
+                // El avance se calcula con las fichas que el actor ve, o con
+                // la elegida. El coordinador sin filtro ve todo el proyecto.
+                $alcance = $fichaId > 0 ? [$fichaId] : ($actor->esCoordinador() ? null : $idsFichas);
+                $fases = $this->fases->listarDeProyecto($proyectoId, $alcance);
             }
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las fases');
         }
 
-        $estados_label = [
-            'planeada' => ['Planeada', 'secondary'],
-            'en_ejecucion' => ['En Ejecución', 'warning'],
-            'completada' => ['Completada', 'success']
-        ];
-
-        $this->render(
-            BASE_PATH . 'modules/fases/views/index.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'user_rol' => $user_rol,
-                'selected_proyecto_id' => $selected_proyecto_id,
-                'proyectos' => $proyectos,
-                'aprendiz_proyecto_id' => $aprendiz_proyecto_id,
-                'proyectoActual' => $proyectoActual,
-                'fases' => $fases,
-                'estados_label' => $estados_label
+        $this->render(BASE_PATH . 'modules/fases/views/index.view.php', [
+            'errors'         => $errors,
+            'user_rol'       => $actor->rol,
+            'proyectos'      => $proyectos,
+            'proyectoId'     => $proyectoId,
+            'proyectoActual' => $proyectoActual,
+            'fichas'         => $fichas,
+            'fichaId'        => $fichaId,
+            'fases'          => $fases,
+            'puedeGestionar' => $actor->gestiona(),
+            'puedeEliminar'  => $actor->esCoordinador(),
+            'estados_label'  => [
+                'planeada'     => ['Planeada', 'secondary'],
+                'en_ejecucion' => ['En ejecución', 'warning'],
+                'completada'   => ['Completada', 'success'],
             ],
-            'Fases de Proyecto · SENA'
-        );
+            'limites' => ['nombre' => FaseFormulario::MAX_NOMBRE, 'texto' => FaseFormulario::MAX_DESCRIPCION, 'numero' => FaseFormulario::MAX_NUMERO],
+        ], 'Fases del Proyecto · SENA');
+    }
+
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $proyectoId = $v->id('proyecto_id', 'El proyecto');
+        $datos = FaseFormulario::validar($v);
+        $vuelta = '/fases?proyecto_id=' . $proyectoId;
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->crear($proyectoId, $datos, Actor::actual()),
+            $vuelta, 'Fase registrada.', 'No se pudo registrar la fase');
+    }
+
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La fase');
+        $datos = FaseFormulario::validar($v);
+        $vuelta = $this->vuelta();
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->editar($id, $datos, Actor::actual()),
+            $vuelta, 'Fase actualizada.', 'No se pudo actualizar la fase');
+    }
+
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La fase');
+        $vuelta = $this->vuelta();
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->eliminar($id, Actor::actual()),
+            $vuelta, 'Fase eliminada.', 'No se pudo eliminar la fase');
+    }
+
+    /** Vuelve al mismo proyecto desde el que se envió el formulario. */
+    private function vuelta(): string {
+        $p = filter_var($_POST['proyecto_id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        return '/fases' . ($p ? '?proyecto_id=' . $p : '');
     }
 }

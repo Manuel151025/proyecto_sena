@@ -3,236 +3,90 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-use Core\Support\Enums;
-
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Formularios\ProgramaFormulario;
 use Core\Models\ProgramasModel;
-use PDO;
-use Exception;
+use Core\Services\ProgramasService;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Programas de formación.
+ *
+ *   GET  /programas                    coordinación e instructores (lectura)
+ *   POST /programas  action=crear      coordinación
+ *   POST /programas  action=editar     coordinación
+ *   POST /programas  action=eliminar   coordinación
+ *
+ * Antes crear y editar eran dos pantallas aparte (/programas/crear y
+ * /programas/editar) con la validación copiada en cada una, y el error de
+ * base de datos se mostraba con `$e->getMessage()`. Ahora es un modal,
+ * como en el resto de catálogos.
+ */
 class ProgramasController extends BaseController {
-    private PDO $db;
-    private ProgramasModel $programasModel;
+    private const RUTA = '/programas';
 
-    public function __construct(?PDO $db = null, ?ProgramasModel $programasModel = null) {
-        // Alcance base para todo el controlador; create()/edit() restringen a coordinador.
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-        $this->db = $db ?? Database::getConnection();
-        $this->programasModel = $programasModel ?? new ProgramasModel($this->db);
+    private ProgramasModel $modelo;
+    private ProgramasService $servicio;
+
+    public function __construct(?ProgramasModel $modelo = null, ?ProgramasService $servicio = null) {
+        $this->modelo = $modelo ?? new ProgramasModel();
+        $this->servicio = $servicio ?? new ProgramasService();
     }
 
-    /**
-     * Listado de programas.
-     */
     public function index(): void {
-        $mensaje = '';
-        $tipo_mensaje = '';
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
-            try {
-                $id = (int)$_POST['id'];
-                $this->programasModel->delete($id);
-                setFlashMessage('Programa eliminado correctamente', 'success');
-            } catch (Exception $e) {
-                setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-            }
-            $this->redirect(APP_URL . '/index.php/programas');
-        }
-
+        $errors = [];
+        $programas = [];
         try {
-            $programas = $this->programasModel->getAll();
-        } catch (Exception $e) {
-            $programas = [];
-            $mensaje = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar programas');
-            $tipo_mensaje = 'danger';
+            $programas = $this->modelo->getAll();
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los programas');
         }
 
-        $estados_label = [
-            'activo' => ['Activo', 'success'],
-            'inactivo' => ['Inactivo', 'warning'],
-            'archivado' => ['Archivado', 'info']
-        ];
-
-        $this->render(
-            BASE_PATH . 'modules/programas/views/index.view.php',
-            [
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'programas' => $programas,
-                'estados_label' => $estados_label
+        $this->render(BASE_PATH . 'modules/programas/views/index.view.php', [
+            'errors'        => $errors,
+            'programas'     => $programas,
+            'puedeEditar'   => $this->esRol(ROL_COORDINADOR),
+            'estados_label' => [
+                'activo'    => ['Activo', 'success'],
+                'inactivo'  => ['Inactivo', 'warning'],
+                'archivado' => ['Archivado', 'info'],
             ],
-            'Programas de Formación · SENA'
-        );
+            'limites' => [
+                'nombre' => ProgramaFormulario::MAX_NOMBRE,
+                'codigo' => ProgramaFormulario::MAX_CODIGO,
+                'texto'  => ProgramaFormulario::MAX_DESCRIPCION,
+                'horas'  => ProgramaFormulario::MAX_HORAS,
+            ],
+        ], 'Programas de Formación · SENA');
     }
 
-    /**
-     * Creación de un nuevo programa.
-     */
-    public function create(): void {
-        requireRole(ROL_COORDINADOR);
-
-        $errores = [];
-        $mensaje = '';
-        $tipo_mensaje = '';
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = trim($_POST['nombre'] ?? '');
-            $codigo = trim($_POST['codigo'] ?? '');
-            $descripcion = trim($_POST['descripcion'] ?? '');
-            $duracion_horas = (int)($_POST['duracion_horas'] ?? 0);
-            $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROGRAMA_ESTADO, 'activo');
-
-            if (empty($nombre)) {
-                $errores[] = 'El nombre es requerido';
-            } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
-                $errores[] = 'El nombre no puede exceder los 100 caracteres';
-            } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                $errores[] = 'El nombre contiene caracteres no permitidos';
-            }
-
-            if (empty($codigo)) {
-                $errores[] = 'El código es requerido';
-            } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
-                $errores[] = 'El código no puede exceder los 20 caracteres';
-            } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
-                $errores[] = 'El código solo puede contener letras, números y guiones';
-            }
-
-            if ($duracion_horas <= 0 || $duracion_horas > 99999) {
-                $errores[] = 'La duración debe estar entre 1 y 99999 horas';
-            }
-
-            if (mb_strlen($descripcion, 'UTF-8') > 1000) {
-                $errores[] = 'La descripción no puede exceder los 1000 caracteres';
-            }
-            $descripcion = strip_tags($descripcion);
-
-            if (!in_array($estado, ['activo', 'inactivo', 'archivado'])) {
-                $errores[] = 'Estado inválido';
-            }
-
-            if (empty($errores)) {
-                try {
-                    $this->programasModel->create([
-                        'nombre' => $nombre,
-                        'codigo' => $codigo,
-                        'descripcion' => $descripcion,
-                        'duracion_horas' => $duracion_horas,
-                        'estado' => $estado
-                    ]);
-                    setFlashMessage('Programa creado correctamente', 'success');
-                    $this->redirect(APP_URL . '/index.php/programas');
-                } catch (Exception $e) {
-                    $errores[] = $e->getMessage();
-                }
-            }
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/programas/views/crear.view.php',
-            [
-                'esEdicion' => false,
-                'errores' => $errores,
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'valores' => $_POST
-            ],
-            'Crear Programa · SENA'
-        );
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $datos = ProgramaFormulario::validar($v);
+        $this->siHayErrores($v, self::RUTA);
+        $this->ejecutar(fn() => $this->servicio->crear($datos, Actor::actual()),
+            self::RUTA, 'Programa creado.', 'No se pudo crear el programa');
     }
 
-    /**
-     * Edición de un programa.
-     */
-    public function edit(): void {
-        requireRole(ROL_COORDINADOR);
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El programa');
+        $datos = ProgramaFormulario::validar($v);
+        $this->siHayErrores($v, self::RUTA);
+        $this->ejecutar(fn() => $this->servicio->editar($id, $datos, Actor::actual()),
+            self::RUTA, 'Programa actualizado.', 'No se pudo actualizar el programa');
+    }
 
-        $id = (int)($_GET['id'] ?? 0);
-        $errores = [];
-        $mensaje = '';
-        $tipo_mensaje = '';
-        $programa = null;
-
-        if ($id > 0) {
-            try {
-                $programa = $this->programasModel->findById($id);
-                if (!$programa) {
-                    die('Programa no encontrado');
-                }
-            } catch (Exception $e) {
-                die('Error al cargar programa');
-            }
-        } else {
-            die('ID de programa no válido');
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = trim($_POST['nombre'] ?? '');
-            $codigo = trim($_POST['codigo'] ?? '');
-            $descripcion = trim($_POST['descripcion'] ?? '');
-            $duracion_horas = (int)($_POST['duracion_horas'] ?? 0);
-            $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROGRAMA_ESTADO, 'activo');
-
-            if (empty($nombre)) {
-                $errores[] = 'El nombre es requerido';
-            } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
-                $errores[] = 'El nombre no puede exceder los 100 caracteres';
-            } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                $errores[] = 'El nombre contiene caracteres no permitidos';
-            }
-
-            if (empty($codigo)) {
-                $errores[] = 'El código es requerido';
-            } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
-                $errores[] = 'El código no puede exceder los 20 caracteres';
-            } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
-                $errores[] = 'El código solo puede contener letras, números y guiones';
-            }
-
-            if ($duracion_horas <= 0 || $duracion_horas > 99999) {
-                $errores[] = 'La duración debe estar entre 1 y 99999 horas';
-            }
-
-            if (mb_strlen($descripcion, 'UTF-8') > 1000) {
-                $errores[] = 'La descripción no puede exceder los 1000 caracteres';
-            }
-            $descripcion = strip_tags($descripcion);
-
-            if (!in_array($estado, ['activo', 'inactivo', 'archivado'])) {
-                $errores[] = 'Estado inválido';
-            }
-
-            if (empty($errores)) {
-                try {
-                    $data = [
-                        'nombre' => $nombre,
-                        'codigo' => $codigo,
-                        'descripcion' => $descripcion,
-                        'duracion_horas' => $duracion_horas,
-                        'estado' => $estado
-                    ];
-                    $this->programasModel->update($id, $data);
-                    setFlashMessage('Programa actualizado correctamente', 'success');
-                    $this->redirect(APP_URL . '/index.php/programas');
-                } catch (Exception $e) {
-                    $errores[] = $e->getMessage();
-                }
-            }
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/programas/views/crear.view.php',
-            [
-                'esEdicion' => true,
-                'errores' => $errores,
-                'mensaje' => $mensaje,
-                'tipo_mensaje' => $tipo_mensaje,
-                'valores' => $programa
-            ],
-            'Editar Programa · SENA'
-        );
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El programa');
+        $this->siHayErrores($v, self::RUTA);
+        $this->ejecutar(fn() => $this->servicio->eliminar($id, Actor::actual()),
+            self::RUTA, 'Programa eliminado.', 'No se pudo eliminar el programa');
     }
 }

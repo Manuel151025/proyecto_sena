@@ -109,6 +109,65 @@ final class Validador {
     }
 
     /**
+     * Nombres de entidades (programas, proyectos, fases, actividades...):
+     * letras de cualquier idioma, números, espacios y la puntuación que
+     * aparece en los nombres reales del SENA ("Fase 2: Análisis (ADSO)").
+     * Excluye `<` y `>`, y todo carácter de control.
+     */
+    public const PATRON_NOMBRE = '/^[\p{L}\p{M}\p{N}\s\-_.,()\/:;#°\'"&+]+$/u';
+
+    /** Nombres de persona: letras, espacios, apóstrofo, punto y guion. */
+    public const PATRON_PERSONA = '/^[\p{L}\p{M}\s\'.\-]+$/u';
+
+    /** Códigos institucionales: letras, números, guion, punto y guion bajo. */
+    public const PATRON_CODIGO = '/^[A-Z0-9][A-Z0-9\-_.]*$/';
+
+    /**
+     * Texto que además debe ajustarse a un patrón (lista blanca).
+     *
+     * @param string $descripcion Qué se admite, para el mensaje de error
+     *        ("solo letras y espacios").
+     */
+    public function patron(string $campo, string $etiqueta, string $regex, string $descripcion,
+                           int $min = 0, int $max = 255, bool $obligatorio = true): string {
+        $valor = $this->texto($campo, $etiqueta, $min, $max, $obligatorio);
+        if ($valor !== '' && !preg_match($regex, $valor)) {
+            $this->error("$etiqueta solo admite $descripcion.");
+            return '';
+        }
+        return $valor;
+    }
+
+    /** Nombre de una entidad del dominio (ver PATRON_NOMBRE). */
+    public function nombre(string $campo, string $etiqueta, int $min = 3, int $max = 150, bool $obligatorio = true): string {
+        return $this->patron($campo, $etiqueta, self::PATRON_NOMBRE,
+            'letras, números, espacios y signos de puntuación comunes', $min, $max, $obligatorio);
+    }
+
+    /** Código institucional, normalizado a mayúsculas (ver PATRON_CODIGO). */
+    public function codigo(string $campo, string $etiqueta, int $min = 2, int $max = 30, bool $obligatorio = true): string {
+        $bruto = $this->bruto($campo);
+        if (is_string($bruto)) {
+            $this->datos[$campo] = mb_strtoupper(trim($bruto), 'UTF-8');
+        }
+        return $this->patron($campo, $etiqueta, self::PATRON_CODIGO,
+            'letras, números, guion, punto y guion bajo', $min, $max, $obligatorio);
+    }
+
+    /** Color hexadecimal #RRGGBB (avatares, eventos). */
+    public function colorHex(string $campo, string $etiqueta, string $porDefecto): string {
+        $v = trim((string)($this->bruto($campo) ?? ''));
+        if ($v === '') {
+            return $porDefecto;
+        }
+        if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $v)) {
+            $this->error("$etiqueta no es un color válido.");
+            return $porDefecto;
+        }
+        return strtoupper($v);
+    }
+
+    /**
      * Valor de una lista cerrada. Es la defensa de los enum de la base de
      * datos: lo que no esté en `$permitidos` no llega a la consulta.
      */
@@ -276,6 +335,17 @@ final class Validador {
      */
     public static function escaparLike(string $termino): string {
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $termino);
+    }
+
+    /**
+     * Término de búsqueda saneado pero SIN escapar para LIKE: para volver a
+     * pintarlo en la caja de búsqueda y para los modelos que escapan ellos
+     * mismos con escaparLike(). Nunca se mete directo en un LIKE.
+     */
+    public function busquedaCruda(string $campo = 'search', int $max = 100): string {
+        $termino = trim(strip_tags((string)($this->bruto($campo) ?? '')));
+        $termino = preg_replace('/[\x00-\x1F\x7F]/u', '', $termino) ?? '';
+        return mb_substr($termino, 0, $max, 'UTF-8');
     }
 
     /**

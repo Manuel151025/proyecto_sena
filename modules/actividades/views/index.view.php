@@ -1,436 +1,298 @@
 <?php
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+if ($puedeGestionar) {
+    $scriptsVista[] = 'modulos/actividades.js';
+}
+$fechaCorta = static fn(?string $f) => $f ? date('d/m/Y', strtotime($f)) : '—';
+$hayFiltros = $filtros['search'] !== '' || $filtros['ficha_id'] || $filtros['fase_id'] || $filtros['proyecto_id'] || $filtros['estado'] !== '';
 ?>
-﻿<div class="page-header">
+<div class="page-header">
   <div>
     <h1 class="mb-1">Actividades de Aprendizaje</h1>
     <p class="text-muted mb-0">
-      <?php if ($user_rol === ROL_APRENDIZ): ?>
-        Visualiza el cronograma de actividades y tareas correspondientes a tu ficha técnica.
-      <?php else: ?>
-        Planifica y haz seguimiento a las tareas asignadas a cada ficha del centro.
-      <?php endif; ?>
+      <?= $user_rol === ROL_APRENDIZ
+          ? 'Las actividades del proyecto formativo de tu ficha, por fase.'
+          : 'Planea y haz seguimiento a las actividades de cada fase del proyecto formativo.' ?>
     </p>
   </div>
-  <?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrear">
-    <i class="bi bi-plus-lg me-1"></i> Nueva Actividad
-  </button>
+  <?php if ($puedeGestionar && !empty($fichas)): ?>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrear">
+      <i class="bi bi-plus-lg me-1"></i>Nueva actividad
+    </button>
+  </div>
   <?php endif; ?>
 </div>
 
-<?php if (!empty($successMessage)): ?>
-<div class="alert alert-success alert-dismissible fade show border-0 glass-card text-success" role="alert">
-  <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($successMessage) ?>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<?php endif; ?>
+<?php foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach; ?>
 
-<?php if (!empty($errors)): ?>
-<div class="alert alert-danger alert-dismissible fade show border-0 glass-card text-danger" role="alert">
-  <i class="bi bi-exclamation-triangle-fill me-2"></i>
-  <ul class="mb-0 ps-3 d-inline-block">
-    <?php foreach ($errors as $err): ?>
-      <li><?= htmlspecialchars($err) ?></li>
-    <?php endforeach; ?>
-  </ul>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<?php endif; ?>
-
-<!-- Barra de filtros (Solo para coordinadores/instructores) -->
-<?php if ($user_rol !== ROL_APRENDIZ): ?>
 <div class="card glass-card mb-4 border-0">
   <div class="card-body">
     <form method="GET" class="row g-3 align-items-end">
+      <?php if ($filtros['fase_id']): ?><input type="hidden" name="fase_id" value="<?= (int)$filtros['fase_id'] ?>"><?php endif; ?>
+      <?php if ($filtros['proyecto_id']): ?><input type="hidden" name="proyecto_id" value="<?= (int)$filtros['proyecto_id'] ?>"><?php endif; ?>
       <div class="col-md-4">
-        <label class="form-label text-muted small">Buscar Actividad</label>
+        <label class="form-label text-muted small" for="f_search">Buscar</label>
         <div class="input-group">
-          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre de tarea..." value="<?= htmlspecialchars($search) ?>">
+          <span class="input-group-text"><i class="bi bi-search text-muted"></i></span>
+          <input type="search" name="search" id="f_search" class="form-control" maxlength="100"
+                 placeholder="Nombre o descripción..." value="<?= e($filtros['search']) ?>">
         </div>
       </div>
+      <?php if (count($fichas) > 1): ?>
       <div class="col-md-3">
-        <label class="form-label text-muted small">Filtrar por Ficha</label>
-        <select name="ficha_id" class="form-select"
-                data-picker
-                data-picker-label="Filtrar por ficha"
-                data-picker-placeholder="Número de ficha...">
-          <option value="0">Todas las fichas</option>
+        <label class="form-label text-muted small" for="f_ficha">Ficha</label>
+        <select name="ficha_id" id="f_ficha" class="form-select" data-picker data-picker-label="Filtrar por ficha">
+          <option value="0">Todas</option>
           <?php foreach ($fichas as $f): ?>
-            <option value="<?= $f['id'] ?>" <?= $filter_ficha === (int)$f['id'] ? 'selected' : '' ?>
-                    data-search="<?= htmlspecialchars($f['numero_ficha']) ?>">
-              Ficha #<?= htmlspecialchars($f['numero_ficha']) ?>
-            </option>
+            <option value="<?= (int)$f['id'] ?>" <?= $filtros['ficha_id'] === (int)$f['id'] ? 'selected' : '' ?>>Ficha <?= e($f['numero_ficha']) ?></option>
           <?php endforeach; ?>
         </select>
       </div>
+      <?php endif; ?>
       <div class="col-md-3">
-        <label class="form-label text-muted small">Estado de Actividad</label>
-        <select name="estado" class="form-select"
-                data-picker
-                data-picker-label="Estado de la actividad"
-                data-picker-placeholder="Todos">
+        <label class="form-label text-muted small" for="f_estado">Estado</label>
+        <select name="estado" id="f_estado" class="form-select" data-picker data-picker-label="Estado de la actividad">
           <option value="">Todos</option>
-          <option value="pendiente" <?= $filter_estado === 'pendiente' ? 'selected' : '' ?>>Pendiente</option>
-          <option value="en_progreso" <?= $filter_estado === 'en_progreso' ? 'selected' : '' ?>>En Progreso</option>
-          <option value="completada" <?= $filter_estado === 'completada' ? 'selected' : '' ?>>Completada</option>
-          <option value="cancelada" <?= $filter_estado === 'cancelada' ? 'selected' : '' ?>>Cancelada</option>
+          <?php foreach ($estados_label as $valor => [$texto]): ?>
+            <option value="<?= e($valor) ?>" <?= $filtros['estado'] === $valor ? 'selected' : '' ?>><?= e($texto) ?></option>
+          <?php endforeach; ?>
         </select>
       </div>
-      <div class="col-md-2 d-grid">
-        <button type="submit" class="btn btn-soft">Filtrar</button>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-soft flex-grow-1">Filtrar</button>
+        <?php if ($hayFiltros): ?>
+          <a href="<?= e(APP_URL . '/index.php/actividades') ?>" class="btn btn-soft" aria-label="Quitar filtros"><i class="bi bi-x-lg"></i></a>
+        <?php endif; ?>
       </div>
     </form>
   </div>
 </div>
-<?php endif; ?>
 
-<!-- Listado de Actividades -->
 <div class="row g-3">
-  <?php foreach ($actividades as $act): ?>
-  <div class="col-md-6 col-lg-4">
-    <div class="card glass-card h-100 border-0 shadow-sm">
+  <?php foreach ($actividades as $act):
+      [$estTxt, $estCls] = $estados_label[$act['estado']] ?? [$act['estado'], 'secondary'];
+      $pct = (float)$act['cumplimiento_porcentaje'];
+  ?>
+  <div class="col-md-6 col-xl-4">
+    <article class="card glass-card h-100 border-0 shadow-sm">
       <div class="card-body d-flex flex-column">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <span class="badge bg-soft primary text-uppercase-visual">Ficha #<?= htmlspecialchars($act['numero_ficha']) ?></span>
-          <?php $el = $estados_label[$act['estado']] ?? ['Desconocido', 'secondary']; ?>
-          <span class="badge-soft <?= $el[1] ?>">
-            <?= $el[0] ?>
-          </span>
+        <div class="d-flex justify-content-between align-items-start mb-2 gap-2 flex-wrap">
+          <div class="d-flex gap-1 flex-wrap">
+            <span class="badge bg-soft primary">Ficha <?= e($act['numero_ficha']) ?></span>
+            <?php if ($act['fase_nombre']): ?>
+              <span class="badge bg-soft info">Fase <?= (int)$act['numero_fase'] ?> · <?= e($act['fase_nombre']) ?></span>
+            <?php endif; ?>
+          </div>
+          <span class="badge-soft <?= e($estCls) ?>"><?= e($estTxt) ?></span>
         </div>
-        <h5 class="card-title fw-bold text-dark mb-1"><?= htmlspecialchars($act['nombre']) ?></h5>
-        <small class="text-muted d-block font-monospace mb-2 text-uppercase-visual" style="font-size:0.75rem;">
-          <i class="bi bi-diagram-3 me-1"></i><?= htmlspecialchars($act['comp_codigo'] ?: 'General') ?>
-        </small>
-        <p class="card-text text-muted small flex-grow-1">
-          <?= htmlspecialchars($act['descripcion'] ?: 'Sin descripción provista para esta actividad académica.') ?>
-        </p>
-        
-        <div class="bg-light-soft p-2 rounded mb-3" style="background: var(--surface-2); font-size: 0.8rem;">
-          <div class="d-flex justify-content-between mb-1">
-            <span class="text-muted">Inicio:</span>
-            <span class="fw-semibold text-dark"><?= $act['fecha_inicio'] ? date('d/m/Y', strtotime($act['fecha_inicio'])) : 'N/A' ?></span>
+        <h2 class="h6 fw-bold mb-1"><?= e($act['nombre']) ?></h2>
+        <?php if ($act['comp_codigo']): ?>
+          <small class="text-muted d-block font-monospace mb-2 texto-recortado-2" title="<?= e($act['comp_nombre']) ?>">
+            <i class="bi bi-diagram-3 me-1"></i><?= e($act['comp_codigo']) ?> · <?= e($act['comp_nombre']) ?>
+          </small>
+        <?php endif; ?>
+        <p class="text-muted small flex-grow-1"><?= e($act['descripcion'] ?: 'Sin descripción.') ?></p>
+
+        <div class="panel-cifras mb-3">
+          <div class="d-flex justify-content-between mb-1"><span class="text-muted">Inicio</span><span class="fw-semibold"><?= e($fechaCorta($act['fecha_inicio'])) ?></span></div>
+          <div class="d-flex justify-content-between mb-1"><span class="text-muted">Límite</span>
+            <span class="fw-semibold <?= $act['vencida'] ? 'text-danger' : '' ?>"><?= e($fechaCorta($act['fecha_fin'])) ?><?= $act['vencida'] ? ' · vencida' : '' ?></span></div>
+          <div class="d-flex justify-content-between mb-2"><span class="text-muted">Responsable</span><span class="fw-semibold text-end"><?= e($act['responsable_nombre'] ?: 'Sin asignar') ?></span></div>
+          <div class="progress barra-avance" role="progressbar" aria-label="Avance de la actividad"
+               aria-valuenow="<?= (int)round($pct) ?>" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar bg-<?= claseAvance($pct) ?>" style="width: <?= (int)round($pct) ?>%"></div>
           </div>
-          <div class="d-flex justify-content-between mb-1">
-            <span class="text-muted">Límite:</span>
-            <span class="fw-semibold text-danger"><?= $act['fecha_fin'] ? date('d/m/Y', strtotime($act['fecha_fin'])) : 'N/A' ?></span>
-          </div>
-          <div class="d-flex justify-content-between">
-            <span class="text-muted">Instructor:</span>
-            <span class="fw-semibold text-dark"><?= htmlspecialchars($act['responsable_nombre'] ?: 'No asignado') ?></span>
-          </div>
+          <div class="text-end fw-bold mt-1 small"><?= (int)round($pct) ?>%</div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="small fw-bold">Avance: <?= (int)$act['cumplimiento_porcentaje'] ?>%</div>
-          <?php if ($user_rol === ROL_APRENDIZ && $act['estado'] !== 'completada'): ?>
-            <a href="<?= MODULES_PATH ?>/evidencias/" class="btn btn-sm btn-primary">
-              <i class="bi bi-upload me-1"></i>Enviar Evidencia
-            </a>
-          <?php elseif (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
-            <div class="d-flex gap-1">
-              <button class="btn btn-sm btn-soft"
-                onclick="abrirModalEditarActividad(
-                  <?= (int)$act['id'] ?>, <?= (int)$act['ficha_id'] ?>, <?= (int)($act['competencia_id'] ?? 0) ?>,
-                  <?= htmlspecialchars(json_encode($act['nombre']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($act['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
-                  <?= htmlspecialchars(json_encode($act['fecha_inicio'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($act['fecha_fin'] ?? ''), ENT_QUOTES, 'UTF-8') ?>,
-                  <?= (int)($act['responsable_id'] ?? 0) ?>, <?= htmlspecialchars(json_encode($act['estado']), ENT_QUOTES, 'UTF-8') ?>,
-                  <?= (float)$act['cumplimiento_porcentaje'] ?>)">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <form method="POST" class="d-inline"
-                    onsubmit="return confirm('¿Eliminar esta actividad?')">
-                <input type="hidden" name="action" value="eliminar">
-                <input type="hidden" name="id" value="<?= $act['id'] ?>">
-                <button type="submit" class="btn btn-sm btn-soft text-danger">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </form>
-            </div>
-          <?php endif; ?>
-        </div>
+        <?php if ($user_rol === ROL_APRENDIZ && !in_array($act['estado'], ['completada', 'cancelada'], true)): ?>
+          <a href="<?= e(APP_URL . '/index.php/evidencias') ?>" class="btn btn-sm btn-primary"><i class="bi bi-upload me-1"></i>Enviar evidencia</a>
+        <?php elseif ($puedeGestionar): ?>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-sm btn-soft flex-grow-1" data-modal="#modalAvance"
+                    data-valores="<?= datosJson(['id' => (int)$act['id'], 'estado' => $act['estado'], 'cumplimiento_porcentaje' => $pct, 'titulo_actividad' => $act['nombre']]) ?>">
+              <i class="bi bi-graph-up-arrow me-1"></i>Avance
+            </button>
+            <button type="button" class="btn btn-sm btn-soft" aria-label="Editar actividad" data-modal="#modalEditar"
+                    data-valores="<?= datosJson([
+                        'id' => (int)$act['id'], 'ficha_id' => (int)$act['ficha_id'], 'fase_id' => (int)($act['fase_id'] ?? 0),
+                        'competencia_id' => (int)($act['competencia_id'] ?? 0), 'nombre' => $act['nombre'],
+                        'descripcion' => $act['descripcion'] ?? '', 'fecha_inicio' => $act['fecha_inicio'] ?? '',
+                        'fecha_fin' => $act['fecha_fin'] ?? '', 'responsable_id' => (int)($act['responsable_id'] ?? 0),
+                        'estado' => $act['estado'], 'cumplimiento_porcentaje' => $pct,
+                    ]) ?>">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <form method="POST" class="d-inline" data-confirmar="<?= e('¿Eliminar la actividad «' . $act['nombre'] . '»?') ?>">
+              <?= csrfField() ?>
+              <input type="hidden" name="action" value="eliminar">
+              <input type="hidden" name="id" value="<?= (int)$act['id'] ?>">
+              <button type="submit" class="btn btn-sm btn-soft text-danger" aria-label="Eliminar actividad"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        <?php endif; ?>
       </div>
-    </div>
+    </article>
   </div>
   <?php endforeach; ?>
 
   <?php if (empty($actividades)): ?>
-  <div class="col-12 text-center py-5 text-muted">
-    <i class="bi bi-check2-square d-block mb-2" style="font-size:3rem; opacity:0.3;"></i>
-    No hay actividades registradas para mostrar.
+  <div class="col-12 estado-vacio">
+    <i class="bi bi-check2-square"></i>
+    <?= $hayFiltros ? 'Ninguna actividad coincide con los filtros.' : 'No hay actividades registradas todavía.' ?>
   </div>
   <?php endif; ?>
 </div>
 
-<!-- Modal Editar Actividad -->
-<?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
-<div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+<?php $paginador = $paginacion; $paginacionEtiqueta = 'actividades'; require BASE_PATH . 'components/paginacion.php'; ?>
+
+<?php if ($puedeGestionar): ?>
+<!-- Catálogos para los selectores dependientes (ficha → fases y competencias).
+     Es JSON, no código: el navegador no lo ejecuta y la CSP no lo bloquea. -->
+<script type="application/json" id="datosActividades"><?= jsonParaScript([
+    'fichas' => array_map(static fn($f) => ['id' => (int)$f['id'], 'programa' => (int)$f['programa_id'], 'proyecto' => (int)$f['proyecto_id']], $fichas),
+    'fases' => array_map(static fn($f) => ['id' => (int)$f['id'], 'proyecto' => (int)$f['proyecto_id'], 'texto' => 'Fase ' . $f['numero_fase'] . ' · ' . $f['nombre']], $fases),
+    'competencias' => array_map(static fn($c) => ['id' => (int)$c['id'], 'programa' => (int)$c['programa_id'], 'texto' => $c['codigo'] . ' — ' . $c['nombre']], $competencias),
+]) ?></script>
+
+<?php foreach (['Crear' => 'crear', 'Editar' => 'editar'] as $sufijo => $accion): ?>
+<div class="modal fade" id="modal<?= $sufijo ?>" tabindex="-1" aria-labelledby="titulo<?= $sufijo ?>" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square"></i>Editar Actividad</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form method="POST">
-        <input type="hidden" name="action" value="editar">
-        <input type="hidden" name="id" id="edit_act_id">
+      <form method="POST" data-form-actividad>
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="<?= $accion ?>">
+        <?php if ($accion === 'editar'): ?><input type="hidden" name="id"><?php endif; ?>
+        <div class="modal-header">
+          <h5 class="modal-title" id="titulo<?= $sufijo ?>">
+            <i class="bi <?= $accion === 'crear' ? 'bi-check2-square' : 'bi-pencil-square' ?>"></i>
+            <?= $accion === 'crear' ? 'Nueva actividad de aprendizaje' : 'Editar actividad' ?>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
         <div class="modal-body">
           <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Ficha Asociada</label>
-              <select name="ficha_id" id="edit_act_ficha" class="form-select" required
-                      data-picker
-                      data-picker-label="Seleccionar ficha"
-                      data-picker-placeholder="Número de ficha...">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold" for="<?= $accion ?>_ficha">Ficha <span class="text-danger">*</span></label>
+              <select name="ficha_id" id="<?= $accion ?>_ficha" class="form-select" required data-rol="ficha"
+                      data-picker data-picker-label="Seleccionar ficha" data-picker-placeholder="Número de ficha...">
+                <option value="" disabled selected>Seleccione…</option>
                 <?php foreach ($fichas as $f): ?>
-                  <option value="<?= $f['id'] ?>" data-programa-id="<?= $f['programa_id'] ?>">Ficha #<?= htmlspecialchars($f['numero_ficha']) ?></option>
+                  <option value="<?= (int)$f['id'] ?>" <?= $filtros['ficha_id'] === (int)$f['id'] && $accion === 'crear' ? 'selected' : '' ?>>Ficha <?= e($f['numero_ficha']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Competencia</label>
-              <select name="competencia_id" id="edit_act_competencia" class="form-select" required
-                      data-picker
-                      data-picker-label="Seleccionar competencia"
-                      data-picker-placeholder="Código o nombre de la competencia...">
-                <?php foreach ($competencias as $c): ?>
-                  <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?></option>
-                <?php endforeach; ?>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold" for="<?= $accion ?>_fase">Fase del proyecto</label>
+              <select name="fase_id" id="<?= $accion ?>_fase" class="form-select" data-rol="fase"
+                      data-picker data-picker-label="Fase del proyecto" data-picker-placeholder="Elija primero la ficha">
+                <option value="">Elija primero la ficha</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold" for="<?= $accion ?>_competencia">Competencia</label>
+              <select name="competencia_id" id="<?= $accion ?>_competencia" class="form-select" data-rol="competencia"
+                      data-picker data-picker-label="Competencia" data-picker-placeholder="Código o nombre...">
+                <option value="">Sin competencia específica</option>
               </select>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Título / Nombre</label>
-            <input type="text" name="nombre" id="edit_act_nombre" class="form-control" required>
+            <label class="form-label small fw-semibold" for="<?= $accion ?>_nombre">Nombre <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" id="<?= $accion ?>_nombre" class="form-control" required
+                   minlength="3" maxlength="<?= (int)$limites['nombre'] ?>" data-filtro="nombre" placeholder="Ej.: Levantamiento de requisitos con el cliente">
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Descripción</label>
-            <textarea name="descripcion" id="edit_act_descripcion" class="form-control" rows="3"></textarea>
-          </div>
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Fecha Inicio</label>
-              <input type="date" name="fecha_inicio" id="edit_act_inicio" class="form-control">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Fecha Límite</label>
-              <input type="date" name="fecha_fin" id="edit_act_fin" class="form-control">
-            </div>
+            <label class="form-label small fw-semibold" for="<?= $accion ?>_descripcion">Descripción del entregable</label>
+            <textarea name="descripcion" id="<?= $accion ?>_descripcion" class="form-control" rows="3"
+                      maxlength="<?= (int)$limites['texto'] ?>" data-filtro="sin-html"></textarea>
           </div>
           <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Instructor</label>
-              <select name="responsable_id" id="edit_act_responsable" class="form-select" required
-                      data-picker
-                      data-picker-label="Seleccionar instructor responsable"
-                      data-picker-placeholder="Nombre del instructor...">
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label small fw-semibold" for="<?= $accion ?>_inicio">Inicio</label>
+              <input type="date" name="fecha_inicio" id="<?= $accion ?>_inicio" class="form-control" min="2000-01-01" max="2100-12-31">
+            </div>
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label small fw-semibold" for="<?= $accion ?>_fin">Fecha límite</label>
+              <input type="date" name="fecha_fin" id="<?= $accion ?>_fin" class="form-control" min="2000-01-01" max="2100-12-31">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="<?= $accion ?>_responsable">Instructor responsable <span class="text-danger">*</span></label>
+              <select name="responsable_id" id="<?= $accion ?>_responsable" class="form-select" required
+                      data-picker data-picker-label="Instructor responsable" data-picker-placeholder="Nombre...">
                 <?php foreach ($instructores as $inst): ?>
-                  <option value="<?= $inst['id'] ?>"><?= htmlspecialchars($inst['nombre']) ?></option>
+                  <option value="<?= (int)$inst['id'] ?>" <?= (int)$inst['id'] === $user_id ? 'selected' : '' ?>><?= e($inst['nombre']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Estado</label>
-              <select name="estado" id="edit_act_estado" class="form-select"
-                      data-picker
-                      data-picker-label="Estado de la actividad"
-                      data-picker-placeholder="Seleccionar estado...">
-                <option value="pendiente">Pendiente</option>
-                <option value="en_progreso">En Progreso</option>
-                <option value="completada">Completada</option>
-                <option value="cancelada">Cancelada</option>
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="<?= $accion ?>_estado">Estado</label>
+              <select name="estado" id="<?= $accion ?>_estado" class="form-select" data-picker data-picker-label="Estado">
+                <?php foreach ($estados_label as $valor => [$texto]): ?>
+                  <?php if ($accion === 'crear' && in_array($valor, ['completada', 'cancelada'], true)) continue; ?>
+                  <option value="<?= e($valor) ?>"><?= e($texto) ?></option>
+                <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label text-muted small fw-semibold">Avance (%)</label>
-              <input type="number" name="cumplimiento_porcentaje" id="edit_act_cumplimiento" class="form-control" min="0" max="100">
+            <?php if ($accion === 'editar'): ?>
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="editar_avance">Avance (%)</label>
+              <input type="number" name="cumplimiento_porcentaje" id="editar_avance" class="form-control" min="0" max="100" step="1" inputmode="numeric">
             </div>
+            <?php endif; ?>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
         </div>
       </form>
     </div>
   </div>
 </div>
-<script>
-const todasCompetencias = <?= json_encode(array_map(function($c) {
-    return [
-        'id' => (int)$c['id'],
-        'codigo' => $c['codigo'],
-        'nombre' => $c['nombre'],
-        'programa_id' => (int)$c['programa_id']
-    ];
-}, $competencias)) ?>;
+<?php endforeach; ?>
 
-function filtrarCompetencias(fichaSelectId, competenciaSelectId) {
-    const fichaSelect = document.getElementById(fichaSelectId);
-    const competenciaSelect = document.getElementById(competenciaSelectId);
-    if (!fichaSelect || !competenciaSelect) return;
-
-    const selectedOption = fichaSelect.options[fichaSelect.selectedIndex];
-    const programaId = selectedOption ? parseInt(selectedOption.dataset.programaId || 0, 10) : 0;
-
-    const prevValue = competenciaSelect.value;
-    competenciaSelect.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
-
-    if (programaId > 0) {
-        todasCompetencias.forEach(c => {
-            if (c.programa_id === programaId) {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.codigo + ' — ' + c.nombre;
-                opt.dataset.search = c.codigo + ' ' + c.nombre;
-                if (String(c.id) === String(prevValue)) {
-                    opt.selected = true;
-                }
-                competenciaSelect.appendChild(opt);
-            }
-        });
-    }
-
-    // Si es un searchable-picker, notificar el cambio
-    competenciaSelect.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
-// Escuchar cambios en la selección de ficha del modal de creación
-document.getElementById('crear_act_ficha')?.addEventListener('change', function() {
-    filtrarCompetencias('crear_act_ficha', 'crear_act_competencia');
-});
-
-// Escuchar cambios en la selección de ficha del modal de edición
-document.getElementById('edit_act_ficha')?.addEventListener('change', function() {
-    filtrarCompetencias('edit_act_ficha', 'edit_act_competencia');
-});
-
-function abrirModalEditarActividad(id, fichaId, competenciaId, nombre, descripcion, fechaInicio, fechaFin, responsableId, estado, cumplimiento) {
-    document.getElementById('edit_act_id').value           = id;
-    document.getElementById('edit_act_ficha').value        = fichaId;
-    
-    // Filtrar competencias para la ficha seleccionada antes de setear el valor de la competencia
-    filtrarCompetencias('edit_act_ficha', 'edit_act_competencia');
-    
-    document.getElementById('edit_act_competencia').value  = competenciaId;
-    document.getElementById('edit_act_nombre').value       = nombre;
-    document.getElementById('edit_act_descripcion').value  = descripcion;
-    document.getElementById('edit_act_inicio').value       = fechaInicio;
-    document.getElementById('edit_act_fin').value          = fechaFin;
-    document.getElementById('edit_act_responsable').value  = responsableId;
-    document.getElementById('edit_act_estado').value       = estado;
-    document.getElementById('edit_act_cumplimiento').value = cumplimiento;
-    new bootstrap.Modal(document.getElementById('modalEditar')).show();
-}
-</script>
-<?php endif; ?>
-
-<!-- Modal Registrar Actividad -->
-<?php if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])): ?>
-<div class="modal fade" id="modalCrear" tabindex="-1" aria-labelledby="modalCrearLabel" aria-hidden="true">
+<div class="modal fade" id="modalAvance" tabindex="-1" aria-labelledby="tituloAvance" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalCrearLabel"><i class="bi bi-check2-square"></i>Nueva Actividad de Aprendizaje</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
       <form method="POST">
-        <input type="hidden" name="action" value="crear">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="avance">
+        <input type="hidden" name="id">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tituloAvance"><i class="bi bi-graph-up-arrow"></i>Registrar avance</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
         <div class="modal-body">
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Ficha Asociada</label>
-              <select name="ficha_id" id="crear_act_ficha" class="form-select" required
-                      data-picker
-                      data-picker-label="Seleccionar ficha"
-                      data-picker-placeholder="Número de ficha...">
-                <option value="" disabled selected>Seleccione Ficha...</option>
-                <?php foreach ($fichas as $f): ?>
-                  <option value="<?= $f['id'] ?>"
-                          data-search="<?= htmlspecialchars($f['numero_ficha']) ?>"
-                          data-programa-id="<?= $f['programa_id'] ?>">
-                    Ficha #<?= htmlspecialchars($f['numero_ficha']) ?>
-                  </option>
+          <p class="fw-semibold mb-3" data-campo="titulo_actividad"></p>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="avance_estado">Estado</label>
+              <select name="estado" id="avance_estado" class="form-select" data-picker data-picker-label="Estado">
+                <?php foreach ($estados_label as $valor => [$texto]): ?>
+                  <option value="<?= e($valor) ?>"><?= e($texto) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Competencia Relacionada</label>
-              <select name="competencia_id" id="crear_act_competencia" class="form-select" required
-                      data-picker
-                      data-picker-label="Seleccionar competencia"
-                      data-picker-placeholder="Código o nombre de la competencia...">
-                <option value="" disabled selected>Seleccione...</option>
-                <?php foreach ($competencias as $c): ?>
-                  <option value="<?= $c['id'] ?>"
-                          data-search="<?= htmlspecialchars($c['codigo'] . ' ' . $c['nombre']) ?>"
-                          data-programa-id="<?= $c['programa_id'] ?>">
-                    <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="avance_pct">Avance (%)</label>
+              <input type="number" name="cumplimiento_porcentaje" id="avance_pct" class="form-control" min="0" max="100" step="1" required inputmode="numeric">
             </div>
           </div>
-
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Título / Nombre de la Tarea</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej. Taller Práctico de CSS Grid" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Descripción del Entregable</label>
-            <textarea name="descripcion" class="form-control" rows="3" placeholder="Instrucciones, requerimientos técnicos, links..."></textarea>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Fecha Inicio</label>
-              <input type="date" name="fecha_inicio" class="form-control" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Fecha de Vencimiento</label>
-              <input type="date" name="fecha_fin" class="form-control" required>
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Instructor Responsable</label>
-              <select name="responsable_id" class="form-select" required
-                      data-picker
-                      data-picker-label="Seleccionar instructor responsable"
-                      data-picker-placeholder="Nombre del instructor...">
-                <option value="" disabled selected>Asignar a...</option>
-                <?php foreach ($instructores as $inst): ?>
-                  <option value="<?= $inst['id'] ?>" <?= $inst['id'] == $user_id ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($inst['nombre']) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Estado Inicial</label>
-              <select name="estado" class="form-select"
-                      data-picker
-                      data-picker-label="Estado inicial"
-                      data-picker-placeholder="Seleccionar estado...">
-                <option value="pendiente">Pendiente</option>
-                <option value="en_progreso">En Progreso</option>
-              </select>
-            </div>
-          </div>
+          <p class="text-muted small mt-2 mb-0">Una actividad completada queda al 100 % y una pendiente al 0 %.</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Crear Actividad</button>
+          <button type="submit" class="btn btn-primary">Guardar avance</button>
         </div>
       </form>
     </div>

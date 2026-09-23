@@ -3,194 +3,123 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-use Core\Support\Enums;
-
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Formularios\ActividadFormulario;
 use Core\Models\ActividadesModel;
-use PDO;
-use Exception;
+use Core\Models\FasesModel;
+use Core\Services\ActividadesService;
+use Core\Services\Paginator;
+use Core\Support\Actor;
+use Core\Support\Enums;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Actividades de aprendizaje del proyecto formativo.
+ *
+ *   GET  /actividades?ficha_id=&fase_id=&proyecto_id=&estado=&search=
+ *   POST /actividades  action=crear|editar|avance|eliminar   (gestión, en su alcance)
+ */
 class ActividadesController extends BaseController {
-    private PDO $db;
-    private ActividadesModel $actividadesModel;
+    private ActividadesModel $modelo;
+    private FasesModel $fases;
+    private ActividadesService $servicio;
 
-    public function __construct(?PDO $db = null, ?ActividadesModel $actividadesModel = null) {
-        requireAuth();
-        $this->db = $db ?? Database::getConnection();
-        $this->actividadesModel = $actividadesModel ?? new ActividadesModel($this->db);
+    public function __construct(?ActividadesModel $modelo = null, ?FasesModel $fases = null, ?ActividadesService $servicio = null) {
+        $this->modelo = $modelo ?? new ActividadesModel();
+        $this->fases = $fases ?? new FasesModel();
+        $this->servicio = $servicio ?? new ActividadesService();
     }
 
     public function index(): void {
+        $actor = Actor::actual();
+        $q = $this->consulta();
+        $filtros = [
+            'search'      => $q->busquedaCruda('search'),
+            'ficha_id'    => $this->idDeConsulta('ficha_id'),
+            'fase_id'     => $this->idDeConsulta('fase_id'),
+            'proyecto_id' => $this->idDeConsulta('proyecto_id'),
+            'estado'      => in_array($_GET['estado'] ?? '', Enums::ACTIVIDAD_ESTADO, true) ? $_GET['estado'] : '',
+        ];
+
         $errors = [];
-        $successMessage = '';
+        $actividades = $fichas = $fases = $competencias = $instructores = [];
+        $paginacion = null;
+        try {
+            $total = $this->modelo->contar($actor, $filtros);
+            $paginacion = Paginator::desdePeticion($total, 24);
+            $actividades = $this->modelo->listar($actor, $filtros, $paginacion->perPage(), $paginacion->offset());
 
-        $user_id = (int)getCurrentUser()['id'];
-        $user_rol = getCurrentRole();
-
-        $aprendiz_ficha_id = 0;
-        if ($user_rol === ROL_APRENDIZ) {
-            $aprendiz_ficha_id = $this->actividadesModel->getAprendizFichaId($user_id);
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            requireCsrf();
-            $action = $_POST['action'];
-
-            if ($action === 'crear') {
-                if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-                    $ficha_id = (int)($_POST['ficha_id'] ?? 0);
-                    $competencia_id = (int)($_POST['competencia_id'] ?? 0);
-                    $nombre = trim($_POST['nombre'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
-                    $fecha_fin = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
-                    $responsable_id = (int)($_POST['responsable_id'] ?? 0);
-                    $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::ACTIVIDAD_ESTADO, 'pendiente');
-
-                    if ($ficha_id <= 0) $errors[] = 'Debe seleccionar una ficha.';
-                    if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia.';
-                    if (empty($nombre)) $errors[] = 'El nombre de la actividad es obligatorio.';
-                    if ($responsable_id <= 0) $errors[] = 'Debe asignar un responsable.';
-
-                    // Validación de Scope para Instructores (Optimizado para PHP 8)
-                    if ($user_rol === ROL_INSTRUCTOR && $ficha_id > 0) {
-                        $fichasAsignadas = $this->actividadesModel->getFichas($user_rol, $user_id);
-                        
-                        // Extraemos solo los IDs de las fichas y validamos directamente
-                        $idsFichas = array_column($fichasAsignadas, 'id');
-                        
-                        if (!in_array((int)$ficha_id, $idsFichas)) {
-                            $errors[] = 'Acceso denegado: La ficha seleccionada no está asignada a su perfil.';
-                        }
-                    }
-
-                    if (empty($errors)) {
-                        try {
-                            $this->actividadesModel->create([
-                                'ficha_id' => $ficha_id,
-                                'competencia_id' => $competencia_id,
-                                'nombre' => $nombre,
-                                'descripcion' => $descripcion,
-                                'fecha_inicio' => $fecha_inicio,
-                                'fecha_fin' => $fecha_fin,
-                                'responsable_id' => $responsable_id,
-                                'estado' => $estado
-                            ], $user_id);
-                            setFlashMessage('Actividad académica registrada exitosamente.', 'success');
-                            $this->redirect($_SERVER['REQUEST_URI']);
-                        } catch (Exception $e) {
-                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-                        }
-                    }
-                } else {
-                    $errors[] = 'No tiene permisos para crear actividades.';
-                }
-            } elseif ($action === 'editar') {
-                if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-                    $errors[] = 'No tiene permisos para editar actividades.';
-                } else {
-                    $id = (int)($_POST['id'] ?? 0);
-                    $ficha_id = (int)($_POST['ficha_id'] ?? 0);
-                    $competencia_id = (int)($_POST['competencia_id'] ?? 0);
-                    $nombre = trim($_POST['nombre'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
-                    $fecha_inicio = (new Validador($_POST))->fecha('fecha_inicio', 'La fecha de inicio', false);
-                    $fecha_fin = (new Validador($_POST))->fecha('fecha_fin', 'La fecha de fin', false);
-                    $responsable_id = (int)($_POST['responsable_id'] ?? 0);
-                    $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::ACTIVIDAD_ESTADO, 'pendiente');
-                    $cumplimiento = (float)($_POST['cumplimiento_porcentaje'] ?? 0);
-
-                    if ($id <= 0) $errors[] = 'Actividad no válida.';
-                    if ($ficha_id <= 0) $errors[] = 'Debe seleccionar una ficha.';
-                    if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia.';
-                    if (empty($nombre)) $errors[] = 'El nombre de la actividad es obligatorio.';
-                    if ($responsable_id <= 0) $errors[] = 'Debe asignar un responsable.';
-
-                    if (empty($errors)) {
-                        try {
-                            $this->actividadesModel->update($id, [
-                                'ficha_id' => $ficha_id,
-                                'competencia_id' => $competencia_id,
-                                'nombre' => $nombre,
-                                'descripcion' => $descripcion,
-                                'fecha_inicio' => $fecha_inicio,
-                                'fecha_fin' => $fecha_fin,
-                                'responsable_id' => $responsable_id,
-                                'estado' => $estado,
-                                'cumplimiento_porcentaje' => $cumplimiento
-                            ], $user_id);
-                            setFlashMessage('Actividad actualizada exitosamente.', 'success');
-                            $this->redirect($_SERVER['REQUEST_URI']);
-                        } catch (Exception $e) {
-                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-                        }
-                    }
-                }
-            } elseif ($action === 'eliminar') {
-                if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-                    $errors[] = 'No tiene permisos para eliminar actividades.';
-                } else {
-                    $id = (int)($_POST['id'] ?? 0);
-                    if ($id <= 0) {
-                        $errors[] = 'Actividad no válida.';
-                    } else {
-                        try {
-                            $this->actividadesModel->delete($id, $user_id);
-                            setFlashMessage('Actividad eliminada exitosamente.', 'success');
-                            $this->redirect($_SERVER['REQUEST_URI']);
-                        } catch (Exception $e) {
-                            setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-                        }
-                    }
-                }
+            $fichas = $this->modelo->fichasDelActor($actor);
+            if ($actor->gestiona()) {
+                $proyectos = array_values(array_unique(array_filter(array_map(static fn($f) => (int)$f['proyecto_id'], $fichas))));
+                $programas = array_values(array_unique(array_map(static fn($f) => (int)$f['programa_id'], $fichas)));
+                $fases = $this->fases->opcionesDeProyectos($proyectos);
+                $competencias = $this->modelo->competenciasDeProgramas($programas);
+                $instructores = $this->modelo->instructoresActivos();
             }
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las actividades');
         }
 
-        $fichas = [];
-        $competencias = [];
-        $instructores = [];
-
-        if (in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-            $fichas = $this->actividadesModel->getFichas($user_rol, $user_id);
-            $competencias = $this->actividadesModel->getCompetencias();
-            $instructores = $this->actividadesModel->getInstructores();
-        }
-
-        $filters = [
-            'search' => trim($_GET['search'] ?? ''),
-            'ficha_id' => (int)($_GET['ficha_id'] ?? 0),
-            'estado' => $_GET['estado'] ?? ''
-        ];
-
-        $actividades = $this->actividadesModel->getActividadesList($user_rol, $user_id, $aprendiz_ficha_id, $filters);
-
-        $estados_label = [
-            'pendiente' => ['Pendiente', 'secondary'],
-            'en_progreso' => ['En Progreso', 'warning'],
-            'completada' => ['Completada', 'success'],
-            'cancelada' => ['Cancelada', 'danger']
-        ];
-
-        $this->render(
-            BASE_PATH . 'modules/actividades/views/index.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'actividades' => $actividades,
-                'fichas' => $fichas,
-                'competencias' => $competencias,
-                'instructores' => $instructores,
-                'user_rol' => $user_rol,
-                'user_id' => $user_id,
-                'estados_label' => $estados_label,
-                'search' => $filters['search'],
-                'filter_ficha' => $filters['ficha_id'],
-                'filter_estado' => $filters['estado']
+        $this->render(BASE_PATH . 'modules/actividades/views/index.view.php', [
+            'errors'        => $errors,
+            'user_rol'      => $actor->rol,
+            'user_id'       => $actor->id,
+            'puedeGestionar'=> $actor->gestiona(),
+            'actividades'   => $actividades,
+            'paginacion'    => $paginacion,
+            'fichas'        => $fichas,
+            'fases'         => $fases,
+            'competencias'  => $competencias,
+            'instructores'  => $instructores,
+            'filtros'       => $filtros,
+            'estados_label' => [
+                'pendiente'   => ['Pendiente', 'secondary'],
+                'en_progreso' => ['En progreso', 'warning'],
+                'completada'  => ['Completada', 'success'],
+                'cancelada'   => ['Cancelada', 'danger'],
             ],
-            'Actividades Académicas · SENA'
-        );
+            'limites' => ['nombre' => ActividadFormulario::MAX_NOMBRE, 'texto' => ActividadFormulario::MAX_DESCRIPCION],
+        ], 'Actividades · SENA');
+    }
+
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $d = ActividadFormulario::validar($v);
+        $vuelta = $this->rutaDeVuelta('/actividades');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->crear($d, Actor::actual()), $vuelta, 'Actividad registrada.', 'No se pudo registrar la actividad');
+    }
+
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La actividad');
+        $d = ActividadFormulario::validar($v, true);
+        $vuelta = $this->rutaDeVuelta('/actividades');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->editar($id, $d, Actor::actual()), $vuelta, 'Actividad actualizada.', 'No se pudo actualizar la actividad');
+    }
+
+    public function avance(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La actividad');
+        $d = ActividadFormulario::validarAvance($v);
+        $vuelta = $this->rutaDeVuelta('/actividades');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->actualizarAvance($id, $d['estado'], $d['cumplimiento_porcentaje'], Actor::actual()),
+            $vuelta, 'Avance registrado.', 'No se pudo registrar el avance');
+    }
+
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La actividad');
+        $vuelta = $this->rutaDeVuelta('/actividades');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->eliminar($id, Actor::actual()), $vuelta, 'Actividad eliminada.', 'No se pudo eliminar la actividad');
     }
 }

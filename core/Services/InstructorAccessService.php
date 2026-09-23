@@ -27,6 +27,53 @@ class InstructorAccessService {
     }
 
     /**
+     * Subconsulta con los ids de las fichas en las que un instructor tiene
+     * alguna autoridad: líder, asignación por competencia o seguimiento de
+     * alguno de sus aprendices. Espera TRES parámetros con el id del
+     * instructor.
+     *
+     * Había seis copias de esta lista, cada una con su criterio: la de
+     * actividades solo reconocía al líder (un instructor asignado a una
+     * competencia no podía programar actividades de la ficha), la de
+     * evaluaciones ignoraba el seguimiento de etapa práctica y las demás
+     * reconocían las tres vías. Un mismo instructor veía fichas distintas
+     * según la pantalla.
+     *
+     * Uso: "... WHERE f.id IN (" . InstructorAccessService::sqlFichasDelInstructor() . ")"
+     */
+    public static function sqlFichasDelInstructor(): string {
+        return "SELECT fi.id FROM fichas fi WHERE fi.instructor_id = ?
+                UNION SELECT asg.ficha_id FROM asignaciones asg WHERE asg.instructor_id = ?
+                UNION SELECT apx.ficha_id FROM aprendices apx
+                       WHERE apx.instructor_seguimiento_id = ? AND apx.ficha_id IS NOT NULL";
+    }
+
+    /** @return int[] ids de las fichas del instructor */
+    public function fichasDelInstructor(int $instructorId): array {
+        $stmt = $this->db->prepare(self::sqlFichasDelInstructor());
+        $stmt->execute([$instructorId, $instructorId, $instructorId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function tieneAccesoFicha(int $fichaId, int $instructorId): bool {
+        if ($fichaId <= 0) {
+            return false;
+        }
+        return in_array($fichaId, $this->fichasDelInstructor($instructorId), true);
+    }
+
+    /**
+     * ¿Puede el actor gestionar (escribir en) esta ficha? El coordinador,
+     * todas; el instructor, las suyas; el aprendiz, ninguna.
+     */
+    public function puedeGestionarFicha(\Core\Support\Actor $actor, int $fichaId): bool {
+        if ($actor->esCoordinador()) {
+            return $fichaId > 0;
+        }
+        return $actor->esInstructor() && $this->tieneAccesoFicha($fichaId, $actor->id);
+    }
+
+    /**
      * ¿El instructor tiene alguna relación con este aprendiz (ficha líder,
      * asignación por cualquier competencia, o seguimiento individual)?
      * Usado para acciones que no dependen de una competencia específica,

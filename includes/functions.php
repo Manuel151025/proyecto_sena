@@ -122,3 +122,50 @@ function inicializarEvaluacionesAprendiz(PDO $db, int $aprendizId, int $fichaId)
 
     return $resultado['creadas'];
 }
+
+/**
+ * Escapa un valor para imprimirlo en HTML (texto o atributo).
+ *
+ * `htmlspecialchars` a secas no escapa la comilla simple con los flags por
+ * defecto de PHP < 8.1 y devuelve '' ante UTF-8 inválido; aquí se fijan
+ * ENT_QUOTES y ENT_SUBSTITUTE para que el resultado no dependa de la versión.
+ */
+function e(mixed $valor): string {
+    return htmlspecialchars((string)($valor ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+/**
+ * JSON listo para un atributo data-* (`data-valores="<?= datosJson($x) ?>"`).
+ *
+ * Sustituye al patrón `onclick="abrir(<?= json_encode(...) ?>)"`, que
+ * mezclaba tres contextos de escape (HTML, atributo y JavaScript) y obligaba
+ * a la CSP a admitir código en línea. Los JSON_HEX_* impiden que un valor
+ * con comillas o `</script>` cierre el contexto.
+ */
+function datosJson(mixed $datos): string {
+    $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE);
+    return htmlspecialchars($json === false ? '{}' : $json, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * JSON para un bloque <script type="application/json">, que el navegador
+ * no ejecuta y la CSP no bloquea. JSON_HEX_TAG impide que un texto con
+ * `</script>` cierre el bloque.
+ */
+function jsonParaScript(mixed $datos): string {
+    $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE);
+    return $json === false ? 'null' : $json;
+}
+
+/** Atributo nonce de la CSP para los pocos <script> que siguen en línea. */
+function nonce(): string {
+    return e(Core\Support\Seguridad::nonce());
+}
+
+/** Clase de color del semáforo de avance (0-100). */
+function claseAvance(?float $pct): string {
+    if ($pct === null) {
+        return 'secondary';
+    }
+    return $pct >= 75 ? 'success' : ($pct >= 40 ? 'warning' : 'danger');
+}

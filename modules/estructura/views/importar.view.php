@@ -22,31 +22,8 @@ if (!defined('VISTA_PERMITIDA')) {
   </div>
 </div>
 
-<?php if ($error): ?>
-<div class="alert alert-flat danger mb-4 alert-dismissible fade show" role="alert">
-  <i class="bi bi-exclamation-triangle-fill me-2"></i>
-  <div><?= htmlspecialchars($error) ?></div>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<?php endif; ?>
-
-<?php if ($success): ?>
-<div class="alert alert-flat success mb-4 alert-dismissible fade show" role="alert">
-  <i class="bi bi-check-circle-fill me-2"></i>
-  <div><?= htmlspecialchars($success) ?></div>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<div class="card p-4 text-center border-0 shadow-sm mb-4">
-  <i class="bi bi-clipboard2-check text-success mb-3" style="font-size: 3.5rem;"></i>
-  <h4 class="fw-bold text-dark">Importación Completada</h4>
-  <p class="text-muted mb-3">La estructura curricular y el proyecto se cargaron en el sistema de manera exitosa.</p>
-  <div>
-    <a href="<?= APP_URL ?>/index.php/estructura" class="btn btn-primary px-4"><i class="bi bi-house-door me-2"></i>Ir al Dashboard</a>
-  </div>
-</div>
-<?php endif; ?>
-
-<?php if (!$success && !$preview_mode): ?>
+<?php if (!$preview_mode):
+    $scriptsVista[] = 'modulos/zona-archivos.js'; ?>
 <!-- FORMULARIO DE CARGA DE ARCHIVOS -->
 <div class="row">
   <div class="col-xl-8 mx-auto">
@@ -65,14 +42,14 @@ if (!defined('VISTA_PERMITIDA')) {
               <span class="text-muted small fw-normal">Opcional</span>
             </label>
             <p class="text-muted small mb-2">Este archivo contiene todas las competencias del programa, su duración y la denominación de los resultados de aprendizaje.</p>
-            <div class="upload-dropzone" id="dropzoneEstructura" onclick="document.getElementById('pdf_estructura').click()">
+            <div class="upload-dropzone" id="dropzoneEstructura" data-pulsar="#pdf_estructura" data-zona-archivo="#pdf_estructura" role="button" tabindex="0" aria-label="Elegir el PDF de estructura curricular">
               <i class="bi bi-file-earmark-arrow-up icon"></i>
               <span class="text">Arrastra aquí el archivo o haz clic para buscar</span>
               <span class="filename" id="file_estructura_name">No se ha seleccionado ningún archivo</span>
-              <input type="file" name="pdf_estructura" id="pdf_estructura" class="d-none" accept=".pdf" onchange="updateFilename('pdf_estructura', 'file_estructura_name')"
-                     data-import-preview data-import-preview-mode="meta" data-import-preview-target="#previewPdfEstructura">
+              <input type="file" name="pdf_estructura" id="pdf_estructura" class="d-none" accept=".pdf,application/pdf"
+                     data-nombre-en="#file_estructura_name" data-max-mb="<?= (int)$max_mb ?>">
             </div>
-            <div id="previewPdfEstructura"></div>
+            
           </div>
 
           <!-- Proyecto Formativo -->
@@ -82,18 +59,19 @@ if (!defined('VISTA_PERMITIDA')) {
               <span class="text-muted small fw-normal">Opcional</span>
             </label>
             <p class="text-muted small mb-2">Este archivo contiene la información del proyecto formativo, las fases asociadas (Análisis, Planeación, Ejecución, Evaluación) y los RAs vinculados a cada fase.</p>
-            <div class="upload-dropzone" id="dropzoneProyecto" onclick="document.getElementById('pdf_proyecto').click()">
+            <div class="upload-dropzone" id="dropzoneProyecto" data-pulsar="#pdf_proyecto" data-zona-archivo="#pdf_proyecto" role="button" tabindex="0" aria-label="Elegir el PDF de proyecto formativo">
               <i class="bi bi-kanban-fill icon"></i>
               <span class="text">Arrastra aquí el archivo o haz clic para buscar</span>
               <span class="filename" id="file_proyecto_name">No se ha seleccionado ningún archivo</span>
-              <input type="file" name="pdf_proyecto" id="pdf_proyecto" class="d-none" accept=".pdf" onchange="updateFilename('pdf_proyecto', 'file_proyecto_name')"
-                     data-import-preview data-import-preview-mode="meta" data-import-preview-target="#previewPdfProyecto">
+              <input type="file" name="pdf_proyecto" id="pdf_proyecto" class="d-none" accept=".pdf,application/pdf"
+                     data-nombre-en="#file_proyecto_name" data-max-mb="<?= (int)$max_mb ?>">
             </div>
-            <div id="previewPdfProyecto"></div>
+            
           </div>
 
           <div class="d-grid mt-4">
-            <button type="submit" class="btn btn-primary py-2.5 fw-bold"><i class="bi bi-cpu me-2"></i>Analizar y Previsualizar Documentos</button>
+            <button type="submit" class="btn btn-primary py-2.5 fw-bold"><i class="bi bi-cpu me-2"></i>Analizar y previsualizar documentos</button>
+            <p class="text-muted small text-center mt-2 mb-0">PDF de hasta <?= (int)$max_mb ?> MB. Nada se guarda hasta que confirmes en el paso siguiente.</p>
           </div>
         </form>
       </div>
@@ -101,98 +79,9 @@ if (!defined('VISTA_PERMITIDA')) {
   </div>
 </div>
 
-<style>
-.upload-dropzone {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-lg);
-  padding: 2.5rem 1.5rem;
-  text-align: center;
-  background: var(--bg);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-.upload-dropzone:hover {
-  border-color: var(--sena-primary);
-  background: var(--sena-primary-50);
-}
-.upload-dropzone .icon {
-  font-size: 2.5rem;
-  color: var(--text-soft);
-  transition: color 0.2s ease;
-}
-.upload-dropzone:hover .icon {
-  color: var(--sena-primary);
-}
-.upload-dropzone .text {
-  font-weight: 500;
-  color: var(--text-muted);
-}
-.upload-dropzone .filename {
-  font-size: 0.8rem;
-  color: var(--text-soft);
-  font-style: italic;
-}
-</style>
-
-<script>
-function updateFilename(inputId, nameId) {
-  const input = document.getElementById(inputId);
-  const display = document.getElementById(nameId);
-  if (input.files && input.files[0]) {
-    display.textContent = input.files[0].name;
-    display.classList.add('text-success', 'fw-bold');
-  } else {
-    display.textContent = 'No se ha seleccionado ningún archivo';
-    display.classList.remove('text-success', 'fw-bold');
-  }
-}
-
-// Agregar efectos de drag-and-drop
-['dropzoneEstructura', 'dropzoneProyecto'].forEach(zoneId => {
-  const zone = document.getElementById(zoneId);
-  const inputId = zoneId === 'dropzoneEstructura' ? 'pdf_estructura' : 'pdf_proyecto';
-  const nameId = zoneId === 'dropzoneEstructura' ? 'file_estructura_name' : 'file_proyecto_name';
-  const input = document.getElementById(inputId);
-
-  zone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    zone.style.borderColor = 'var(--sena-primary)';
-    zone.style.background = 'var(--sena-primary-50)';
-  });
-
-  zone.addEventListener('dragleave', () => {
-    zone.style.borderColor = 'var(--border)';
-    zone.style.background = 'var(--bg)';
-  });
-
-  zone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    zone.style.borderColor = 'var(--border)';
-    zone.style.background = 'var(--bg)';
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      input.files = e.dataTransfer.files;
-      updateFilename(inputId, nameId);
-      // Asignar .files por código no dispara 'change': se emite a mano para
-      // que la ficha del archivo (import-preview.js) también se actualice.
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  });
-});
-</script>
-<!-- Ficha del archivo antes de enviar (solo frontend). Estos importadores
-     reciben PDF, así que no hay filas que previsualizar en el navegador: el
-     contenido se extrae en el servidor y se muestra en el paso siguiente
-     ("Analizar y Previsualizar Documentos"). -->
-<script src="<?= APP_URL ?>/assets/js/import-preview.js?v=<?= filemtime(BASE_PATH . 'assets/js/import-preview.js') ?>"></script>
 <?php endif; ?>
 
-<?php if ($preview_mode && !empty($_SESSION['pending_import'])): ?>
+<?php if ($preview_mode): ?>
 <!-- PREVISUALIZACIÓN DE DATOS ANTES DE IMPORTAR -->
 <div class="row">
   <div class="col-12">
@@ -200,7 +89,7 @@ function updateFilename(inputId, nameId) {
       <i class="bi bi-info-circle-fill text-warning" style="font-size: 1.5rem;"></i>
       <div>
         <h6 class="fw-bold mb-1">Previsualización de Importación</h6>
-        Revisa los datos extraídos de los documentos PDF. Si estás conforme con la información estructurada, haz clic en **Confirmar e Importar** para registrar los datos en la base de datos de manera definitiva.
+        Revisa los datos extraídos de los documentos PDF. Si estás conforme, pulsa <strong>Confirmar e importar</strong> para registrarlos.
       </div>
     </div>
 
@@ -208,12 +97,12 @@ function updateFilename(inputId, nameId) {
     <div class="card p-3 mb-4 border-0 shadow-sm d-flex flex-row justify-content-between align-items-center bg-light">
       <div class="fw-semibold text-muted"><i class="bi bi-layers me-2"></i>Estado: Esperando confirmación de escritura</div>
       <div class="d-flex gap-2">
-        <form method="POST" style="display:inline;">
+        <form method="POST" class="d-inline">
           <?= csrfField() ?>
           <input type="hidden" name="action" value="cancelar">
           <button type="submit" class="btn btn-soft px-4"><i class="bi bi-trash me-2"></i>Cancelar</button>
         </form>
-        <form method="POST" style="display:inline;">
+        <form method="POST" class="d-inline" data-confirmar="¿Registrar en el sistema la estructura previsualizada?">
           <?= csrfField() ?>
           <input type="hidden" name="action" value="confirmar">
           <button type="submit" class="btn btn-primary px-5 fw-bold"><i class="bi bi-check-all me-2"></i>Confirmar e Importar</button>
@@ -244,7 +133,7 @@ function updateFilename(inputId, nameId) {
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Duración Estimada</small>
-              <strong style="font-size: 1.1rem;"><?= $parsed_estructura['programa_duracion'] ?> horas</strong>
+              <strong style="font-size: 1.1rem;"><?= (int)$parsed_estructura['programa_duracion'] ?> horas</strong>
             </div>
           </div>
         </div>
@@ -255,7 +144,7 @@ function updateFilename(inputId, nameId) {
             <h2 class="accordion-header" id="headingEst<?= $index ?>">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEst<?= $index ?>" aria-expanded="false" style="font-size: 0.95rem; font-weight: 600; padding: 1rem 1.25rem;">
                 <span class="badge bg-soft primary me-2">Código: <span class="text-uppercase-visual"><?= htmlspecialchars($comp['codigo']) ?></span></span>
-                <span class="text-uppercase-visual"><?= htmlspecialchars(substr($comp['nombre'], 0, 110)) ?><?= strlen($comp['nombre']) > 110 ? '...' : '' ?></span>
+                <span class="text-uppercase-visual"><?= e(mb_substr((string)$comp['nombre'], 0, 110)) ?><?= mb_strlen((string)$comp['nombre']) > 110 ? '…' : '' ?></span>
                 <span class="badge bg-secondary ms-auto text-white ms-2" style="font-size: 0.72rem;"><?= count($comp['resultados']) ?> RAs</span>
               </button>
             </h2>
@@ -333,7 +222,7 @@ function updateFilename(inputId, nameId) {
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProj<?= $index ?>" aria-expanded="false" style="font-size: 0.95rem; font-weight: 600; padding: 1rem 1.25rem;">
                 <span class="badge bg-success me-2">Fase</span>
                 <?= htmlspecialchars($fase) ?>
-                <span class="badge bg-secondary ms-auto text-white ms-2" style="font-size: 0.72rem;"><?= count($raPorFase[$fase]) ?> RAs en esta fase</span>
+                <span class="badge bg-secondary ms-auto text-white ms-2" style="font-size: 0.72rem;"><?= count($raPorFase[$fase] ?? []) ?> RAs en esta fase</span>
               </button>
             </h2>
             <div id="collapseProj<?= $index ?>" class="accordion-collapse collapse" data-bs-parent="#accordionProyecto">
@@ -348,7 +237,7 @@ function updateFilename(inputId, nameId) {
                       </tr>
                     </thead>
                     <tbody>
-                      <?php foreach ($raPorFase[$fase] as $ra): ?>
+                      <?php foreach (($raPorFase[$fase] ?? []) as $ra): ?>
                       <tr>
                         <td style="white-space: nowrap;"><strong class="text-uppercase-visual"><?= htmlspecialchars($ra['ra_code']) ?>-<?= str_pad((string)$ra['ra_num'], 2, '0', STR_PAD_LEFT) ?></strong></td>
                         <td class="text-uppercase-visual"><?= htmlspecialchars($ra['denominacion']) ?></td>
@@ -360,7 +249,7 @@ function updateFilename(inputId, nameId) {
                         </td>
                       </tr>
                       <?php endforeach; ?>
-                      <?php if (empty($raPorFase[$fase])): ?>
+                      <?php if (empty($raPorFase[$fase] ?? [])): ?>
                       <tr>
                         <td colspan="3" class="text-center py-3 text-muted">No se encontraron resultados de aprendizaje asociados a esta fase en el PDF.</td>
                       </tr>

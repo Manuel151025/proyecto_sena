@@ -5,8 +5,11 @@ namespace Core\Models;
 
 use Core\Database;
 use PDO;
-use Exception;
 
+/**
+ * Acceso a `programas`. Sin reglas de negocio: esas viven en
+ * Core\Services\ProgramasService.
+ */
 class ProgramasModel {
     private PDO $db;
 
@@ -14,104 +17,63 @@ class ProgramasModel {
         $this->db = $db ?? Database::getConnection();
     }
 
-    /**
-     * Obtiene todos los programas cargados con el conteo de sus competencias.
-     */
+    /** Programas con el número de competencias, RAP y fichas de cada uno. */
     public function getAll(): array {
-        try {
-            $stmt = $this->db->prepare("
-                SELECT p.id, p.nombre, p.codigo, p.descripcion, p.duracion_horas, p.estado, p.fecha_creacion,
-                       COUNT(c.id) as total_competencias
-                FROM programas p
-                LEFT JOIN competencias c ON c.programa_id = p.id
-                GROUP BY p.id, p.nombre, p.codigo, p.descripcion, p.duracion_horas, p.estado, p.fecha_creacion
-                ORDER BY p.nombre ASC
-            ");
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            throw new Exception("Error al obtener programas: " . $e->getMessage());
-        }
+        return $this->db->query("
+            SELECT p.id, p.nombre, p.codigo, p.descripcion, p.duracion_horas, p.estado, p.fecha_creacion,
+                   (SELECT COUNT(*) FROM competencias c WHERE c.programa_id = p.id) AS total_competencias,
+                   (SELECT COUNT(*) FROM resultados_aprendizaje ra JOIN competencias c ON c.id = ra.competencia_id
+                     WHERE c.programa_id = p.id) AS total_rap,
+                   (SELECT COUNT(*) FROM fichas f WHERE f.programa_id = p.id) AS total_fichas
+              FROM programas p
+             ORDER BY p.estado = 'activo' DESC, p.nombre
+        ")->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Obtiene un programa específico por su ID.
-     */
+    /** Lista corta para selectores. */
+    public function opciones(bool $soloActivos = true): array {
+        $sql = "SELECT id, codigo, nombre FROM programas" . ($soloActivos ? " WHERE estado = 'activo'" : '') . " ORDER BY nombre";
+        return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function findById(int $id): ?array {
-        try {
-            $stmt = $this->db->prepare("SELECT * FROM programas WHERE id = ? LIMIT 1");
-            $stmt->execute([$id]);
-            $prog = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $prog ?: null;
-        } catch (Exception $e) {
-            throw new Exception("Error al buscar programa: " . $e->getMessage());
-        }
+        $st = $this->db->prepare("SELECT * FROM programas WHERE id = ? LIMIT 1");
+        $st->execute([$id]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    /**
-     * Registra un nuevo programa.
-     */
-    public function create(array $data): bool {
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO programas (nombre, codigo, descripcion, duracion_horas, estado)
-                VALUES (?, ?, ?, ?, ?)
-            ");
-            return $stmt->execute([
-                $data['nombre'],
-                $data['codigo'],
-                $data['descripcion'] ?? null,
-                $data['duracion_horas'],
-                $data['estado'] ?? 'activo'
-            ]);
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                throw new Exception("El código de programa ya existe.");
-            }
-            throw new Exception("Error al registrar el programa: " . $e->getMessage());
-        }
+    public function crear(array $d): int {
+        $this->db->prepare("INSERT INTO programas (nombre, codigo, descripcion, duracion_horas, estado) VALUES (?, ?, ?, ?, ?)")
+                 ->execute([$d['nombre'], $d['codigo'], $d['descripcion'] !== '' ? $d['descripcion'] : null, $d['duracion_horas'], $d['estado']]);
+        return (int)$this->db->lastInsertId();
     }
 
-    /**
-     * Actualiza un programa existente.
-     */
-    public function update(int $id, array $data): bool {
-        try {
-            $stmt = $this->db->prepare("
-                UPDATE programas
-                SET nombre = ?, codigo = ?, descripcion = ?, duracion_horas = ?, estado = ?, fecha_actualizacion = NOW()
-                WHERE id = ?
-            ");
-            return $stmt->execute([
-                $data['nombre'],
-                $data['codigo'],
-                $data['descripcion'] ?? null,
-                $data['duracion_horas'],
-                $data['estado'],
-                $id
-            ]);
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                throw new Exception("El código ingresado ya está registrado para otro programa.");
-            }
-            throw new Exception("Error al actualizar el programa: " . $e->getMessage());
-        }
+    public function actualizar(int $id, array $d): void {
+        $this->db->prepare("UPDATE programas SET nombre = ?, codigo = ?, descripcion = ?, duracion_horas = ?, estado = ? WHERE id = ?")
+                 ->execute([$d['nombre'], $d['codigo'], $d['descripcion'] !== '' ? $d['descripcion'] : null, $d['duracion_horas'], $d['estado'], $id]);
     }
 
-    /**
-     * Elimina un programa.
-     */
-    public function delete(int $id): bool {
-        try {
-            $stmt = $this->db->prepare("DELETE FROM programas WHERE id = ?");
-            return $stmt->execute([$id]);
-        } catch (\PDOException $e) {
-            if ($e->getCode() === '23000') {
-                throw new Exception("No se puede eliminar el programa porque tiene fichas de formación asociadas u otros registros vinculados.");
-            }
-            throw new Exception("Error de base de datos al eliminar el programa: " . $e->getMessage());
-        } catch (Exception $e) {
-            throw new Exception("Error al eliminar el programa: " . $e->getMessage());
-        }
+    public function eliminar(int $id): void {
+        $this->db->prepare("DELETE FROM programas WHERE id = ?")->execute([$id]);
+    }
+
+    /** @return array{fichas:int, competencias:int} */
+    public function dependencias(int $id): array {
+        $st = $this->db->prepare("SELECT (SELECT COUNT(*) FROM fichas WHERE programa_id = ?) AS fichas,
+                                         (SELECT COUNT(*) FROM competencias WHERE programa_id = ?) AS competencias");
+        $st->execute([$id, $id]);
+        $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        return ['fichas' => (int)($r['fichas'] ?? 0), 'competencias' => (int)($r['competencias'] ?? 0)];
+    }
+
+    /** Totales de la estructura curricular, para el resumen de /estructura. */
+    public function totalesEstructura(): array {
+        return $this->db->query("
+            SELECT (SELECT COUNT(*) FROM programas) AS programas,
+                   (SELECT COUNT(*) FROM competencias) AS competencias,
+                   (SELECT COUNT(*) FROM resultados_aprendizaje) AS resultados,
+                   (SELECT COUNT(*) FROM proyectos) AS proyectos,
+                   (SELECT COUNT(*) FROM fases_proyecto) AS fases
+        ")->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 }

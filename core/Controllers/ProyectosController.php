@@ -3,137 +3,89 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-use Core\Support\Enums;
-
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Formularios\ProyectoFormulario;
 use Core\Models\ProyectosModel;
-use PDO;
-use Exception;
+use Core\Services\ProyectosService;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Proyectos formativos.
+ *
+ *   GET  /proyectos                   listado (los tres roles, cada uno en su alcance)
+ *   POST /proyectos  action=crear     coordinación
+ *   POST /proyectos  action=editar    coordinación
+ *   POST /proyectos  action=eliminar  coordinación
+ */
 class ProyectosController extends BaseController {
-    private PDO $db;
-    private ProyectosModel $proyectosModel;
+    private const RUTA = '/proyectos';
 
-    public function __construct(?PDO $db = null, ?ProyectosModel $proyectosModel = null) {
-        requireAuth();
-        $this->db = $db ?? Database::getConnection();
-        $this->proyectosModel = $proyectosModel ?? new ProyectosModel($this->db);
+    private ProyectosModel $modelo;
+    private ProyectosService $servicio;
+
+    public function __construct(?ProyectosModel $modelo = null, ?ProyectosService $servicio = null) {
+        $this->modelo = $modelo ?? new ProyectosModel();
+        $this->servicio = $servicio ?? new ProyectosService();
     }
 
     public function index(): void {
+        $actor = Actor::actual();
         $errors = [];
-        $success = '';
-        $user_rol = getCurrentRole();
-        $user_id = (int)getCurrentUser()['id'];
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            requireCsrf();
-            if ($_POST['action'] === 'crear' && $user_rol === ROL_COORDINADOR) {
-                try {
-                    $nombre = trim($_POST['nombre'] ?? '');
-                    $codigo = trim($_POST['codigo'] ?? '');
-                    $objetivo = trim($_POST['objetivo'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
-
-                    if (empty($nombre) || empty($codigo)) {
-                        throw new Exception('El nombre y código son obligatorios.');
-                    }
-                    if (mb_strlen($nombre, 'UTF-8') > 100) {
-                        throw new Exception('El nombre no puede exceder los 100 caracteres.');
-                    }
-                    if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                        throw new Exception('El nombre contiene caracteres no permitidos.');
-                    }
-                    if (mb_strlen($codigo, 'UTF-8') > 20) {
-                        throw new Exception('El código no puede exceder los 20 caracteres.');
-                    }
-                    if (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
-                        throw new Exception('El código solo puede contener letras, números y guiones.');
-                    }
-                    if (mb_strlen($objetivo, 'UTF-8') > 1000 || mb_strlen($descripcion, 'UTF-8') > 1000) {
-                        throw new Exception('El objetivo y la descripción no pueden exceder los 1000 caracteres.');
-                    }
-                    $objetivo = strip_tags($objetivo);
-                    $descripcion = strip_tags($descripcion);
-
-                    $this->proyectosModel->crearProyecto($nombre, $codigo, $objetivo, $descripcion);
-                    setFlashMessage('Proyecto formativo creado exitosamente.', 'success');
-                    $this->redirect(APP_URL . '/index.php/proyectos');
-                } catch (Exception $e) {
-                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error'), 'danger');
-                }
-            }
-            if ($_POST['action'] === 'delete' && $user_rol === ROL_COORDINADOR) {
-                try {
-                    $id = (int)$_POST['id'];
-                    $this->proyectosModel->eliminarProyecto($id);
-                    setFlashMessage('Proyecto eliminado correctamente.', 'success');
-                } catch (Exception $e) {
-                    setFlashMessage('No se puede eliminar: el proyecto tiene fichas o fases asociadas.', 'danger');
-                }
-                $this->redirect(APP_URL . '/index.php/proyectos');
-            }
-            if ($_POST['action'] === 'editar' && $user_rol === ROL_COORDINADOR) {
-                try {
-                    $id          = (int)($_POST['id'] ?? 0);
-                    $nombre      = trim($_POST['nombre'] ?? '');
-                    $codigo      = trim($_POST['codigo'] ?? '');
-                    $objetivo    = trim($_POST['objetivo'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
-                    $estado      = (new Validador($_POST))->enum('estado', 'El estado', Enums::PROYECTO_ESTADO, 'activo');
-
-                    if (empty($nombre) || empty($codigo)) {
-                        throw new Exception('El nombre y código son obligatorios.');
-                    }
-                    if (mb_strlen($nombre, 'UTF-8') > 100) {
-                        throw new Exception('El nombre no puede exceder los 100 caracteres.');
-                    }
-                    if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                        throw new Exception('El nombre contiene caracteres no permitidos.');
-                    }
-                    if (mb_strlen($codigo, 'UTF-8') > 20) {
-                        throw new Exception('El código no puede exceder los 20 caracteres.');
-                    }
-                    if (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
-                        throw new Exception('El código solo puede contener letras, números y guiones.');
-                    }
-                    if (mb_strlen($objetivo, 'UTF-8') > 1000 || mb_strlen($descripcion, 'UTF-8') > 1000) {
-                        throw new Exception('El objetivo y la descripción no pueden exceder los 1000 caracteres.');
-                    }
-                    $objetivo = strip_tags($objetivo);
-                    $descripcion = strip_tags($descripcion);
-                    if (!in_array($estado, ['activo', 'inactivo', 'finalizado'])) {
-                        throw new Exception('Estado inválido.');
-                    }
-
-                    $this->proyectosModel->editarProyecto($id, $nombre, $codigo, $objetivo, $descripcion, $estado);
-                    setFlashMessage('Proyecto actualizado correctamente.', 'success');
-                    $this->redirect(APP_URL . '/index.php/proyectos');
-                } catch (Exception $e) {
-                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error'), 'danger');
-                }
-            }
-        }
-
         $proyectos = [];
         try {
-            $proyectos = $this->proyectosModel->getProyectos($user_rol, $user_id);
-        } catch (Exception $e) {
+            $proyectos = $this->modelo->listar($actor);
+        } catch (Throwable $e) {
             $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los proyectos');
         }
 
-        $this->render(
-            BASE_PATH . 'modules/proyectos/views/index.view.php',
-            [
-                'errors' => $errors,
-                'success' => $success,
-                'user_rol' => $user_rol,
-                'proyectos' => $proyectos
+        $this->render(BASE_PATH . 'modules/proyectos/views/index.view.php', [
+            'errors'    => $errors,
+            'user_rol'  => $actor->rol,
+            'proyectos' => $proyectos,
+            'limites'   => [
+                'nombre' => ProyectoFormulario::MAX_NOMBRE,
+                'codigo' => ProyectoFormulario::MAX_CODIGO,
+                'texto'  => ProyectoFormulario::MAX_TEXTO,
             ],
-            'Proyectos Formativos · SENA'
+        ], 'Proyectos Formativos · SENA');
+    }
+
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $datos = ProyectoFormulario::validar($v);
+        $this->siHayErrores($v, self::RUTA);
+
+        $this->ejecutar(
+            fn() => $this->servicio->crear($datos, Actor::actual()),
+            self::RUTA, 'Proyecto formativo creado.', 'No se pudo crear el proyecto'
+        );
+    }
+
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El proyecto');
+        $datos = ProyectoFormulario::validar($v, true);
+        $this->siHayErrores($v, self::RUTA);
+
+        $this->ejecutar(
+            fn() => $this->servicio->editar($id, $datos, Actor::actual()),
+            self::RUTA, 'Proyecto actualizado.', 'No se pudo actualizar el proyecto'
+        );
+    }
+
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El proyecto');
+        $this->siHayErrores($v, self::RUTA);
+
+        $this->ejecutar(
+            fn() => $this->servicio->eliminar($id, Actor::actual()),
+            self::RUTA, 'Proyecto eliminado.', 'No se pudo eliminar el proyecto'
         );
     }
 }
