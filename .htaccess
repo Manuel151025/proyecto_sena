@@ -52,7 +52,9 @@ ServerSignature Off
 # Cabeceras que también deben acompañar a los recursos estáticos, que no
 # pasan por PHP (Core\Support\Seguridad cubre las respuestas dinámicas).
 <IfModule mod_headers.c>
-    Header always set X-Content-Type-Options "nosniff"
+    # `set` (y no `always set`): así reemplaza a la que ya pone PHP en vez de
+    # duplicarla («nosniff, nosniff»).
+    Header set X-Content-Type-Options "nosniff"
     Header always unset X-Powered-By
     Header unset X-Powered-By
 </IfModule>

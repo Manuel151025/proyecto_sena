@@ -283,7 +283,7 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
         $insertar->execute([$propio['id'], $propio['ficha_id'], 'Evidencia propia']);
         $insertar->execute([$ajeno['id'],  $ajeno['ficha_id'],  'Evidencia AJENA']);
 
-        $suyas = $modelo->getEvidencias(ROL_APRENDIZ, (int)$propio['usuario_id'], (int)$propio['id']);
+        $suyas = $modelo->listar(new \Core\Support\Actor((int)$propio['usuario_id'], ROL_APRENDIZ), [], 100, 0);
 
         $this->assertNotEmpty($suyas, 'el aprendiz no ve ni siquiera las suyas');
         foreach ($suyas as $e) {

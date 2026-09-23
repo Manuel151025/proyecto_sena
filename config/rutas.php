@@ -162,7 +162,12 @@ return static function (Router $router): void {
     $importacion('/evaluaciones/importar', $GESTION);
 
     $ambos('/seguimiento',            'Core\Controllers\SeguimientoController',  'index',  $TODOS);
-    $ambos('/evidencias',             'Core\Controllers\EvidenciasController',   'index',  $TODOS);
+    $EVI = 'Core\Controllers\EvidenciasController';
+    $router->add('GET', '/evidencias',         $EVI, 'index',   $TODOS);
+    $router->add('GET', '/evidencias/archivo', $EVI, 'archivo', $TODOS);   // el servicio comprueba de quién es
+    $router->accion('/evidencias', 'enviar',   $EVI, 'enviar',   [ROL_APRENDIZ]);
+    $router->accion('/evidencias', 'revisar',  $EVI, 'revisar',  $GESTION);
+    $router->accion('/evidencias', 'eliminar', $EVI, 'eliminar', [ROL_COORDINADOR, ROL_APRENDIZ]);
     $ambos('/retroalimentacion',      'Core\Controllers\RetroalimentacionController', 'index', $TODOS);
     $router->add('GET', '/mejoramiento', 'Core\Controllers\MejoramientoController', 'index', $TODOS);
 

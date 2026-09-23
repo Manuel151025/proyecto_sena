@@ -18,12 +18,14 @@ use Tests\CasoDePrueba;
  *   1. Lista blanca de extensiones.
  *   2. Comprobación del contenido real con finfo, no del tipo que declara
  *      el navegador (que lo elige el cliente).
- *   3. Nombre aleatorio en destino y `.htaccess` que impide ejecutar.
+ *   3. Nombre aleatorio en destino y `.htaccess` que impide ejecutar y
+ *      servir nada: los archivos se descargan por EvidenciasController,
+ *      que comprueba permisos (ver tests/Integration/EvidenciasTest).
  */
 final class SubidaDeArchivosTest extends CasoDePrueba {
 
-    /** Extensiones que acepta EvidenciasController. */
-    private const PERMITIDAS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'txt'];
+    /** Extensiones que acepta el envío de evidencias. */
+    private const PERMITIDAS = \Core\Formularios\EvidenciaFormulario::EXTENSIONES;
 
     // =================================================================
     // LISTA BLANCA DE EXTENSIONES
@@ -216,9 +218,9 @@ final class SubidaDeArchivosTest extends CasoDePrueba {
     }
 
     /**
-     * 16 bytes son 128 bits: adivinar la URL de la evidencia de otro
-     * aprendiz es inviable. Es lo único que protege ese archivo, porque
-     * `uploads/` se sirve estático y sin comprobar permisos.
+     * 16 bytes son 128 bits. Ya no es la única defensa (uploads/ no se
+     * sirve y la descarga comprueba permisos), pero evita colisiones y que
+     * el nombre revele nada.
      */
     #[TestDox('el nombre tiene entropía suficiente para no ser adivinable')]
     public function testEntropiaDelNombre(): void {
@@ -249,10 +251,9 @@ final class SubidaDeArchivosTest extends CasoDePrueba {
 
     #[TestDox('la carpeta de evidencias se crea sin permisos de más')]
     public function testPermisosDeLaCarpeta(): void {
-        // El controlador usa 0755: lectura para el servidor, escritura solo
-        // para el propietario. 0777 sería un error clásico.
-        $fuente = (string)file_get_contents(dirname(__DIR__, 2) . '/core/Controllers/EvidenciasController.php');
-        $this->assertStringContainsString('mkdir($uploadDir, 0755, true)', $fuente);
+        // 0750: nadie fuera del propietario y su grupo. 0777 sería un error clásico.
+        $fuente = (string)file_get_contents(dirname(__DIR__, 2) . '/core/Services/EvidenciasService.php');
+        $this->assertStringContainsString('mkdir($dir, 0750, true)', $fuente);
         $this->assertStringNotContainsString('0777', $fuente, 'se está creando la carpeta con permisos totales');
     }
 
@@ -267,17 +268,17 @@ final class SubidaDeArchivosTest extends CasoDePrueba {
      */
     #[TestDox('el aprendiz de la evidencia sale de la sesión, no del formulario')]
     public function testIdentidadDesdeLaSesion(): void {
-        $fuente = (string)file_get_contents(dirname(__DIR__, 2) . '/core/Controllers/EvidenciasController.php');
+        $servicio = (string)file_get_contents(dirname(__DIR__, 2) . '/core/Services/EvidenciasService.php');
+        $controlador = (string)file_get_contents(dirname(__DIR__, 2) . '/core/Controllers/EvidenciasController.php');
 
         $this->assertStringContainsString(
-            'getAprendizPerfil($user_id)',
-            $fuente,
-            'el perfil del aprendiz debe resolverse desde el usuario en sesión'
+            'aprendizDeUsuario($actor->id)',
+            $servicio,
+            'el aprendiz debe resolverse desde el usuario en sesión'
         );
-        $this->assertDoesNotMatchRegularExpression(
-            '/\$aprendiz_id\s*=\s*\(int\)\(?\$_POST/',
-            $fuente,
-            'el id de aprendiz se está tomando del formulario'
-        );
+        $this->assertDoesNotMatchRegularExpression('/\$_POST\[.(aprendiz_id|ficha_id)/', $controlador,
+            'el controlador no debe leer el aprendiz ni la ficha del formulario');
+        $formulario = (string)file_get_contents(dirname(__DIR__, 2) . '/core/Formularios/EvidenciaFormulario.php');
+        $this->assertStringNotContainsString("'aprendiz_id'", $formulario, 'el envío no debe aceptar un aprendiz del formulario');
     }
 }

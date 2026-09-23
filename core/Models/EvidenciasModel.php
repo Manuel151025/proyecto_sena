@@ -4,213 +4,184 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
-use Core\Services\EvaluacionService;
 use Core\Services\InstructorAccessService;
+use Core\Support\Actor;
+use Core\Support\Validador;
 use PDO;
-use Exception;
 
+/**
+ * Evidencias que envían los aprendices, acotadas por rol.
+ *
+ * Visibilidad (la misma que el permiso de revisarlas):
+ *  - aprendiz: las suyas;
+ *  - instructor: si la evidencia está ligada a un RAP, las de los RAP que
+ *    califica; si no, las de los aprendices con los que tiene relación
+ *    (líder de su ficha, asignación en ella o seguimiento);
+ *  - coordinación: todas.
+ */
 class EvidenciasModel {
+    public const ESTADOS = ['enviada', 'revisada', 'aprobada', 'rechazada'];
+
     private PDO $db;
-    private EvaluacionService $evaluacionService;
-    private InstructorAccessService $accessService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
-        $this->evaluacionService = new EvaluacionService($this->db);
-        $this->accessService = new InstructorAccessService($this->db);
     }
 
-    public function getAprendizPerfil(int $user_id): ?array {
-        $stmt = $this->db->prepare("SELECT id, ficha_id FROM aprendices WHERE usuario_id = ?");
-        $stmt->execute([$user_id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    }
-
-    public function guardarEvidencia(int $aprendiz_id, int $ficha_id, string $titulo, string $descripcion, ?string $archivo_url, ?string $tipo_archivo, int $tamanio_kb, int $user_id): void {
-        $this->db->beginTransaction();
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO evidencias (aprendiz_id, ficha_id, titulo, descripcion, archivo_url, tipo_archivo, tamaño_kb, estado, fecha_envio)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'enviada', CURRENT_TIMESTAMP)
-            ");
-            $stmt->execute([$aprendiz_id, $ficha_id, $titulo, $descripcion, $archivo_url, $tipo_archivo, $tamanio_kb]);
-            $evidencia_id = (int)$this->db->lastInsertId();
-
-            $stmt = $this->db->prepare("
-                INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
-                VALUES (?, 'Crear', 'Evidencias', 'evidencias', ?, ?)
-            ");
-            $stmt->execute([$user_id, $evidencia_id, "Subió evidencia: $titulo"]);
-
-            $this->db->commit();
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            throw $e;
+    /** @return array{0:string, 1:array} */
+    private function construirConsulta(Actor $actor, array $f): array {
+        $sql = "
+            FROM evidencias ev
+            JOIN aprendices ap ON ap.id = ev.aprendiz_id
+            JOIN usuarios u_ap ON u_ap.id = ap.usuario_id
+            JOIN fichas f ON f.id = ev.ficha_id
+            LEFT JOIN evaluaciones e ON e.id = ev.evaluacion_id
+            LEFT JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+            LEFT JOIN competencias c ON c.id = ra.competencia_id
+            WHERE 1=1";
+        $p = [];
+        if ($actor->esAprendiz()) {
+            $sql .= " AND ap.usuario_id = ?";
+            $p[] = $actor->id;
+        } elseif ($actor->esInstructor()) {
+            $sql .= " AND ((ev.evaluacion_id IS NOT NULL AND (" . InstructorAccessService::sqlCondicionAcceso() . "))
+                        OR (ev.evaluacion_id IS NULL AND (f.instructor_id = ? OR ap.instructor_seguimiento_id = ?
+                            OR EXISTS (SELECT 1 FROM asignaciones asg2 WHERE asg2.ficha_id = f.id AND asg2.instructor_id = ?))))";
+            array_push($p, $actor->id, $actor->id, $actor->id, $actor->id, $actor->id, $actor->id);
+        } elseif (!$actor->esCoordinador()) {
+            $sql .= " AND 1 = 0";
         }
-    }
-
-    public function getEvidencia(int $evidencia_id): ?array {
-        $stmt = $this->db->prepare("SELECT id, evaluacion_id, aprendiz_id, ficha_id, titulo FROM evidencias WHERE id = ?");
-        $stmt->execute([$evidencia_id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    }
-
-    /**
-     * ¿Puede este instructor calificar esta evidencia?
-     *
-     * Era la cuarta copia literal del SQL de InstructorAccessService. Ahora
-     * delega en el servicio, que ya distingue los dos casos: si la evidencia
-     * cuelga de una evaluación, manda la autoridad sobre ese RAP concreto;
-     * si no, basta con tener relación con el aprendiz.
-     */
-    public function checkPermisoCalificar(array $evidencia, int $user_id): bool {
-        if (!empty($evidencia['evaluacion_id'])) {
-            return $this->accessService->tieneAccesoEvaluacion((int)$evidencia['evaluacion_id'], $user_id);
+        if (($f['search'] ?? '') !== '') {
+            $t = '%' . Validador::escaparLike((string)$f['search']) . '%';
+            $sql .= " AND (ev.titulo LIKE ? OR u_ap.nombre LIKE ? OR ap.numero_documento LIKE ? OR ra.codigo LIKE ?)";
+            array_push($p, $t, $t, $t, $t);
         }
-        return $this->accessService->tieneAccesoAprendiz((int)$evidencia['aprendiz_id'], $user_id);
+        if (($f['estado'] ?? '') !== '') {
+            $sql .= " AND ev.estado = ?";
+            $p[] = in_array($f['estado'], self::ESTADOS, true) ? $f['estado'] : "\x00";
+        }
+        if (!empty($f['ficha_id'])) {
+            $sql .= " AND ev.ficha_id = ?";
+            $p[] = (int)$f['ficha_id'];
+        }
+        return [$sql, $p];
     }
 
-    public function calificarEvidencia(array $evidencia, string $estado_evidencia, string $concepto_db, string $comentario, string $tipo_retro, int $user_id): void {
-        $this->db->beginTransaction();
-        try {
-            $eval_id = $evidencia['evaluacion_id'];
-            $evidencia_id = $evidencia['id'];
-
-            $stmt = $this->db->prepare("
-                UPDATE evidencias
-                SET estado = ?, retroalimentacion = ?, fecha_revision = CURRENT_DATE
-                WHERE id = ?
-            ");
-            $stmt->execute([$estado_evidencia, $comentario, $evidencia_id]);
-
-            // Calificar una evidencia cambia el juicio del RAP asociado, así
-            // que pasa por el servicio y queda en `historial_evaluaciones`.
-            // Este era el agujero de RNF02: la nota cambiaba aquí sin dejar
-            // constancia de quién ni por qué.
-            //
-            // `exigir_motivo => false` porque este formulario no pide motivo;
-            // se registra uno descriptivo en vez de bloquear la calificación.
-            // `retroalimentacion => false` porque la fila la escribe este
-            // mismo método justo debajo, que además cubre el caso en el que
-            // la evidencia no tiene evaluación asociada.
-            if ($eval_id) {
-                $this->evaluacionService->actualizarPorId((int)$eval_id, [
-                    'concepto'          => $concepto_db,
-                    'comentario'        => $comentario,
-                    'usuario_id'        => $user_id,
-                    'motivo'            => 'Calificación de la evidencia: ' . $evidencia['titulo'],
-                    'exigir_motivo'     => false,
-                    'retroalimentacion' => false,
-                ]);
-            }
-
-            $stmt = $this->db->prepare("
-                INSERT INTO retroalimentacion (evaluacion_id, aprendiz_id, instructor_id, tipo, contenido, fecha_creacion)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ");
-            $stmt->execute([$eval_id ?: null, $evidencia['aprendiz_id'], $user_id, $tipo_retro, $comentario]);
-
-            $ficha_id_ev = $evidencia['ficha_id'];
-            $stmt = $this->db->prepare("
-                SELECT COUNT(*) as total, SUM(CASE WHEN estado = 'aprobada' THEN 1 ELSE 0 END) as aprobadas
-                FROM evidencias WHERE ficha_id = ?
-            ");
-            $stmt->execute([$ficha_id_ev]);
-            $stats = $stmt->fetch();
-            if ($stats && (int)$stats['total'] > 0) {
-                $cump = ((float)$stats['aprobadas'] / (float)$stats['total']) * 100;
-                $this->db->prepare("UPDATE fichas SET cumplimiento_porcentaje = ? WHERE id = ?")->execute([$cump, $ficha_id_ev]);
-            }
-
-            $stmt = $this->db->prepare("
-                INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, id_registro, descripcion)
-                VALUES (?, 'Calificar', 'Evidencias', 'evidencias', ?, ?)
-            ");
-            $stmt->execute([$user_id, $evidencia_id, "Calificó evidencia: " . $evidencia['titulo'] . " como " . $concepto_db]);
-
-            $this->db->commit();
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
+    public function contar(Actor $actor, array $filtros): int {
+        [$desde, $p] = $this->construirConsulta($actor, $filtros);
+        $st = $this->db->prepare("SELECT COUNT(*) $desde");
+        $st->execute($p);
+        return (int)$st->fetchColumn();
     }
 
-    public function getEvidencias(string $user_rol, int $user_id, int $aprendiz_id): array {
-        if ($user_rol === ROL_APRENDIZ) {
-            $stmt = $this->db->prepare("
-                SELECT ev.*, ra.denominacion AS ra_denominacion, u.nombre AS instructor_revisor
-                FROM evidencias ev
-                LEFT JOIN evaluaciones eval ON ev.evaluacion_id = eval.id
-                LEFT JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-                LEFT JOIN usuarios u ON eval.instructor_id = u.id
-                WHERE ev.aprendiz_id = ?
-                ORDER BY ev.fecha_envio DESC
-            ");
-            $stmt->execute([$aprendiz_id]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } else {
-            if ($user_rol === ROL_INSTRUCTOR) {
-                $sql = "
-                    SELECT ev.*, ra.denominacion AS ra_denominacion,
-                           f.numero_ficha, u_ap.nombre AS aprendiz_nombre, u_ap.email AS aprendiz_email
-                    FROM evidencias ev
-                    LEFT JOIN evaluaciones eval ON ev.evaluacion_id = eval.id
-                    LEFT JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-                    LEFT JOIN competencias c ON ra.competencia_id = c.id
-                    JOIN fichas f    ON ev.ficha_id = f.id
-                    JOIN aprendices ap ON ev.aprendiz_id = ap.id
-                    JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
-                    WHERE (
-                        EXISTS (
-                            SELECT 1 FROM asignaciones asg 
-                            WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id AND asg.instructor_id = ?
-                        )
-                        OR
-                        (
-                            f.instructor_id = ?
-                            AND (c.id IS NULL OR (c.es_etapa_practica = 0
-                            AND NOT EXISTS (
-                                SELECT 1 FROM asignaciones asg 
-                                WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
-                            )))
-                        )
-                        OR
-                        (
-                            c.es_etapa_practica = 1
-                            AND ap.instructor_seguimiento_id = ?
-                        )
-                        OR
-                        (
-                            eval.id IS NULL AND (
-                                f.instructor_id = ?
-                                OR EXISTS (
-                                    SELECT 1 FROM asignaciones asg 
-                                    WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
-                                )
-                                OR ap.instructor_seguimiento_id = ?
-                            )
-                        )
-                    )
-                ";
-                $params = [$user_id, $user_id, $user_id, $user_id, $user_id, $user_id];
-            } else {
-                $sql = "
-                    SELECT ev.*, ra.denominacion AS ra_denominacion,
-                           f.numero_ficha, u_ap.nombre AS aprendiz_nombre, u_ap.email AS aprendiz_email
-                    FROM evidencias ev
-                    LEFT JOIN evaluaciones eval ON ev.evaluacion_id = eval.id
-                    LEFT JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-                    JOIN fichas f    ON ev.ficha_id = f.id
-                    JOIN aprendices ap ON ev.aprendiz_id = ap.id
-                    JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
-                ";
-                $params = [];
-            }
-            $sql .= " ORDER BY ev.estado = 'enviada' DESC, ev.fecha_envio DESC";
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function listar(Actor $actor, array $filtros, int $limite, int $offset): array {
+        [$desde, $p] = $this->construirConsulta($actor, $filtros);
+        $limite = max(1, min($limite, 100));
+        $offset = max(0, $offset);
+        $st = $this->db->prepare("
+            SELECT ev.id, ev.titulo, ev.descripcion, ev.archivo_url, ev.tipo_archivo, ev.`tamaño_kb` AS tamano_kb, ev.estado,
+                   ev.retroalimentacion, ev.fecha_envio, ev.fecha_revision, ev.evaluacion_id, ev.aprendiz_id,
+                   f.numero_ficha, u_ap.nombre AS aprendiz_nombre, ap.numero_documento, ap.usuario_id AS aprendiz_usuario_id,
+                   ra.codigo AS ra_codigo, ra.denominacion AS ra_denominacion, e.concepto
+            $desde
+            ORDER BY ev.estado = 'enviada' DESC, ev.fecha_envio DESC, ev.id DESC
+            LIMIT $limite OFFSET $offset");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Evidencias por revisar entre las visibles (para el aviso de la pantalla). */
+    public function porRevisar(Actor $actor): int {
+        return $this->contar($actor, ['estado' => 'enviada']);
+    }
+
+    public function findById(int $id): ?array {
+        $st = $this->db->prepare("
+            SELECT ev.*, ev.`tamaño_kb` AS tamano_kb, ap.usuario_id AS aprendiz_usuario_id, ap.ficha_id AS ficha_aprendiz,
+                   f.numero_ficha, ra.codigo AS ra_codigo, e.concepto
+              FROM evidencias ev
+              JOIN aprendices ap ON ap.id = ev.aprendiz_id
+              JOIN fichas f ON f.id = ev.ficha_id
+              LEFT JOIN evaluaciones e ON e.id = ev.evaluacion_id
+              LEFT JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+             WHERE ev.id = ?");
+        $st->execute([$id]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function crear(array $d): int {
+        $this->db->prepare("
+            INSERT INTO evidencias (aprendiz_id, ficha_id, evaluacion_id, titulo, descripcion, archivo_url, tipo_archivo, `tamaño_kb`, estado)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'enviada')
+        ")->execute([$d['aprendiz_id'], $d['ficha_id'], $d['evaluacion_id'], $d['titulo'], $d['descripcion'] !== '' ? $d['descripcion'] : null,
+                     $d['archivo_url'], $d['tipo_archivo'], $d['tamano_kb']]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function revisar(int $id, string $estado, string $retroalimentacion): void {
+        $this->db->prepare("UPDATE evidencias SET estado = ?, retroalimentacion = ?, fecha_revision = CURRENT_DATE WHERE id = ?")
+                 ->execute([$estado, $retroalimentacion, $id]);
+    }
+
+    public function eliminar(int $id): void {
+        $this->db->prepare("DELETE FROM evidencias WHERE id = ?")->execute([$id]);
+    }
+
+    public function registrarRetroalimentacion(?int $evaluacionId, int $aprendizId, int $instructorId, string $tipo, string $contenido): void {
+        $this->db->prepare("INSERT INTO retroalimentacion (evaluacion_id, aprendiz_id, instructor_id, tipo, contenido) VALUES (?, ?, ?, ?, ?)")
+                 ->execute([$evaluacionId, $aprendizId, $instructorId, $tipo, $contenido]);
+    }
+
+    /** Aprendiz del usuario, con su ficha y estado. */
+    public function aprendizDeUsuario(int $usuarioId): ?array {
+        $st = $this->db->prepare("SELECT id, ficha_id, estado, instructor_seguimiento_id FROM aprendices WHERE usuario_id = ?");
+        $st->execute([$usuarioId]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /** RAP del aprendiz para ligar la evidencia: primero lo pendiente y lo no aprobado. */
+    public function rapsDelAprendiz(int $aprendizId): array {
+        $st = $this->db->prepare("
+            SELECT e.id, e.concepto, ra.codigo, ra.denominacion
+              FROM evaluaciones e JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+             WHERE e.aprendiz_id = ?
+             ORDER BY FIELD(e.concepto, 'D', 'pendiente', 'A'), ra.codigo");
+        $st->execute([$aprendizId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function evaluacionDelAprendiz(int $evaluacionId, int $aprendizId): bool {
+        $st = $this->db->prepare("SELECT 1 FROM evaluaciones WHERE id = ? AND aprendiz_id = ?");
+        $st->execute([$evaluacionId, $aprendizId]);
+        return (bool)$st->fetchColumn();
+    }
+
+    /** A quién avisar de una evidencia nueva: el responsable del RAP o, sin RAP, el líder y el de seguimiento. */
+    public function instructoresAAvisar(int $aprendizId, ?int $evaluacionId): array {
+        if ($evaluacionId) {
+            $st = $this->db->prepare("SELECT instructor_id FROM evaluaciones WHERE id = ?");
+            $st->execute([$evaluacionId]);
+            return array_filter([(int)$st->fetchColumn()]);
         }
+        $st = $this->db->prepare("SELECT f.instructor_id, ap.instructor_seguimiento_id FROM aprendices ap JOIN fichas f ON f.id = ap.ficha_id WHERE ap.id = ?");
+        $st->execute([$aprendizId]);
+        $r = $st->fetch(PDO::FETCH_NUM) ?: [];
+        return array_values(array_unique(array_filter(array_map('intval', $r))));
+    }
+
+    /** Fichas para el filtro. */
+    public function fichasDelActor(Actor $actor): array {
+        if ($actor->esAprendiz()) {
+            return [];
+        }
+        $sql = "SELECT id, numero_ficha FROM fichas";
+        $p = [];
+        if ($actor->esInstructor()) {
+            $sql .= " WHERE id IN (" . InstructorAccessService::sqlFichasDelInstructor() . ")";
+            $p = [$actor->id, $actor->id, $actor->id];
+        }
+        $st = $this->db->prepare($sql . " ORDER BY numero_ficha");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 }

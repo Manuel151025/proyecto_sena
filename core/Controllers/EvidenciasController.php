@@ -3,204 +3,117 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Formularios\EvidenciaFormulario;
 use Core\Models\EvidenciasModel;
-use PDO;
-use Exception;
+use Core\Router;
+use Core\Services\EvidenciasService;
+use Core\Services\Paginator;
+use Core\Support\Actor;
+use Core\Support\ArchivoSubido;
+use Core\Support\Descarga;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Evidencias de aprendizaje.
+ *
+ *   GET  /evidencias?search=&estado=&ficha_id=   todos (cada rol ve lo suyo)
+ *   GET  /evidencias/archivo?id=                 descarga con permiso
+ *   POST /evidencias  action=enviar              aprendiz
+ *   POST /evidencias  action=revisar             instructor y coordinación
+ *   POST /evidencias  action=eliminar            aprendiz (la suya, sin revisar) y coordinación
+ */
 class EvidenciasController extends BaseController {
-    private PDO $db;
-    private EvidenciasModel $evidenciasModel;
+    public const ESTADOS = [
+        'enviada'   => ['Por revisar', 'info'],
+        'revisada'  => ['Requiere ajustes', 'warning'],
+        'aprobada'  => ['Aprobada', 'success'],
+        'rechazada' => ['Rechazada', 'danger'],
+    ];
 
-    public function __construct(?PDO $db = null, ?EvidenciasModel $evidenciasModel = null) {
-        requireAuth();
-        $this->db = $db ?? Database::getConnection();
-        $this->evidenciasModel = $evidenciasModel ?? new EvidenciasModel($this->db);
+    private EvidenciasModel $modelo;
+
+    public function __construct(?EvidenciasModel $modelo = null) {
+        $this->modelo = $modelo ?? new EvidenciasModel();
     }
 
     public function index(): void {
-        $errors = [];
-        $successMessage = '';
-
-        $user_id = (int)getCurrentUser()['id'];
-        $user_rol = getCurrentRole();
-
-        $aprendiz_id = 0;
-        $ficha_id = 0;
-
-        if ($user_rol === ROL_APRENDIZ) {
-            try {
-                $ap = $this->evidenciasModel->getAprendizPerfil($user_id);
-                if ($ap) {
-                    $aprendiz_id = (int)$ap['id'];
-                    $ficha_id    = (int)$ap['ficha_id'];
-                } else {
-                    $errors[] = 'No se encontró perfil de aprendiz para este usuario.';
-                }
-            } catch (Exception $e) {
-                $errors[] = 'Error al consultar perfil del aprendiz.';
-            }
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            requireCsrf();
-            $action = $_POST['action'];
-
-            if ($action === 'enviar_evidencia') {
-                if ($user_rol !== ROL_APRENDIZ) {
-                    $errors[] = 'Solo los aprendices pueden enviar evidencias.';
-                } else {
-                    $titulo      = trim($_POST['titulo'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
-
-                    if (empty($titulo)) {
-                        $errors[] = 'El título de la evidencia es obligatorio.';
-                    } elseif (mb_strlen($titulo, 'UTF-8') > 100) {
-                        $errors[] = 'El título no puede exceder los 100 caracteres.';
-                    } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $titulo)) {
-                        $errors[] = 'El título contiene caracteres no permitidos.';
-                    }
-
-                    if (mb_strlen($descripcion, 'UTF-8') > 1000) {
-                        $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
-                    }
-                    $descripcion = strip_tags($descripcion);
-
-                    $archivo_url = null;
-                    $tipo_archivo = null;
-                    $tamanio_kb  = 0;
-
-                    if (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
-                        $fileTmpPath = $_FILES['archivo']['tmp_name'];
-                        $fileName    = $_FILES['archivo']['name'];
-                        $tamanio_kb  = (int)round($_FILES['archivo']['size'] / 1024);
-                        $tipo_archivo = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-                        $allowedMimeByExt = [
-                            'pdf'  => ['application/pdf'],
-                            'doc'  => ['application/msword', 'application/x-ole-storage'],
-                            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
-                            'xls'  => ['application/vnd.ms-excel', 'application/x-ole-storage'],
-                            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
-                            'ppt'  => ['application/vnd.ms-powerpoint', 'application/x-ole-storage'],
-                            'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/zip'],
-                            'jpg'  => ['image/jpeg'],
-                            'jpeg' => ['image/jpeg'],
-                            'png'  => ['image/png'],
-                            'txt'  => ['text/plain'],
-                        ];
-
-                        if (!isset($allowedMimeByExt[$tipo_archivo])) {
-                            $errors[] = 'Tipo de archivo no permitido. Formatos aceptados: PDF, Word, Excel, PowerPoint, imágenes (JPG/PNG) o TXT.';
-                        } else {
-                            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                            $realMime = $finfo ? finfo_file($finfo, $fileTmpPath) : false;
-                            if ($finfo) finfo_close($finfo);
-
-                            if ($realMime === false || !in_array($realMime, $allowedMimeByExt[$tipo_archivo], true)) {
-                                $errors[] = 'El contenido del archivo no coincide con la extensión indicada.';
-                            } else {
-                                $uploadDir = __DIR__ . '/../../uploads/evidencias/';
-                                if (!is_dir($uploadDir)) {
-                                    mkdir($uploadDir, 0755, true);
-                                }
-
-                                $newFileName = bin2hex(random_bytes(16)) . '.' . $tipo_archivo;
-                                if (move_uploaded_file($fileTmpPath, $uploadDir . $newFileName)) {
-                                    $archivo_url = 'uploads/evidencias/' . $newFileName;
-                                } else {
-                                    $errors[] = 'No se pudo guardar el archivo subido.';
-                                }
-                            }
-                        }
-                    }
-
-                    if (empty($errors)) {
-                        try {
-                            $this->evidenciasModel->guardarEvidencia($aprendiz_id, $ficha_id, $titulo, $descripcion, $archivo_url, $tipo_archivo, $tamanio_kb, $user_id);
-                            setFlashMessage('Evidencia enviada correctamente. Su instructor será notificado.', 'success');
-                            $this->redirect(APP_URL . '/index.php/evidencias');
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al enviar la evidencia');
-                        }
-                    }
-                }
-            } elseif ($action === 'calificar_evidencia') {
-                if (!in_array($user_rol, [ROL_COORDINADOR, ROL_INSTRUCTOR])) {
-                    $errors[] = 'No tiene permisos para calificar evidencias.';
-                } else {
-                    $evidencia_id  = (int)($_POST['evidencia_id'] ?? 0);
-                    $concepto_form = $_POST['concepto'] ?? 'en_proceso';
-
-                    $concepto_map = ['aprobado' => 'A', 'en_proceso' => 'D', 'no_aplica' => 'pendiente'];
-                    $concepto_db  = $concepto_map[$concepto_form] ?? 'pendiente';
-
-                    $estado_evidencia = match($concepto_form) {
-                        'aprobado'  => 'aprobada',
-                        'en_proceso' => 'revisada',
-                        default     => 'rechazada',
-                    };
-                    $tipo_retro = ($concepto_form === 'aprobado') ? 'fortaleza' : 'aspecto_mejorar';
-                    $comentario = trim($_POST['comentario'] ?? '');
-
-                    if (mb_strlen($comentario, 'UTF-8') > 1000) {
-                        $errors[] = 'El comentario no puede exceder los 1000 caracteres.';
-                    }
-                    $comentario = strip_tags($comentario);
-
-                    if ($evidencia_id <= 0) $errors[] = 'Evidencia no válida.';
-
-                    if (empty($errors)) {
-                        try {
-                            $evidencia = $this->evidenciasModel->getEvidencia($evidencia_id);
-
-                            if ($evidencia) {
-                                if ($user_rol === ROL_INSTRUCTOR) {
-                                    if (!$this->evidenciasModel->checkPermisoCalificar($evidencia, $user_id)) {
-                                        throw new ErrorDeNegocio('No tiene permisos para calificar esta evidencia.');
-                                    }
-                                }
-
-                                $this->evidenciasModel->calificarEvidencia($evidencia, $estado_evidencia, $concepto_db, $comentario, $tipo_retro, $user_id);
-                                setFlashMessage('Evidencia calificada y retroalimentación registrada con éxito.', 'success');
-                                $this->redirect(APP_URL . '/index.php/evidencias');
-                            } else {
-                                $errors[] = 'Evidencia no encontrada.';
-                            }
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al calificar la evidencia');
-                        }
-                    }
-                }
-            }
-        }
-
-        $evidencias = [];
-        try {
-            $evidencias = $this->evidenciasModel->getEvidencias($user_rol, $user_id, $aprendiz_id);
-        } catch (Exception $e) {
-            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar evidencias');
-        }
-
-        $estados_badge = [
-            'enviada'   => ['Recibido',  'info'],
-            'revisada'  => ['Revisado',  'secondary'],
-            'aprobada'  => ['Aprobado',  'success'],
-            'rechazada' => ['Rechazado', 'danger'],
+        $actor = Actor::actual();
+        $estado = (string)($_GET['estado'] ?? '');
+        $filtros = [
+            'search'   => $this->consulta()->busquedaCruda('search'),
+            'estado'   => array_key_exists($estado, self::ESTADOS) ? $estado : '',
+            'ficha_id' => $this->idDeConsulta('ficha_id'),
         ];
+        $errors = [];
+        $evidencias = $fichas = $raps = [];
+        $paginacion = null;
+        $porRevisar = 0;
+        try {
+            $paginacion = Paginator::desdePeticion($this->modelo->contar($actor, $filtros), 20);
+            $evidencias = $this->modelo->listar($actor, $filtros, $paginacion->perPage(), $paginacion->offset());
+            $fichas = $this->modelo->fichasDelActor($actor);
+            $porRevisar = $actor->gestiona() ? $this->modelo->porRevisar($actor) : 0;
+            if ($actor->esAprendiz() && ($ap = $this->modelo->aprendizDeUsuario($actor->id))) {
+                $raps = $this->modelo->rapsDelAprendiz((int)$ap['id']);
+            }
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las evidencias');
+        }
+        $this->render(BASE_PATH . 'modules/evidencias/views/index.view.php', [
+            'errors'      => $errors,
+            'evidencias'  => $evidencias,
+            'fichas'      => $fichas,
+            'raps'        => $raps,
+            'filtros'     => $filtros,
+            'paginacion'  => $paginacion,
+            'porRevisar'  => $porRevisar,
+            'estados'     => self::ESTADOS,
+            'actor'       => $actor,
+        ], 'Evidencias · SENA');
+    }
 
-        $this->render(
-            BASE_PATH . 'modules/evidencias/views/index.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'user_rol' => $user_rol,
-                'evidencias' => $evidencias,
-                'estados_badge' => $estados_badge
-            ],
-            'Evidencias Académicas · SENA'
-        );
+    public function enviar(): never {
+        $this->exigirRol(ROL_APRENDIZ);
+        $v = $this->entrada();
+        $d = EvidenciaFormulario::validarEnvio($v);
+        $this->siHayErrores($v, '/evidencias');
+        $this->ejecutar(function () use ($d) {
+            $campo = $_FILES['archivo'] ?? null;
+            $archivo = ($campo !== null && (int)($campo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE)
+                ? ArchivoSubido::desde($campo, EvidenciaFormulario::EXTENSIONES, EvidenciaFormulario::MAX_MB, 'El archivo')
+                : null;
+            return (new EvidenciasService())->enviar($d, $archivo, Actor::actual());
+        }, '/evidencias', 'Evidencia enviada: tu instructor recibió un aviso.', 'No se pudo enviar la evidencia');
+    }
+
+    public function revisar(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $d = EvidenciaFormulario::validarRevision($v);
+        $vuelta = $this->rutaDeVuelta('/evidencias');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => (new EvidenciasService())->revisar($d, Actor::actual()), $vuelta,
+            'Evidencia revisada; el aprendiz recibió la retroalimentación.', 'No se pudo revisar la evidencia');
+    }
+
+    public function eliminar(): never {
+        $v = $this->entrada();
+        $id = $v->id('id', 'La evidencia');
+        $vuelta = $this->rutaDeVuelta('/evidencias');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => (new EvidenciasService())->eliminar($id, Actor::actual()), $vuelta,
+            'Evidencia eliminada.', 'No se pudo eliminar la evidencia');
+    }
+
+    public function archivo(): never {
+        try {
+            [$ruta, $nombre, $ext] = (new EvidenciasService())->archivo($this->idDeConsulta('id'), Actor::actual());
+        } catch (ErrorDeNegocio $e) {
+            Router::responder(404, 'Archivo no disponible', $e->getMessage());
+            exit;
+        }
+        Descarga::archivo($ruta, $nombre, $ext);
     }
 }
