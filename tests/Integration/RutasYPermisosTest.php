@@ -113,8 +113,7 @@ final class RutasYPermisosTest extends CasoDePrueba {
 
         $soloCoordinador = [
             '/usuarios', '/usuarios/crear', '/usuarios/editar', '/usuarios/importar',
-            '/estructura', '/configuracion', '/logs',
-            '/programas/crear', '/programas/editar',
+            '/estructura', '/estructura/importar', '/configuracion', '/logs',
             '/fichas/crear', '/fichas/editar',
         ];
 
@@ -165,7 +164,7 @@ final class RutasYPermisosTest extends CasoDePrueba {
     public function testNumeroDeRutas(): void {
         // Es un canario: si alguien añade o quita una ruta, esta prueba
         // falla y obliga a revisar conscientemente el permiso que declara.
-        $this->assertCount(72, $this->rutas(),
+        $this->assertCount(59, $this->rutas(),
             'ha cambiado el número de rutas: revisa los permisos declarados y actualiza esta cifra');
     }
 }

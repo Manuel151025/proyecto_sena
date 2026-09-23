@@ -29,6 +29,17 @@ final class Seguridad {
     private const FUENTES_CSS = 'https://fonts.googleapis.com';
     private const FUENTES_FILES = 'https://fonts.gstatic.com';
 
+    /** Nonce de la CSP de esta respuesta (uno por petición). */
+    private static ?string $nonce = null;
+
+    /**
+     * Valor aleatorio que autoriza un <script> concreto de esta respuesta.
+     * Un script inyectado no lo conoce, así que la CSP no lo ejecuta.
+     */
+    public static function nonce(): string {
+        return self::$nonce ??= rtrim(strtr(base64_encode(random_bytes(18)), '+/', '-_'), '=');
+    }
+
     public static function cabeceras(): void {
         if (headers_sent()) {
             return;

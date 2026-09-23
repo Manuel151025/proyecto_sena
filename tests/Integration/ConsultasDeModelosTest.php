@@ -285,7 +285,7 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         $this->ejecuta(fn() => $cal->getAprendizEvents($apUid, $desde, $hasta), 'getAprendizEvents');
 
         $pr = new Models\ProyectosModel($this->db);
-        $this->ejecuta(fn() => $pr->getAll(), 'ProyectosModel::getAll');
+        $this->ejecuta(fn() => $pr->listar(new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR)), 'ProyectosModel::listar');
     }
 
     /**

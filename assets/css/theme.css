@@ -1663,3 +1663,75 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
   background: rgba(255,255,255,.12) !important;
   color: #fff !important;
 }
+
+/* =====================================================================
+   UTILIDADES DE TARJETAS Y AVANCE
+   Sustituyen a los estilos y efectos que las vistas escribían en línea
+   (onmouseover="this.style.transform=..."), que además de repetirse en
+   cada vista obligaban a la CSP a admitir código en línea.
+   ===================================================================== */
+.tarjeta-elevable { transition: transform .2s ease, box-shadow .2s ease; }
+.tarjeta-elevable:hover,
+.tarjeta-elevable:focus-within { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+@media (prefers-reduced-motion: reduce) {
+  .tarjeta-elevable, .tarjeta-elevable:hover { transition: none; transform: none; }
+}
+.tarjeta-acento { border-top: 4px solid var(--sena-primary) !important; border-radius: 12px; overflow: hidden; }
+.tarjeta-lateral { border-left: 4px solid var(--sena-primary) !important; border-radius: 8px; }
+
+.panel-cifras {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .75rem;
+  font-size: .85rem;
+}
+
+.texto-recortado-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.barra-avance { height: 8px; border-radius: 10px; }
+.barra-avance .progress-bar { border-radius: 10px; }
+
+.estado-vacio {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+.estado-vacio > .bi { display: block; font-size: 3rem; opacity: .3; margin-bottom: .5rem; }
+
+/* Chips de fichas vinculadas y similares. */
+.lista-chips { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: flex-end; }
+
+/* =====================================================================
+   ZONA DE ARCHIVOS (importaciones y evidencias)
+   ===================================================================== */
+.upload-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem 1rem;
+  text-align: center;
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 44px;
+}
+.upload-dropzone:hover,
+.upload-dropzone:focus-visible,
+.upload-dropzone.arrastrando { border-color: var(--sena-primary); background: var(--sena-primary-50); outline: none; }
+.upload-dropzone .icon { font-size: 2.5rem; color: var(--text-soft); transition: color .2s ease; }
+.upload-dropzone:hover .icon, .upload-dropzone.arrastrando .icon { color: var(--sena-primary); }
+.upload-dropzone .text { font-weight: 500; color: var(--text-muted); }
+.upload-dropzone .filename { font-size: .8rem; color: var(--text-soft); font-style: italic; word-break: break-all; }
+.upload-dropzone.con-archivo .filename { color: var(--success-text); font-weight: 600; font-style: normal; }
+
+.min-w-0 { min-width: 0; }

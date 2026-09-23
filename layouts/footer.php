@@ -11,5 +11,16 @@ declare(strict_types=1);
     <script src="<?= APP_URL ?>/assets/js/app.js?v=<?= filemtime(BASE_PATH . 'assets/js/app.js') ?>"></script>
     <!-- Searchable picker -->
     <script src="<?= APP_URL ?>/assets/js/searchable-picker.js?v=<?= filemtime(BASE_PATH . 'assets/js/searchable-picker.js') ?>"></script>
+    <!-- Comportamientos declarativos (data-confirmar, data-modal, data-filtro...) -->
+    <script src="<?= APP_URL ?>/assets/js/comportamientos.js?v=<?= filemtime(BASE_PATH . 'assets/js/comportamientos.js') ?>"></script>
+    <?php
+    // Scripts propios de la pantalla, declarados por la vista en
+    // $scriptsVista (rutas relativas a assets/js). Van en archivos para que
+    // la CSP no tenga que admitir código en línea.
+    foreach (($scriptsVista ?? []) as $js):
+        $rutaJs = BASE_PATH . 'assets/js/' . $js;
+        if (preg_match('#^[a-z0-9/_\-]+\.js$#', $js) && is_file($rutaJs)): ?>
+    <script src="<?= APP_URL ?>/assets/js/<?= e($js) ?>?v=<?= filemtime($rutaJs) ?>"></script>
+    <?php endif; endforeach; ?>
 </body>
 </html>

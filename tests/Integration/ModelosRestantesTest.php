@@ -143,9 +143,12 @@ final class ModelosRestantesTest extends CasoConBaseDeDatos {
     public function testActividadesModel(): void {
         $m = new Models\ActividadesModel($this->db);
 
-        $this->assertIsArray($m->getFichas(ROL_COORDINADOR, $this->idCoordinador()));
-        $this->assertIsArray($m->getFichas(ROL_INSTRUCTOR, $this->idInstructorConFicha()));
-        $this->assertIsArray($m->getCompetencias());
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+        $inst  = new \Core\Support\Actor($this->idInstructorConFicha(), ROL_INSTRUCTOR);
+        $this->assertIsArray($m->fichasDelActor($coord));
+        $this->assertNotEmpty($m->fichasDelActor($inst), 'el instructor con ficha debe ver al menos una');
+        $this->assertIsArray($m->listar($coord, [], 10, 0));
+        $this->assertSame($m->contar($coord, []), (int)$this->db->query("SELECT COUNT(*) FROM actividades")->fetchColumn());
     }
 
     #[TestDox('AsignacionesModel responde y detecta duplicados')]
@@ -197,11 +200,15 @@ final class ModelosRestantesTest extends CasoConBaseDeDatos {
     public function testFasesModel(): void {
         $m = new Models\FasesModel($this->db);
 
-        $this->assertIsArray($m->getTodosProyectos());
-
         $proyecto = (int)$this->db->query("SELECT id FROM proyectos LIMIT 1")->fetchColumn();
-        if ($proyecto > 0) {
-            $this->assertIsArray($m->getProyecto($proyecto) ?? []);
+        if ($proyecto === 0) {
+            $this->markTestSkipped('sin proyectos');
+        }
+        $fases = $m->listarDeProyecto($proyecto);
+        $this->assertIsArray($fases);
+        // Sin fichas en el alcance, ninguna actividad cuenta para el avance.
+        foreach ($m->listarDeProyecto($proyecto, []) as $f) {
+            $this->assertSame(0, (int)$f['total_actividades']);
         }
     }
 
