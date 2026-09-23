@@ -191,9 +191,10 @@ final class ModelosRestantesTest extends CasoConBaseDeDatos {
     public function testCompetenciasModel(): void {
         $m = new Models\CompetenciasModel($this->db);
 
-        $this->assertIsArray($m->getAll());
-        $this->assertIsArray($m->getFilteredList([]));
-        $this->assertIsArray($m->getFilteredList(['search' => 'a', 'estado' => 'activo']));
+        $this->assertIsArray($m->opciones());
+        $this->assertIsArray($m->listar([], 25, 0));
+        $this->assertIsArray($m->listar(['search' => 'a', 'estado' => 'activo'], 25, 0));
+        $this->assertSame($m->contar(['estado' => 'inventado']), 0, 'un estado inventado no debe devolver filas');
     }
 
     #[TestDox('FasesModel responde en sus consultas')]

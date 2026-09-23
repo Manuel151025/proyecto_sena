@@ -1,207 +1,140 @@
 <?php
-declare(strict_types=1);
-
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+$totalRap = array_sum(array_map(static fn($c) => count($c['raps']), $competencias));
 ?>
 <div class="page-header">
   <div>
     <h1 class="mb-1">Resultados de Aprendizaje (RAP)</h1>
-    <p class="text-muted mb-0">Listado y gestión de RAPs asociados a las competencias de cada programa formativo.</p>
+    <p class="text-muted mb-0">Los RAP de cada competencia son las unidades sobre las que se emite el juicio A / D.</p>
   </div>
-  <?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
+  <?php if ($puedeEditar): ?>
   <div class="d-flex gap-2">
-    <a href="<?= APP_URL ?>/index.php/resultados-aprendizaje/importar" class="btn btn-success">
-      <i class="bi bi-file-earmark-spreadsheet me-1"></i> Importar Masivo
-    </a>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearRAP">
-      <i class="bi bi-plus-lg me-1"></i> Nuevo RAP
-    </button>
+    <a href="<?= e(APP_URL . '/index.php/resultados-aprendizaje/importar') ?>" class="btn btn-soft"><i class="bi bi-upload me-1"></i>Importar</a>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrear"><i class="bi bi-plus-lg me-1"></i>Nuevo RAP</button>
   </div>
   <?php endif; ?>
 </div>
 
-<?php if (!empty($successMessage)): ?>
-<div class="alert alert-success alert-dismissible fade show border-0 glass-card text-success" role="alert">
-  <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($successMessage) ?>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<?php endif; ?>
+<?php foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach; ?>
 
-<?php if (!empty($errors)): ?>
-<div class="alert alert-danger alert-dismissible fade show border-0 glass-card text-danger" role="alert">
-  <i class="bi bi-exclamation-triangle-fill me-2"></i>
-  <ul class="mb-0 ps-3 d-inline-block">
-    <?php foreach ($errors as $err): ?>
-      <li><?= htmlspecialchars($err) ?></li>
-    <?php endforeach; ?>
-  </ul>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="card glass-card mb-4 border-0">
+  <div class="card-body">
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label text-muted small" for="f_programa">Programa</label>
+        <select name="programa_id" id="f_programa" class="form-select" data-autoenvio data-picker data-picker-label="Programa">
+          <option value="0">Todos los programas</option>
+          <?php foreach ($programas as $p): ?>
+            <option value="<?= (int)$p['id'] ?>" <?= $programaId === (int)$p['id'] ? 'selected' : '' ?>><?= e($p['codigo'] . ' — ' . $p['nombre']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label text-muted small" for="f_search">Buscar competencia o RAP</label>
+        <input type="search" name="search" id="f_search" class="form-control" maxlength="100" value="<?= e($busqueda) ?>" placeholder="Código o texto...">
+      </div>
+      <div class="col-md-2 d-grid"><button type="submit" class="btn btn-soft">Buscar</button></div>
+    </form>
+    <p class="small text-muted mt-2 mb-0"><?= count($competencias) ?> competencias · <?= $totalRap ?> resultados de aprendizaje</p>
+  </div>
 </div>
-<?php endif; ?>
 
 <div class="row g-3">
   <?php foreach ($competencias as $comp): ?>
-    <div class="col-md-6">
-      <div class="card glass-card h-100 border-0 shadow-sm">
+    <div class="col-lg-6">
+      <article class="card glass-card h-100 border-0 shadow-sm">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <span class="badge bg-soft info font-monospace text-uppercase-visual"><?= htmlspecialchars($comp['codigo']) ?></span>
-            <small class="text-muted text-uppercase-visual"><?= htmlspecialchars($comp['programa']) ?></small>
+          <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+            <span class="badge bg-soft info font-monospace"><?= e($comp['codigo']) ?></span>
+            <small class="text-muted text-end"><?= e($comp['programa']) ?></small>
           </div>
-          <h5 class="fw-bold text-dark mb-3 text-uppercase-visual"><?= htmlspecialchars($comp['nombre']) ?></h5>
-          
-          <h6 class="text-muted small fw-bold mb-2">Resultados de Aprendizaje (RAP) Vinculados:</h6>
-          <ul class="list-group list-group-flush small" style="background:transparent;">
+          <h2 class="h6 fw-bold mb-2 text-uppercase-visual"><?= e($comp['nombre']) ?></h2>
+          <?php if ((int)$comp['es_etapa_practica'] === 1): ?><span class="badge-soft warning mb-2 d-inline-block">Etapa práctica</span><?php endif; ?>
+          <ul class="list-unstyled small mb-0">
             <?php foreach ($comp['raps'] as $rap): ?>
-              <li class="list-group-item d-flex gap-2 align-items-start ps-0 border-0" style="background:transparent;">
-                <span class="badge bg-success flex-shrink-0 text-uppercase-visual"><?= htmlspecialchars($rap['codigo']) ?></span>
-                <span class="text-dark flex-grow-1 text-uppercase-visual"><?= htmlspecialchars($rap['denominacion']) ?></span>
-                <?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
+              <li class="d-flex gap-2 align-items-start py-1 border-bottom">
+                <span class="badge bg-success flex-shrink-0 font-monospace"><?= e($rap['codigo']) ?></span>
+                <span class="flex-grow-1"><?= e($rap['denominacion']) ?>
+                  <?php if ((int)$rap['juicios'] > 0): ?><span class="text-muted">· <?= (int)$rap['juicios'] ?> juicios</span><?php endif; ?></span>
+                <?php if ($puedeEditar): ?>
                 <div class="d-flex gap-1 flex-shrink-0">
-                  <button class="btn btn-sm btn-soft py-0 px-1" style="font-size:.75rem;"
-                    onclick="abrirModalEditarRAP(
-                      <?= (int)$rap['id'] ?>, <?= (int)$comp['id'] ?>,
-                      <?= htmlspecialchars(json_encode($rap['codigo']), ENT_QUOTES, 'UTF-8') ?>,
-                      <?= htmlspecialchars(json_encode($rap['denominacion']), ENT_QUOTES, 'UTF-8') ?>)">
+                  <button type="button" class="btn btn-sm btn-soft py-0 px-1" aria-label="Editar RAP" data-modal="#modalEditar"
+                          data-valores="<?= datosJson(['id' => (int)$rap['id'], 'competencia_id' => (int)$comp['id'], 'codigo' => $rap['codigo'], 'denominacion' => $rap['denominacion']]) ?>">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <form method="POST" class="d-inline"
-                        onsubmit="return confirm('¿Eliminar este RAP? Esta acción no se puede deshacer.')">
+                  <?php if ((int)$rap['juicios'] === 0): ?>
+                  <form method="POST" class="d-inline" data-confirmar="<?= e('¿Eliminar el RAP ' . $rap['codigo'] . '? Se quitarán también sus evaluaciones pendientes.') ?>">
                     <?= csrfField() ?>
-                    <input type="hidden" name="action" value="eliminar_rap">
-                    <input type="hidden" name="id" value="<?= $rap['id'] ?>">
-                    <button type="submit" class="btn btn-sm btn-soft py-0 px-1 text-danger" style="font-size:.75rem;">
-                      <i class="bi bi-trash"></i>
-                    </button>
+                    <input type="hidden" name="action" value="eliminar">
+                    <input type="hidden" name="id" value="<?= (int)$rap['id'] ?>">
+                    <button type="submit" class="btn btn-sm btn-soft py-0 px-1 text-danger" aria-label="Eliminar RAP"><i class="bi bi-trash"></i></button>
                   </form>
+                  <?php endif; ?>
                 </div>
                 <?php endif; ?>
               </li>
             <?php endforeach; ?>
             <?php if (empty($comp['raps'])): ?>
-              <li class="list-group-item ps-0 border-0 text-muted small" style="background:transparent;">
-                <i class="bi bi-info-circle me-1"></i>No hay RAPs vinculados a esta competencia todavía.
-              </li>
+              <li class="text-muted py-1"><i class="bi bi-info-circle me-1"></i>Sin resultados de aprendizaje todavía.</li>
             <?php endif; ?>
           </ul>
         </div>
-      </div>
+      </article>
     </div>
   <?php endforeach; ?>
-
   <?php if (empty($competencias)): ?>
-    <div class="col-12 text-center py-5 text-muted">
-      <i class="bi bi-clipboard-check d-block mb-2" style="font-size:3rem; opacity:0.3;"></i>
-      No hay competencias registradas en el sistema.
-    </div>
+    <div class="col-12 estado-vacio"><i class="bi bi-clipboard-check"></i>No hay competencias que coincidan.</div>
   <?php endif; ?>
 </div>
 
-<!-- Modal Editar RAP -->
-<?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
-<div class="modal fade" id="modalEditarRAP" tabindex="-1" aria-hidden="true">
+<?php if ($puedeEditar):
+    foreach (['Crear' => 'crear', 'Editar' => 'editar'] as $sufijo => $accion): ?>
+<div class="modal fade" id="modal<?= $sufijo ?>" tabindex="-1" aria-labelledby="titulo<?= $sufijo ?>" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square"></i>Editar Resultado de Aprendizaje (RAP)</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
       <form method="POST">
         <?= csrfField() ?>
-        <input type="hidden" name="action" value="editar_rap">
-        <input type="hidden" name="id" id="edit_rap_id">
+        <input type="hidden" name="action" value="<?= $accion ?>">
+        <?php if ($accion === 'editar'): ?><input type="hidden" name="id"><?php endif; ?>
+        <div class="modal-header">
+          <h5 class="modal-title" id="titulo<?= $sufijo ?>"><i class="bi <?= $accion === 'crear' ? 'bi-clipboard-plus' : 'bi-pencil-square' ?>"></i>
+            <?= $accion === 'crear' ? 'Nuevo resultado de aprendizaje' : 'Editar resultado de aprendizaje' ?></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Competencia Asociada</label>
-            <select name="competencia_id" id="edit_rap_competencia_id" class="form-select" required
-                    data-picker
-                    data-picker-label="Competencia asociada"
-                    data-picker-placeholder="Código o nombre de la competencia...">
-              <?php foreach ($competencias as $c): ?>
-                <option value="<?= $c['id'] ?>">
-                  <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
-                </option>
+            <label class="form-label small fw-semibold" for="<?= $accion ?>_competencia">Competencia <span class="text-danger">*</span></label>
+            <select name="competencia_id" id="<?= $accion ?>_competencia" class="form-select" required data-picker data-picker-label="Competencia" data-picker-placeholder="Código o nombre...">
+              <option value="" disabled selected>Seleccione…</option>
+              <?php foreach ($opciones as $o): ?>
+                <option value="<?= (int)$o['id'] ?>" data-search="<?= e($o['codigo'] . ' ' . $o['nombre'] . ' ' . $o['programa_codigo']) ?>"><?= e($o['programa_codigo'] . ' · ' . $o['codigo'] . ' — ' . $o['nombre']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Código del RAP</label>
-            <input type="text" name="codigo" id="edit_rap_codigo" class="form-control" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-\s]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-\s]/g, '').toUpperCase()" required>
+            <label class="form-label small fw-semibold" for="<?= $accion ?>_codigo">Código <span class="text-danger">*</span></label>
+            <input type="text" name="codigo" id="<?= $accion ?>_codigo" class="form-control" required minlength="2" maxlength="<?= (int)$limites['codigo'] ?>" data-filtro="codigo-punto" placeholder="Ej.: 220501094-01">
           </div>
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Denominación del Resultado de Aprendizaje</label>
-            <textarea name="denominacion" id="edit_rap_denominacion" class="form-control" rows="4" maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
+          <div>
+            <label class="form-label small fw-semibold" for="<?= $accion ?>_denominacion">Denominación <span class="text-danger">*</span></label>
+            <textarea name="denominacion" id="<?= $accion ?>_denominacion" class="form-control text-uppercase" rows="3" required minlength="5" maxlength="<?= (int)$limites['texto'] ?>" data-filtro="sin-html"></textarea>
           </div>
+          <?php if ($accion === 'crear'): ?><p class="small text-muted mt-2 mb-0">Al guardarlo, los aprendices ya matriculados en el programa reciben su evaluación pendiente.</p><?php endif; ?>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
         </div>
       </form>
     </div>
   </div>
 </div>
-<script>
-function abrirModalEditarRAP(id, competenciaId, codigo, denominacion) {
-    document.getElementById('edit_rap_id').value             = id;
-    document.getElementById('edit_rap_competencia_id').value = competenciaId;
-    document.getElementById('edit_rap_codigo').value         = codigo;
-    document.getElementById('edit_rap_denominacion').value   = denominacion;
-    new bootstrap.Modal(document.getElementById('modalEditarRAP')).show();
-}
-</script>
-<?php endif; ?>
-
-<!-- Modal Registrar RAP -->
-<?php if (hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)): ?>
-<div class="modal fade" id="modalCrearRAP" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-bookmark-check"></i>Nuevo Resultado de Aprendizaje (RAP)</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form method="POST">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="crear_rap">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Competencia Asociada</label>
-            <select name="competencia_id" class="form-select" required
-                    data-picker
-                    data-picker-label="Seleccionar competencia"
-                    data-picker-placeholder="Código o nombre de la competencia...">
-              <option value="" disabled selected>Seleccione Competencia...</option>
-              <?php foreach ($competencias as $c): ?>
-                <option value="<?= $c['id'] ?>"
-                        data-search="<?= htmlspecialchars($c['codigo'] . ' ' . $c['nombre']) ?>">
-                  <?= htmlspecialchars($c['codigo']) ?> — <?= htmlspecialchars($c['nombre']) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Código del RAP (ej: RAP 1, RAP-02)</label>
-            <input type="text" name="codigo" class="form-control" placeholder="Ej. RAP 1" maxlength="20" minlength="2" pattern="^[a-zA-Z0-9\-\s]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-\s]/g, '').toUpperCase()" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Denominación del Resultado de Aprendizaje</label>
-            <textarea name="denominacion" class="form-control" rows="4" placeholder="Describa el resultado de aprendizaje..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')" required></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Registrar RAP</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<?php endif; ?>
+<?php endforeach; endif; ?>
