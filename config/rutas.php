@@ -169,7 +169,12 @@ return static function (Router $router): void {
     $router->accion('/evidencias', 'revisar',  $EVI, 'revisar',  $GESTION);
     $router->accion('/evidencias', 'eliminar', $EVI, 'eliminar', [ROL_COORDINADOR, ROL_APRENDIZ]);
     $ambos('/retroalimentacion',      'Core\Controllers\RetroalimentacionController', 'index', $TODOS);
-    $router->add('GET', '/mejoramiento', 'Core\Controllers\MejoramientoController', 'index', $TODOS);
+    $MJ = 'Core\Controllers\MejoramientoController';
+    $router->add('GET', '/mejoramiento',          $MJ, 'index',    $TODOS);
+    $router->add('GET', '/mejoramiento/exportar', $MJ, 'exportar', $TODOS);
+    $router->accion('/mejoramiento', 'crear',  $MJ, 'crear',  $GESTION);
+    $router->accion('/mejoramiento', 'editar', $MJ, 'editar', $GESTION);
+    $router->accion('/mejoramiento', 'cerrar', $MJ, 'cerrar', $GESTION);
 
     // ---------------------------------------------------------------------
     // REPORTES Y AUDITORÍA

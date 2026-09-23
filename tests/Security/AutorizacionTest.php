@@ -240,21 +240,22 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
     #[TestDox('los planes de mejoramiento de un aprendiz son solo los suyos')]
     public function testMejoramientoAislado(): void {
         $modelo = new MejoramientoModel($this->db);
-        $apId = $this->idAprendiz();
+        $usuario = $this->idUsuarioAprendiz();
+        $apId = (int)$this->db->query("SELECT id FROM aprendices WHERE usuario_id = $usuario")->fetchColumn();
+        $actor = new \Core\Support\Actor($usuario, ROL_APRENDIZ);
 
-        $suyos = $modelo->getPlanesMejoramiento(ROL_APRENDIZ, $this->idUsuarioAprendiz(), $apId);
-        $enBase = $this->contar('evaluaciones', "aprendiz_id = ? AND concepto = 'D'", [$apId]);
-
-        $this->assertCount($enBase, $suyos);
+        $this->assertSame($this->contar('planes_mejoramiento', 'aprendiz_id = ?', [$apId]), $modelo->contar($actor, []));
+        foreach ($modelo->listar($actor, [], 100, 0) as $p) {
+            $this->assertSame($apId, (int)$p['aprendiz_id'], 'el aprendiz ve el plan de otro');
+        }
     }
 
-    #[TestDox('un instructor ajeno no ve planes de mejoramiento')]
+    #[TestDox('un instructor ajeno no ve planes de mejoramiento ni RAP en D')]
     public function testMejoramientoDeInstructorAjeno(): void {
         $modelo = new MejoramientoModel($this->db);
-        $this->assertCount(
-            0,
-            $modelo->getPlanesMejoramiento(ROL_INSTRUCTOR, $this->idInstructorAjeno(), 0)
-        );
+        $ajeno = new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR);
+        $this->assertSame(0, $modelo->contar($ajeno, []));
+        $this->assertSame(0, $modelo->contarSinPlan($ajeno));
     }
 
     /**

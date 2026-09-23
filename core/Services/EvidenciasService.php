@@ -69,6 +69,10 @@ final class EvidenciasService {
                     'archivo_url' => $guardado, 'tipo_archivo' => $archivo?->extension, 'tamano_kb' => $archivo ? (int)ceil($archivo->bytes / 1024) : 0,
                 ]);
                 (new Auditoria($this->db))->operacion($actor, 'Crear', 'Evidencias', 'evidencias', $id, "Envió la evidencia «{$d['titulo']}»");
+                // Entregar evidencia de un RAP con plan abierto lo pone en curso.
+                if ($d['evaluacion_id'] !== null) {
+                    (new \Core\Models\MejoramientoModel($this->db))->marcarEnCurso($d['evaluacion_id']);
+                }
                 (new Notificador($this->db))->notificarVarios($this->modelo->instructoresAAvisar((int)$ap['id'], $d['evaluacion_id']),
                     'Nueva evidencia por revisar', "«{$d['titulo']}» espera tu revisión.", 'info', '/index.php/evidencias?estado=enviada');
                 return $id;
