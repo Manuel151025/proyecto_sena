@@ -54,13 +54,22 @@ try {
         $action = $_POST['action'] ?? '';
 
         if ($action === 'marcar_leida') {
-            $id = (int) ($_POST['id'] ?? 0);
+            $bruto = $_POST['id'] ?? '';
+            $id = is_array($bruto) ? 0 : (int)filter_var(trim((string)$bruto), FILTER_VALIDATE_INT);
             if ($id <= 0) {
                 http_response_code(400);
                 echo json_encode(['error' => 'ID inválido']);
                 exit;
             }
-            marcarNotificacionLeida($id);
+            // La notificación tiene que ser de quien la marca.
+            if (!marcarNotificacionLeida($id, $userId)) {
+                // Mismo código y mensaje tanto si no existe como si es de
+                // otro usuario: distinguirlos permitiría sondear qué ids
+                // están ocupados.
+                http_response_code(404);
+                echo json_encode(['error' => 'Notificación no encontrada']);
+                exit;
+            }
             echo json_encode(['ok' => true]);
 
         } elseif ($action === 'marcar_todas') {

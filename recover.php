@@ -49,17 +49,31 @@ $dev_link   = ''; // link a mostrar en modo DEV en step=2
 // HELPERS
 // =====================================================================
 
+/**
+ * Registra el enlace de recuperación para poder probarlo sin correo.
+ *
+ * Solo en DEV_MODE. El enlace lleva el token en claro, es decir, la llave
+ * para cambiar la contraseña de esa cuenta: escribirlo siempre convertía
+ * `logs/password_resets.log` en una lista de llaves válidas. De hecho ese
+ * archivo llegó a versionarse en git con enlaces reales dentro.
+ *
+ * Fuera de desarrollo se registra únicamente que hubo una solicitud, sin
+ * el token y sin el correo completo.
+ */
 function log_reset_link(string $email, string $link): void {
     $log_dir = dirname(RESET_LOG);
     if (!is_dir($log_dir)) {
         @mkdir($log_dir, 0755, true);
     }
-    $line = sprintf(
-        "[%s] %s -> %s\n",
-        date('Y-m-d H:i:s'),
-        $email,
-        $link
-    );
+
+    if (defined('DEV_MODE') && DEV_MODE) {
+        $line = sprintf("[%s] %s -> %s\n", date('Y-m-d H:i:s'), $email, $link);
+    } else {
+        // Solo el dominio: basta para diagnosticar y no identifica a nadie.
+        $dominio = strstr($email, '@') ?: '@?';
+        $line = sprintf("[%s] solicitud de recuperación para una cuenta %s\n", date('Y-m-d H:i:s'), $dominio);
+    }
+
     @file_put_contents(RESET_LOG, $line, FILE_APPEND | LOCK_EX);
 }
 
@@ -75,13 +89,27 @@ function build_reset_link(string $token): string {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'request') {
     requireCsrf();
 
-    $email = strip_tags(trim($_POST['email'] ?? ''));
+    $bruto = $_POST['email'] ?? '';
+    $email = is_array($bruto) ? '' : strip_tags(trim((string)$bruto));
 
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    // Sin límite, este formulario permitía dos abusos: averiguar qué correos
+    // están dados de alta (probando de uno en uno y midiendo la respuesta) y
+    // bombardear de correos a una víctima pulsando "enviar" en bucle.
+    $limitador = new Core\Services\LimitadorIntentos();
+    $bloqueo   = $limitador->segundosBloqueo('recuperacion', $email);
+
+    if ($bloqueo > 0) {
+        $minutos = Core\Services\LimitadorIntentos::minutos($bloqueo);
+        $errors[] = "Demasiadas solicitudes. Inténtalo de nuevo en {$minutos} minuto(s).";
+    } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Por favor ingresa un correo válido.';
     } elseif (mb_strlen($email, 'UTF-8') > 100) {
         $errors[] = 'El correo no puede exceder los 100 caracteres.';
     } else {
+        // Se cuenta toda solicitud, exista la cuenta o no: contar solo las
+        // que aciertan volvería a distinguir unas de otras.
+        $limitador->registrarFallo('recuperacion', $email);
+
         try {
             $db = Database::getConnection();
 
