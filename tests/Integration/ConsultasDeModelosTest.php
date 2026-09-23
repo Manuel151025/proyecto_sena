@@ -239,21 +239,39 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
     // REPORTES
     // =================================================================
 
-    #[TestDox('los cuatro reportes se generan para los dos roles')]
+    #[TestDox('cada reporte se genera para los dos roles y sus filas tienen tantas columnas como encabezados')]
     public function testReportes(): void {
-        $m = new Models\ReportesModel($this->db);
-        $ficha = $this->idFicha();
+        $s = new \Core\Services\ReportesService($this->db);
+        $inst = $this->idInstructorConFicha();
+        $fichaInst = (int)$this->db->query("SELECT id FROM fichas WHERE instructor_id = $inst LIMIT 1")->fetchColumn();
 
-        foreach ([[ROL_COORDINADOR, $this->idCoordinador()], [ROL_INSTRUCTOR, $this->idInstructorConFicha()]] as [$rol, $uid]) {
-            $this->ejecuta(fn() => $m->getReportEvaluacionesFicha($ficha, $uid, $rol), "evaluaciones_ficha ($rol)");
-            $this->ejecuta(fn() => $m->getReportCumplimientoInstructor($uid, $rol), "cumplimiento_instructor ($rol)");
-            $this->ejecuta(fn() => $m->getReportCumplimientoCompetencia($uid, $rol), "cumplimiento_competencia ($rol)");
-            $this->ejecuta(fn() => $m->getReportHistorialCambios($uid, $rol), "historial_cambios ($rol)");
+        foreach ([new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR), new \Core\Support\Actor($inst, ROL_INSTRUCTOR)] as $actor) {
+            foreach (array_keys(\Core\Services\ReportesService::TIPOS) as $tipo) {
+                $r = $this->ejecuta(fn() => $s->generar($tipo, $actor, ['ficha_id' => $fichaInst, 'desde' => '2020-01-01', 'hasta' => '2020-12-31']), "$tipo ({$actor->rol})");
+                foreach (array_slice($r['filas'], 0, 50) as $fila) {
+                    $this->assertCount(count($r['encabezados']), $fila, "$tipo: una fila no cuadra con los encabezados");
+                }
+            }
         }
+        $total = (int)$this->db->query("SELECT COUNT(*) FROM evaluaciones e JOIN aprendices a ON a.id = e.aprendiz_id
+                                         WHERE a.estado IN ('matriculado','suspendido','etapa_practica')")->fetchColumn();
+        $competencias = $s->generar('competencia', new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR))['filas'];
+        $this->assertSame($total, array_sum(array_column($competencias, 5)), 'el reporte por competencia no suma todos los juicios');
+    }
 
-        $this->ejecuta(fn() => $m->getGlobalStats(), 'getGlobalStats');
-        $this->ejecuta(fn() => $m->getInstructorStats($this->idInstructorConFicha()), 'getInstructorStats');
-        $this->ejecuta(fn() => $m->getFichaResumen($ficha), 'getFichaResumen');
+    #[TestDox('un instructor no obtiene el reporte de una ficha ajena, ni un aprendiz ningún reporte')]
+    public function testReportesAlcance(): void {
+        $s = new \Core\Services\ReportesService($this->db);
+        foreach ([[new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR), 'ficha'],
+                  [new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ), 'competencia']] as [$actor, $tipo]) {
+            try {
+                $s->generar($tipo, $actor, ['ficha_id' => $this->idFicha()]);
+                $this->fail("{$actor->rol} obtuvo el reporte $tipo");
+            } catch (\Core\Support\ErrorDeNegocio) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->assertSame([], $s->generar('instructor', new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR))['filas']);
     }
 
     // =================================================================

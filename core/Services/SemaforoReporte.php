@@ -12,37 +12,17 @@ namespace Core\Services;
  * formato nuevo significaba copiarla, y dos copias divergen en cuanto
  * alguien ajusta un umbral en una y olvida la otra.
  *
- * Aquí quedan declaradas dos cosas: qué columna de cada reporte lleva
- * semáforo (ESTILOS) y qué color le corresponde a cada valor (`clase`).
+ * Qué columnas llevan semáforo lo declara cada reporte en ReportesService
+ * ('columnas_concepto' y 'columna_porcentaje'); aquí se decide el color de
+ * cada valor, con los umbrales de Core\Support\Semaforo (antes tenía su
+ * propia copia del 80 % y el 60 %).
  */
 final class SemaforoReporte {
-    /**
-     * Qué columnas de cada reporte llevan color, por índice de posición.
-     *
-     * - columnas_concepto:  celdas con 'A' / 'D' / 'pendiente'.
-     * - columna_porcentaje: celda con un % de cumplimiento.
-     *
-     * Los índices siguen el orden de `$headers` de cada reporte en
-     * ReportesController. Si cambia el orden de las columnas, cambia aquí.
-     */
-    public const ESTILOS = [
-        'evaluaciones_ficha'       => ['columnas_concepto'  => [5]],
-        'cumplimiento_instructor'  => ['columna_porcentaje' => 8],
-        'cumplimiento_competencia' => ['columna_porcentaje' => 6],
-        'historial_cambios'        => ['columnas_concepto'  => [3, 4]],
-    ];
-
-    /** Umbral a partir del cual un cumplimiento se considera al día. */
-    private const UMBRAL_ALDIA = 80.0;
-
-    /** Por debajo de este umbral, el cumplimiento es crítico. */
-    private const UMBRAL_RIESGO = 60.0;
-
     /**
      * Clase CSS del semáforo, o '' si la celda no lleva color.
      *
      * @param int   $col     Índice de la columna dentro de la fila.
-     * @param array $estilos Entrada de ESTILOS del reporte en curso.
+     * @param array $estilos 'columnas_concepto' y 'columna_porcentaje' del reporte.
      * @return string 'aldia' | 'riesgo' | 'critico' | 'num' | ''
      */
     public static function clase(int $col, string $valor, array $estilos): string {
@@ -59,21 +39,17 @@ final class SemaforoReporte {
         if (isset($estilos['columna_porcentaje']) && $col === $estilos['columna_porcentaje']) {
             // El valor puede venir como "85", "85,5" o "85.5%" según el
             // reporte, así que se normaliza antes de comparar.
-            $n = (float)str_replace(['%', ','], ['', '.'], $valor);
-            if ($n >= self::UMBRAL_ALDIA)  return 'aldia';
-            if ($n >= self::UMBRAL_RIESGO) return 'riesgo';
-            return 'critico';
+            if (trim($valor) === '') {
+                return '';
+            }
+            return match (\Core\Support\Semaforo::porcentaje((float)str_replace(['%', ','], ['', '.'], $valor))) {
+                \Core\Support\Semaforo::AL_DIA => 'aldia',
+                \Core\Support\Semaforo::RIESGO => 'riesgo',
+                default => 'critico',
+            };
         }
 
         return is_numeric($valor) ? 'num' : '';
-    }
-
-    /**
-     * Estilos declarados para un tipo de reporte. Devuelve [] si el reporte
-     * no lleva semáforo, para que el llamador no tenga que comprobarlo.
-     */
-    public static function paraReporte(string $tipo): array {
-        return self::ESTILOS[$tipo] ?? [];
     }
 
     /**

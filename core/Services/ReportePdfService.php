@@ -72,9 +72,8 @@ final class ReportePdfService {
      *   - subtitulo    string  Contexto bajo el título (ficha, programa...).
      *   - generado_por string  Nombre de quien exporta.
      *   - orientacion  string  'landscape' (por defecto) | 'portrait'.
-     *   Además acepta las claves de semáforo de SemaforoReporte::ESTILOS
-     *   ('columnas_concepto', 'columna_porcentaje'), que el controlador
-     *   obtiene con `SemaforoReporte::paraReporte($tipo)`.
+     *   Además acepta las claves de semáforo que declara cada reporte
+     *   (`columnas_concepto`, `columna_porcentaje`; ver ReportesService).
      * @return string Bytes del PDF.
      */
     public function generar(string $titulo, array $headers, array $filas, array $opciones = []): string {

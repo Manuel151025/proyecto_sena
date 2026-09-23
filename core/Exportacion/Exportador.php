@@ -52,7 +52,10 @@ final class Exportador {
     /**
      * @param list<string> $encabezados
      * @param iterable<array> $filas
-     * @param array{titulo?:string, anchos?:list<int>} $opciones
+     * @param array{titulo?:string, anchos?:list<int>, estilos?:array} $opciones
+     *   `estilos`: columnas con semáforo, en el formato de SemaforoReporte
+     *   ('columnas_concepto', 'columna_porcentaje'); esas celdas se pintan
+     *   con los mismos colores que el PDF.
      * @return string Contenido binario del .xlsx
      */
     public static function xlsx(string $hoja, array $encabezados, iterable $filas, array $opciones = []): string {
@@ -74,7 +77,7 @@ final class Exportador {
             if (++$n > self::MAX_FILAS) {
                 break;
             }
-            $filasXml[] = self::filaXml($r++, array_values($fila), 0);
+            $filasXml[] = self::filaXml($r++, array_values($fila), 0, $opciones['estilos'] ?? []);
         }
 
         $cols = '';
@@ -141,16 +144,26 @@ final class Exportador {
         // Estilos: 0 normal, 1 encabezado (negrita, fondo verde SENA, texto blanco), 2 título.
         $zip->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font>'
+            . '<fonts count="6"><font><sz val="11"/><name val="Calibri"/></font>'
             . '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'
-            . '<font><b/><sz val="14"/><color rgb="FF00324D"/><name val="Calibri"/></font></fonts>'
-            . '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
-            . '<fill><patternFill patternType="solid"><fgColor rgb="FF39A900"/><bgColor indexed="64"/></patternFill></fill></fills>'
+            . '<font><b/><sz val="14"/><color rgb="FF00324D"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="11"/><color rgb="FFA51D24"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="11"/><color rgb="FFB06000"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="11"/><color rgb="FF137333"/><name val="Calibri"/></font></fonts>'
+            . '<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FF39A900"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFFCE8E6"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFFEF7E0"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFE6F4EA"/><bgColor indexed="64"/></patternFill></fill></fills>'
             . '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
             . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-            . '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment wrapText="1" vertical="top"/></xf>'
+            . '<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment wrapText="1" vertical="top"/></xf>'
             . '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center"/></xf>'
-            . '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+            . '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            // 3 crítico, 4 riesgo, 5 al día: los colores del semáforo del PDF.
+            . '<xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment horizontal="center" vertical="top"/></xf>'
+            . '<xf numFmtId="0" fontId="4" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment horizontal="center" vertical="top"/></xf>'
+            . '<xf numFmtId="0" fontId="5" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment horizontal="center" vertical="top"/></xf></cellXfs>'
             . '</styleSheet>');
         $zip->addFromString('xl/worksheets/sheet1.xml', $hojaXml);
         $zip->close();
@@ -163,9 +176,11 @@ final class Exportador {
     /** Envía el archivo al navegador y termina. */
     public static function descargar(string $contenido, string $nombreArchivo, string $formato): never {
         $nombreArchivo = preg_replace('/[^A-Za-z0-9_.\-]/', '_', $nombreArchivo) ?: 'exportacion';
-        $tipo = $formato === 'xlsx'
-            ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            : 'text/csv; charset=utf-8';
+        $tipo = match ($formato) {
+            'xlsx'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'pdf'   => 'application/pdf',
+            default => 'text/csv; charset=utf-8',
+        };
         header('Content-Type: ' . $tipo);
         header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
         header('Content-Length: ' . strlen($contenido));
@@ -188,11 +203,14 @@ final class Exportador {
         return $s;
     }
 
-    private static function filaXml(int $r, array $valores, int $estilo): string {
+    private const ESTILO_SEMAFORO = ['critico' => 3, 'riesgo' => 4, 'aldia' => 5];
+
+    private static function filaXml(int $r, array $valores, int $estilo, array $semaforo = []): string {
         $celdas = '';
         foreach ($valores as $i => $v) {
             $ref = self::columna($i) . $r;
-            $s = $estilo > 0 ? ' s="' . $estilo . '"' : '';
+            $propio = $semaforo !== [] ? (self::ESTILO_SEMAFORO[\Core\Services\SemaforoReporte::clase($i, (string)($v ?? ''), $semaforo)] ?? $estilo) : $estilo;
+            $s = $propio > 0 ? ' s="' . $propio . '"' : '';
             if ($estilo === 0 && (is_int($v) || is_float($v)) && is_finite((float)$v)) {
                 $celdas .= '<c r="' . $ref . '"' . $s . '><v>' . $v . '</v></c>';
                 continue;

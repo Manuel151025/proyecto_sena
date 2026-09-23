@@ -184,7 +184,9 @@ return static function (Router $router): void {
     // ---------------------------------------------------------------------
     // REPORTES Y AUDITORÍA
     // ---------------------------------------------------------------------
-    $ambos('/reportes', 'Core\Controllers\ReportesController', 'index', $GESTION);
+    $RP = 'Core\Controllers\ReportesController';
+    $router->add('GET', '/reportes',           $RP, 'index',     $GESTION);
+    $router->add('GET', '/reportes/descargar', $RP, 'descargar', $GESTION);
     $router->add('GET', '/logs', 'Core\Controllers\LogsController', 'index', $COORDINADOR);
 
     // ---------------------------------------------------------------------

@@ -112,43 +112,31 @@ final class AuditoriaYReportesTest extends CasoConBaseDeDatos {
     // REPORTES EN PDF
     // =================================================================
 
-    #[TestDox('los cuatro reportes se generan como PDF válido')]
-    public function testGeneracionDeLosCuatroReportes(): void {
-        $modelo = new ReportesModel($this->db);
+    #[TestDox('cada reporte sale en PDF y en un XLSX con las celdas del semáforo coloreadas')]
+    public function testGeneracionDeLosReportes(): void {
         $svc = new ReportePdfService();
-        $coord = $this->idCoordinador();
-        $ficha = $this->idFicha();
+        $reportes = new \Core\Services\ReportesService($this->db);
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
 
-        $casos = [
-            'evaluaciones_ficha' => [
-                ['Aprendiz', 'Documento', 'RA Código', 'RA Denominación', 'Competencia', 'Concepto', 'Fecha', 'Instructor'],
-                $modelo->getReportEvaluacionesFicha($ficha, $coord, ROL_COORDINADOR),
-            ],
-            'cumplimiento_instructor' => [
-                ['Instructor', 'Ficha', 'Programa', 'Competencia', 'Total', 'A', 'D', 'Pend.', '%'],
-                $modelo->getReportCumplimientoInstructor($coord, ROL_COORDINADOR),
-            ],
-            'cumplimiento_competencia' => [
-                ['Programa', 'Competencia', 'Código', 'Total', 'A', 'D', '%'],
-                $modelo->getReportCumplimientoCompetencia($coord, ROL_COORDINADOR),
-            ],
-            'historial_cambios' => [
-                ['ID', 'Aprendiz', 'RA', 'Anterior', 'Nuevo', 'Motivo', 'Por', 'Fecha'],
-                $modelo->getReportHistorialCambios($coord, ROL_COORDINADOR),
-            ],
-        ];
-
-        foreach ($casos as $tipo => [$cabeceras, $datos]) {
-            $pdf = $svc->generar(
-                'Reporte de prueba',
-                $cabeceras,
-                array_slice($datos, 0, 60),   // acotado: aquí importa que salga, no el volumen
-                SemaforoReporte::paraReporte($tipo) + ['generado_por' => 'Pruebas']
-            );
-
+        foreach (array_keys(\Core\Services\ReportesService::TIPOS) as $tipo) {
+            $r = $reportes->generar($tipo, $coord, ['ficha_id' => $this->idFicha()]);
+            $filas = array_slice($r['filas'], 0, 60);   // acotado: aquí importa que salga, no el volumen
+            $pdf = $svc->generar($r['titulo'], $r['encabezados'], $filas, $r['estilos'] + ['generado_por' => 'Pruebas']);
             $this->assertStringStartsWith('%PDF-', $pdf, "$tipo no produjo un PDF");
             $this->assertGreaterThan(1000, strlen($pdf), "$tipo produjo un PDF sospechosamente pequeño");
+
+            $xlsx = \Core\Exportacion\Exportador::xlsx($r['titulo'], $r['encabezados'], $filas, ['estilos' => $r['estilos']]);
+            $this->assertStringStartsWith('PK', $xlsx, "$tipo no produjo un XLSX");
         }
+
+        // La celda con D del reporte de una ficha lleva el estilo «crítico» (s="3").
+        $xlsx = \Core\Exportacion\Exportador::xlsx('Prueba', ['Aprendiz', 'Juicio'], [['Ana', 'D'], ['Luis', 'A']], ['estilos' => ['columnas_concepto' => [1]]]);
+        $zip = tempnam(sys_get_temp_dir(), 'x');
+        file_put_contents($zip, $xlsx);
+        $hoja = (string)file_get_contents('zip://' . $zip . '#xl/worksheets/sheet1.xml');
+        @unlink($zip);
+        $this->assertMatchesRegularExpression('/<c r="B2"[^>]*s="3"/', $hoja, 'el D no sale como crítico');
+        $this->assertMatchesRegularExpression('/<c r="B3"[^>]*s="5"/', $hoja, 'el A no sale como al día');
     }
 
     #[TestDox('un reporte sin registros produce un PDF con su aviso')]
@@ -187,16 +175,16 @@ final class AuditoriaYReportesTest extends CasoConBaseDeDatos {
             SELECT ficha_id FROM evaluaciones GROUP BY ficha_id ORDER BY COUNT(*) DESC LIMIT 1
         ")->fetchColumn();
 
-        $datos = $modelo->getReportEvaluacionesFicha($fichaMayor, $coord, ROL_COORDINADOR);
+        $datos = $modelo->juiciosDeFicha($fichaMayor, new \Core\Support\Actor($coord, ROL_COORDINADOR));
         if (count($datos) < 200) {
             $this->markTestSkipped('no hay un reporte lo bastante grande para esta prueba');
         }
 
         $pdf = (new ReportePdfService())->generar(
             'Volumen',
-            ['Aprendiz', 'Doc', 'RA', 'Denominación', 'Competencia', 'Concepto', 'Fecha', 'Instructor'],
+            ['Aprendiz', 'Documento', 'Estado', 'Competencia', 'RAP', 'Resultado', 'Juicio', 'Fecha', 'Califica'],
             $datos,
-            SemaforoReporte::paraReporte('evaluaciones_ficha')
+            ['columnas_concepto' => [6]]
         );
 
         $this->assertStringStartsWith('%PDF-', $pdf);

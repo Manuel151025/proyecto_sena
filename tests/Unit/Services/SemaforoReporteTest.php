@@ -135,22 +135,20 @@ final class SemaforoReporteTest extends CasoDePrueba {
         $this->assertSame('', SemaforoReporte::clase(3, 'texto', []));
     }
 
-    #[TestDox('paraReporte() devuelve los estilos de cada reporte')]
-    public function testEstilosPorReporte(): void {
-        $this->assertSame(['columnas_concepto' => [5]], SemaforoReporte::paraReporte('evaluaciones_ficha'));
-        $this->assertSame(['columna_porcentaje' => 8], SemaforoReporte::paraReporte('cumplimiento_instructor'));
-        $this->assertSame(['columnas_concepto' => [3, 4]], SemaforoReporte::paraReporte('historial_cambios'));
-    }
-
-    #[TestDox('paraReporte() con un reporte desconocido devuelve vacío, no falla')]
-    public function testReporteDesconocido(): void {
-        $this->assertSame([], SemaforoReporte::paraReporte('no_existe'));
+    #[TestDox('los umbrales son los del semáforo del sistema')]
+    public function testUmbralesComunes(): void {
+        $estilos = ['columna_porcentaje' => 0];
+        $this->assertSame('aldia', SemaforoReporte::clase(0, (string)\Core\Support\Semaforo::UMBRAL_AL_DIA, $estilos));
+        $this->assertSame('riesgo', SemaforoReporte::clase(0, (string)(\Core\Support\Semaforo::UMBRAL_AL_DIA - 0.1), $estilos));
+        $this->assertSame('critico', SemaforoReporte::clase(0, (string)(\Core\Support\Semaforo::UMBRAL_RIESGO - 0.1), $estilos));
+        $this->assertSame('', SemaforoReporte::clase(0, '', $estilos), 'un porcentaje vacío (sin juicios) no lleva color');
     }
 
     #[TestDox('el historial colorea las dos columnas de concepto')]
     public function testHistorialColoreaAmbasColumnas(): void {
-        $estilos = SemaforoReporte::paraReporte('historial_cambios');
-        $this->assertSame('riesgo',  SemaforoReporte::clase(3, 'pendiente', $estilos));
-        $this->assertSame('aldia',   SemaforoReporte::clase(4, 'A', $estilos));
+        $estilos = ['columnas_concepto' => [5, 6]];
+        $this->assertSame('riesgo',  SemaforoReporte::clase(5, 'pendiente', $estilos));
+        $this->assertSame('aldia',   SemaforoReporte::clase(6, 'A', $estilos));
+        $this->assertSame('critico', SemaforoReporte::clase(6, 'D', $estilos));
     }
 }

@@ -3,199 +3,82 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
-use Core\Models\ReportesModel;
+use Core\Exportacion\Exportador;
+use Core\Models\AnaliticaModel;
+use Core\Models\EvaluacionesModel;
+use Core\Router;
+use Core\Services\Auditoria;
 use Core\Services\ReportePdfService;
-use Core\Services\SemaforoReporte;
-use PDO;
-use Exception;
+use Core\Services\ReportesService;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Core\Support\Validador;
+use Throwable;
 
+/**
+ * Reportes (RF05) en XLSX, CSV y PDF (RNF03).
+ *
+ *   GET /reportes                                     catálogo
+ *   GET /reportes/descargar?tipo=&formato=&ficha_id=&desde=&hasta=
+ *
+ * La descarga es GET porque no cambia nada (se audita igualmente). Antes
+ * era un POST que generaba un "Excel" que en realidad era HTML con
+ * extensión .xls, y Excel avisaba de que el archivo estaba dañado.
+ */
 class ReportesController extends BaseController {
-    private PDO $db;
-    private ReportesModel $reportesModel;
-
-    public function __construct(?PDO $db = null, ?ReportesModel $reportesModel = null) {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-        $this->db = $db ?? Database::getConnection();
-        $this->reportesModel = $reportesModel ?? new ReportesModel($this->db);
-    }
-
     public function index(): void {
+        $actor = Actor::actual();
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
         $errors = [];
-        $user_rol = getCurrentRole();
-        $user_id = (int)getCurrentUser()['id'];
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
-            requireCsrf();
-            
-            try {
-                $type = $_POST['export'] ?? '';
-                $format = $_POST['format'] ?? 'csv';
-                
-                $allowed_types = ['evaluaciones_ficha', 'cumplimiento_instructor', 'cumplimiento_competencia', 'historial_cambios'];
-                if (!in_array($type, $allowed_types, true)) {
-                    throw new ErrorDeNegocio("Tipo de reporte no permitido.");
-                }
-                
-                if (!in_array($format, ['csv', 'excel', 'pdf'], true)) {
-                    throw new ErrorDeNegocio("Formato de exportación no válido.");
-                }
-
-                $data = [];
-                $headers = [];
-                $filename = '';
-                $subtitulo = '';
-
-                switch ($type) {
-                    case 'evaluaciones_ficha':
-                        $ficha_id = (int)($_POST['ficha_id'] ?? 0);
-                        if ($user_rol === ROL_INSTRUCTOR) {
-                            if (!$this->reportesModel->checkFichaInstructorAccess($ficha_id, $user_id)) {
-                                throw new ErrorDeNegocio("No tiene permisos para descargar los reportes de esta ficha.");
-                            }
-                        }
-                        $headers = ['Aprendiz', 'Documento', 'RA Código', 'RA Denominación', 'Competencia', 'Concepto', 'Fecha Evaluación', 'Instructor'];
-                        $data = $this->reportesModel->getReportEvaluacionesFicha($ficha_id, $user_id, $user_rol);
-                        $filename = "evaluaciones_ficha_{$ficha_id}_" . date('Ymd');
-                        $ficha = $this->reportesModel->getFichaResumen($ficha_id);
-                        $subtitulo = $ficha
-                            ? 'Ficha ' . $ficha['numero_ficha'] . ' · ' . $ficha['programa']
-                            : 'Ficha ' . $ficha_id;
-                        break;
-                    case 'cumplimiento_instructor':
-                        $headers = ['Instructor Líder', 'Ficha', 'Programa', 'Competencia', 'Total RAs', 'Aprobados (A)', 'No Aprobados (D)', 'Pendientes', '% Cumplimiento'];
-                        $data = $this->reportesModel->getReportCumplimientoInstructor($user_id, $user_rol);
-                        $filename = "cumplimiento_instructor_" . date('Ymd');
-                        break;
-                    case 'cumplimiento_competencia':
-                        $headers = ['Programa', 'Competencia', 'Código Comp.', 'Total RAs Evaluados', 'Aprobados (A)', 'No Aprobados (D)', '% Aprobación'];
-                        $data = $this->reportesModel->getReportCumplimientoCompetencia($user_id, $user_rol);
-                        $filename = "cumplimiento_competencia_" . date('Ymd');
-                        break;
-                    case 'historial_cambios':
-                        $headers = ['Evaluación ID', 'Aprendiz', 'RA Código', 'Concepto Anterior', 'Concepto Nuevo', 'Motivo', 'Modificado Por', 'Fecha Cambio'];
-                        $data = $this->reportesModel->getReportHistorialCambios($user_id, $user_rol);
-                        $filename = "historial_evaluaciones_" . date('Ymd');
-                        break;
-                }
-
-                // El criterio de color lo declara SemaforoReporte, para que
-                // el Excel y el PDF pinten lo mismo con los mismos umbrales.
-                $estilos = SemaforoReporte::paraReporte($type);
-
-                if ($format === 'pdf') {
-                    $titulos = [
-                        'evaluaciones_ficha'       => 'Juicios evaluativos por ficha',
-                        'cumplimiento_instructor'  => 'Cumplimiento por instructor',
-                        'cumplimiento_competencia' => 'Cumplimiento por competencia',
-                        'historial_cambios'        => 'Historial de cambios en evaluaciones',
-                    ];
-
-                    $pdf = (new ReportePdfService())->generar(
-                        $titulos[$type] ?? 'Reporte',
-                        $headers,
-                        $data,
-                        $estilos + [
-                            'subtitulo'    => $subtitulo,
-                            'generado_por' => getCurrentUser()['nombre'] ?? '',
-                            'orientacion'  => 'landscape',
-                        ]
-                    );
-
-                    header('Content-Type: application/pdf');
-                    header('Content-Disposition: attachment; filename="' . $filename . '.pdf"');
-                    header('Content-Length: ' . strlen($pdf));
-                    echo $pdf;
-                    exit;
-                }
-
-                if ($format === 'excel') {
-                    header('Content-Type: application/vnd.ms-excel; charset=utf-8');
-                    header('Content-Disposition: attachment; filename=' . $filename . '.xls');
-                    echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
-                    echo '<head><meta charset="UTF-8">';
-                    echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>' . htmlspecialchars($type) . '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
-                    echo '<style>';
-                    echo 'table { border-collapse: collapse; font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; }';
-                    echo 'th { background-color: #00324D; color: white; font-weight: bold; border: 1px solid #cccccc; padding: 8px; text-align: center; }';
-                    echo 'td { border: 1px solid #e2e8f0; padding: 6px; }';
-                    echo '.alert-critico { background-color: #fce8e6; color: #a51d24; font-weight: bold; text-align: center; }';
-                    echo '.alert-riesgo { background-color: #fef7e0; color: #b06000; font-weight: bold; text-align: center; }';
-                    echo '.alert-dia { background-color: #e6f4ea; color: #137333; font-weight: bold; text-align: center; }';
-                    echo '</style></head><body>';
-                    echo '<h2 style="color: #00324D;">REPORTE: ' . htmlspecialchars(str_replace('_', ' ', strtoupper($type))) . '</h2>';
-                    echo '<table><thead><tr>';
-                    foreach ($headers as $h) echo '<th>' . htmlspecialchars($h) . '</th>';
-                    echo '</tr></thead><tbody>';
-                    $clasesExcel = [
-                        'aldia'   => ' class="alert-dia"',
-                        'riesgo'  => ' class="alert-riesgo"',
-                        'critico' => ' class="alert-critico"',
-                    ];
-                    foreach ($data as $row) {
-                        echo '<tr>';
-                        foreach (array_values($row) as $colIdx => $cell) {
-                            $valor = (string)($cell ?? '');
-                            $semaforo = SemaforoReporte::clase($colIdx, $valor, $estilos);
-                            $class = $clasesExcel[$semaforo] ?? '';
-                            $style = $semaforo === 'num' ? ' style="text-align: center;"' : '';
-                            echo "<td{$class}{$style}>" . htmlspecialchars($valor) . '</td>';
-                        }
-                        echo '</tr>';
-                    }
-                    echo '</tbody></table></body></html>';
-                    exit;
-                } else {
-                    header('Content-Type: text/csv; charset=utf-8');
-                    header('Content-Disposition: attachment; filename=' . $filename . '.csv');
-                    $output = fopen('php://output', 'w');
-                    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-                    fwrite($output, "sep=;\n");
-                    fputcsv($output, $headers, ';');
-                    // Cada celda pasa por protegerCsv: sin eso, un texto
-                    // escrito por un usuario que empiece por '=' se ejecuta
-                    // como fórmula al abrir el archivo (CSV injection).
-                    foreach ($data as $row) {
-                        fputcsv($output, SemaforoReporte::protegerFilaCsv($row), ';');
-                    }
-                    fclose($output);
-                    exit;
-                }
-            } catch (Exception $e) {
-                $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al exportar reporte');
-            }
-        }
-
-        $stats = [];
-        try {
-            if ($user_rol === ROL_INSTRUCTOR) {
-                $stats = $this->reportesModel->getInstructorStats($user_id);
-            } else {
-                $stats = $this->reportesModel->getGlobalStats();
-            }
-        } catch (Exception $e) {
-            $stats = array_fill_keys(['total_evaluaciones','aprobados','reprobados','pendientes','total_fichas','cambios_historial'], 0);
-        }
-
+        $resumen = null;
         $fichas = [];
         try {
-            if ($user_rol === ROL_INSTRUCTOR) {
-                $fichas = $this->reportesModel->getFichasForInstructor($user_id);
-            } else {
-                $fichas = $this->reportesModel->getAllFichas();
-            }
-        } catch (Exception $e) {}
+            $resumen = (new AnaliticaModel())->resumen($actor);
+            $fichas = (new EvaluacionesModel())->fichasDelActor($actor);
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los reportes');
+        }
+        $this->render(BASE_PATH . 'modules/reportes/views/index.view.php', [
+            'errors'  => $errors,
+            'resumen' => $resumen,
+            'fichas'  => $fichas,
+            'tipos'   => ReportesService::TIPOS,
+            'actor'   => $actor,
+        ], 'Reportes · SENA');
+    }
 
-        $this->render(
-            BASE_PATH . 'modules/reportes/views/index.view.php',
-            [
-                'errors' => $errors,
-                'stats' => $stats,
-                'fichas' => $fichas
-            ],
-            'Centro de Reportes · SENA'
-        );
+    public function descargar(): never {
+        $actor = Actor::actual();
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = new Validador($_GET);
+        $tipo = $v->enum('tipo', 'El reporte', array_keys(ReportesService::TIPOS));
+        $formato = $v->enum('formato', 'El formato', ReportesService::FORMATOS, 'xlsx');
+        $params = [
+            'ficha_id' => $v->id('ficha_id', 'La ficha', false),
+            'desde'    => $v->fecha('desde', 'La fecha inicial', false),
+            'hasta'    => $v->fecha('hasta', 'La fecha final', false),
+        ];
+        $this->siHayErrores($v, '/reportes');
+        try {
+            @set_time_limit(180);
+            $r = (new ReportesService())->generar($tipo, $actor, $params);
+            (new Auditoria())->operacion($actor, 'Exportar', 'Reportes', 'evaluaciones', null,
+                "{$r['titulo']} ({$r['subtitulo']}) en $formato: " . count($r['filas']) . ' filas');
+            $nombre = $r['archivo'] . '.' . $formato;
+            if ($formato === 'pdf') {
+                $pdf = (new ReportePdfService())->generar($r['titulo'], $r['encabezados'], $r['filas'],
+                    $r['estilos'] + ['subtitulo' => $r['subtitulo'], 'generado_por' => (string)(getCurrentUser()['nombre'] ?? ''), 'orientacion' => 'landscape']);
+                Exportador::descargar($pdf, $nombre, 'pdf');
+            }
+            Exportador::descargar(
+                $formato === 'csv'
+                    ? Exportador::csv($nombre, $r['encabezados'], $r['filas'])
+                    : Exportador::xlsx($r['titulo'], $r['encabezados'], $r['filas'],
+                        ['titulo' => $r['titulo'] . ' · ' . $r['subtitulo'] . ' · ' . date('d/m/Y'), 'anchos' => $r['anchos'], 'estilos' => $r['estilos']]),
+                $nombre, $formato);
+        } catch (Throwable $e) {
+            $this->fallo(ErrorDeNegocio::mensajeSeguro($e, 'No se pudo generar el reporte'), '/reportes');
+        }
     }
 }
