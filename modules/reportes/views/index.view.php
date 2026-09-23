@@ -1,3 +1,13 @@
+<?php
+// Esta vista solo debe renderizarse desde un controlador, a traves del
+// layout. Abierta directamente por URL, se ejecutaria sin las variables
+// que espera y sin ninguna comprobacion de permisos: el resultado eran
+// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+if (!defined('VISTA_PERMITIDA')) {
+    http_response_code(404);
+    exit('404 - No encontrado');
+}
+?>
 <div class="page-header">
   <div>
   <h1 class="mb-1">Centro de Reportes</h1>
@@ -69,8 +79,9 @@
             </select>
           </div>
           <div class="d-flex gap-2">
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
             <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
           </div>
         </form>
       </div>
@@ -88,8 +99,9 @@
           <?= csrfField() ?>
           <input type="hidden" name="export" value="cumplimiento_instructor">
           <div class="d-flex gap-2 mt-4">
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
             <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
           </div>
         </form>
       </div>
@@ -107,8 +119,9 @@
           <?= csrfField() ?>
           <input type="hidden" name="export" value="cumplimiento_competencia">
           <div class="d-flex gap-2 mt-4">
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
             <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
           </div>
         </form>
       </div>
@@ -126,8 +139,9 @@
           <?= csrfField() ?>
           <input type="hidden" name="export" value="historial_cambios">
           <div class="d-flex gap-2 mt-4">
-            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+            <button type="submit" name="format" value="pdf" class="btn btn-danger flex-grow-1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
             <button type="submit" name="format" value="excel" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+            <button type="submit" name="format" value="csv" class="btn btn-primary flex-grow-1"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
           </div>
         </form>
       </div>
@@ -135,9 +149,24 @@
   </div>
 </div>
 
-<!-- Botón imprimir para PDF -->
-<div class="card glass-card border-0 mt-4 p-4 text-center" style="border-radius: 12px;">
-  <h5 class="fw-bold mb-2"><i class="bi bi-printer me-2"></i>Exportar a PDF</h5>
-  <p class="text-muted small mb-3">Utiliza la función de impresión del navegador (Ctrl+P) y selecciona "Guardar como PDF" para generar reportes en formato PDF directamente desde cualquier vista del sistema.</p>
-  <button onclick="window.print()" class="btn btn-outline-dark px-5"><i class="bi bi-file-earmark-pdf me-2"></i>Imprimir / Guardar como PDF</button>
+<!-- Formatos disponibles -->
+<div class="card glass-card border-0 mt-4 p-4" style="border-radius: 12px;">
+  <h5 class="fw-bold mb-3"><i class="bi bi-download me-2"></i>Formatos de exportación</h5>
+  <div class="row g-3 small text-muted">
+    <div class="col-md-4 d-flex gap-2">
+      <i class="bi bi-file-earmark-pdf text-danger fs-5"></i>
+      <div><span class="fw-semibold text-dark d-block">PDF</span>
+        Documento institucional paginado, con semáforo de cumplimiento. Para archivar, firmar o entregar.</div>
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+      <i class="bi bi-file-earmark-excel text-success fs-5"></i>
+      <div><span class="fw-semibold text-dark d-block">Excel</span>
+        Hoja de cálculo con el mismo semáforo de color. Para revisar y filtrar.</div>
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+      <i class="bi bi-filetype-csv text-primary fs-5"></i>
+      <div><span class="fw-semibold text-dark d-block">CSV</span>
+        Datos planos separados por punto y coma. Para cargar en otra herramienta.</div>
+    </div>
+  </div>
 </div>
