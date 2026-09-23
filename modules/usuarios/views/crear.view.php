@@ -1,3 +1,13 @@
+<?php
+// Esta vista solo debe renderizarse desde un controlador, a traves del
+// layout. Abierta directamente por URL, se ejecutaria sin las variables
+// que espera y sin ninguna comprobacion de permisos: el resultado eran
+// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+if (!defined('VISTA_PERMITIDA')) {
+    http_response_code(404);
+    exit('404 - No encontrado');
+}
+?>
 <div class="mb-3">
   <h1>Crear Nuevo Usuario</h1>
   <p class="text-muted mb-0">Completa el formulario para registrar un nuevo usuario en el sistema.</p>

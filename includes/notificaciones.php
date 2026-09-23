@@ -39,13 +39,21 @@ function contarNotificacionesNoLeidas(int $userId): int
 }
 
 /**
- * Marcar una notificación como leída
+ * Marcar una notificación como leída.
+ *
+ * El filtro por `usuario_id` no es decorativo: sin él, esta consulta
+ * marcaba como leída cualquier notificación cuyo id se enviara, fuese de
+ * quien fuese. El id llega por POST desde el navegador, así que cualquier
+ * usuario autenticado podía silenciar los avisos de otro probando números.
+ *
+ * @return bool true si la notificación existía y era de ese usuario.
  */
-function marcarNotificacionLeida(int $id): void
+function marcarNotificacionLeida(int $id, int $userId): bool
 {
     $db = Database::getConnection();
-    $stmt = $db->prepare("UPDATE notificaciones SET leida = 1 WHERE id = ?");
-    $stmt->execute([$id]);
+    $stmt = $db->prepare("UPDATE notificaciones SET leida = 1 WHERE id = ? AND usuario_id = ?");
+    $stmt->execute([$id, $userId]);
+    return $stmt->rowCount() > 0;
 }
 
 /**

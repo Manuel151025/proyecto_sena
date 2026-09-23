@@ -11,25 +11,32 @@ if (isAuthenticated()) {
     exit;
 }
 
+use Core\Services\LimitadorIntentos;
+use Core\Support\Validador;
+
 $loginError   = null;
 $loginSuccess = null;
 
-// Duración del bloqueo en segundos (5 minutos = 300 segundos)
-define('BLOCK_DURATION', 300);
+// El bloqueo por intentos fallidos vive en la base de datos, no en la
+// sesión: el contador anterior estaba en $_SESSION, así que bastaba con
+// descartar la cookie entre peticiones para empezar de cero en cada
+// intento. Ver Core\Services\LimitadorIntentos.
+$limitador = new LimitadorIntentos();
 
-// Verificar si el bloqueo temporal está activo
-if (isset($_SESSION['blocked_until']) && $_SESSION['blocked_until'] > time()) {
-    $isBlocked = true;
-    $remaining = $_SESSION['blocked_until'] - time();
-    $minutes = ceil($remaining / 60);
-    $loginError = "Has excedido el límite de intentos. Acceso bloqueado. Inténtalo de nuevo en {$minutes} minuto(s).";
-} else {
-    // Si el tiempo de bloqueo expiró, limpiar el estado
-    if (isset($_SESSION['blocked_until'])) {
-        unset($_SESSION['login_attempts']);
-        unset($_SESSION['blocked_until']);
-    }
-    $isBlocked = false;
+// El correo enviado es lo que identifica el cupo; en un GET no hay ninguno,
+// de modo que solo se evalúa el límite por IP.
+$emailIntento = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $bruto = $_POST['email'] ?? '';
+    $emailIntento = is_array($bruto) ? '' : mb_strtolower(trim((string)$bruto), 'UTF-8');
+}
+
+$segundosBloqueo = $limitador->segundosBloqueo('login', $emailIntento);
+$isBlocked = $segundosBloqueo > 0;
+
+if ($isBlocked) {
+    $minutos = LimitadorIntentos::minutos($segundosBloqueo);
+    $loginError = "Has excedido el límite de intentos. Acceso bloqueado. Inténtalo de nuevo en {$minutos} minuto(s).";
 }
 
 if (isset($_SESSION['_flash_success'])) {
@@ -38,33 +45,39 @@ if (isset($_SESSION['_flash_success'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
-    // Validar token CSRF
-    $csrfToken = $_POST['csrf_token'] ?? '';
-    if (!validateCsrfToken($csrfToken)) {
-        http_response_code(403);
-        die('Error 403: Solicitud rechazada por validación de seguridad (Token CSRF inválido o ausente).');
-    }
+    // El token CSRF ya lo validó requireCsrf() al cargar session.php; no se
+    // repite aquí para que exista un solo punto donde se comprueba.
 
-    $email    = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $user     = attemptLogin($email, $password);
+    $v        = new Validador($_POST);
+    $email    = $v->email('email', 'El correo');
+    $password = (string)($_POST['password'] ?? '');
 
-    if ($user) {
-        unset($_SESSION['login_attempts']);
-        unset($_SESSION['blocked_until']);
-
+    if ($v->hayErrores()) {
+        // Un correo mal formado no consume cupo: no es un intento de
+        // adivinar credenciales, es un error de tecleo.
+        $loginError = $v->primerError();
+    } elseif ($password === '' || strlen($password) > 200) {
+        // El tope de longitud evita alimentar a bcrypt con megabytes de
+        // relleno, que es un modo barato de consumir CPU del servidor.
+        $loginError = 'Credenciales incorrectas.';
+        $limitador->registrarFallo('login', $email);
+    } elseif (attemptLogin($email, $password)) {
+        $limitador->registrarExito('login', $email);
         header('Location: ' . APP_URL . '/index.php');
         exit;
     } else {
-        $_SESSION['login_attempts'] = ($_SESSION['login_attempts'] ?? 0) + 1;
+        $limitador->registrarFallo('login', $email);
+        (new Core\Services\Auditoria())->accesoFallido($email);
 
-        if ($_SESSION['login_attempts'] >= 5) {
-            $_SESSION['blocked_until'] = time() + BLOCK_DURATION;
+        // El mensaje no distingue "no existe esa cuenta" de "la contraseña
+        // no es esa": decirlo permitiría averiguar qué correos están dados
+        // de alta. Tampoco se anuncia cuántos intentos quedan, que es
+        // información útil solo para quien está probando a ciegas.
+        $loginError = 'Credenciales incorrectas.';
+
+        if ($limitador->estaBloqueado('login', $email)) {
             $isBlocked = true;
-            $loginError = "Has excedido el límite de intentos permitidos (5). Acceso bloqueado por 5 minutos.";
-        } else {
-            $remainingAttempts = 5 - $_SESSION['login_attempts'];
-            $loginError = "Credenciales incorrectas. Te quedan {$remainingAttempts} intento(s).";
+            $loginError = 'Has excedido el límite de intentos. Acceso bloqueado temporalmente.';
         }
     }
 }
