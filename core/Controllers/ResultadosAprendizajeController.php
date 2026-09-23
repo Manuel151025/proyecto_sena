@@ -3,380 +3,99 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
-use Core\Models\ResultadosAprendizajeModel;
+use Core\Formularios\CompetenciaFormulario;
 use Core\Models\CompetenciasModel;
-use Core\Services\EvaluacionesSyncService;
-use Core\XlsxParser;
-use PDO;
-use Exception;
+use Core\Models\ProgramasModel;
+use Core\Models\ResultadosAprendizajeModel;
+use Core\Services\CompetenciasService;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Resultados de aprendizaje (RAP), agrupados por competencia.
+ *
+ *   GET  /resultados-aprendizaje?programa_id=&search=     gestión (lectura)
+ *   POST /resultados-aprendizaje  action=crear|editar|eliminar   coordinación
+ */
 class ResultadosAprendizajeController extends BaseController {
-    private PDO $db;
-    private ResultadosAprendizajeModel $resultadosModel;
-    private CompetenciasModel $competenciasModel;
-    private EvaluacionesSyncService $evaluacionesSync;
+    private ResultadosAprendizajeModel $modelo;
+    private CompetenciasService $servicio;
 
-    public function __construct(
-        ?PDO $db = null,
-        ?ResultadosAprendizajeModel $resultadosModel = null,
-        ?CompetenciasModel $competenciasModel = null,
-        ?EvaluacionesSyncService $evaluacionesSync = null
-    ) {
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-        $this->db = $db ?? Database::getConnection();
-        $this->resultadosModel = $resultadosModel ?? new ResultadosAprendizajeModel($this->db);
-        $this->competenciasModel = $competenciasModel ?? new CompetenciasModel($this->db);
-        $this->evaluacionesSync = $evaluacionesSync ?? new EvaluacionesSyncService($this->db);
+    public function __construct(?ResultadosAprendizajeModel $modelo = null, ?CompetenciasService $servicio = null) {
+        $this->modelo = $modelo ?? new ResultadosAprendizajeModel();
+        $this->servicio = $servicio ?? new CompetenciasService();
     }
 
-    /**
-     * Listado y gestión de Resultados de Aprendizaje (RAP).
-     */
     public function index(): void {
+        $programaId = $this->idDeConsulta('programa_id');
+        $busqueda = $this->consulta()->busquedaCruda('search');
         $errors = [];
-        $successMessage = '';
-
-        $userId = (int)getCurrentUser()['id'];
-
-        // Procesar formulario de creación de RAP manual
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'crear_rap') {
-            if (!hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)) {
-                $errors[] = 'No tiene permisos para registrar Resultados de Aprendizaje.';
-            } else {
-                $competencia_id = (int)($_POST['competencia_id'] ?? 0);
-                $codigo = trim($_POST['codigo'] ?? '');
-                $denominacion = trim($_POST['denominacion'] ?? '');
-
-                if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia válida.';
-                
-                if (empty($codigo)) {
-                    $errors[] = 'El código del RAP es obligatorio.';
-                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
-                    $errors[] = 'El código no puede exceder los 20 caracteres.';
-                } elseif (!preg_match('/^[a-zA-Z0-9\-\s]+$/', $codigo)) {
-                    $errors[] = 'El código solo puede contener letras, números, espacios y guiones.';
-                }
-
-                if (empty($denominacion)) {
-                    $errors[] = 'La denominación del RAP es obligatoria.';
-                } elseif (mb_strlen($denominacion, 'UTF-8') > 1000) {
-                    $errors[] = 'La denominación no puede exceder los 1000 caracteres.';
-                }
-                $denominacion = strip_tags($denominacion);
-
-                if (empty($errors)) {
-                    try {
-                        $this->db->beginTransaction();
-                        $this->resultadosModel->create([
-                            'competencia_id' => $competencia_id,
-                            'codigo' => $codigo,
-                            'denominacion' => $denominacion
-                        ], $userId);
-
-                        // Un RAP nuevo no le sirve de nada al aprendiz si no
-                        // tiene su fila 'pendiente': sin ella no aparece en
-                        // /seguimiento ni en /evaluaciones y no hay forma de
-                        // calificarlo. Se crea aquí, en la misma transacción.
-                        $sync = $this->evaluacionesSync->sincronizar(['competencia_id' => $competencia_id]);
-                        $this->db->commit();
-
-                        $mensaje = 'Resultado de Aprendizaje (RAP) registrado exitosamente.';
-                        if ($sync['creadas'] > 0) {
-                            $mensaje .= " Se habilitó su evaluación para {$sync['creadas']} aprendiz(ces) ya matriculados.";
-                        }
-                        if ($sync['omitidas_sin_instructor'] > 0) {
-                            $mensaje .= " Quedaron {$sync['omitidas_sin_instructor']} pendientes en fichas sin instructor líder asignado.";
-                        }
-                        setFlashMessage($mensaje, 'success');
-                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
-                    } catch (Exception $e) {
-                        if ($this->db->inTransaction()) {
-                            $this->db->rollBack();
-                        }
-                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al registrar RAP'), 'danger');
-                    }
-                }
-            }
-        }
-
-        // Procesar edición de RAP
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'editar_rap') {
-            if (!hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)) {
-                $errors[] = 'No tiene permisos para editar Resultados de Aprendizaje.';
-            } else {
-                $id             = (int)($_POST['id'] ?? 0);
-                $competencia_id = (int)($_POST['competencia_id'] ?? 0);
-                $codigo         = trim($_POST['codigo'] ?? '');
-                $denominacion   = trim($_POST['denominacion'] ?? '');
-
-                if ($id <= 0)             $errors[] = 'RAP no válido.';
-                if ($competencia_id <= 0) $errors[] = 'Debe seleccionar una competencia válida.';
-                
-                if (empty($codigo)) {
-                    $errors[] = 'El código del RAP es obligatorio.';
-                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
-                    $errors[] = 'El código no puede exceder los 20 caracteres.';
-                } elseif (!preg_match('/^[a-zA-Z0-9\-\s]+$/', $codigo)) {
-                    $errors[] = 'El código solo puede contener letras, números, espacios y guiones.';
-                }
-
-                if (empty($denominacion)) {
-                    $errors[] = 'La denominación del RAP es obligatoria.';
-                } elseif (mb_strlen($denominacion, 'UTF-8') > 1000) {
-                    $errors[] = 'La denominación no puede exceder los 1000 caracteres.';
-                }
-                $denominacion = strip_tags($denominacion);
-
-                if (empty($errors)) {
-                    try {
-                        $this->db->beginTransaction();
-                        $this->resultadosModel->update($id, [
-                            'competencia_id' => $competencia_id,
-                            'codigo' => $codigo,
-                            'denominacion' => $denominacion
-                        ], $userId);
-
-                        // La edición puede mover el RAP a otra competencia —y
-                        // por tanto a otro programa—, así que los aprendices
-                        // del programa de destino necesitan su fila.
-                        $sync = $this->evaluacionesSync->sincronizar(['competencia_id' => $competencia_id]);
-                        $this->db->commit();
-
-                        $mensaje = 'Resultado de Aprendizaje actualizado exitosamente.';
-                        if ($sync['creadas'] > 0) {
-                            $mensaje .= " Se habilitó su evaluación para {$sync['creadas']} aprendiz(ces) del nuevo programa.";
-                        }
-                        setFlashMessage($mensaje, 'success');
-                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
-                    } catch (Exception $e) {
-                        if ($this->db->inTransaction()) {
-                            $this->db->rollBack();
-                        }
-                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al actualizar RAP'), 'danger');
-                    }
-                }
-            }
-        }
-
-        // Procesar eliminación de RAP
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'eliminar_rap') {
-            if (!hasRole(ROL_COORDINADOR, ROL_INSTRUCTOR)) {
-                $errors[] = 'No tiene permisos para eliminar Resultados de Aprendizaje.';
-            } else {
-                $id = (int)($_POST['id'] ?? 0);
-                if ($id <= 0) {
-                    $errors[] = 'RAP no válido.';
-                } else {
-                    try {
-                        $this->resultadosModel->delete($id, $userId);
-                        setFlashMessage('Resultado de Aprendizaje eliminado exitosamente.', 'success');
-                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
-                    } catch (Exception $e) {
-                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-                    }
-                }
-            }
-        }
-
-        // Obtener competencias con RAPs de la BD usando el modelo
-        $competencias = [];
+        $competencias = $programas = $opciones = [];
         try {
-            $competencias = $this->resultadosModel->getCompetenciasWithRaps();
-        } catch (Exception $e) {
-            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las competencias o RAPs');
+            $programas = (new ProgramasModel())->opciones(false);
+            // Sin filtro, el primer programa: pintar todos los RAP del centro
+            // de una vez no escala (hoy 194, y crece con cada programa).
+            if ($programaId === 0 && $busqueda === '' && $programas !== []) {
+                $programaId = (int)$programas[0]['id'];
+            }
+            $competencias = $this->modelo->competenciasConRaps($programaId ?: null, $busqueda);
+            if ($this->esRol(ROL_COORDINADOR)) {
+                $opciones = (new CompetenciasModel())->opciones();
+            }
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los resultados de aprendizaje');
         }
-
-        $this->render(
-            BASE_PATH . 'modules/resultados-aprendizaje/views/index.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'competencias' => $competencias
-            ],
-            'Resultados de Aprendizaje (RAP) · SENA'
-        );
+        $this->render(BASE_PATH . 'modules/resultados-aprendizaje/views/index.view.php', [
+            'errors'       => $errors,
+            'competencias' => $competencias,
+            'programas'    => $programas,
+            'opciones'     => $opciones,
+            'programaId'   => $programaId,
+            'busqueda'     => $busqueda,
+            'puedeEditar'  => $this->esRol(ROL_COORDINADOR),
+            'limites'      => ['codigo' => CompetenciaFormulario::MAX_CODIGO_RAP, 'texto' => CompetenciaFormulario::MAX_DENOMINACION],
+        ], 'Resultados de Aprendizaje · SENA');
     }
 
-    /**
-     * Importación masiva de RAPs.
-     */
-    public function import(): void {
-        $errors = [];
-        $successMessage = '';
-        $resultados = [];
-
-        $userId = (int)getCurrentUser()['id'];
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_FILES['archivo_raps']) && $_FILES['archivo_raps']['error'] === UPLOAD_ERR_OK) {
-                $fileTmpPath = $_FILES['archivo_raps']['tmp_name'];
-                $fileName = $_FILES['archivo_raps']['name'];
-                $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-                if ($fileExtension === 'xls') {
-                    $errors[] = 'El formato .xls no está soportado. Por favor, guarde su archivo como .xlsx o expórtelo como .csv.';
-                } elseif (!in_array($fileExtension, ['csv', 'xlsx'])) {
-                    $errors[] = 'El archivo debe ser un archivo de Excel (.xlsx) o un archivo de texto separado por comas (.csv).';
-                } else {
-                    $rows = [];
-                    if ($fileExtension === 'csv') {
-                        $handle = fopen($fileTmpPath, 'r');
-                        if ($handle !== false) {
-                            $firstLine = fgets($handle);
-                            $separator = (strpos($firstLine, ';') !== false) ? ';' : ',';
-                            rewind($handle);
-
-                            while (($data = fgetcsv($handle, 1000, $separator)) !== false) {
-                                $rows[] = $data;
-                            }
-                            fclose($handle);
-                        } else {
-                            $errors[] = 'No se pudo abrir el archivo CSV.';
-                        }
-                    } else {
-                        try {
-                            $rows = XlsxParser::parse($fileTmpPath);
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al procesar el archivo Excel');
-                        }
-                    }
-
-                    if (empty($errors)) {
-                        if (count($rows) <= 1) {
-                            $errors[] = 'El archivo está vacío o solo contiene la cabecera.';
-                        } else {
-                            // Ignorar cabecera
-                            array_shift($rows);
-
-                            $linea = 2;
-                            $rapsData = [];
-
-                            // Cargar competencias existentes para buscar por código de forma rápida usando el modelo
-                            $competenciasMap = [];
-                            try {
-                                $comp_list = $this->competenciasModel->getAll();
-                                foreach ($comp_list as $c) {
-                                    $competenciasMap[strtolower(trim($c['codigo']))] = (int)$c['id'];
-                                }
-                            } catch (Exception $e) {
-                                $errors[] = 'Error al precargar códigos de competencias.';
-                            }
-
-                            foreach ($rows as $data) {
-                                if (empty($data) || (empty($data[0]) && empty($data[1]) && empty($data[2]))) {
-                                    $linea++;
-                                    continue;
-                                }
-
-                                if (count($data) < 3) {
-                                    $errors[] = "Línea $linea: Faltan columnas. Se requiere: Código Competencia, Código RAP, Nombre RAP.";
-                                    $linea++;
-                                    continue;
-                                }
-
-                                $comp_code = strtolower(trim((string)($data[0] ?? '')));
-                                $rap_code = trim((string)($data[1] ?? ''));
-                                $rap_name = mb_strtoupper(trim((string)($data[2] ?? '')), 'UTF-8');
-
-                                $rowErrors = [];
-                                if (!isset($competenciasMap[$comp_code])) {
-                                    $rowErrors[] = "Línea $linea: El código de competencia '$comp_code' no existe en la base de datos.";
-                                }
-                                if (empty($rap_code)) {
-                                    $rowErrors[] = "Línea $linea: El código del RAP está vacío.";
-                                }
-                                if (empty($rap_name)) {
-                                    $rowErrors[] = "Línea $linea: La descripción/nombre del RAP está vacía.";
-                                }
-
-                                if (empty($rowErrors)) {
-                                    $rapsData[] = [
-                                        'competencia_id' => $competenciasMap[$comp_code],
-                                        'codigo' => $rap_code,
-                                        'denominacion' => $rap_name
-                                    ];
-                                } else {
-                                    $errors = array_merge($errors, $rowErrors);
-                                }
-                                $linea++;
-                            }
-
-                            if (empty($errors)) {
-                                if (count($rapsData) > 0) {
-                                    try {
-                                        $this->db->beginTransaction();
-
-                                        $importedCount = 0;
-                                        $competenciasTocadas = [];
-                                        foreach ($rapsData as $rap) {
-                                            $this->resultadosModel->create($rap, $userId);
-                                            $competenciasTocadas[(int)$rap['competencia_id']] = true;
-                                            $importedCount++;
-                                        }
-
-                                        // Habilitar los RAP importados para los
-                                        // aprendices ya matriculados. Se recorre
-                                        // por competencia (y no una sola vez en
-                                        // global) para no revisar programas que
-                                        // esta importación no tocó.
-                                        $evaluacionesCreadas = 0;
-                                        $sinInstructor = 0;
-                                        foreach (array_keys($competenciasTocadas) as $competenciaId) {
-                                            $sync = $this->evaluacionesSync->sincronizar(['competencia_id' => $competenciaId]);
-                                            $evaluacionesCreadas += $sync['creadas'];
-                                            $sinInstructor += $sync['omitidas_sin_instructor'];
-                                        }
-
-                                        // Registrar log general de importación
-                                        $logStmt = $this->db->prepare("
-                                            INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, descripcion)
-                                            VALUES (?, 'Importar', 'RAPs', 'resultados_aprendizaje', ?)
-                                        ");
-                                        $logStmt->execute([
-                                            $userId,
-                                            "Importó masivamente $importedCount Resultados de Aprendizaje (RAPs)" .
-                                            ($evaluacionesCreadas > 0 ? " y habilitó $evaluacionesCreadas evaluaciones pendientes" : "")
-                                        ]);
-
-                                        $this->db->commit();
-                                        $mensaje = "Se han importado exitosamente $importedCount Resultados de Aprendizaje.";
-                                        if ($evaluacionesCreadas > 0) {
-                                            $mensaje .= " Se habilitaron $evaluacionesCreadas evaluaciones pendientes para los aprendices ya matriculados.";
-                                        }
-                                        if ($sinInstructor > 0) {
-                                            $mensaje .= " Quedaron $sinInstructor sin crear, en fichas sin instructor líder asignado.";
-                                        }
-                                        setFlashMessage($mensaje, 'success');
-                                        $this->redirect(APP_URL . '/index.php/resultados-aprendizaje');
-                                    } catch (Exception $e) {
-                                        if ($this->db->inTransaction()) {
-                                            $this->db->rollBack();
-                                        }
-                                        $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al insertar RAPs en la BD');
-                                    }
-                                } else {
-                                    $errors[] = 'El archivo no contiene filas válidas.';
-                                }
-                            }
-                        }
-                    }
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $d = CompetenciaFormulario::validarRap($v);
+        $vuelta = $this->rutaDeVuelta('/resultados-aprendizaje');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->crearRap($d, Actor::actual()), $vuelta,
+            static function (array $r): string {
+                $m = 'Resultado de aprendizaje registrado.';
+                if ($r['habilitadas'] > 0) {
+                    $m .= " Se habilitó su evaluación para {$r['habilitadas']} aprendiz(ces) ya matriculados.";
                 }
-            } else {
-                $errors[] = 'Por favor, seleccione un archivo válido.';
-            }
-        }
+                if ($r['sin_instructor'] > 0) {
+                    $m .= " {$r['sin_instructor']} quedaron sin habilitar en fichas sin instructor líder.";
+                }
+                return $m;
+            }, 'No se pudo registrar el resultado');
+    }
 
-        $this->render(
-            BASE_PATH . 'modules/resultados-aprendizaje/views/importar.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'resultados' => $resultados
-            ],
-            'Importar RAPs · SENA'
-        );
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El resultado de aprendizaje');
+        $d = CompetenciaFormulario::validarRap($v);
+        $vuelta = $this->rutaDeVuelta('/resultados-aprendizaje');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->editarRap($id, $d, Actor::actual()), $vuelta,
+            'Resultado de aprendizaje actualizado.', 'No se pudo actualizar el resultado');
+    }
+
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'El resultado de aprendizaje');
+        $vuelta = $this->rutaDeVuelta('/resultados-aprendizaje');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->eliminarRap($id, Actor::actual()), $vuelta,
+            'Resultado de aprendizaje eliminado.', 'No se pudo eliminar el resultado');
     }
 }

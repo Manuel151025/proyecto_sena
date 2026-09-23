@@ -89,9 +89,19 @@ return static function (Router $router): void {
     $router->accion('/programas', 'editar',   $P, 'editar',   $COORDINADOR);
     $router->accion('/programas', 'eliminar', $P, 'eliminar', $COORDINADOR);
 
-    $ambos('/competencias',          'Core\Controllers\CompetenciasController', 'index',  $GESTION);
+    $C = 'Core\Controllers\CompetenciasController';
+    $router->add('GET', '/competencias', $C, 'index', $GESTION);
+    $router->accion('/competencias', 'crear',    $C, 'crear',    $COORDINADOR);
+    $router->accion('/competencias', 'editar',   $C, 'editar',   $COORDINADOR);
+    $router->accion('/competencias', 'eliminar', $C, 'eliminar', $COORDINADOR);
 
-    $ambos('/resultados-aprendizaje',          'Core\Controllers\ResultadosAprendizajeController', 'index',  $GESTION);
+    // Los RAP son diseño curricular: el instructor los consulta, la
+    // coordinación los define.
+    $R = 'Core\Controllers\ResultadosAprendizajeController';
+    $router->add('GET', '/resultados-aprendizaje', $R, 'index', $GESTION);
+    $router->accion('/resultados-aprendizaje', 'crear',    $R, 'crear',    $COORDINADOR);
+    $router->accion('/resultados-aprendizaje', 'editar',   $R, 'editar',   $COORDINADOR);
+    $router->accion('/resultados-aprendizaje', 'eliminar', $R, 'eliminar', $COORDINADOR);
 
     // ---------------------------------------------------------------------
     // FICHAS Y MATRÍCULAS

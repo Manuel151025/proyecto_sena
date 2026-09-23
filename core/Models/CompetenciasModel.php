@@ -3,11 +3,14 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
-use Core\Support\Validador;
 use Core\Database;
+use Core\Support\Enums;
+use Core\Support\Validador;
 use PDO;
-use Exception;
 
+/**
+ * Acceso a `competencias`. Reglas de negocio en CompetenciasService.
+ */
 class CompetenciasModel {
     private PDO $db;
 
@@ -15,173 +18,126 @@ class CompetenciasModel {
         $this->db = $db ?? Database::getConnection();
     }
 
-    /**
-     * Obtiene todas las competencias.
-     */
-    public function getAll(): array {
-        try {
-            $stmt = $this->db->prepare("
-                SELECT c.*, p.nombre as programa_nombre, p.codigo as programa_codigo
-                FROM competencias c
-                JOIN programas p ON c.programa_id = p.id
-                ORDER BY p.nombre, c.codigo
-            ");
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            throw new Exception("Error al obtener todas las competencias: " . $e->getMessage());
+    /** @return array{0:string, 1:array} */
+    private function construirFiltro(array $f): array {
+        $sql = " FROM competencias c JOIN programas p ON p.id = c.programa_id WHERE 1=1";
+        $params = [];
+        if (($f['search'] ?? '') !== '') {
+            $sql .= " AND (c.nombre LIKE ? OR c.codigo LIKE ?)";
+            $t = '%' . Validador::escaparLike((string)$f['search']) . '%';
+            array_push($params, $t, $t);
         }
+        if (!empty($f['programa_id'])) {
+            $sql .= " AND c.programa_id = ?";
+            $params[] = (int)$f['programa_id'];
+        }
+        if (($f['estado'] ?? '') !== '') {
+            $sql .= " AND c.estado = ?";
+            $params[] = in_array($f['estado'], Enums::COMPETENCIA_ESTADO, true) ? $f['estado'] : "\x00";
+        }
+        return [$sql, $params];
     }
 
-    /**
-     * Obtiene competencias con filtros aplicados.
-     */
-    public function getFilteredList(array $filters = []): array {
-        try {
-            $sql = "
-                SELECT c.*, p.nombre as programa_nombre, p.codigo as programa_codigo
-                FROM competencias c
-                JOIN programas p ON c.programa_id = p.id
-                WHERE 1=1
-            ";
-            $params = [];
-
-            if (!empty($filters['search'])) {
-                $sql .= " AND (c.nombre LIKE ? OR c.codigo LIKE ?)";
-                $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
-                $params[] = "%" . Validador::escaparLike((string)$filters['search']) . "%";
-            }
-            if (!empty($filters['programa_id'])) {
-                $sql .= " AND c.programa_id = ?";
-                $params[] = (int)$filters['programa_id'];
-            }
-            if (!empty($filters['estado'])) {
-                $sql .= " AND c.estado = ?";
-                $params[] = $filters['estado'];
-            }
-
-            $sql .= " ORDER BY p.nombre, c.codigo";
-
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            throw new Exception("Error al filtrar competencias: " . $e->getMessage());
-        }
+    public function contar(array $filtros): int {
+        [$desde, $p] = $this->construirFiltro($filtros);
+        $st = $this->db->prepare("SELECT COUNT(*) $desde");
+        $st->execute($p);
+        return (int)$st->fetchColumn();
     }
 
-    /**
-     * Crea una nueva competencia.
-     */
-    public function create(array $data): bool {
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO competencias (programa_id, codigo, nombre, descripcion, horas, estado)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
-            return $stmt->execute([
-                $data['programa_id'],
-                $data['codigo'],
-                $data['nombre'],
-                $data['descripcion'] ?? null,
-                $data['horas'],
-                $data['estado'] ?? 'activo'
-            ]);
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                throw new Exception("Ya existe una competencia con el código '{$data['codigo']}' en este programa.");
-            }
-            throw new Exception("Error al registrar competencia: " . $e->getMessage());
-        }
+    public function listar(array $filtros, int $limite, int $offset): array {
+        [$desde, $p] = $this->construirFiltro($filtros);
+        $limite = max(1, min($limite, 100));
+        $offset = max(0, $offset);
+        $st = $this->db->prepare("
+            SELECT c.*, p.nombre AS programa_nombre, p.codigo AS programa_codigo,
+                   (SELECT COUNT(*) FROM resultados_aprendizaje ra WHERE ra.competencia_id = c.id) AS total_rap
+            $desde
+            ORDER BY p.nombre, c.codigo
+            LIMIT $limite OFFSET $offset
+        ");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Inserta una competencia solo si no existe todavía. Devuelve true si la
-     * fila se creó y false si se omitió porque ya estaba registrada.
-     *
-     * Pensada para la importación masiva, que debe ser idempotente: volver a
-     * subir el mismo archivo no debe fallar ni duplicar. La creación manual
-     * sigue usando create(), que necesita lanzar la excepción de duplicado
-     * para poder avisar al coordinador.
-     *
-     * La identidad de una competencia es (programa_id, codigo), no el código
-     * suelto: hay competencias transversales del SENA (Inglés, Ética, Etapa
-     * Práctica…) que comparten el mismo código oficial en varios programas.
-     * Por eso el índice del esquema es UNIQUE (programa_id, codigo).
-     *
-     * Se combinan dos mecanismos a propósito:
-     *  - El SELECT previo detecta las que ya existían y funciona incluso si
-     *    el índice UNIQUE compuesto no se ha aplicado en ese entorno
-     *    (la migración 0006_codigos_unicos se detiene si encuentra duplicados).
-     *  - INSERT IGNORE cubre las repetidas dentro del propio archivo y las
-     *    carreras entre importaciones simultáneas, sin abortar la transacción.
-     */
-    public function createIfNotExists(array $data): bool {
-        try {
-            $check = $this->db->prepare("
-                SELECT id FROM competencias WHERE programa_id = ? AND codigo = ? LIMIT 1
-            ");
-            $check->execute([$data['programa_id'], $data['codigo']]);
-            if ($check->fetch()) {
-                return false;
-            }
-
-            $stmt = $this->db->prepare("
-                INSERT IGNORE INTO competencias (programa_id, codigo, nombre, descripcion, horas, estado)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $data['programa_id'],
-                $data['codigo'],
-                $data['nombre'],
-                $data['descripcion'] ?? null,
-                $data['horas'],
-                $data['estado'] ?? 'activo'
-            ]);
-
-            // rowCount() === 1 -> insertada; 0 -> la ignoró por duplicado.
-            return $stmt->rowCount() === 1;
-        } catch (Exception $e) {
-            throw new Exception("Error al registrar competencia '{$data['codigo']}': " . $e->getMessage());
+    /** Todas, sin paginar: para el catálogo agrupado de RAP y los selectores. */
+    public function opciones(?int $programaId = null, bool $soloActivas = true): array {
+        $sql = "SELECT c.id, c.codigo, c.nombre, c.programa_id, c.es_etapa_practica, p.nombre AS programa_nombre, p.codigo AS programa_codigo
+                  FROM competencias c JOIN programas p ON p.id = c.programa_id WHERE 1=1";
+        $params = [];
+        if ($soloActivas) {
+            $sql .= " AND c.estado = 'activo'";
         }
+        if ($programaId !== null && $programaId > 0) {
+            $sql .= " AND c.programa_id = ?";
+            $params[] = $programaId;
+        }
+        $st = $this->db->prepare($sql . " ORDER BY p.nombre, c.codigo");
+        $st->execute($params);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Actualiza una competencia.
-     */
-    public function update(int $id, array $data): bool {
-        try {
-            $stmt = $this->db->prepare("
-                UPDATE competencias
-                SET programa_id = ?, codigo = ?, nombre = ?, descripcion = ?, horas = ?, estado = ?
-                WHERE id = ?
-            ");
-            return $stmt->execute([
-                $data['programa_id'],
-                $data['codigo'],
-                $data['nombre'],
-                $data['descripcion'] ?? null,
-                $data['horas'],
-                $data['estado'],
-                $id
-            ]);
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                throw new Exception("Ya existe otra competencia con el código '{$data['codigo']}' en este programa.");
-            }
-            throw new Exception("Error al actualizar competencia: " . $e->getMessage());
-        }
+    public function findById(int $id): ?array {
+        $st = $this->db->prepare("SELECT * FROM competencias WHERE id = ?");
+        $st->execute([$id]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    /**
-     * Elimina una competencia.
-     */
-    public function delete(int $id): bool {
-        try {
-            $stmt = $this->db->prepare("DELETE FROM competencias WHERE id = ?");
-            return $stmt->execute([$id]);
-        } catch (Exception $e) {
-            throw new Exception("No se puede eliminar: la competencia tiene registros asociados o resultados de aprendizaje en uso.");
+    /** @return int[] ids de competencias con ese código (puede repetirse entre programas). */
+    public function idsPorCodigo(string $codigo, ?int $programaId = null): array {
+        $sql = "SELECT id FROM competencias WHERE codigo = ?";
+        $p = [$codigo];
+        if ($programaId !== null) {
+            $sql .= " AND programa_id = ?";
+            $p[] = $programaId;
         }
+        $st = $this->db->prepare($sql);
+        $st->execute($p);
+        return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function crear(array $d): int {
+        $this->db->prepare("
+            INSERT INTO competencias (programa_id, codigo, nombre, es_etapa_practica, descripcion, horas, estado)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ")->execute([$d['programa_id'], $d['codigo'], $d['nombre'], (int)$d['es_etapa_practica'],
+                     $d['descripcion'] !== '' ? $d['descripcion'] : null, $d['horas'], $d['estado']]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    /** Inserta si no existe (programa + código). @return bool true si la creó. */
+    public function crearSiNoExiste(array $d): bool {
+        $st = $this->db->prepare("
+            INSERT IGNORE INTO competencias (programa_id, codigo, nombre, es_etapa_practica, descripcion, horas, estado)
+            VALUES (?, ?, ?, ?, ?, ?, 'activo')
+        ");
+        $st->execute([$d['programa_id'], $d['codigo'], $d['nombre'], (int)($d['es_etapa_practica'] ?? 0),
+                      ($d['descripcion'] ?? '') !== '' ? $d['descripcion'] : null, $d['horas']]);
+        return $st->rowCount() === 1;
+    }
+
+    public function actualizar(int $id, array $d): void {
+        $this->db->prepare("
+            UPDATE competencias
+               SET programa_id = ?, codigo = ?, nombre = ?, es_etapa_practica = ?, descripcion = ?, horas = ?, estado = ?
+             WHERE id = ?
+        ")->execute([$d['programa_id'], $d['codigo'], $d['nombre'], (int)$d['es_etapa_practica'],
+                     $d['descripcion'] !== '' ? $d['descripcion'] : null, $d['horas'], $d['estado'], $id]);
+    }
+
+    public function eliminar(int $id): void {
+        $this->db->prepare("DELETE FROM competencias WHERE id = ?")->execute([$id]);
+    }
+
+    /** @return array{rap:int, evaluaciones:int, fichas_programa:int} */
+    public function dependencias(int $id): array {
+        $st = $this->db->prepare("
+            SELECT (SELECT COUNT(*) FROM resultados_aprendizaje WHERE competencia_id = ?) AS rap,
+                   (SELECT COUNT(*) FROM evaluaciones e JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+                     WHERE ra.competencia_id = ?) AS evaluaciones
+        ");
+        $st->execute([$id, $id]);
+        $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        return ['rap' => (int)($r['rap'] ?? 0), 'evaluaciones' => (int)($r['evaluaciones'] ?? 0)];
     }
 }

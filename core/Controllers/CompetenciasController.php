@@ -3,396 +3,87 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-use Core\Support\Enums;
-
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Formularios\CompetenciaFormulario;
 use Core\Models\CompetenciasModel;
 use Core\Models\ProgramasModel;
-use Core\XlsxParser;
-use PDO;
-use Exception;
+use Core\Services\CompetenciasService;
+use Core\Services\Paginator;
+use Core\Support\Actor;
+use Core\Support\Enums;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Competencias de formación.
+ *
+ *   GET  /competencias?search=&programa_id=&estado=&pagina=   gestión (lectura)
+ *   POST /competencias  action=crear|editar|eliminar          coordinación
+ */
 class CompetenciasController extends BaseController {
-    private PDO $db;
-    private CompetenciasModel $competenciasModel;
-    private ProgramasModel $programasModel;
+    private const RUTA = '/competencias';
 
-    public function __construct(?PDO $db = null, ?CompetenciasModel $competenciasModel = null, ?ProgramasModel $programasModel = null) {
-        // Alcance base para todo el controlador; import() restringe aún más a coordinador.
-        requireRole(ROL_COORDINADOR, ROL_INSTRUCTOR);
-        $this->db = $db ?? Database::getConnection();
-        $this->competenciasModel = $competenciasModel ?? new CompetenciasModel($this->db);
-        $this->programasModel = $programasModel ?? new ProgramasModel($this->db);
+    private CompetenciasModel $modelo;
+    private CompetenciasService $servicio;
+
+    public function __construct(?CompetenciasModel $modelo = null, ?CompetenciasService $servicio = null) {
+        $this->modelo = $modelo ?? new CompetenciasModel();
+        $this->servicio = $servicio ?? new CompetenciasService();
     }
 
-    /**
-     * Gestión y listado de competencias.
-     */
     public function index(): void {
-        $errors = [];
-        $successMessage = '';
-
-        // Procesar formulario de creación de competencia
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'crear') {
-            if (!hasRole(ROL_COORDINADOR)) {
-                $errors[] = 'Solo los coordinadores pueden registrar competencias.';
-            } else {
-                $programa_id = (int)($_POST['programa_id'] ?? 0);
-                $nombre = trim($_POST['nombre'] ?? '');
-                $codigo = trim($_POST['codigo'] ?? '');
-                $descripcion = trim($_POST['descripcion'] ?? '');
-                $horas = (int)($_POST['horas'] ?? 0);
-                $estado = (new Validador($_POST))->enum('estado', 'El estado', Enums::COMPETENCIA_ESTADO, 'activo');
-
-                if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa válido.';
-                if (empty($nombre)) {
-                    $errors[] = 'El nombre de la competencia es obligatorio.';
-                } elseif (mb_strlen($nombre, 'UTF-8') > 255) {
-                    $errors[] = 'El nombre no puede exceder los 255 caracteres.';
-                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                    $errors[] = 'El nombre contiene caracteres no permitidos.';
-                }
-                
-                if (empty($codigo)) {
-                    $errors[] = 'El código de la competencia es obligatorio.';
-                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
-                    $errors[] = 'El código no puede exceder los 20 caracteres.';
-                } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
-                    $errors[] = 'El código solo puede contener letras, números y guiones.';
-                }
-
-                if (mb_strlen($descripcion, 'UTF-8') > 1000) {
-                    $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
-                }
-                $descripcion = strip_tags($descripcion);
-                
-                if ($horas <= 0 || $horas > 99999) $errors[] = 'La duración en horas debe estar entre 1 y 99999.';
-                if (!in_array($estado, ['activo', 'inactivo'])) $errors[] = 'Estado inválido.';
-
-                if (empty($errors)) {
-                    try {
-                        $this->competenciasModel->create([
-                            'programa_id' => $programa_id,
-                            'nombre' => $nombre,
-                            'codigo' => $codigo,
-                            'descripcion' => $descripcion,
-                            'horas' => $horas,
-                            'estado' => $estado
-                        ]);
-                        setFlashMessage('Competencia registrada exitosamente.', 'success');
-                        $this->redirect(APP_URL . '/index.php/competencias');
-                    } catch (Exception $e) {
-                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-                    }
-                }
-            }
-        }
-
-        // Procesar edición de competencia
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'editar') {
-            if (!hasRole(ROL_COORDINADOR)) {
-                $errors[] = 'Solo los coordinadores pueden editar competencias.';
-            } else {
-                $id          = (int)($_POST['id'] ?? 0);
-                $programa_id = (int)($_POST['programa_id'] ?? 0);
-                $nombre      = trim($_POST['nombre'] ?? '');
-                $codigo      = trim($_POST['codigo'] ?? '');
-                $descripcion = trim($_POST['descripcion'] ?? '');
-                $horas       = (int)($_POST['horas'] ?? 0);
-                $estado      = (new Validador($_POST))->enum('estado', 'El estado', Enums::COMPETENCIA_ESTADO, 'activo');
-
-                if ($id <= 0)          $errors[] = 'Competencia no válida.';
-                if ($programa_id <= 0) $errors[] = 'Debe seleccionar un programa válido.';
-                if (empty($nombre)) {
-                    $errors[] = 'El nombre de la competencia es obligatorio.';
-                } elseif (mb_strlen($nombre, 'UTF-8') > 255) {
-                    $errors[] = 'El nombre no puede exceder los 255 caracteres.';
-                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $nombre)) {
-                    $errors[] = 'El nombre contiene caracteres no permitidos.';
-                }
-                
-                if (empty($codigo)) {
-                    $errors[] = 'El código de la competencia es obligatorio.';
-                } elseif (mb_strlen($codigo, 'UTF-8') > 20) {
-                    $errors[] = 'El código no puede exceder los 20 caracteres.';
-                } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $codigo)) {
-                    $errors[] = 'El código solo puede contener letras, números y guiones.';
-                }
-
-                if (mb_strlen($descripcion, 'UTF-8') > 1000) {
-                    $errors[] = 'La descripción no puede exceder los 1000 caracteres.';
-                }
-                $descripcion = strip_tags($descripcion);
-                
-                if ($horas <= 0 || $horas > 99999) $errors[] = 'La duración en horas debe estar entre 1 y 99999.';
-                if (!in_array($estado, ['activo', 'inactivo'])) $errors[] = 'Estado inválido.';
-
-                if (empty($errors)) {
-                    try {
-                        $this->competenciasModel->update($id, [
-                            'programa_id' => $programa_id,
-                            'nombre' => $nombre,
-                            'codigo' => $codigo,
-                            'descripcion' => $descripcion,
-                            'horas' => $horas,
-                            'estado' => $estado
-                        ]);
-                        setFlashMessage('Competencia actualizada exitosamente.', 'success');
-                        $this->redirect(APP_URL . '/index.php/competencias');
-                    } catch (Exception $e) {
-                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-                    }
-                }
-            }
-        }
-
-        // Procesar eliminación de competencia
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'eliminar') {
-            if (!hasRole(ROL_COORDINADOR)) {
-                $errors[] = 'Solo los coordinadores pueden eliminar competencias.';
-            } else {
-                $id = (int)($_POST['id'] ?? 0);
-                if ($id <= 0) {
-                    $errors[] = 'Competencia no válida.';
-                } else {
-                    try {
-                        $this->competenciasModel->delete($id);
-                        setFlashMessage('Competencia eliminada exitosamente.', 'success');
-                        $this->redirect(APP_URL . '/index.php/competencias');
-                    } catch (Exception $e) {
-                        setFlashMessage(ErrorDeNegocio::mensajeSeguro($e), 'danger');
-                    }
-                }
-            }
-        }
-
-        // Obtener programas para los filtros y el formulario
-        $programas = [];
-        try {
-            $programas = $this->programasModel->getAll();
-            // Filtrar programas para que solo se muestren los activos en el select
-            $programas = array_filter($programas, fn($p) => $p['estado'] === 'activo');
-        } catch (Exception $e) {
-            $errors[] = 'Error al cargar programas.';
-        }
-
-        // Obtener filtros de búsqueda
-        $search = trim($_GET['search'] ?? '');
-        $filter_programa = (int)($_GET['programa_id'] ?? 0);
-        $filter_estado = $_GET['estado'] ?? '';
-
-        $filters = [
-            'search' => $search,
-            'programa_id' => $filter_programa,
-            'estado' => $filter_estado
+        $filtros = [
+            'search'      => $this->consulta()->busquedaCruda('search'),
+            'programa_id' => $this->idDeConsulta('programa_id'),
+            'estado'      => in_array($_GET['estado'] ?? '', Enums::COMPETENCIA_ESTADO, true) ? $_GET['estado'] : '',
         ];
-
+        $errors = [];
+        $competencias = $programas = [];
+        $paginacion = null;
         try {
-            $competencias = $this->competenciasModel->getFilteredList($filters);
-        } catch (Exception $e) {
-            $competencias = [];
-            $errors[] = ErrorDeNegocio::mensajeSeguro($e);
+            $paginacion = Paginator::desdePeticion($this->modelo->contar($filtros));
+            $competencias = $this->modelo->listar($filtros, $paginacion->perPage(), $paginacion->offset());
+            $programas = (new ProgramasModel())->opciones(false);
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las competencias');
         }
-
-        $this->render(
-            BASE_PATH . 'modules/competencias/views/index.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'programas' => $programas,
-                'search' => $search,
-                'filter_programa' => $filter_programa,
-                'filter_estado' => $filter_estado,
-                'competencias' => $competencias
-            ],
-            'Gestión de Competencias · SENA'
-        );
+        $this->render(BASE_PATH . 'modules/competencias/views/index.view.php', [
+            'errors'       => $errors,
+            'competencias' => $competencias,
+            'programas'    => $programas,
+            'filtros'      => $filtros,
+            'paginacion'   => $paginacion,
+            'puedeEditar'  => $this->esRol(ROL_COORDINADOR),
+            'limites'      => ['nombre' => CompetenciaFormulario::MAX_NOMBRE, 'codigo' => CompetenciaFormulario::MAX_CODIGO,
+                               'texto' => CompetenciaFormulario::MAX_DESCRIPCION, 'horas' => CompetenciaFormulario::MAX_HORAS],
+        ], 'Competencias · SENA');
     }
 
-    /**
-     * Importación masiva de competencias.
-     */
-    public function import(): void {
-        requireRole(ROL_COORDINADOR);
+    public function crear(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $d = CompetenciaFormulario::validar($v);
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->crearCompetencia($d, Actor::actual()), $vuelta, 'Competencia registrada.', 'No se pudo registrar la competencia');
+    }
 
-        $errors = [];
-        $successMessage = '';
-        $resultados = [];
+    public function editar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La competencia');
+        $d = CompetenciaFormulario::validar($v);
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->editarCompetencia($id, $d, Actor::actual()), $vuelta, 'Competencia actualizada.', 'No se pudo actualizar la competencia');
+    }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_FILES['archivo_competencias']) && $_FILES['archivo_competencias']['error'] === UPLOAD_ERR_OK) {
-                $fileTmpPath = $_FILES['archivo_competencias']['tmp_name'];
-                $fileName = $_FILES['archivo_competencias']['name'];
-                $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-                if ($fileExtension === 'xls') {
-                    $errors[] = 'El formato .xls no está soportado. Por favor, guarde su archivo como .xlsx o expórtelo como .csv.';
-                } elseif (!in_array($fileExtension, ['csv', 'xlsx'])) {
-                    $errors[] = 'El archivo debe ser un archivo de Excel (.xlsx) o un archivo de texto separado por comas (.csv).';
-                } else {
-                    $rows = [];
-                    if ($fileExtension === 'csv') {
-                        $handle = fopen($fileTmpPath, 'r');
-                        if ($handle !== false) {
-                            $firstLine = fgets($handle);
-                            $separator = (strpos($firstLine, ';') !== false) ? ';' : ',';
-                            rewind($handle);
-
-                            while (($data = fgetcsv($handle, 1000, $separator)) !== false) {
-                                $rows[] = $data;
-                            }
-                            fclose($handle);
-                        } else {
-                            $errors[] = 'No se pudo abrir el archivo CSV.';
-                        }
-                    } else { // xlsx
-                        try {
-                            $rows = XlsxParser::parse($fileTmpPath);
-                        } catch (Exception $e) {
-                            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al procesar el archivo Excel');
-                        }
-                    }
-
-                    if (empty($errors)) {
-                        if (count($rows) <= 1) {
-                            $errors[] = 'El archivo está vacío o solo contiene la cabecera.';
-                        } else {
-                            array_shift($rows);
-                            
-                            $linea = 2;
-                            $competenciasData = [];
-                            
-                            // Cargar programas existentes para buscar por código de forma rápida
-                            $programasMap = [];
-                            try {
-                                $p_list = $this->programasModel->getAll();
-                                foreach ($p_list as $p) {
-                                    $programasMap[strtolower(trim($p['codigo']))] = (int)$p['id'];
-                                }
-                            } catch (Exception $e) {
-                                $errors[] = 'Error al precargar códigos de programas.';
-                            }
-
-                            foreach ($rows as $data) {
-                                if (empty($data) || (empty($data[0]) && empty($data[1]) && empty($data[2]))) {
-                                    $linea++;
-                                    continue;
-                                }
-
-                                if (count($data) < 4) {
-                                    $errors[] = "Línea $linea: Faltan columnas. Se requiere: Código Programa, Código Competencia, Nombre Competencia, Horas.";
-                                    $linea++;
-                                    continue;
-                                }
-
-                                $prog_code = strtolower(trim((string)($data[0] ?? '')));
-                                $comp_code = trim((string)($data[1] ?? ''));
-                                $comp_name = mb_strtoupper(trim((string)($data[2] ?? '')), 'UTF-8');
-                                $horas = (int)($data[3] ?? 0);
-                                $descripcion = trim((string)($data[4] ?? ''));
-
-                                $rowErrors = [];
-                                if (!isset($programasMap[$prog_code])) {
-                                    $rowErrors[] = "Línea $linea: El código de programa '$prog_code' no existe en la base de datos.";
-                                }
-                                if (empty($comp_code)) {
-                                    $rowErrors[] = "Línea $linea: El código de competencia está vacío.";
-                                } elseif (mb_strlen($comp_code, 'UTF-8') > 20) {
-                                    $rowErrors[] = "Línea $linea: El código de competencia no puede exceder los 20 caracteres.";
-                                } elseif (!preg_match('/^[a-zA-Z0-9\-]+$/', $comp_code)) {
-                                    $rowErrors[] = "Línea $linea: El código de competencia '$comp_code' contiene caracteres no permitidos.";
-                                }
-                                if (empty($comp_name)) {
-                                    $rowErrors[] = "Línea $linea: El nombre de la competencia está vacío.";
-                                } elseif (mb_strlen($comp_name, 'UTF-8') > 255) {
-                                    $rowErrors[] = "Línea $linea: El nombre de la competencia no puede exceder los 255 caracteres.";
-                                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$/u', $comp_name)) {
-                                    $rowErrors[] = "Línea $linea: El nombre de la competencia '$comp_name' contiene caracteres no permitidos.";
-                                }
-                                if ($horas <= 0) {
-                                    $rowErrors[] = "Línea $linea: Las horas deben ser un número positivo mayor que cero.";
-                                }
-
-                                if (empty($rowErrors)) {
-                                    $competenciasData[] = [
-                                        'programa_id' => $programasMap[$prog_code],
-                                        'codigo' => $comp_code,
-                                        'nombre' => $comp_name,
-                                        'horas' => $horas,
-                                        'descripcion' => $descripcion
-                                    ];
-                                } else {
-                                    $errors = array_merge($errors, $rowErrors);
-                                }
-                                $linea++;
-                            }
-
-                            if (empty($errors)) {
-                                if (count($competenciasData) > 0) {
-                                    try {
-                                        $this->db->beginTransaction();
-                                        
-                                        // Importación idempotente: las competencias que ya
-                                        // existen (mismo programa + mismo código) se omiten
-                                        // en lugar de romper toda la carga.
-                                        $importedCount = 0;
-                                        $skippedCount = 0;
-                                        foreach ($competenciasData as $c) {
-                                            $inserted = $this->competenciasModel->createIfNotExists([
-                                                'programa_id' => $c['programa_id'],
-                                                'codigo' => $c['codigo'],
-                                                'nombre' => $c['nombre'],
-                                                'descripcion' => $c['descripcion'],
-                                                'horas' => $c['horas'],
-                                                'estado' => 'activo'
-                                            ]);
-                                            if ($inserted) {
-                                                $importedCount++;
-                                            } else {
-                                                $skippedCount++;
-                                            }
-                                        }
-
-                                        // Registrar log
-                                        $logStmt = $this->db->prepare("
-                                            INSERT INTO logs_sistema (usuario_id, accion, modulo, tabla_afectada, descripcion)
-                                            VALUES (?, 'Importar', 'Competencias', 'competencias', ?)
-                                        ");
-                                        $logStmt->execute([(int)getCurrentUser()['id'], "Importación masiva de competencias: $importedCount nuevas, $skippedCount omitidas por ya existir"]);
-
-                                        $this->db->commit();
-                                        $resumen = "Importados $importedCount nuevos, omitidos $skippedCount ya existentes.";
-                                        setFlashMessage($resumen, $importedCount > 0 ? 'success' : 'warning');
-                                        $this->redirect(APP_URL . '/index.php/competencias');
-                                    } catch (Exception $e) {
-                                        if ($this->db->inTransaction()) {
-                                            $this->db->rollBack();
-                                        }
-                                        $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al insertar competencias en la BD');
-                                    }
-                                } else {
-                                    $errors[] = 'El archivo no contiene filas válidas.';
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                $errors[] = 'Por favor, seleccione un archivo válido.';
-            }
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/competencias/views/importar.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'resultados' => $resultados
-            ],
-            'Importar Competencias · SENA'
-        );
+    public function eliminar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        $v = $this->entrada();
+        $id = $v->id('id', 'La competencia');
+        $vuelta = $this->rutaDeVuelta(self::RUTA);
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => $this->servicio->eliminarCompetencia($id, Actor::actual()), $vuelta, 'Competencia eliminada.', 'No se pudo eliminar la competencia');
     }
 }
