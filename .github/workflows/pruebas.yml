@@ -1,0 +1,95 @@
+name: Pruebas
+
+# Las 500 comprobaciones existían pero nadie las ejecutaba. Este flujo las
+# corre en cada push y en cada pull request, que es lo que convierte una
+# suite en una red de seguridad real.
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'docs/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+
+    services:
+      # Las pruebas de integración y de seguridad necesitan la base de
+      # datos: comprueban invariantes del esquema y el aislamiento entre
+      # roles, y eso no se puede simular con dobles.
+      mariadb:
+        image: mariadb:10.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: sena_seguimiento
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          # dom y mbstring las exige dompdf; gd es opcional (el logo del
+          # PDF se incrusta solo si está disponible).
+          extensions: pdo_mysql, mbstring, dom, zip, gd
+          coverage: xdebug
+
+      - name: Validar composer.json
+        run: composer validate --strict
+
+      - name: Caché de dependencias
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Instalar dependencias
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Comprobar sintaxis de todo el PHP
+        run: |
+          find core includes modules components layouts config migrations tests \
+               -name "*.php" -print0 | xargs -0 -n1 php -l > /dev/null
+          php -l index.php && php -l login.php && php -l recover.php
+
+      - name: Configurar el entorno
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_USER=.*/DB_USER=root/'  .env
+          sed -i 's/^DB_PASS=.*/DB_PASS=root/'  .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^DEV_MODE=.*/DEV_MODE=false/' .env
+
+      - name: Crear el esquema
+        run: php install.php --confirmar-borrado-total
+
+      - name: Aplicar migraciones
+        run: |
+          php migrations/create_configuraciones_sistema.php
+          php migrations/create_intentos_acceso.php
+          php migrations/create_asignaciones.php
+          php migrations/create_eventos_calendario.php
+          php migrations/create_notificaciones.php
+          php migrations/add_competencias_etapa_practica.php
+          php migrations/add_indices_compuestos.php
+
+      - name: Verificar que Enums coincide con el esquema
+        run: php migrations/verificar_enums.php
+
+      - name: Pruebas unitarias
+        run: vendor/bin/phpunit --testsuite unitarias
+
+      - name: Pruebas de seguridad
+        run: vendor/bin/phpunit --testsuite seguridad
+
+      - name: Pruebas de integración
+        run: vendor/bin/phpunit --testsuite integracion

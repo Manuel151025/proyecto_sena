@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Configuración de PHPUnit.
+
+  Las suites están separadas por lo que cuestan y por lo que garantizan:
+
+    unitarias   Clases aisladas, sin base de datos. Son rápidas y se
+                ejecutan en cada guardado.
+    seguridad   Intentos de abuso reales contra el sistema: inyección,
+                escalada de privilegios, fuerza bruta, fuga de información.
+                Algunas necesitan la base de datos.
+    integracion Modelos, consultas y flujos completos contra la base real.
+                Todo lo que escriben lo revierten.
+
+  `failOnWarning` y `failOnNotice` están activos a propósito: un aviso de
+  PHP en una prueba suele ser el síntoma de un acceso a una clave que no
+  existe, que es justo la clase de fallo silencioso que este proyecto
+  arrastraba.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnIncompleteTests="true"
+         displayDetailsOnSkippedTests="true"
+         failOnWarning="true"
+         failOnNotice="true"
+         beStrictAboutOutputDuringTests="false"
+         cacheDirectory=".phpunit.cache">
+
+    <testsuites>
+        <testsuite name="unitarias">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="seguridad">
+            <directory>tests/Security</directory>
+        </testsuite>
+        <testsuite name="integracion">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">core</directory>
+        </include>
+        <exclude>
+            <!-- Librería de terceros incrustada, no es código del proyecto. -->
+            <file>core/XlsxParser.php</file>
+        </exclude>
+    </source>
+</phpunit>

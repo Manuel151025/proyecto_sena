@@ -1,0 +1,168 @@
+<?php
+declare(strict_types=1);
+
+namespace Tests\Integration;
+
+use Core\Router;
+use PHPUnit\Framework\Attributes\TestDox;
+use Tests\CasoDePrueba;
+
+/**
+ * La tabla de rutas es, además, la matriz de control de acceso del sistema.
+ *
+ * Antes el permiso vivía en el constructor de cada controlador y nueve de
+ * ellos solo comprobaban que hubiera sesión, sin mirar el rol. Estas
+ * pruebas verifican que la declaración de `index.php` sea completa y que no
+ * conceda más de lo que el propio controlador permite.
+ */
+final class RutasYPermisosTest extends CasoDePrueba {
+
+    /** Carga la tabla de rutas ejecutando la parte declarativa de index.php. */
+    private function rutas(): array {
+        $router = new Router();
+
+        // Los mismos atajos que usa index.php.
+        $TODOS       = [ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ];
+        $GESTION     = [ROL_COORDINADOR, ROL_INSTRUCTOR];
+        $COORDINADOR = [ROL_COORDINADOR];
+        $ambos = static function (string $ruta, string $ctrl, string $accion, array $roles) use ($router): void {
+            $router->add('GET', $ruta, $ctrl, $accion, $roles);
+            $router->add('POST', $ruta, $ctrl, $accion, $roles);
+        };
+
+        $fuente = (string)file_get_contents(dirname(__DIR__, 2) . '/index.php');
+        $desde = strpos($fuente, '// PANEL');
+        $hasta = strpos($fuente, '$router->dispatch(');
+        $this->assertNotFalse($desde, 'no se localiza el inicio de la tabla de rutas');
+        $this->assertNotFalse($hasta);
+
+        eval(substr($fuente, $desde, $hasta - $desde));
+
+        return $router->rutas();
+    }
+
+    #[TestDox('toda ruta declara explícitamente qué roles la alcanzan')]
+    public function testTodasLasRutasDeclaranRoles(): void {
+        $sinRoles = [];
+        foreach ($this->rutas() as $clave => $r) {
+            if ($r['roles'] === []) {
+                $sinRoles[] = $clave;
+            }
+        }
+        $this->assertSame([], $sinRoles,
+            'estas rutas no declaran permiso: ' . implode(', ', $sinRoles));
+    }
+
+    #[TestDox('toda ruta apunta a una clase y un método que existen')]
+    public function testDestinosExisten(): void {
+        $rotas = [];
+        foreach ($this->rutas() as $clave => $r) {
+            if (!class_exists($r['controller']) || !method_exists($r['controller'], $r['action'])) {
+                $rotas[] = "$clave -> {$r['controller']}::{$r['action']}";
+            }
+        }
+        $this->assertSame([], $rotas, 'rutas rotas: ' . implode(', ', $rotas));
+    }
+
+    /**
+     * La ruta no puede abrir una puerta que el controlador cierra: sería
+     * una declaración engañosa, y quien audite `index.php` creería que el
+     * acceso es más amplio de lo que es.
+     */
+    #[TestDox('ninguna ruta concede más de lo que su controlador permite')]
+    public function testLasRutasNoAmplianElPermiso(): void {
+        $contradicciones = [];
+
+        foreach ($this->rutas() as $clave => $r) {
+            $archivo = dirname(__DIR__, 2) . '/core/Controllers/'
+                     . basename(str_replace('\\', '/', $r['controller'])) . '.php';
+            if (!is_file($archivo)) {
+                continue;
+            }
+
+            $fuente = (string)file_get_contents($archivo);
+            if (!preg_match('/requireRole\(([^)]*)\)/', $fuente, $m)) {
+                continue;   // solo exige sesión: la ruta puede restringir más
+            }
+
+            $exigidos = array_map(
+                static fn($x) => trim(str_replace(
+                    ['ROL_COORDINADOR', 'ROL_INSTRUCTOR', 'ROL_APRENDIZ'],
+                    [ROL_COORDINADOR, ROL_INSTRUCTOR, ROL_APRENDIZ],
+                    $x
+                )),
+                explode(',', $m[1])
+            );
+
+            $sobran = array_diff($r['roles'], $exigidos);
+            if ($sobran !== []) {
+                $contradicciones[] = "$clave declara [" . implode(',', $r['roles'])
+                                   . '] pero el controlador exige [' . implode(',', $exigidos) . ']';
+            }
+        }
+
+        $this->assertSame([], $contradicciones, implode(' | ', $contradicciones));
+    }
+
+    #[TestDox('las pantallas de administración son exclusivas de coordinación')]
+    public function testPantallasDeAdministracionRestringidas(): void {
+        $rutas = $this->rutas();
+
+        $soloCoordinador = [
+            '/usuarios', '/usuarios/crear', '/usuarios/editar', '/usuarios/importar',
+            '/estructura', '/configuracion', '/logs',
+            '/programas/crear', '/programas/editar',
+            '/fichas/crear', '/fichas/editar',
+        ];
+
+        foreach ($soloCoordinador as $ruta) {
+            $clave = 'GET ' . $ruta;
+            $this->assertArrayHasKey($clave, $rutas, "no existe la ruta $ruta");
+            $this->assertSame(
+                [ROL_COORDINADOR],
+                $rutas[$clave]['roles'],
+                "$ruta debería ser exclusiva de coordinación"
+            );
+        }
+    }
+
+    #[TestDox('ninguna ruta de escritura está abierta al aprendiz por descuido')]
+    public function testEscriturasSensiblesCerradasAlAprendiz(): void {
+        $rutas = $this->rutas();
+
+        $noParaAprendiz = [
+            'POST /usuarios', 'POST /usuarios/crear', 'POST /usuarios/editar',
+            'POST /matriculas', 'POST /asignaciones', 'POST /configuracion',
+            'POST /estructura', 'POST /reportes',
+        ];
+
+        foreach ($noParaAprendiz as $clave) {
+            if (!isset($rutas[$clave])) {
+                continue;
+            }
+            $this->assertNotContains(
+                ROL_APRENDIZ,
+                $rutas[$clave]['roles'],
+                "$clave está abierta al rol aprendiz"
+            );
+        }
+    }
+
+    #[TestDox('la importación de juicios no está abierta al aprendiz')]
+    public function testImportacionRestringida(): void {
+        $rutas = $this->rutas();
+        foreach (['POST /evaluaciones/importar', 'POST /competencias/importar', 'POST /estructura/importar'] as $clave) {
+            if (isset($rutas[$clave])) {
+                $this->assertNotContains(ROL_APRENDIZ, $rutas[$clave]['roles'], "$clave permite al aprendiz importar");
+            }
+        }
+    }
+
+    #[TestDox('el número de rutas no ha cambiado sin que nadie se entere')]
+    public function testNumeroDeRutas(): void {
+        // Es un canario: si alguien añade o quita una ruta, esta prueba
+        // falla y obliga a revisar conscientemente el permiso que declara.
+        $this->assertCount(69, $this->rutas(),
+            'ha cambiado el número de rutas: revisa los permisos declarados y actualiza esta cifra');
+    }
+}
