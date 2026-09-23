@@ -57,10 +57,10 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
     #[TestDox('el mismo comodín tampoco vacía el filtro de evaluaciones')]
     public function testComodinesEnEvaluaciones(): void {
         $modelo = new EvaluacionesModel($this->db);
-        $coord = $this->idCoordinador();
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
 
-        $total = $modelo->contarEvaluaciones(ROL_COORDINADOR, $coord, 0, 0, '', '');
-        $conComodin = $modelo->contarEvaluaciones(ROL_COORDINADOR, $coord, 0, 0, '', '%');
+        $total = $modelo->contar($coord, []);
+        $conComodin = $modelo->contar($coord, ['search' => '%']);
 
         $this->assertLessThan($total, $conComodin, 'el buscador de evaluaciones acepta comodines');
     }

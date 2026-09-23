@@ -3,265 +3,108 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Exportacion\Exportador;
+use Core\Formularios\JuicioFormulario;
 use Core\Models\EvaluacionesModel;
-use Core\Services\JuiciosImportService;
-use PDO;
-use Exception;
+use Core\Services\Auditoria;
+use Core\Services\JuiciosService;
+use Core\Services\Paginator;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Throwable;
 
+/**
+ * Juicios evaluativos por RAP (RF03).
+ *
+ *   GET  /evaluaciones?search=&ficha_id=&concepto=   todos (cada rol ve lo suyo)
+ *   GET  /evaluaciones/exportar?formato=xlsx|csv       todos, con los mismos filtros
+ *   POST /evaluaciones  action=evaluar                 instructor y coordinación
+ *
+ * La importación del reporte de Sofia Plus es /evaluaciones/importar
+ * (ImportacionController + ImportadorJuicios).
+ */
 class EvaluacionesController extends BaseController {
-    private PDO $db;
-    private EvaluacionesModel $evaluacionesModel;
-    private JuiciosImportService $importService;
+    public const CONCEPTOS = [
+        'A'         => ['Aprobado (A)', 'success', 'bi-check-circle-fill'],
+        'D'         => ['No aprobado (D)', 'danger', 'bi-x-circle-fill'],
+        'pendiente' => ['Pendiente', 'warning', 'bi-clock-fill'],
+    ];
 
-    public function __construct(?PDO $db = null, ?EvaluacionesModel $evaluacionesModel = null, ?JuiciosImportService $importService = null) {
-        requireAuth();
-        $this->db = $db ?? Database::getConnection();
-        $this->evaluacionesModel = $evaluacionesModel ?? new EvaluacionesModel($this->db);
-        $this->importService = $importService ?? new JuiciosImportService();
+    private EvaluacionesModel $modelo;
+
+    public function __construct(?EvaluacionesModel $modelo = null) {
+        $this->modelo = $modelo ?? new EvaluacionesModel();
     }
 
     public function index(): void {
+        $actor = Actor::actual();
+        $filtros = $this->filtros();
         $errors = [];
-        $successMessage = '';
-
-        $user_id = (int)getCurrentUser()['id'];
-        $user_rol = getCurrentRole();
-
-        $aprendiz_id = 0;
-        if ($user_rol === ROL_APRENDIZ) {
-            try {
-                $aprendiz_id = $this->evaluacionesModel->getAprendizId($user_id);
-            } catch (Exception $e) {
-                $errors[] = 'Error al verificar perfil del aprendiz.';
-            }
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'evaluar') {
-            requireCsrf();
-            if ($user_rol === ROL_INSTRUCTOR || $user_rol === ROL_COORDINADOR) {
-                try {
-                    $eval_id = (int)($_POST['evaluacion_id'] ?? 0);
-                    $nuevo_concepto = trim($_POST['concepto'] ?? '');
-                    $comentario = trim($_POST['comentario'] ?? '');
-                    $motivo = trim($_POST['motivo'] ?? '');
-
-                    if (mb_strlen($comentario, 'UTF-8') > 1000) {
-                        throw new Exception('El comentario no puede exceder los 1000 caracteres.');
-                    }
-                    $comentario = strip_tags($comentario);
-
-                    if (mb_strlen($motivo, 'UTF-8') > 255) {
-                        throw new Exception('El motivo no puede exceder los 255 caracteres.');
-                    }
-                    $motivo = strip_tags($motivo);
-
-                    if ($eval_id <= 0) {
-                        throw new ErrorDeNegocio('ID de evaluación inválido.');
-                    }
-
-                    if (!in_array($nuevo_concepto, ['A', 'D', 'pendiente'])) {
-                        throw new ErrorDeNegocio('Concepto no válido.');
-                    }
-
-                    $conceptoAnterior = $this->evaluacionesModel->getEvaluacionAnterior($eval_id, $user_rol, $user_id);
-
-                    if ($conceptoAnterior === false) {
-                        throw new ErrorDeNegocio('Evaluación no encontrada o sin permiso para editarla.');
-                    }
-
-                    if ($conceptoAnterior !== $nuevo_concepto && in_array($conceptoAnterior, ['A', 'D']) && empty($motivo)) {
-                        throw new ErrorDeNegocio('El motivo del cambio de calificación es requerido.');
-                    }
-
-                    $this->evaluacionesModel->actualizarEvaluacion($eval_id, $nuevo_concepto, $comentario, $motivo, $user_id, $conceptoAnterior);
-
-                    setFlashMessage('Evaluación actualizada correctamente. Concepto: ' . $nuevo_concepto, 'success');
-                    $this->redirect($_SERVER['REQUEST_URI']);
-                } catch (Exception $e) {
-                    setFlashMessage(ErrorDeNegocio::mensajeSeguro($e, 'Error al guardar evaluación'), 'danger');
-                }
-            }
-        }
-
-        $fichas = [];
-        if ($user_rol !== ROL_APRENDIZ) {
-            try {
-                $fichas = $this->evaluacionesModel->getFichas($user_rol, $user_id);
-            } catch (Exception $e) {
-                $errors[] = 'Error al cargar fichas.';
-            }
-        }
-
-        $search = trim($_GET['search'] ?? '');
-        $filter_ficha = (int)($_GET['ficha_id'] ?? 0);
-        $filter_concepto = $_GET['concepto'] ?? '';
-
-        $evaluaciones = [];
+        $evaluaciones = $fichas = $historial = [];
+        $cifras = ['total' => 0, 'a' => 0, 'd' => 0, 'pendientes' => 0];
         $paginacion = null;
         try {
-            $total = $this->evaluacionesModel->contarEvaluaciones($user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search);
-            $paginacion = \Core\Services\Paginator::desdePeticion($total);
-            $evaluaciones = $this->evaluacionesModel->getEvaluaciones(
-                $user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search,
-                $paginacion->perPage(),
-                $paginacion->offset()
-            );
-        } catch (Exception $e) {
-            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar evaluaciones');
+            $paginacion = Paginator::desdePeticion($this->modelo->contar($actor, $filtros));
+            $evaluaciones = $this->modelo->listar($actor, $filtros, $paginacion->perPage(), $paginacion->offset());
+            $historial = $this->modelo->historial(array_column($evaluaciones, 'id'));
+            $cifras = $this->modelo->cifras($actor, $filtros);
+            $fichas = $this->modelo->fichasDelActor($actor);
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los juicios');
         }
-
-        $statsEval = ['total' => 0, 'aprobados' => 0, 'reprobados' => 0, 'pendientes' => 0];
-        try {
-            $statsEvalResult = $this->evaluacionesModel->getStatsEval($user_rol, $user_id, $aprendiz_id);
-            if ($statsEvalResult) {
-                $statsEval = $statsEvalResult;
-            }
-        } catch (Exception $e) {}
-
-        $conceptos_label = [
-            'A' => ['Aprobado (A)', 'success', 'bi-check-circle-fill'],
-            'D' => ['No Aprobado (D)', 'danger', 'bi-x-circle-fill'],
-            'pendiente' => ['Pendiente', 'warning', 'bi-clock-fill']
-        ];
-
-        $this->render(
-            BASE_PATH . 'modules/evaluaciones/views/index.view.php',
-            [
-                'errors' => $errors,
-                'success' => $successMessage,
-                'user_rol' => $user_rol,
-                'fichas' => $fichas,
-                'evaluaciones' => $evaluaciones,
-                'statsEval' => $statsEval,
-                'conceptos_label' => $conceptos_label,
-                'search' => $search,
-                'filter_ficha' => $filter_ficha,
-                'filter_concepto' => $filter_concepto,
-                'paginacion' => $paginacion
-            ],
-            'Juicios de Evaluación · SENA'
-        );
+        $this->render(BASE_PATH . 'modules/evaluaciones/views/index.view.php', [
+            'errors'       => $errors,
+            'evaluaciones' => $evaluaciones,
+            'historial'    => $historial,
+            'cifras'       => $cifras,
+            'fichas'       => $fichas,
+            'filtros'      => $filtros,
+            'paginacion'   => $paginacion,
+            'conceptos'    => self::CONCEPTOS,
+            'actor'        => $actor,
+        ], 'Juicios de evaluación · SENA');
     }
 
-    public function import(): void {
-        // Aumentar límites para uploads base64 y archivos grandes
-        @ini_set('post_max_size', '64M');
-        @ini_set('upload_max_filesize', '64M');
-        @ini_set('memory_limit', '256M');
+    public function evaluar(): never {
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $d = JuicioFormulario::validar($v);
+        $vuelta = $this->rutaDeVuelta('/evaluaciones');
+        $this->siHayErrores($v, $vuelta);
+        $this->ejecutar(fn() => (new JuiciosService())->calificar($d, Actor::actual()), $vuelta,
+            static fn(string $accion) => $accion === 'sin_cambios' ? 'Comentario guardado; el juicio no cambió.' : "Juicio registrado: {$d['concepto']}.",
+            'No se pudo guardar el juicio');
+    }
 
-        $errors = [];
-        $successMessage = '';
-        $import_summary = null;
+    public function exportar(): never {
+        $actor = Actor::actual();
+        $formato = ($_GET['formato'] ?? '') === 'csv' ? 'csv' : 'xlsx';
+        $filas = array_map(static fn($e) => [
+            $e['numero_ficha'], $e['aprendiz_nombre'], $e['numero_documento'], $e['competencia_codigo'], $e['competencia_nombre'],
+            $e['ra_codigo'], $e['ra_denominacion'], self::CONCEPTOS[$e['concepto']][0] ?? $e['concepto'],
+            $e['fecha_evaluacion'] ?? '', $e['instructor_nombre'] ?? '', (string)($e['comentario'] ?? ''),
+        ], $this->modelo->paraExportar($actor, $this->filtros(), Exportador::MAX_FILAS));
+        $enc = ['Ficha', 'Aprendiz', 'Documento', 'Código competencia', 'Competencia', 'Código RAP', 'Resultado de aprendizaje',
+                'Juicio', 'Fecha', 'Instructor', 'Comentario'];
 
-        // Comprobar si hay resultados de importación almacenados en sesión
-        $tabId = getTabId();
-        if (isset($_SESSION['tabs'][$tabId]['import_success'])) {
-            $successMessage = $_SESSION['tabs'][$tabId]['import_success'];
-            $import_summary = $_SESSION['tabs'][$tabId]['import_summary'] ?? null;
-            unset($_SESSION['tabs'][$tabId]['import_success'], $_SESSION['tabs'][$tabId]['import_summary']);
-        } elseif (isset($_SESSION['import_success'])) {
-            $successMessage = $_SESSION['import_success'];
-            $import_summary = $_SESSION['import_summary'] ?? null;
-            unset($_SESSION['import_success'], $_SESSION['import_summary']);
-        }
+        (new Auditoria())->operacion($actor, 'Exportar', 'Evaluaciones', 'evaluaciones', null, count($filas) . " juicios exportados en $formato");
+        $nombre = 'juicios_' . date('Ymd_His') . '.' . $formato;
+        Exportador::descargar(
+            $formato === 'csv'
+                ? Exportador::csv($nombre, $enc, $filas)
+                : Exportador::xlsx('Juicios', $enc, $filas, [
+                    'titulo' => 'Juicios evaluativos · ' . date('d/m/Y'),
+                    'anchos' => [10, 32, 14, 14, 36, 14, 48, 16, 11, 26, 40]]),
+            $nombre, $formato);
+    }
 
-        $user = getCurrentUser();
-        $role = getCurrentRole();
-
-        $is_ajax = (!empty($_POST['file_data']) && !empty($_POST['file_name']));
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (empty($_POST) && empty($_FILES)) {
-                $errors[] = 'El tamaño del archivo supera el límite permitido por la configuración de PHP del servidor (post_max_size / upload_max_filesize). Intente con un archivo más pequeño.';
-                @file_put_contents(BASE_PATH . 'logs/import_errors.log', date('[Y-m-d H:i:s] ') . "POST vacío recibido. Posible exceso de post_max_size en php.ini.\n", FILE_APPEND);
-            } else {
-                $rutaTemporal = null;
-                $originalName = '';
-                $jsonResponse = null;
-                
-                try {
-                    if ($is_ajax) {
-                        $originalName = $_POST['file_name'];
-                        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-                        if ($ext !== 'xls') {
-                            throw new ErrorDeNegocio('El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).');
-                        }
-
-                        $fileData = base64_decode($_POST['file_data'], true);
-                        if ($fileData === false || strlen($fileData) === 0) {
-                            throw new Exception('Error: No se pudo decodificar el contenido del archivo. Intenta de nuevo.');
-                        }
-
-                        $uploadsDir = realpath(BASE_PATH . 'uploads');
-                        if ($uploadsDir === false) {
-                            $uploadsDir = BASE_PATH . 'uploads';
-                            if (!is_dir($uploadsDir)) {
-                                @mkdir($uploadsDir, 0777, true);
-                            }
-                        }
-
-                        $rutaTemporal = $uploadsDir . DIRECTORY_SEPARATOR . uniqid('ajax_', true) . '.xls';
-                        if (file_put_contents($rutaTemporal, $fileData) === false) {
-                            throw new Exception('Error al guardar el archivo decodificado en el servidor.');
-                        }
-                    } else {
-                        if (isset($_FILES['excel_file'])) {
-                            if ($_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
-                                throw new ErrorDeNegocio('Error al subir el archivo. Código: ' . $_FILES['excel_file']['error']);
-                            }
-                            $rutaTemporal = $_FILES['excel_file']['tmp_name'];
-                            $originalName = $_FILES['excel_file']['name'];
-                        } else {
-                            throw new Exception('No se ha subido ningún archivo o hubo un error en la subida.');
-                        }
-                    }
-
-                    // Ejecutar el servicio
-                    $stats = $this->importService->import($rutaTemporal, $originalName, (int)$user['id'], $role);
-
-                    $successMessage = "¡Carga masiva finalizada con éxito! Todos los registros fueron procesados.";
-                    $import_summary = $stats;
-
-                    if ($is_ajax) {
-                        // Almacenar en sesión para que persista al recargar/redirigir
-                        $_SESSION['tabs'][$tabId]['import_success'] = $successMessage;
-                        $_SESSION['tabs'][$tabId]['import_summary'] = $import_summary;
-                        $_SESSION['import_success'] = $successMessage;
-                        $_SESSION['import_summary'] = $import_summary;
-
-                        // Diferir la respuesta JSON para que finally se ejecute
-                        $jsonResponse = ['success' => true, 'message' => $successMessage];
-                    }
-                } catch (Exception $e) {
-                    $errors[] = ErrorDeNegocio::mensajeSeguro($e);
-                    if ($is_ajax) {
-                        $jsonResponse = ['success' => false, 'errors' => $errors];
-                    }
-                } finally {
-                    // Asegurar la limpieza del archivo temporal creado en la petición AJAX
-                    if ($is_ajax && $rutaTemporal !== null && file_exists($rutaTemporal)) {
-                        @unlink($rutaTemporal);
-                    }
-                }
-
-                // Enviar respuesta JSON y terminar ejecución (exit) si es AJAX
-                if ($jsonResponse !== null) {
-                    $this->json($jsonResponse);
-                }
-            }
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/evaluaciones/views/importar.view.php',
-            [
-                'errors' => $errors,
-                'successMessage' => $successMessage,
-                'import_summary' => $import_summary
-            ],
-            'Importar Juicios Evaluativos · SENA'
-        );
+    private function filtros(): array {
+        $concepto = (string)($_GET['concepto'] ?? '');
+        return [
+            'search'   => $this->consulta()->busquedaCruda('search'),
+            'ficha_id' => $this->idDeConsulta('ficha_id'),
+            'concepto' => array_key_exists($concepto, self::CONCEPTOS) ? $concepto : '',
+        ];
     }
 }

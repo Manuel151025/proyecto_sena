@@ -137,17 +137,19 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
             [ROL_INSTRUCTOR, $this->idInstructorConFicha()],
             [ROL_APRENDIZ, $this->idUsuarioAprendiz()],
         ] as [$rol, $uid]) {
-            $filas = $this->ejecuta(
-                fn() => $m->getEvaluaciones($rol, $uid, $this->idAprendiz(), 0, '', '', 25, 0),
-                "getEvaluaciones ($rol)"
-            );
-            $total = $this->ejecuta(
-                fn() => $m->contarEvaluaciones($rol, $uid, $this->idAprendiz(), 0, '', ''),
-                "contarEvaluaciones ($rol)"
-            );
+            $actor = new \Core\Support\Actor($uid, $rol);
+            $filas = $this->ejecuta(fn() => $m->listar($actor, [], 25, 0), "listar ($rol)");
+            $total = $this->ejecuta(fn() => $m->contar($actor, []), "contar ($rol)");
             $this->assertLessThanOrEqual($total, count($filas),
                 "el listado devuelve más filas de las que dice el total ($rol)");
+            $cifras = $m->cifras($actor, []);
+            $this->assertSame($total, $cifras['total'], "las cifras no cuadran con el listado ($rol)");
+            $this->assertSame($cifras['total'], $cifras['a'] + $cifras['d'] + $cifras['pendientes']);
         }
+        $this->ejecuta(fn() => $m->historial([$this->idEvaluacion('A'), $this->idEvaluacion()]), 'historial');
+        $ajeno = new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR);
+        $this->assertSame(0, $m->contar($ajeno, []), 'un instructor sin fichas ve juicios');
+        $this->assertSame([], $m->fichasDelActor(new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ)));
     }
 
     /**
@@ -157,13 +159,14 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
     #[TestDox('el conteo y el listado de evaluaciones usan el mismo filtro')]
     public function testPaginacionCoherente(): void {
         $m = new Models\EvaluacionesModel($this->db);
-        $coord = $this->idCoordinador();
+        $coord = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
 
-        $total = $m->contarEvaluaciones(ROL_COORDINADOR, $coord, 0, 0, 'A', '');
+        $total = $m->contar($coord, ['concepto' => 'A']);
         $paginas = (int)ceil($total / 25);
+        $this->assertSame(0, $m->contar($coord, ['concepto' => 'inventado']), 'un concepto inventado no debe devolver filas');
 
         if ($paginas > 1) {
-            $ultima = $m->getEvaluaciones(ROL_COORDINADOR, $coord, 0, 0, 'A', '', 25, ($paginas - 1) * 25);
+            $ultima = $m->listar($coord, ['concepto' => 'A'], 25, ($paginas - 1) * 25);
             $this->assertNotEmpty($ultima, 'la última página que anuncia el paginador está vacía');
         }
         $this->assertGreaterThan(0, $total);

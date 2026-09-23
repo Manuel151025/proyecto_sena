@@ -93,23 +93,27 @@ final class LectorTabular {
                 'separador' => $separador, 'truncado' => $truncado];
     }
 
+    /**
+     * El separador que más aparece en una misma línea, entre las primeras
+     * 20 con contenido y fuera de comillas. Mirar solo la primera fallaba
+     * con los reportes que empiezan por un título («Reporte de juicios…»),
+     * sin ningún separador: se elegía la coma y cada fila quedaba en una
+     * sola columna.
+     */
     private static function detectarSeparador(string $contenido): string {
-        // Se mira la primera línea con contenido, fuera de comillas.
-        $linea = '';
-        foreach (preg_split('/\R/', $contenido, 20) ?: [] as $l) {
-            if (trim($l) !== '') {
-                $linea = $l;
-                break;
-            }
-        }
-        $sinComillas = preg_replace('/"[^"]*"/', '', $linea) ?? $linea;
         $mejor = ',';
         $max = 0;
-        foreach ([';', ',', "\t", '|'] as $sep) {
-            $n = substr_count($sinComillas, $sep);
-            if ($n > $max) {
-                $max = $n;
-                $mejor = $sep;
+        foreach (array_slice(preg_split('/\R/', $contenido, 21) ?: [], 0, 20) as $linea) {
+            if (trim($linea) === '') {
+                continue;
+            }
+            $sinComillas = preg_replace('/"[^"]*"/', '', $linea) ?? $linea;
+            foreach ([';', ',', "\t", '|'] as $sep) {
+                $n = substr_count($sinComillas, $sep);
+                if ($n > $max) {
+                    $max = $n;
+                    $mejor = $sep;
+                }
             }
         }
         return $mejor;

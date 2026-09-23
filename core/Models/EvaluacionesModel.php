@@ -3,229 +3,173 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
-use Core\Support\Validador;
 use Core\Database;
-use Core\Services\EvaluacionService;
 use Core\Services\InstructorAccessService;
+use Core\Support\Actor;
+use Core\Support\Validador;
 use PDO;
-use Exception;
 
+/**
+ * Consultas de juicios evaluativos (tabla `evaluaciones`), acotadas por rol.
+ *
+ * La escritura no vive aquí: pasa por EvaluacionService (historial y
+ * transacción) a través de JuiciosService (permisos).
+ *
+ * Visibilidad:
+ *  - coordinación: todo;
+ *  - instructor: los RAP que califica (misma condición que el permiso de
+ *    calificar: InstructorAccessService::sqlCondicionAcceso);
+ *  - aprendiz: los suyos.
+ */
 class EvaluacionesModel {
+    public const CONCEPTOS = ['A', 'D', 'pendiente'];
+
     private PDO $db;
-    private EvaluacionService $evaluacionService;
-    private InstructorAccessService $accessService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
-        $this->evaluacionService = new EvaluacionService($this->db);
-        $this->accessService = new InstructorAccessService($this->db);
     }
 
-    public function getAprendizId(int $user_id): int {
-        $stmt = $this->db->prepare("SELECT id FROM aprendices WHERE usuario_id = ?");
-        $stmt->execute([$user_id]);
-        return (int)($stmt->fetchColumn() ?: 0);
-    }
-
-    /**
-     * Concepto actual de una evaluación, o false si el instructor no tiene
-     * autoridad sobre ella.
-     *
-     * La comprobación de permiso era una copia literal del SQL de
-     * InstructorAccessService, la tercera de cuatro que había en el
-     * proyecto. Ahora delega en el servicio, que es donde vive la regla.
-     */
-    public function getEvaluacionAnterior(int $eval_id, string $user_rol, int $user_id): string|false {
-        if ($user_rol === ROL_INSTRUCTOR
-            && !$this->accessService->tieneAccesoEvaluacion($eval_id, $user_id)) {
-            return false;
-        }
-
-        $stmt = $this->db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
-        $stmt->execute([$eval_id]);
-        return $stmt->fetchColumn();
-    }
-
-    public function actualizarEvaluacion(int $eval_id, string $nuevo_concepto, string $comentario, string $motivo, int $user_id, string $conceptoAnterior): void {
-        $this->evaluacionService->actualizarPorId($eval_id, [
-            'concepto'   => $nuevo_concepto,
-            'comentario' => $comentario,
-            'motivo'     => $motivo,
-            'usuario_id' => $user_id,
-        ]);
-    }
-
-    public function getFichas(string $user_rol, int $user_id): array {
-        if ($user_rol === ROL_INSTRUCTOR) {
-            $stmtF = $this->db->prepare("
-                SELECT DISTINCT f.id, f.numero_ficha 
-                FROM fichas f 
-                LEFT JOIN asignaciones asg ON asg.ficha_id = f.id 
-                WHERE f.instructor_id = ? OR asg.instructor_id = ? 
-                ORDER BY f.numero_ficha
-            ");
-            $stmtF->execute([$user_id, $user_id]);
-            return $stmtF->fetchAll(PDO::FETCH_ASSOC);
-        } else {
-            return $this->db->query("SELECT id, numero_ficha FROM fichas ORDER BY numero_ficha")->fetchAll(PDO::FETCH_ASSOC);
-        }
-    }
-
-    public function getEvaluaciones(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search, ?int $limit = null, int $offset = 0): array {
-        [$from, $params] = $this->construirConsulta($user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search);
-
+    /** @return array{0:string, 1:array} FROM + WHERE comunes al listado, el conteo y las cifras. */
+    private function construirConsulta(Actor $actor, array $f, bool $conConcepto = true): array {
         $sql = "
-            SELECT eval.id, eval.concepto, eval.comentario, eval.fecha_evaluacion,
-                   ra.codigo as ra_codigo, ra.denominacion as ra_denominacion,
-                   c.nombre as competencia_nombre, c.codigo as competencia_codigo,
-                   f.numero_ficha, f.id as ficha_id,
-                   u_ap.nombre as aprendiz_nombre, u_ap.email as aprendiz_email,
-                   u_inst.nombre as instructor_nombre
-            $from
-            ORDER BY eval.fecha_evaluacion DESC, eval.id DESC
-        ";
-
-        if ($limit !== null) {
-            // Enteros interpolados: con ATTR_EMULATE_PREPARES en false,
-            // MariaDB no acepta parámetros ligados en LIMIT/OFFSET.
-            $sql .= ' LIMIT ' . (int)$limit . ' OFFSET ' . max(0, $offset);
-        }
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Total de evaluaciones visibles con esos filtros y para ese rol.
-     *
-     * Imprescindible para paginar bien: el permiso del instructor se
-     * resuelve dentro del WHERE (asignaciones, ficha propia, etapa
-     * práctica), así que el total tiene que calcularse con las mismas
-     * condiciones o mostraría páginas que no existen.
-     */
-    public function contarEvaluaciones(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search): int {
-        [$from, $params] = $this->construirConsulta($user_rol, $user_id, $aprendiz_id, $filter_ficha, $filter_concepto, $search);
-        $stmt = $this->db->prepare("SELECT COUNT(*) $from");
-        $stmt->execute($params);
-        return (int)$stmt->fetchColumn();
-    }
-
-    /**
-     * FROM + WHERE (visibilidad por rol + filtros) compartidos por el
-     * listado y el conteo.
-     *
-     * @return array{0:string, 1:array}
-     */
-    private function construirConsulta(string $user_rol, int $user_id, int $aprendiz_id, int $filter_ficha, string $filter_concepto, string $search): array {
-        $sql = "
-            FROM evaluaciones eval
-            JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-            JOIN competencias c ON ra.competencia_id = c.id
-            JOIN fichas f ON eval.ficha_id = f.id
-            JOIN aprendices ap ON eval.aprendiz_id = ap.id
-            JOIN usuarios u_ap ON ap.usuario_id = u_ap.id
-            LEFT JOIN usuarios u_inst ON eval.instructor_id = u_inst.id
-            WHERE 1=1
-        ";
-        $params = [];
-
-        if ($user_rol === ROL_APRENDIZ) {
-            $sql .= " AND eval.aprendiz_id = ?";
-            $params[] = $aprendiz_id;
-        } elseif ($user_rol === ROL_INSTRUCTOR) {
+            FROM evaluaciones e
+            JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+            JOIN competencias c ON c.id = ra.competencia_id
+            JOIN fichas f ON f.id = e.ficha_id
+            JOIN aprendices ap ON ap.id = e.aprendiz_id
+            JOIN usuarios u_ap ON u_ap.id = ap.usuario_id
+            LEFT JOIN usuarios u_inst ON u_inst.id = e.instructor_id
+            WHERE 1=1";
+        $p = [];
+        if ($actor->esAprendiz()) {
+            $sql .= " AND ap.usuario_id = ?";
+            $p[] = $actor->id;
+        } elseif ($actor->esInstructor()) {
             $sql .= " AND (" . InstructorAccessService::sqlCondicionAcceso() . ")";
-            $params[] = $user_id;
-            $params[] = $user_id;
-            $params[] = $user_id;
-            if ($filter_ficha > 0) {
-                $sql .= " AND eval.ficha_id = ?";
-                $params[] = $filter_ficha;
-            }
-        } else {
-            if ($filter_ficha > 0) {
-                $sql .= " AND eval.ficha_id = ?";
-                $params[] = $filter_ficha;
-            }
+            array_push($p, $actor->id, $actor->id, $actor->id);
+        } elseif (!$actor->esCoordinador()) {
+            $sql .= " AND 1 = 0";
         }
-
-        if (!empty($search)) {
-            $sql .= " AND (u_ap.nombre LIKE ? OR ra.codigo LIKE ? OR ra.denominacion LIKE ?)";
-            $params[] = "%" . Validador::escaparLike($search) . "%";
-            $params[] = "%" . Validador::escaparLike($search) . "%";
-            $params[] = "%" . Validador::escaparLike($search) . "%";
+        if (!empty($f['ficha_id'])) {
+            $sql .= " AND e.ficha_id = ?";
+            $p[] = (int)$f['ficha_id'];
         }
-
-        if (!empty($filter_concepto)) {
-            $sql .= " AND eval.concepto = ?";
-            $params[] = $filter_concepto;
+        if (!empty($f['competencia_id'])) {
+            $sql .= " AND c.id = ?";
+            $p[] = (int)$f['competencia_id'];
         }
-
-        // Aquí había un `LIMIT 200` fijo. Con 3.873 evaluaciones el
-        // coordinador veía las 200 más recientes y nada indicaba que
-        // existieran las demás: era un recorte silencioso de datos, no una
-        // medida de rendimiento. Ahora el límite lo pone la paginación.
-        return [$sql, $params];
+        if (($f['search'] ?? '') !== '') {
+            $t = '%' . Validador::escaparLike((string)$f['search']) . '%';
+            $sql .= " AND (u_ap.nombre LIKE ? OR ap.numero_documento LIKE ? OR ra.codigo LIKE ? OR ra.denominacion LIKE ?)";
+            array_push($p, $t, $t, $t, $t);
+        }
+        if ($conConcepto && ($f['concepto'] ?? '') !== '') {
+            $sql .= " AND e.concepto = ?";
+            // Un valor fuera de la lista no debe devolver "todo".
+            $p[] = in_array($f['concepto'], self::CONCEPTOS, true) ? $f['concepto'] : "\x00";
+        }
+        return [$sql, $p];
     }
 
-    public function getStatsEval(string $user_rol, int $user_id, int $aprendiz_id): array {
-        $params = [];
-        
-        if ($user_rol === ROL_APRENDIZ) {
-            $sqlStats = "SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-                SUM(CASE WHEN concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
-                SUM(CASE WHEN concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
-                FROM evaluaciones WHERE aprendiz_id = ?";
-            $params[] = $aprendiz_id;
-        } elseif ($user_rol === ROL_INSTRUCTOR) {
-            $sqlStats = "SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN eval.concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-                SUM(CASE WHEN eval.concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
-                SUM(CASE WHEN eval.concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
-                FROM evaluaciones eval
-                JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-                JOIN competencias c ON ra.competencia_id = c.id
-                JOIN fichas f ON eval.ficha_id = f.id
-                JOIN aprendices ap ON eval.aprendiz_id = ap.id
-                WHERE (
-                    EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = eval.ficha_id 
-                          AND asg.competencia_id = c.id 
-                          AND asg.instructor_id = ?
-                    )
-                    OR
-                    (
-                        f.instructor_id = ?
-                        AND c.es_etapa_practica = 0
-                        AND NOT EXISTS (
-                            SELECT 1 FROM asignaciones asg 
-                            WHERE asg.ficha_id = eval.ficha_id 
-                              AND asg.competencia_id = c.id
-                        )
-                    )
-                    OR
-                    (
-                        c.es_etapa_practica = 1
-                        AND ap.instructor_seguimiento_id = ?
-                    )
-                )";
-            $params = [$user_id, $user_id, $user_id];
-        } else {
-            $sqlStats = "SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN concepto = 'A' THEN 1 ELSE 0 END) as aprobados,
-                SUM(CASE WHEN concepto = 'D' THEN 1 ELSE 0 END) as reprobados,
-                SUM(CASE WHEN concepto = 'pendiente' THEN 1 ELSE 0 END) as pendientes
-                FROM evaluaciones";
+    private const COLUMNAS = "
+        e.id, e.concepto, e.comentario, e.fecha_evaluacion, e.ficha_id, e.aprendiz_id,
+        ra.codigo AS ra_codigo, ra.denominacion AS ra_denominacion,
+        c.codigo AS competencia_codigo, c.nombre AS competencia_nombre, c.es_etapa_practica,
+        f.numero_ficha, ap.numero_documento, ap.estado AS aprendiz_estado,
+        u_ap.nombre AS aprendiz_nombre, u_ap.email AS aprendiz_email,
+        u_inst.nombre AS instructor_nombre";
+
+    public function contar(Actor $actor, array $filtros): int {
+        [$desde, $p] = $this->construirConsulta($actor, $filtros);
+        $st = $this->db->prepare("SELECT COUNT(*) $desde");
+        $st->execute($p);
+        return (int)$st->fetchColumn();
+    }
+
+    public function listar(Actor $actor, array $filtros, int $limite, int $offset): array {
+        [$desde, $p] = $this->construirConsulta($actor, $filtros);
+        $limite = max(1, min($limite, 100));
+        $offset = max(0, $offset);
+        // Primero lo que falta por calificar y lo no aprobado: es lo que
+        // alguien tiene que atender.
+        $st = $this->db->prepare("SELECT " . self::COLUMNAS . " $desde
+            ORDER BY FIELD(e.concepto, 'D', 'pendiente', 'A'), e.fecha_evaluacion DESC, f.numero_ficha, u_ap.nombre, ra.codigo
+            LIMIT $limite OFFSET $offset");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function paraExportar(Actor $actor, array $filtros, int $maximo): array {
+        [$desde, $p] = $this->construirConsulta($actor, $filtros);
+        $maximo = max(1, $maximo);
+        $st = $this->db->prepare("SELECT " . self::COLUMNAS . " $desde ORDER BY f.numero_ficha, u_ap.nombre, ra.codigo LIMIT $maximo");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Totales por concepto con los mismos filtros (salvo el concepto). */
+    public function cifras(Actor $actor, array $filtros): array {
+        [$desde, $p] = $this->construirConsulta($actor, $filtros, false);
+        $st = $this->db->prepare("SELECT COUNT(*) AS total, COALESCE(SUM(e.concepto = 'A'), 0) AS a,
+                                         COALESCE(SUM(e.concepto = 'D'), 0) AS d, COALESCE(SUM(e.concepto = 'pendiente'), 0) AS pendientes $desde");
+        $st->execute($p);
+        return array_map('intval', $st->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'a' => 0, 'd' => 0, 'pendientes' => 0]);
+    }
+
+    /**
+     * Historial de cambios de varias evaluaciones en una consulta (RNF02).
+     *
+     * @param int[] $ids
+     * @return array<int, list<array>> por id de evaluación, del más reciente al más antiguo
+     */
+    public function historial(array $ids, int $porEvaluacion = 10): array {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if ($ids === []) {
+            return [];
         }
-        
-        $stmt = $this->db->prepare($sqlStats);
-        $stmt->execute($params);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result !== false ? $result : [];
+        $marcas = implode(',', array_fill(0, count($ids), '?'));
+        $st = $this->db->prepare("
+            SELECT h.evaluacion_id, h.concepto_anterior, h.concepto_nuevo, h.motivo, h.fecha_cambio, u.nombre AS usuario
+              FROM historial_evaluaciones h LEFT JOIN usuarios u ON u.id = h.usuario_id
+             WHERE h.evaluacion_id IN ($marcas)
+             ORDER BY h.fecha_cambio DESC, h.id DESC");
+        $st->execute($ids);
+        $r = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $h) {
+            $id = (int)$h['evaluacion_id'];
+            if (count($r[$id] ?? []) < $porEvaluacion) {
+                $r[$id][] = $h;
+            }
+        }
+        return $r;
+    }
+
+    /** Evaluación con lo necesario para decidir si se puede calificar. */
+    public function paraCalificar(int $id): ?array {
+        $st = $this->db->prepare("
+            SELECT e.id, e.concepto, e.ficha_id, e.aprendiz_id, e.resultado_aprendizaje_id, ap.estado AS aprendiz_estado, ra.codigo AS ra_codigo
+              FROM evaluaciones e
+              JOIN aprendices ap ON ap.id = e.aprendiz_id
+              JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+             WHERE e.id = ?");
+        $st->execute([$id]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /** Fichas para el filtro, según el rol. */
+    public function fichasDelActor(Actor $actor): array {
+        if ($actor->esAprendiz()) {
+            return [];
+        }
+        $sql = "SELECT f.id, f.numero_ficha FROM fichas f";
+        $p = [];
+        if ($actor->esInstructor()) {
+            $sql .= " WHERE f.id IN (" . InstructorAccessService::sqlFichasDelInstructor() . ")";
+            $p = [$actor->id, $actor->id, $actor->id];
+        }
+        $st = $this->db->prepare($sql . " ORDER BY f.numero_ficha");
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 }

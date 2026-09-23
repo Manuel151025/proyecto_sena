@@ -20,8 +20,12 @@ use Tests\CasoDePrueba;
  * decidir si es pública rompa la suite en lugar de publicarla en silencio.
  */
 final class SuperficieWebTest extends CasoDePrueba {
-    /** Carpetas de la raíz que el navegador sí necesita. */
-    private const PUBLICAS = ['assets', 'modules', 'uploads'];
+    /**
+     * Carpetas de la raíz que el navegador sí necesita. `uploads` ya no:
+     * los archivos subidos se sirven desde un controlador que comprueba
+     * permisos, y antes cualquiera los descargaba conociendo el nombre.
+     */
+    private const PUBLICAS = ['assets', 'modules'];
 
     private function raiz(): string {
         return dirname(__DIR__, 2);
@@ -56,7 +60,7 @@ final class SuperficieWebTest extends CasoDePrueba {
 
     #[TestDox('las carpetas internas versionadas llevan su propia denegación')]
     public function testSegundaCapa(): void {
-        foreach (['core', 'includes', 'config', 'database', 'tests', 'docs', 'layouts', 'components', 'logs', 'bin'] as $carpeta) {
+        foreach (['core', 'includes', 'config', 'database', 'tests', 'docs', 'layouts', 'components', 'logs', 'bin', 'uploads'] as $carpeta) {
             $archivo = $this->raiz() . "/$carpeta/.htaccess";
             $this->assertFileExists($archivo, "$carpeta/ no tiene .htaccess propio");
             $this->assertStringContainsString('Require all denied', (string)file_get_contents($archivo), "$carpeta/.htaccess no deniega");

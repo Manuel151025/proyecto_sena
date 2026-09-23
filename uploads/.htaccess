@@ -1,6 +1,21 @@
-# Esta carpeta solo debe servir archivos estaticos subidos por usuarios
-# (evidencias, importaciones). Nunca debe ejecutar codigo.
+# Archivos subidos por los usuarios (evidencias) y restos de importaciones.
+#
+# Nada de aquí se sirve directamente: cada descarga pasa por un controlador
+# que comprueba quién la pide. Antes la carpeta solo impedía ejecutar PHP,
+# pero cualquier archivo se descargaba conociendo su nombre, incluidas
+# copias de listados de aprendices que habían quedado de importaciones
+# interrumpidas.
 
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order Deny,Allow
+    Deny from all
+</IfModule>
+
+# Segunda capa, por si la denegación anterior dejara de aplicarse: nunca
+# ejecutar código subido.
 Options -ExecCGI -Indexes
 
 <IfModule mod_php.c>
@@ -18,9 +33,5 @@ AddHandler default-handler .php .php3 .php4 .php5 .php7 .phtml .pht .phar .cgi .
 <FilesMatch "\.(php|php3|php4|php5|php7|phtml|pht|phar|cgi|pl|py|sh|exe|dll)$">
     <IfModule mod_authz_core.c>
         Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order Deny,Allow
-        Deny from all
     </IfModule>
 </FilesMatch>

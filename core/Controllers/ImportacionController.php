@@ -7,6 +7,7 @@ use Core\BaseController;
 use Core\Importacion\ImportacionService;
 use Core\Importacion\Importador;
 use Core\Importacion\ImportadorCompetencias;
+use Core\Importacion\ImportadorJuicios;
 use Core\Importacion\ImportadorMatriculas;
 use Core\Importacion\ImportadorResultados;
 use Core\Importacion\ImportadorUsuarios;
@@ -36,12 +37,14 @@ class ImportacionController extends BaseController {
         '/competencias/importar'           => ImportadorCompetencias::class,
         '/resultados-aprendizaje/importar' => ImportadorResultados::class,
         '/matriculas/importar'             => ImportadorMatriculas::class,
+        '/evaluaciones/importar'           => ImportadorJuicios::class,
     ];
     private const VOLVER = [
         'usuarios' => ['/usuarios', 'Usuarios'],
         'competencias' => ['/competencias', 'Competencias'],
         'resultados' => ['/resultados-aprendizaje', 'Resultados de aprendizaje'],
         'matriculas' => ['/matriculas', 'Matrículas'],
+        'juicios' => ['/evaluaciones', 'Juicios evaluativos'],
     ];
 
     private ImportacionService $servicio;
@@ -136,6 +139,6 @@ class ImportacionController extends BaseController {
 
     /** Datos extra del formulario de subida (la ficha, en matrículas). */
     private function extrasFormulario(Importador $imp, Actor $actor): array {
-        return method_exists($imp, 'opcionesFormulario') ? $imp->opcionesFormulario($actor) : [];
+        return $imp->opcionesFormulario($actor);
     }
 }

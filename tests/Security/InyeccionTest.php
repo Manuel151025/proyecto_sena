@@ -70,10 +70,10 @@ final class InyeccionTest extends CasoConBaseDeDatos {
     #[TestDox('la búsqueda de evaluaciones trata la carga como texto')]
     public function testBusquedaDeEvaluaciones(string $carga): void {
         $modelo = new EvaluacionesModel($this->db);
-        $coord  = $this->idCoordinador();
+        $coord  = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
 
-        $conCarga = $modelo->contarEvaluaciones(ROL_COORDINADOR, $coord, 0, 0, '', $carga);
-        $total    = $modelo->contarEvaluaciones(ROL_COORDINADOR, $coord, 0, 0, '', '');
+        $conCarga = $modelo->contar($coord, ['search' => $carga]);
+        $total    = $modelo->contar($coord, []);
 
         $this->assertLessThan($total, $conCarga + 1, "la carga «$carga» no se filtró");
     }

@@ -1,386 +1,214 @@
 <?php
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+/** @var \Core\Support\Actor $actor */
+$gestiona = $actor->gestiona();
+$scriptsVista[] = 'modulos/evaluaciones.js';
+$hayFiltros = $filtros['search'] !== '' || $filtros['ficha_id'] || $filtros['concepto'] !== '';
+$qs = http_build_query(array_filter($filtros, static fn($x) => $x !== '' && $x !== 0));
+$url = static fn(string $r) => e(APP_URL . '/index.php' . $r);
+$fechaCorta = static fn(?string $f) => $f ? date('d/m/Y', strtotime($f)) : '—';
+$evaluados = $cifras['a'] + $cifras['d'];
 ?>
-
 <div class="page-header">
   <div>
-    <h1 class="mb-1">Juicios de Evaluación</h1>
+    <h1 class="mb-1"><?= $actor->esAprendiz() ? 'Mis juicios de evaluación' : 'Juicios de evaluación' ?></h1>
     <p class="text-muted mb-0">
-      <?php if ($user_rol === ROL_APRENDIZ): ?>
-        Consulta el estado de tus Resultados de Aprendizaje (RA) evaluados con conceptos A (Aprobado) y D (Aún no competente).
-      <?php else: ?>
-        Gestiona los juicios evaluativos por Resultado de Aprendizaje. Los conceptos válidos son <strong>A</strong> (Aprobado) y <strong>D</strong> (Aún no competente).
-      <?php endif; ?>
+      <?= $actor->esAprendiz()
+          ? 'El estado de cada resultado de aprendizaje de tu programa: A (aprobado), D (aún no aprobado) o pendiente.'
+          : 'Juicios por resultado de aprendizaje (RAP). Los conceptos son A (aprobado) y D (aún no aprobado); todo cambio queda en el historial.' ?>
     </p>
   </div>
-  <?php if ($user_rol !== ROL_APRENDIZ): ?>
-  <div class="d-flex gap-2">
-    <a href="<?= APP_URL ?>/index.php/evaluaciones/importar" class="btn btn-primary">
-      <i class="bi bi-file-earmark-excel me-1"></i> Importar Juicios Evaluativos
-    </a>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="<?= $url('/evaluaciones/exportar' . ($qs ? '?' . $qs . '&' : '?') . 'formato=xlsx') ?>" class="btn btn-soft"><i class="bi bi-file-earmark-excel me-1"></i>Exportar</a>
+    <?php if ($gestiona): ?>
+      <a href="<?= $url('/evaluaciones/importar') ?>" class="btn btn-primary"><i class="bi bi-upload me-1"></i>Importar de Sofia Plus</a>
+    <?php endif; ?>
+  </div>
+</div>
+
+<?php foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach; ?>
+
+<div class="row g-3 mb-4">
+  <?php foreach ([
+      ['Resultados', $cifras['total'], 'bi-list-check', ''],
+      ['Aprobados (A)', $cifras['a'], 'bi-check-circle', 'text-success'],
+      ['No aprobados (D)', $cifras['d'], 'bi-x-circle', 'text-danger'],
+      ['Pendientes', $cifras['pendientes'], 'bi-clock', 'text-warning-emphasis'],
+  ] as [$etiqueta, $valor, $icono, $clase]): ?>
+  <div class="col-6 col-lg-3">
+    <div class="kpi"><div class="kpi-content">
+      <div class="icon-bg"><i class="bi <?= e($icono) ?>"></i></div>
+      <div class="label"><?= e($etiqueta) ?></div>
+      <div class="value <?= e($clase) ?>"><?= (int)$valor ?></div>
+      <?php if ($etiqueta === 'Aprobados (A)' && $evaluados > 0): ?>
+        <div class="small text-muted"><?= (int)round($cifras['a'] * 100 / $evaluados) ?>% de lo evaluado</div>
+      <?php endif; ?>
+    </div></div>
+  </div>
+  <?php endforeach; ?>
+</div>
+
+<form method="GET" class="toolbar mb-3">
+  <div class="search">
+    <i class="bi bi-search"></i>
+    <label class="visually-hidden" for="f_search">Buscar</label>
+    <input type="search" name="search" id="f_search" class="form-control" maxlength="100"
+           placeholder="<?= $gestiona ? 'Aprendiz, documento o RAP...' : 'Código o nombre del RAP...' ?>" value="<?= e($filtros['search']) ?>">
+  </div>
+  <?php if ($gestiona): ?>
+  <div class="toolbar-filter">
+    <label class="visually-hidden" for="f_ficha">Ficha</label>
+    <select name="ficha_id" id="f_ficha" class="form-select" data-autoenvio data-picker data-picker-label="Ficha">
+      <option value="0">Todas las fichas</option>
+      <?php foreach ($fichas as $f): ?><option value="<?= (int)$f['id'] ?>" <?= $filtros['ficha_id'] === (int)$f['id'] ? 'selected' : '' ?>>Ficha <?= e($f['numero_ficha']) ?></option><?php endforeach; ?>
+    </select>
   </div>
   <?php endif; ?>
-</div>
+  <div class="toolbar-filter">
+    <label class="visually-hidden" for="f_concepto">Concepto</label>
+    <select name="concepto" id="f_concepto" class="form-select" data-autoenvio>
+      <option value="">Todos los conceptos</option>
+      <?php foreach ($conceptos as $valor => [$texto]): ?><option value="<?= e($valor) ?>" <?= $filtros['concepto'] === $valor ? 'selected' : '' ?>><?= e($texto) ?></option><?php endforeach; ?>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-soft"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+  <?php if ($hayFiltros): ?><a class="btn btn-soft" href="<?= $url('/evaluaciones') ?>" aria-label="Quitar filtros"><i class="bi bi-x-lg"></i></a><?php endif; ?>
+</form>
 
-<?php if (!empty($errors)): ?>
-<div class="alert-flat danger mb-3">
-  <i class="bi bi-exclamation-triangle-fill"></i>
-  <div>
-    <?php foreach ($errors as $err): ?>
-      <div><?= htmlspecialchars($err) ?></div>
-    <?php endforeach; ?>
-  </div>
-</div>
-<?php endif; ?>
-
-<?php if ($success): ?>
-<div class="alert-flat success mb-3">
-  <i class="bi bi-check-circle-fill"></i>
-  <div><?= htmlspecialchars($success) ?></div>
-</div>
-<?php endif; ?>
-
-<!-- KPIs de Evaluación -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="kpi" style="border-left: 4px solid var(--sena-primary);">
-      <div class="kpi-content">
-        <div class="label">Total Evaluaciones</div>
-        <div class="value"><?= (int)$statsEval['total'] ?></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="kpi" style="border-left: 4px solid #22c55e;">
-      <div class="kpi-content">
-        <div class="label">Aprobados (A)</div>
-        <div class="value" style="color: #22c55e;"><?= (int)$statsEval['aprobados'] ?></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="kpi" style="border-left: 4px solid #ef4444;">
-      <div class="kpi-content">
-        <div class="label">No Aprobados (D)</div>
-        <div class="value" style="color: #ef4444;"><?= (int)$statsEval['reprobados'] ?></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="kpi" style="border-left: 4px solid #eab308;">
-      <div class="kpi-content">
-        <div class="label">Pendientes</div>
-        <div class="value" style="color: #eab308;"><?= (int)$statsEval['pendientes'] ?></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Barra de filtros -->
-<?php if ($user_rol !== ROL_APRENDIZ): ?>
-<div class="card glass-card mb-4 border-0">
-  <div class="card-body">
-    <form method="GET" class="row g-3 align-items-end">
-      <div class="col-md-4">
-        <label class="form-label text-muted small">Buscar Aprendiz / RA</label>
-        <div class="input-group">
-          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nombre o código RA..." value="<?= htmlspecialchars($search) ?>">
-        </div>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label text-muted small">Filtrar por Ficha</label>
-        <select name="ficha_id" class="form-select"
-                data-picker
-                data-picker-label="Filtrar por ficha"
-                data-picker-placeholder="Todas las fichas">
-          <option value="0">Todas las fichas</option>
-          <?php foreach ($fichas as $f): ?>
-            <option value="<?= $f['id'] ?>" <?= $filter_ficha === (int)$f['id'] ? 'selected' : '' ?>>
-              Ficha #<?= htmlspecialchars($f['numero_ficha']) ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label text-muted small">Concepto Evaluativo</label>
-        <select name="concepto" class="form-select"
-                data-picker
-                data-picker-label="Concepto evaluativo"
-                data-picker-placeholder="Todos">
-          <option value="">Todos</option>
-          <option value="A" <?= $filter_concepto === 'A' ? 'selected' : '' ?>>Aprobado (A)</option>
-          <option value="D" <?= $filter_concepto === 'D' ? 'selected' : '' ?>>No Aprobado (D)</option>
-          <option value="pendiente" <?= $filter_concepto === 'pendiente' ? 'selected' : '' ?>>Pendiente</option>
-        </select>
-      </div>
-      <div class="col-md-2 d-grid">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-      </div>
-    </form>
-  </div>
-</div>
-<?php endif; ?>
-
-<!-- Listado de Evaluaciones -->
-<div class="card glass-card border-0">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table mb-0 align-middle">
-        <thead class="table-light-head" style="background: var(--surface-2);">
-          <tr>
-            <th class="ps-4">Resultado de Aprendizaje</th>
-            <?php if ($user_rol !== ROL_APRENDIZ): ?>
-              <th>Aprendiz</th>
-            <?php endif; ?>
-            <th>Competencia</th>
-            <th>Fecha</th>
-            <th>Concepto</th>
-            <th class="pe-4 text-end">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($evaluaciones as $eval): ?>
-          <tr>
-            <td class="ps-4">
-              <div class="fw-semibold text-dark text-uppercase-visual"><?= htmlspecialchars($eval['ra_codigo']) ?></div>
-              <small class="text-muted text-uppercase-visual" style="display:block; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?= htmlspecialchars($eval['ra_denominacion']) ?>">
-                <?= htmlspecialchars($eval['ra_denominacion']) ?>
-              </small>
-              <small class="badge bg-soft primary text-uppercase-visual">Ficha #<?= htmlspecialchars($eval['numero_ficha']) ?></small>
-            </td>
-            <?php if ($user_rol !== ROL_APRENDIZ): ?>
-              <td>
-                <div class="fw-semibold text-dark"><?= htmlspecialchars($eval['aprendiz_nombre']) ?></div>
-                <small class="text-muted"><?= htmlspecialchars($eval['aprendiz_email']) ?></small>
-              </td>
-            <?php endif; ?>
-            <td>
-              <small class="fw-medium text-muted text-uppercase-visual"><?= htmlspecialchars($eval['competencia_nombre']) ?></small>
-            </td>
-            <td>
-              <span class="small"><?= $eval['fecha_evaluacion'] ? date('d/m/Y', strtotime($eval['fecha_evaluacion'])) : '—' ?></span>
-            </td>
-            <td>
-              <span class="badge-soft <?= $conceptos_label[$eval['concepto']][1] ?>">
-                <i class="bi <?= $conceptos_label[$eval['concepto']][2] ?> me-1"></i>
-                <?= $conceptos_label[$eval['concepto']][0] ?>
-              </span>
-            </td>
-            <td class="pe-4 text-end">
-              <?php if ($user_rol !== ROL_APRENDIZ): ?>
-              <button class="btn btn-sm btn-primary"
-                data-bs-toggle="modal" data-bs-target="#modalEvaluar"
-                data-eval-id="<?= $eval['id'] ?>"
-                data-ra="<?= htmlspecialchars($eval['ra_codigo'], ENT_QUOTES) ?>"
-                data-aprendiz="<?= htmlspecialchars($eval['aprendiz_nombre'], ENT_QUOTES) ?>"
-                data-concepto="<?= htmlspecialchars($eval['concepto'], ENT_QUOTES) ?>"
-                data-comentario="<?= htmlspecialchars($eval['comentario'] ?? '', ENT_QUOTES) ?>">
-                <i class="bi bi-pencil-square me-1"></i>Evaluar
-              </button>
-              <?php endif; ?>
-              <button class="btn btn-sm btn-soft" onclick="alert(<?= htmlspecialchars(json_encode('Retroalimentación:\n\n' . ($eval['comentario'] ?: 'Sin comentarios.')), ENT_QUOTES, 'UTF-8') ?>)">
-                <i class="bi bi-chat-left-dots"></i>
-              </button>
-            </td>
-          </tr>
-          <?php endforeach; ?>
-          <?php if (empty($evaluaciones)): ?>
-          <tr>
-            <td colspan="7" class="text-center py-5 text-muted">
-              <i class="bi bi-pencil-square d-block mb-2" style="font-size:2rem; opacity:0.5;"></i>
-              No hay evaluaciones registradas con los filtros seleccionados.
-            </td>
-          </tr>
+<div class="table-wrap">
+  <table class="table align-middle mb-0">
+    <thead>
+      <tr>
+        <th>Resultado de aprendizaje</th>
+        <?php if ($gestiona): ?><th>Aprendiz</th><?php endif; ?>
+        <th>Competencia</th>
+        <th>Fecha</th>
+        <th>Juicio</th>
+        <th class="text-end">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($evaluaciones as $ev):
+          [$cTexto, $cClase, $cIcono] = $conceptos[$ev['concepto']] ?? [$ev['concepto'], 'secondary', 'bi-question'];
+          $hist = array_map(static fn($h) => [
+              'fecha' => date('d/m/Y H:i', strtotime((string)$h['fecha_cambio'])), 'de' => $h['concepto_anterior'], 'a' => $h['concepto_nuevo'],
+              'quien' => (string)($h['usuario'] ?? '—'), 'motivo' => (string)($h['motivo'] ?? ''),
+          ], $historial[(int)$ev['id']] ?? []);
+          $desertado = $ev['aprendiz_estado'] === 'desertado';
+      ?>
+      <tr>
+        <td class="min-w-0">
+          <div class="fw-semibold font-monospace small"><?= e($ev['ra_codigo']) ?></div>
+          <div class="small text-muted texto-recortado-2" title="<?= e($ev['ra_denominacion']) ?>"><?= e($ev['ra_denominacion']) ?></div>
+          <span class="badge bg-soft primary">Ficha <?= e($ev['numero_ficha']) ?></span>
+          <?php if ((int)$ev['es_etapa_practica'] === 1): ?><span class="badge bg-soft info">Etapa práctica</span><?php endif; ?>
+        </td>
+        <?php if ($gestiona): ?>
+        <td>
+          <div class="fw-semibold"><?= e($ev['aprendiz_nombre']) ?></div>
+          <small class="text-muted"><?= e($ev['numero_documento']) ?></small>
+          <?php if ($desertado): ?><span class="badge-soft danger ms-1">Desertado</span><?php endif; ?>
+        </td>
+        <?php endif; ?>
+        <td><small class="text-muted texto-recortado-2" title="<?= e($ev['competencia_nombre']) ?>"><?= e($ev['competencia_codigo']) ?> · <?= e($ev['competencia_nombre']) ?></small></td>
+        <td class="small text-nowrap"><?= e($fechaCorta($ev['fecha_evaluacion'])) ?></td>
+        <td><span class="badge-soft <?= e($cClase) ?> text-nowrap"><i class="bi <?= e($cIcono) ?> me-1"></i><?= e($cTexto) ?></span></td>
+        <td class="text-end text-nowrap">
+          <?php if ($gestiona && !$desertado): ?>
+            <button type="button" class="btn btn-sm btn-primary" data-modal="#modalEvaluar"
+                    data-valores="<?= datosJson(['_anterior' => $ev['concepto'], 'evaluacion_id' => (int)$ev['id'], 'concepto' => $ev['concepto'],
+                        'comentario' => (string)($ev['comentario'] ?? ''), 'motivo' => '', 'ra' => $ev['ra_codigo'] . ' · ' . $ev['ra_denominacion'],
+                        'aprendiz' => $ev['aprendiz_nombre']]) ?>"><i class="bi bi-pencil-square me-1"></i>Calificar</button>
           <?php endif; ?>
-        </tbody>
-      </table>
+          <button type="button" class="btn btn-sm btn-soft" data-modal="#modalDetalle" aria-label="Retroalimentación e historial"
+                  data-historial="<?= datosJson($hist) ?>"
+                  data-valores="<?= datosJson(['ra' => $ev['ra_codigo'] . ' · ' . $ev['ra_denominacion'], 'aprendiz' => $ev['aprendiz_nombre'],
+                      'juicio' => $cTexto, 'instructor' => (string)($ev['instructor_nombre'] ?? '—'),
+                      'comentario' => trim((string)($ev['comentario'] ?? '')) !== '' ? $ev['comentario'] : 'Sin comentarios.']) ?>">
+            <i class="bi bi-chat-left-text"></i><?php if ($hist !== []): ?><span class="ms-1 small"><?= count($hist) ?></span><?php endif; ?>
+          </button>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+      <?php if (empty($evaluaciones)): ?>
+      <tr><td colspan="6" class="celda-vacia"><div><i class="bi bi-clipboard-check"></i><?= $hayFiltros ? 'Ningún juicio coincide con los filtros.' : 'No hay juicios para mostrar.' ?></div></td></tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+</div>
+<?php $paginador = $paginacion; $paginacionEtiqueta = 'juicios'; require BASE_PATH . 'components/paginacion.php'; ?>
+
+<!-- Detalle: retroalimentación e historial (RNF02) -->
+<div class="modal fade" id="modalDetalle" tabindex="-1" aria-labelledby="tituloDetalle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tituloDetalle"><i class="bi bi-chat-left-text"></i>Detalle del juicio</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fw-semibold mb-1" data-campo="ra"></p>
+        <p class="small text-muted mb-3"><span data-campo="aprendiz"></span> · <span data-campo="juicio"></span> · <span data-campo="instructor"></span></p>
+        <h6 class="small text-uppercase text-muted fw-bold">Retroalimentación</h6>
+        <p class="text-break" data-campo="comentario"></p>
+        <h6 class="small text-uppercase text-muted fw-bold mt-3">Historial de cambios</h6>
+        <ol class="list-unstyled small mb-0" data-lista-historial></ol>
+      </div>
     </div>
-    <?php $paginador = $paginacion; $paginacionEtiqueta = 'juicios de evaluación'; require BASE_PATH . 'components/paginacion.php'; ?>
   </div>
 </div>
 
-<!-- Modal para Evaluar -->
-<?php if ($user_rol !== ROL_APRENDIZ): ?>
-<div class="modal fade" id="modalEvaluar" tabindex="-1" aria-hidden="true">
+<?php if ($gestiona): ?>
+<div class="modal fade" id="modalEvaluar" tabindex="-1" aria-labelledby="tituloEvaluar" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="POST">
+      <form method="POST" data-form-juicio>
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="evaluar">
-        <input type="hidden" name="evaluacion_id" id="evalId">
+        <input type="hidden" name="evaluacion_id">
+        <input type="hidden" name="_anterior" data-anterior>
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-clipboard-check"></i>Juicio Evaluativo</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <h5 class="modal-title" id="tituloEvaluar"><i class="bi bi-clipboard-check"></i>Juicio evaluativo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <div class="text-muted small text-uppercase">Resultado de Aprendizaje</div>
-            <div class="fw-bold" id="evalRA">—</div>
-          </div>
-          <div class="mb-3">
-            <div class="text-muted small text-uppercase">Aprendiz</div>
-            <div class="fw-semibold" id="evalAprendiz">—</div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Concepto Evaluativo <span class="text-danger">*</span></label>
+          <p class="fw-semibold mb-1" data-campo="ra"></p>
+          <p class="small text-muted mb-3" data-campo="aprendiz"></p>
+          <fieldset class="mb-3">
+            <legend class="form-label fw-semibold fs-6">Concepto <span class="text-danger">*</span></legend>
             <div class="d-flex gap-2">
-              <label class="btn btn-outline-success flex-grow-1 concepto-radio" style="border-radius: 10px;">
-                <input type="radio" name="concepto" value="A" class="d-none" required>
-                <i class="bi bi-check-circle-fill me-1"></i> Aprobado (A)
-              </label>
-              <label class="btn btn-outline-danger flex-grow-1 concepto-radio" style="border-radius: 10px;">
-                <input type="radio" name="concepto" value="D" class="d-none">
-                <i class="bi bi-x-circle-fill me-1"></i> No Aprobado (D)
-              </label>
+              <input type="radio" class="btn-check" name="concepto" value="A" id="juicioA" required>
+              <label class="btn btn-outline-success flex-grow-1" for="juicioA"><i class="bi bi-check-circle-fill me-1"></i>Aprobado (A)</label>
+              <input type="radio" class="btn-check" name="concepto" value="D" id="juicioD">
+              <label class="btn btn-outline-danger flex-grow-1" for="juicioD"><i class="bi bi-x-circle-fill me-1"></i>No aprobado (D)</label>
             </div>
-          </div>
+          </fieldset>
           <div class="mb-3">
-            <label class="form-label fw-semibold">Comentario / Retroalimentación</label>
-            <textarea name="comentario" id="evalComentario" class="form-control" rows="3" placeholder="Escriba su observación sobre el desempeño del aprendiz..." maxlength="1000" oninput="this.value = this.value.replace(/[<>]/g, '')"></textarea>
+            <label class="form-label fw-semibold" for="juicioComentario">Retroalimentación para el aprendiz</label>
+            <textarea name="comentario" id="juicioComentario" class="form-control" rows="3" maxlength="1000" data-filtro="sin-html"
+                      placeholder="Qué hizo bien o qué debe mejorar..."></textarea>
           </div>
-          <div class="mb-0" id="div_eval_motivo" style="display:none;">
-            <label class="form-label fw-semibold text-danger">Motivo del cambio *</label>
-            <input type="text" name="motivo" id="eval_motivo" class="form-control" placeholder="Ej: Plan de mejoramiento completado" maxlength="255" minlength="3" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\-_.,()]/g, '')">
+          <div class="mb-0" data-bloque-motivo hidden>
+            <label class="form-label fw-semibold" for="juicioMotivo">Motivo del cambio <span class="text-danger">*</span></label>
+            <input type="text" name="motivo" id="juicioMotivo" class="form-control" maxlength="255" minlength="5" data-filtro="sin-html"
+                   placeholder="Ej.: cumplió el plan de mejoramiento">
+            <small class="text-muted">El juicio ya estaba emitido: el cambio y su motivo quedan en el historial.</small>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Guardar Evaluación</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 <?php endif; ?>
-
-<script>
-// Poblar modal usando el evento de Bootstrap (método fiable)
-const modalEvaluar = document.getElementById('modalEvaluar');
-let originalConcepto = '';
-
-if (modalEvaluar) {
-  modalEvaluar.addEventListener('show.bs.modal', function(event) {
-    const btn = event.relatedTarget; // botón que disparó el modal
-    if (!btn) return;
-
-    const evalId    = btn.dataset.evalId;
-    const ra        = btn.dataset.ra;
-    const aprendiz  = btn.dataset.aprendiz;
-    const concepto  = btn.dataset.concepto;
-    const comentario = btn.dataset.comentario || '';
-
-    document.getElementById('evalId').value           = evalId;
-    document.getElementById('evalRA').textContent     = ra;
-    document.getElementById('evalAprendiz').textContent = aprendiz;
-    document.getElementById('evalComentario').value   = comentario;
-
-    originalConcepto = concepto; // Guardar el concepto original
-
-    // Resetear motivo
-    const divMotivo = document.getElementById('div_eval_motivo');
-    const inputMotivo = document.getElementById('eval_motivo');
-    if (divMotivo && inputMotivo) {
-      divMotivo.style.display = 'none';
-      inputMotivo.value = '';
-      inputMotivo.required = false;
-    }
-
-    // Marcar el radio del concepto actual
-    document.querySelectorAll('.concepto-radio').forEach(label => {
-      label.classList.remove('active');
-      const radio = label.querySelector('input[type="radio"]');
-      if (radio.value === concepto) {
-        radio.checked = true;
-        label.classList.add('active');
-      } else {
-        radio.checked = false;
-      }
-    });
-
-    console.log('[Eval] Modal abierto para evaluación ID:', evalId, '| concepto actual:', concepto);
-  });
-
-  // Toggle visual del campo motivo según el concepto seleccionado
-  document.querySelectorAll('.concepto-radio').forEach(label => {
-    label.addEventListener('click', function() {
-      // Toggle de active class se maneja más abajo, aquí detectamos el radio de este label
-      setTimeout(() => {
-        const radio = this.querySelector('input[type="radio"]');
-        if (!radio) return;
-        const nuevoConcepto = radio.value;
-        const divMotivo = document.getElementById('div_eval_motivo');
-        const inputMotivo = document.getElementById('eval_motivo');
-
-        if (originalConcepto && originalConcepto !== 'pendiente' && originalConcepto !== nuevoConcepto) {
-          if (divMotivo && inputMotivo) {
-            divMotivo.style.display = 'block';
-            inputMotivo.required = true;
-          }
-        } else {
-          if (divMotivo && inputMotivo) {
-            divMotivo.style.display = 'none';
-            inputMotivo.required = false;
-          }
-        }
-      }, 50);
-    });
-  });
-
-  // Guardia antes de enviar
-  modalEvaluar.querySelector('form')?.addEventListener('submit', function(e) {
-    const id = parseInt(document.getElementById('evalId').value, 10);
-    const concepto = this.querySelector('input[name="concepto"]:checked');
-    const motivo = document.getElementById('eval_motivo').value.trim();
-
-    if (!id || id <= 0) {
-      e.preventDefault();
-      alert('Error: ID de evaluación no cargado. Cierra el modal y haz clic en Evaluar nuevamente.');
-      return;
-    }
-    if (!concepto) {
-      e.preventDefault();
-      alert('Debes seleccionar un concepto: Aprobado (A) o No Aprobado (D).');
-      return;
-    }
-
-    if (originalConcepto && originalConcepto !== 'pendiente' && originalConcepto !== concepto.value && !motivo) {
-      e.preventDefault();
-      alert('Debes ingresar el motivo del cambio de calificación (ej. Plan de mejoramiento completado).');
-      return;
-    }
-
-    console.log('[Eval] Enviando evaluación ID:', id, '| nuevo concepto:', concepto.value);
-  });
-}
-
-// Toggle visual de radio buttons
-document.querySelectorAll('.concepto-radio').forEach(label => {
-  label.addEventListener('click', function() {
-    document.querySelectorAll('.concepto-radio').forEach(l => l.classList.remove('active'));
-    this.classList.add('active');
-  });
-});
-</script>
-
-<style>
-.concepto-radio.active {
-    font-weight: 600;
-}
-.concepto-radio:has(input[value="A"]).active {
-    background-color: #22c55e !important;
-    color: white !important;
-    border-color: #22c55e !important;
-}
-.concepto-radio:has(input[value="D"]).active {
-    background-color: #ef4444 !important;
-    color: white !important;
-    border-color: #ef4444 !important;
-}
-</style>

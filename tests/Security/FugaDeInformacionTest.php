@@ -186,6 +186,9 @@ final class FugaDeInformacionTest extends CasoConBaseDeDatos {
         $this->assertStringContainsString('php_flag engine off', $uploads,
             'uploads/ podría ejecutar PHP: sería una shell subida como evidencia');
         $this->assertStringContainsString('FilesMatch', $uploads);
+        // Y nada se descarga directamente: las evidencias pasan por un
+        // controlador que comprueba permisos.
+        $this->assertMatchesRegularExpression('/^\s*Require all denied/m', $uploads, 'uploads/ se sirve directamente por web');
     }
 
     #[TestDox('el log de recuperación no guarda tokens fuera de desarrollo')]

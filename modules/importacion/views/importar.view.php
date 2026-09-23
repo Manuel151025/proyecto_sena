@@ -10,6 +10,7 @@ if (!defined('VISTA_PERMITIDA')) {
 /** @var \Core\Importacion\Importador $importador */
 $scriptsVista[] = 'modulos/zona-archivos.js';
 $columnas = $importador->columnas();
+$columnasPrevia = array_intersect_key($columnas, array_flip($importador->columnasVistaPrevia()));
 [$rutaVolver, $textoVolver] = $volver;
 $url = static fn(string $r) => e(APP_URL . '/index.php' . $r);
 $nombreSeparador = [';' => 'punto y coma', ',' => 'coma', "\t" => 'tabulador', '|' => 'barra vertical'];
@@ -69,16 +70,21 @@ $nombreSeparador = [';' => 'punto y coma', ',' => 'coma', "\t" => 'tabulador', '
         <div class="card-body p-4">
           <form method="POST" enctype="multipart/form-data">
             <?= csrfField() ?>
-            <?php foreach (($extras['campos'] ?? []) as $campo): ?>
+            <?php foreach (($extras['campos'] ?? []) as $campo): $opcional = !empty($campo['opcional']); ?>
               <div class="mb-3">
-                <label class="form-label fw-semibold" for="imp_<?= e($campo['nombre']) ?>"><?= e($campo['etiqueta']) ?> <span class="text-danger">*</span></label>
-                <select name="<?= e($campo['nombre']) ?>" id="imp_<?= e($campo['nombre']) ?>" class="form-select" required
+                <label class="form-label fw-semibold" for="imp_<?= e($campo['nombre']) ?>"><?= e($campo['etiqueta']) ?><?= $opcional ? '' : ' <span class="text-danger">*</span>' ?></label>
+                <select name="<?= e($campo['nombre']) ?>" id="imp_<?= e($campo['nombre']) ?>" class="form-select" <?= $opcional ? '' : 'required' ?>
                         data-picker data-picker-label="<?= e($campo['etiqueta']) ?>">
-                  <option value="" disabled selected>Seleccione…</option>
+                  <?php if ($opcional): ?>
+                    <option value="0" selected><?= e($campo['vacio'] ?? 'Ninguna') ?></option>
+                  <?php else: ?>
+                    <option value="" disabled selected>Seleccione…</option>
+                  <?php endif; ?>
                   <?php foreach ($campo['opciones'] as $valor => $texto): ?>
                     <option value="<?= e((string)$valor) ?>"><?= e($texto) ?></option>
                   <?php endforeach; ?>
                 </select>
+                <?php if (!empty($campo['ayuda'])): ?><small class="text-muted"><?= e($campo['ayuda']) ?></small><?php endif; ?>
               </div>
             <?php endforeach; ?>
 
@@ -115,9 +121,7 @@ $nombreSeparador = [';' => 'punto y coma', ',' => 'coma', "\t" => 'tabulador', '
             </table>
           </div>
           <ul class="small text-muted ps-3 mb-0">
-            <li>La primera fila debe llevar los encabezados (se aceptan en cualquier orden, con o sin tildes).</li>
-            <li>El separador del CSV (coma o punto y coma) y la codificación (UTF-8 o la de Excel en Windows) se detectan solos.</li>
-            <li>Reimportar el mismo archivo no duplica: lo que ya existe se omite.</li>
+            <?php foreach ($importador->instrucciones() as $linea): ?><li><?= e($linea) ?></li><?php endforeach; ?>
           </ul>
         </div>
       </div>
@@ -159,6 +163,17 @@ $nombreSeparador = [';' => 'punto y coma', ',' => 'coma', "\t" => 'tabulador', '
     </div>
   </div>
 
+  <?php if (!empty($previa['resumen'])): ?>
+    <div class="row g-2 mb-3">
+      <?php foreach ($previa['resumen'] as [$etiqueta, $valor]): ?>
+        <div class="col-6 col-md"><div class="panel-cifras h-100"><div class="small text-muted"><?= e($etiqueta) ?></div><div class="fw-bold fs-5 text-break"><?= e((string)$valor) ?></div></div></div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+  <?php foreach (($previa['avisos'] ?? []) as $aviso): ?>
+    <div class="alert-flat warning mb-3"><i class="bi bi-info-circle"></i><div><?= e($aviso) ?></div></div>
+  <?php endforeach; ?>
+
   <?php if (!$previa['encabezado']): ?>
     <div class="alert-flat warning mb-3"><i class="bi bi-exclamation-triangle"></i>
       <div>No se reconoció la fila de encabezados, así que se usó el orden de columnas de la plantilla. Si los datos no coinciden, descarga la plantilla y vuelve a subir el archivo.</div></div>
@@ -173,7 +188,7 @@ $nombreSeparador = [';' => 'punto y coma', ',' => 'coma', "\t" => 'tabulador', '
       <thead>
         <tr>
           <th>Fila</th>
-          <?php foreach ($columnas as $col => $def): ?><th><?= e($def['etiqueta']) ?></th><?php endforeach; ?>
+          <?php foreach ($columnasPrevia as $col => $def): ?><th><?= e($def['etiqueta']) ?></th><?php endforeach; ?>
           <th>Resultado</th>
         </tr>
       </thead>
@@ -181,7 +196,7 @@ $nombreSeparador = [';' => 'punto y coma', ',' => 'coma', "\t" => 'tabulador', '
         <?php foreach ($previa['filas'] as $f): $ok = $f['errores'] === []; ?>
           <tr class="<?= $ok ? '' : 'fila-con-error' ?>">
             <td class="text-muted"><?= (int)$f['linea'] ?></td>
-            <?php foreach ($columnas as $col => $_): ?>
+            <?php foreach ($columnasPrevia as $col => $_): ?>
               <td><?= e(mb_substr((string)($f['valores'][$col] ?? ''), 0, 120)) ?></td>
             <?php endforeach; ?>
             <td class="small">

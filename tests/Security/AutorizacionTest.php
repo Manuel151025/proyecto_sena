@@ -135,31 +135,46 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
     // =================================================================
 
     /**
-     * El camino real de /evaluaciones: el controlador pregunta el concepto
-     * anterior pasando el rol, y el modelo devuelve false si no hay
-     * autoridad. Si devolviera el concepto, el controlador seguiría adelante
-     * y el instructor ajeno acabaría escribiendo la nota.
+     * El camino real de /evaluaciones (acción «evaluar»): un instructor sin
+     * autoridad sobre el RAP no puede escribir la nota, y la evaluación
+     * queda como estaba.
      */
-    #[TestDox('getEvaluacionAnterior() corta el paso a un instructor ajeno')]
-    public function testNoSeObtieneElConceptoDeUnaEvaluacionAjena(): void {
-        $modelo = new EvaluacionesModel($this->db);
-        $ajeno  = $this->idInstructorAjeno();
+    #[TestDox('un instructor ajeno no puede calificar una evaluación')]
+    public function testNoSeCalificaUnaEvaluacionAjena(): void {
+        $servicio = new \Core\Services\JuiciosService($this->db);
+        $ajeno = new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR);
 
         $ids = $this->db->query("SELECT id FROM evaluaciones LIMIT 10")->fetchAll(PDO::FETCH_COLUMN);
         foreach ($ids as $id) {
-            $this->assertFalse(
-                $modelo->getEvaluacionAnterior((int)$id, ROL_INSTRUCTOR, $ajeno),
-                "se obtuvo el concepto de la evaluación #$id siendo ajeno"
-            );
+            $antes = $this->db->query("SELECT concepto FROM evaluaciones WHERE id = " . (int)$id)->fetchColumn();
+            try {
+                $servicio->calificar(['evaluacion_id' => (int)$id, 'concepto' => $antes === 'A' ? 'D' : 'A',
+                                      'comentario' => '', 'motivo' => 'prueba'], $ajeno);
+                $this->fail("un instructor ajeno calificó la evaluación #$id");
+            } catch (\Core\Support\ErrorDeNegocio $e) {
+                $this->assertStringContainsString('otro instructor', $e->getMessage());
+            }
+            $this->assertSame($antes, $this->db->query("SELECT concepto FROM evaluaciones WHERE id = " . (int)$id)->fetchColumn());
         }
     }
 
-    #[TestDox('el coordinador sí puede consultar cualquier evaluación')]
-    public function testCoordinadorAccedeATodo(): void {
-        $modelo = new EvaluacionesModel($this->db);
-        $this->assertNotFalse(
-            $modelo->getEvaluacionAnterior($this->idEvaluacion(), ROL_COORDINADOR, $this->idCoordinador())
-        );
+    #[TestDox('el aprendiz no puede calificar ni su propia evaluación')]
+    public function testAprendizNoCalifica(): void {
+        $this->expectException(\Core\Support\ErrorDeNegocio::class);
+        (new \Core\Services\JuiciosService($this->db))->calificar(
+            ['evaluacion_id' => $this->idEvaluacion(), 'concepto' => 'A', 'comentario' => '', 'motivo' => ''],
+            new \Core\Support\Actor($this->idUsuarioAprendiz(), ROL_APRENDIZ));
+    }
+
+    #[TestDox('el coordinador sí puede calificar cualquier evaluación, y queda en el historial')]
+    public function testCoordinadorCalifica(): void {
+        $id = $this->idEvaluacion();
+        $antes = $this->contar('historial_evaluaciones', 'evaluacion_id = ?', [$id]);
+        $r = (new \Core\Services\JuiciosService($this->db))->calificar(
+            ['evaluacion_id' => $id, 'concepto' => 'A', 'comentario' => 'Buen trabajo', 'motivo' => ''],
+            new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR));
+        $this->assertSame('actualizada', $r);
+        $this->assertSame($antes + 1, $this->contar('historial_evaluaciones', 'evaluacion_id = ?', [$id]));
     }
 
     #[TestDox('el permiso de seguimiento rechaza un RAP de otra ficha')]
@@ -197,8 +212,8 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
     public function testListadoDeEvaluacionesFiltrado(): void {
         $modelo = new EvaluacionesModel($this->db);
 
-        $total       = $modelo->contarEvaluaciones(ROL_COORDINADOR, $this->idCoordinador(), 0, 0, '', '');
-        $delAjeno    = $modelo->contarEvaluaciones(ROL_INSTRUCTOR, $this->idInstructorAjeno(), 0, 0, '', '');
+        $total    = $modelo->contar(new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR), []);
+        $delAjeno = $modelo->contar(new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR), []);
 
         $this->assertSame(0, $delAjeno, 'un instructor sin fichas ve evaluaciones que no le tocan');
         $this->assertGreaterThan(0, $total, 'el coordinador debería verlas todas');
@@ -207,19 +222,19 @@ final class AutorizacionTest extends CasoConBaseDeDatos {
     #[TestDox('un aprendiz solo ve sus propias evaluaciones')]
     public function testAprendizSoloVeLasSuyas(): void {
         $modelo = new EvaluacionesModel($this->db);
-        $apId = $this->idAprendiz();
+        $usuario = $this->idUsuarioAprendiz();
+        $apId = (int)$this->db->query("SELECT id FROM aprendices WHERE usuario_id = $usuario")->fetchColumn();
+        $actor = new \Core\Support\Actor($usuario, ROL_APRENDIZ);
 
-        $filas = $modelo->getEvaluaciones(ROL_APRENDIZ, $this->idUsuarioAprendiz(), $apId, 0, '', '', 100, 0);
-
-        foreach ($filas as $f) {
-            // El listado no expone aprendiz_id, así que se comprueba por el
-            // nombre: todas las filas deben ser del mismo aprendiz.
-            $this->assertArrayHasKey('aprendiz_nombre', $f);
+        foreach ($modelo->listar($actor, [], 100, 0) as $f) {
+            $this->assertSame($apId, (int)$f['aprendiz_id'], 'el aprendiz ve una evaluación de otro');
         }
+        // Ni filtrando por otra ficha sale de lo suyo.
+        $otraFicha = (int)$this->db->query("SELECT id FROM fichas WHERE id <> (SELECT ficha_id FROM aprendices WHERE id = $apId) LIMIT 1")->fetchColumn();
+        $this->assertSame(0, $modelo->contar($actor, ['ficha_id' => $otraFicha]));
 
-        $total = $modelo->contarEvaluaciones(ROL_APRENDIZ, $this->idUsuarioAprendiz(), $apId, 0, '', '');
         $propias = $this->contar('evaluaciones', 'aprendiz_id = ?', [$apId]);
-        $this->assertSame($propias, $total, 'el aprendiz ve un número de evaluaciones distinto al suyo');
+        $this->assertSame($propias, $modelo->contar($actor, []), 'el aprendiz ve un número de evaluaciones distinto al suyo');
     }
 
     #[TestDox('los planes de mejoramiento de un aprendiz son solo los suyos')]
