@@ -77,11 +77,16 @@ jobs:
       - name: Verificar migraciones y enums contra el esquema
         run: php bin/verificar-esquema.php
 
+      # Cada suite deja un informe JUnit; si falla, sus casos se publican
+      # como anotaciones del commit (consultables sin permisos de
+      # administrador, a diferencia del registro completo).
       - name: Pruebas unitarias
-        run: vendor/bin/phpunit --testsuite unitarias
+        run: |
+          mkdir -p build
+          vendor/bin/phpunit --testsuite unitarias --log-junit build/unitarias.xml || { php bin/anotar-junit.php build/unitarias.xml; exit 1; }
 
       - name: Pruebas de seguridad
-        run: vendor/bin/phpunit --testsuite seguridad
+        run: vendor/bin/phpunit --testsuite seguridad --log-junit build/seguridad.xml || { php bin/anotar-junit.php build/seguridad.xml; exit 1; }
 
       - name: Pruebas de integración
-        run: vendor/bin/phpunit --testsuite integracion
+        run: vendor/bin/phpunit --testsuite integracion --log-junit build/integracion.xml || { php bin/anotar-junit.php build/integracion.xml; exit 1; }

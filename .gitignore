@@ -61,3 +61,6 @@ test_accents.php
 # Cache de PHPUnit
 .phpunit.cache/
 .phpunit.result.cache
+
+# Informes de pruebas del CI
+build/

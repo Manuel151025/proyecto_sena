@@ -43,7 +43,7 @@ ServerSignature Off
 
     # Carpetas internas. La regla se evalúa relativa a esta carpeta, así
     # que `index.php/logs` (la pantalla de auditoría) no la dispara.
-    RewriteRule ^(\.git|\.github|\.vscode|\.claude|\.phpunit\.cache|core|includes|config|migrations|database|tests|vendor|cache|logs|scratch|docs|layouts|components|imports|bin)(/|$) - [F,L]
+    RewriteRule ^(\.git|\.github|\.vscode|\.claude|\.phpunit\.cache|core|includes|config|migrations|database|tests|vendor|cache|logs|scratch|docs|layouts|components|imports|bin|build)(/|$) - [F,L]
 
     # Las vistas solo se pintan desde un controlador.
     RewriteRule ^modules/[^/]+/views(/|$) - [F,L]
