@@ -153,8 +153,14 @@ return static function (Router $router): void {
     // ---------------------------------------------------------------------
     // EVALUACIÓN Y SEGUIMIENTO
     // ---------------------------------------------------------------------
-    $ambos('/evaluaciones',           'Core\Controllers\EvaluacionesController', 'index',  $TODOS);
-    $ambos('/evaluaciones/importar',  'Core\Controllers\EvaluacionesController', 'import', $GESTION);
+    // Cada rol ve sus juicios; los emiten instructores y coordinación. El
+    // reporte de Sofia Plus entra por la importación en dos pasos.
+    $EV = 'Core\Controllers\EvaluacionesController';
+    $router->add('GET', '/evaluaciones',          $EV, 'index',    $TODOS);
+    $router->add('GET', '/evaluaciones/exportar', $EV, 'exportar', $TODOS);
+    $router->accion('/evaluaciones', 'evaluar', $EV, 'evaluar', $GESTION);
+    $importacion('/evaluaciones/importar', $GESTION);
+
     $ambos('/seguimiento',            'Core\Controllers\SeguimientoController',  'index',  $TODOS);
     $ambos('/evidencias',             'Core\Controllers\EvidenciasController',   'index',  $TODOS);
     $ambos('/retroalimentacion',      'Core\Controllers\RetroalimentacionController', 'index', $TODOS);

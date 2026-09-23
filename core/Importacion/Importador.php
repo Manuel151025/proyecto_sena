@@ -66,4 +66,46 @@ abstract class Importador {
     public function permitido(Actor $actor): bool {
         return $actor->esCoordinador();
     }
+
+    /**
+     * Ajusta las filas leídas antes de reconocer los encabezados. Sirve a
+     * los formatos que no empiezan por la fila de títulos, como el reporte
+     * de juicios de Sofia Plus (trae la ficha y el programa arriba).
+     *
+     * @param list<array> $filas Filas tal como se leyeron.
+     * @return array{filas: list<array>, contexto: array, avisos?: string[]}
+     * @throws \Core\Support\ErrorDeNegocio si el archivo no sirve para esta importación.
+     */
+    public function prepararFilas(array $filas, array $contexto, Actor $actor): array {
+        return ['filas' => $filas, 'contexto' => $contexto];
+    }
+
+    /** Columnas que se muestran en la vista previa (por defecto, todas). */
+    public function columnasVistaPrevia(): array {
+        return array_keys($this->columnas());
+    }
+
+    /**
+     * Cifras que resumen la vista previa, además de válidas / con error.
+     *
+     * @param list<array> $filas Filas analizadas (con `datos`, `errores`, `avisos`).
+     * @return list<array{0:string, 1:int|string}> [etiqueta, valor]
+     */
+    public function resumen(array $filas, array $contexto): array {
+        return [];
+    }
+
+    /** Indicaciones que acompañan al formulario de subida. */
+    public function instrucciones(): array {
+        return [
+            'La primera fila debe llevar los encabezados (se aceptan en cualquier orden, con o sin tildes).',
+            'El separador del CSV (coma o punto y coma) y la codificación (UTF-8 o la de Excel en Windows) se detectan solos.',
+            'Reimportar el mismo archivo no duplica: lo que ya existe se omite.',
+        ];
+    }
+
+    /** Campos extra del formulario de subida (p. ej. la ficha de destino). */
+    public function opcionesFormulario(Actor $actor): array {
+        return [];
+    }
 }

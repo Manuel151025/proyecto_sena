@@ -25,9 +25,27 @@ final class ImportacionService {
     /** Una vista previa sin confirmar caduca a la hora. */
     private const VIGENCIA = 3600;
 
+    /**
+     * La vista previa se guarda en disco, fuera de la web, y la sesión solo
+     * lleva su nombre. Un reporte de juicios tiene miles de filas: en la
+     * sesión pesaba varios MB que PHP leía y reescribía en CADA petición
+     * del usuario mientras la importación estaba pendiente.
+     */
+    private string $carpeta;
+
+    public function __construct(?string $carpeta = null) {
+        $this->carpeta = $carpeta ?? BASE_PATH . 'cache/importaciones';
+    }
+
     public function analizar(Importador $imp, ArchivoSubido $archivo, Actor $actor, array $contexto): array {
         $lectura = LectorTabular::leer($archivo, $imp->maxFilas());
         $filas = $lectura['filas'];
+        if ($filas === []) {
+            throw new ErrorDeNegocio('El archivo no tiene filas con datos.');
+        }
+        $preparado = $imp->prepararFilas($filas, $contexto, $actor);
+        $filas = $preparado['filas'];
+        $contexto = $preparado['contexto'];
         if ($filas === []) {
             throw new ErrorDeNegocio('El archivo no tiene filas con datos.');
         }
@@ -84,17 +102,25 @@ final class ImportacionService {
             'total'       => count($resultado),
             'validas'     => $validas,
             'contexto'    => $contexto,
+            'avisos'      => $preparado['avisos'] ?? [],
+            'resumen'     => $imp->resumen($resultado, $contexto),
             'actor'       => $actor->id,
             'creada'      => time(),
         ];
-        $_SESSION[self::CLAVE_SESION][$imp->clave()] = $previa;
+        $this->guardarPrevia($imp, $previa);
         return $previa;
     }
 
     /** Vista previa pendiente de este tipo, si existe y no ha caducado. */
     public function pendiente(Importador $imp, Actor $actor): ?array {
-        $p = $_SESSION[self::CLAVE_SESION][$imp->clave()] ?? null;
-        if (!is_array($p) || ($p['actor'] ?? 0) !== $actor->id || time() - (int)($p['creada'] ?? 0) > self::VIGENCIA) {
+        $ref = $_SESSION[self::CLAVE_SESION][$imp->clave()] ?? null;
+        if (!is_array($ref) || ($ref['actor'] ?? 0) !== $actor->id || time() - (int)($ref['creada'] ?? 0) > self::VIGENCIA) {
+            $this->descartar($imp);
+            return null;
+        }
+        $ruta = $this->ruta((string)($ref['archivo'] ?? ''));
+        $p = $ruta !== null && is_file($ruta) ? unserialize((string)file_get_contents($ruta), ['allowed_classes' => false]) : null;
+        if (!is_array($p) || ($p['actor'] ?? 0) !== $actor->id) {
             $this->descartar($imp);
             return null;
         }
@@ -102,7 +128,39 @@ final class ImportacionService {
     }
 
     public function descartar(Importador $imp): void {
+        $ref = $_SESSION[self::CLAVE_SESION][$imp->clave()] ?? null;
+        $ruta = is_array($ref) ? $this->ruta((string)($ref['archivo'] ?? '')) : null;
+        if ($ruta !== null && is_file($ruta)) {
+            @unlink($ruta);
+        }
         unset($_SESSION[self::CLAVE_SESION][$imp->clave()]);
+    }
+
+    private function guardarPrevia(Importador $imp, array $previa): void {
+        $this->descartar($imp);
+        if (!is_dir($this->carpeta) && !@mkdir($this->carpeta, 0770, true) && !is_dir($this->carpeta)) {
+            throw new \RuntimeException('No se pudo crear la carpeta de importaciones pendientes.');
+        }
+        $this->limpiarCaducadas();
+        $archivo = bin2hex(random_bytes(16)) . '.previa';
+        if (file_put_contents($this->carpeta . '/' . $archivo, serialize($previa), LOCK_EX) === false) {
+            throw new \RuntimeException('No se pudo guardar la vista previa de la importación.');
+        }
+        $_SESSION[self::CLAVE_SESION][$imp->clave()] = ['archivo' => $archivo, 'actor' => $previa['actor'], 'creada' => $previa['creada']];
+    }
+
+    /** Ruta de una vista previa guardada; null si el nombre no es uno generado aquí. */
+    private function ruta(string $archivo): ?string {
+        return preg_match('/^[a-f0-9]{32}\.previa$/', $archivo) ? $this->carpeta . '/' . $archivo : null;
+    }
+
+    /** Borra las vistas previas abandonadas (nadie confirmó ni canceló). */
+    private function limpiarCaducadas(): void {
+        foreach (glob($this->carpeta . '/*.previa') ?: [] as $f) {
+            if (time() - (int)@filemtime($f) > self::VIGENCIA) {
+                @unlink($f);
+            }
+        }
     }
 
     /** @return array{creados:int, omitidos:int, con_error:int, detalle?:list<string>, credenciales?:list<array>} */

@@ -159,6 +159,9 @@ final class EvaluacionService {
      *                       aprendiz. Evidencias escribe la suya aparte
      *                       (puede no haber evaluación asociada) y el
      *                       importador no genera ninguna.
+     * - notificar:          avisar al aprendiz cuando recibe un juicio A o
+     *                       D. El importador lo desactiva y manda un aviso
+     *                       por aprendiz en lugar de uno por RAP.
      */
     private function opciones(array $datos): array {
         $usuarioId = (int)($datos['usuario_id'] ?? 0);
@@ -191,6 +194,7 @@ final class EvaluacionService {
             'motivo_por_defecto'=> (string)($datos['motivo_por_defecto'] ?? self::MOTIVO_INICIAL),
             'exigir_motivo'     => (bool)($datos['exigir_motivo'] ?? true),
             'retroalimentacion' => (bool)($datos['retroalimentacion'] ?? true),
+            'notificar'         => (bool)($datos['notificar'] ?? true),
         ];
     }
 
@@ -217,6 +221,9 @@ final class EvaluacionService {
 
         $this->registrarCambio($evaluacionId, 'pendiente', $o);
         $this->registrarRetroalimentacion($evaluacionId, $aprendizId, $o, $datos);
+        if ($o['concepto'] !== 'pendiente') {
+            $this->notificarAprendiz($evaluacionId, 'pendiente', $o);
+        }
 
         return ['evaluacion_id' => $evaluacionId, 'accion' => 'creada'];
     }
@@ -259,6 +266,7 @@ final class EvaluacionService {
 
         if ($cambia) {
             $this->registrarCambio($evaluacionId, $conceptoAnterior, $o);
+            $this->notificarAprendiz($evaluacionId, $conceptoAnterior, $o);
         }
         $this->registrarRetroalimentacion($evaluacionId, $aprendizId, $o, $datos);
 
@@ -288,6 +296,31 @@ final class EvaluacionService {
             $o['concepto'],
             $o['motivo'] !== '' ? $o['motivo'] : $o['motivo_por_defecto'],
         ]);
+    }
+
+    /**
+     * Aviso al aprendiz de que tiene un juicio nuevo o cambiado (A o D).
+     * Volver a pendiente no se anuncia: no es un resultado.
+     */
+    private function notificarAprendiz(int $evaluacionId, string $anterior, array $o): void {
+        if (!$o['notificar'] || $o['concepto'] === 'pendiente') {
+            return;
+        }
+        $st = $this->db->prepare("
+            SELECT ap.usuario_id, ra.codigo FROM evaluaciones e
+              JOIN aprendices ap ON ap.id = e.aprendiz_id
+              JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+             WHERE e.id = ?");
+        $st->execute([$evaluacionId]);
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$r || !$r['usuario_id']) {
+            return;
+        }
+        $texto = $o['concepto'] === 'A' ? 'Aprobado (A)' : 'No aprobado (D)';
+        $titulo = $anterior === 'pendiente' ? 'Nuevo juicio evaluativo' : 'Juicio evaluativo modificado';
+        (new Notificador($this->db))->notificar((int)$r['usuario_id'], $titulo,
+            "RAP {$r['codigo']}: $texto." . ($o['concepto'] === 'D' ? ' Revisa la retroalimentación y tu plan de mejoramiento.' : ''),
+            $o['concepto'] === 'A' ? 'success' : 'warning', '/index.php/evaluaciones');
     }
 
     /**
