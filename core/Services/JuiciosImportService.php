@@ -3,16 +3,22 @@ declare(strict_types=1);
 
 namespace Core\Services;
 
+use Core\Support\ErrorDeNegocio;
 use Core\Database;
 use Shuchkin\SimpleXLS;
 use Exception;
 use PDO;
 
 class JuiciosImportService {
+    /** Motivo con el que quedan en el historial los juicios importados. */
+    private const MOTIVO_IMPORTACION = 'Importado masivo desde reporte Sofia Plus (Excel)';
+
     private PDO $db;
+    private EvaluacionService $evaluacionService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
+        $this->evaluacionService = new EvaluacionService($this->db);
     }
 
     private function toUtf8(?string $str): string {
@@ -36,7 +42,7 @@ class JuiciosImportService {
     public function import(string $fileTmpPath, string $originalName, int $userId, string $userRole): array {
         $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         if ($ext !== 'xls') {
-            throw new Exception('El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).');
+            throw new ErrorDeNegocio('El archivo debe tener extensión .xls (Reporte binario de Sofia Plus).');
         }
 
         // Crear directorio uploads si no existe
@@ -71,13 +77,13 @@ class JuiciosImportService {
         if (!$xls) {
             $xlsErr = (string)SimpleXLS::parseError();
             @file_put_contents(__DIR__ . '/../../logs/import_errors.log', date('[Y-m-d H:i:s] ') . 'SimpleXLS parseError: ' . $xlsErr . "\n", FILE_APPEND);
-            throw new Exception('Error al leer el archivo Excel: ' . $xlsErr);
+            throw new ErrorDeNegocio('Error al leer el archivo Excel: ' . $xlsErr);
         }
 
         $allRows = $xls->rows(0); // Primera hoja
         if (empty($allRows)) {
             @file_put_contents(__DIR__ . '/../../logs/import_errors.log', date('[Y-m-d H:i:s] ') . "SimpleXLS: rows array is empty.\n", FILE_APPEND);
-            throw new Exception('El archivo Excel está vacío o no contiene datos legibles.');
+            throw new ErrorDeNegocio('El archivo Excel está vacío o no contiene datos legibles.');
         }
 
         try {
@@ -150,7 +156,7 @@ class JuiciosImportService {
             }
 
             if (empty($ficha_numero) || empty($programa_codigo)) {
-                throw new Exception('No se pudo identificar el número de ficha o el código de programa en las cabeceras del archivo.');
+                throw new ErrorDeNegocio('No se pudo identificar el número de ficha o el código de programa en las cabeceras del archivo.');
             }
 
             $stats['ficha_num'] = $ficha_numero;
@@ -179,7 +185,7 @@ class JuiciosImportService {
             if ($ficha_db) {
                 $ficha_id = (int)$ficha_db['id'];
                 if ($userRole === ROL_INSTRUCTOR && (int)$ficha_db['instructor_id'] !== $userId) {
-                    throw new Exception("No tienes permisos para importar juicios en la ficha #$ficha_numero porque está asignada a otro instructor.");
+                    throw new ErrorDeNegocio("No tienes permisos para importar juicios en la ficha #$ficha_numero porque está asignada a otro instructor.");
                 }
                 $stats['ficha_estado'] = 'Actualizada (ya existía)';
             } else {
@@ -377,13 +383,6 @@ class JuiciosImportService {
                     }
                 }
 
-                $stmt = $this->db->prepare("
-                    SELECT id, concepto FROM evaluaciones
-                    WHERE resultado_aprendizaje_id = ? AND aprendiz_id = ?
-                ");
-                $stmt->execute([$ra_id, $aprendiz_id]);
-                $eval_db = $stmt->fetch();
-
                 $fecha_eval = null;
                 if ($concepto !== 'pendiente') {
                     $fecha_eval = date('Y-m-d');
@@ -392,35 +391,36 @@ class JuiciosImportService {
                     }
                 }
 
+                // El juicio se escribe a través de EvaluacionService, que
+                // comparte la transacción ya abierta por este import y deja
+                // historial tanto al crear como al actualizar. Antes el INSERT
+                // de una evaluación nueva no registraba nada: de ahí salía el
+                // desfase entre 3.873 juicios y 15 filas de trazabilidad.
+                //
+                // La nota se atribuye al instructor de la ficha
+                // (`instructor_id`), pero el historial guarda a quien subió el
+                // Excel (`usuario_id`): son dos preguntas distintas.
+                // Sin retroalimentación porque el reporte no trae comentarios.
+                $resultado = $this->evaluacionService->registrar([
+                    'resultado_aprendizaje_id' => $ra_id,
+                    'aprendiz_id'              => $aprendiz_id,
+                    'ficha_id'                 => $ficha_id,
+                    'concepto'                 => $concepto,
+                    'usuario_id'               => $userId,
+                    'instructor_id'            => $instructor_id,
+                    'fecha_evaluacion'         => $fecha_eval,
+                    'motivo'                   => self::MOTIVO_IMPORTACION,
+                    'exigir_motivo'            => false,
+                    'retroalimentacion'        => false,
+                ]);
+
                 $eval_accion = 'Sin cambios';
-                if ($eval_db) {
-                    $eval_id = (int)$eval_db['id'];
-                    $concepto_anterior = $eval_db['concepto'];
-
-                    if ($concepto_anterior !== $concepto) {
-                        $stmtUpdateEval = $this->db->prepare("
-                            UPDATE evaluaciones
-                            SET concepto = ?, instructor_id = ?, fecha_evaluacion = ?, fecha_actualizacion = NOW()
-                            WHERE id = ?
-                        ");
-                        $stmtUpdateEval->execute([$concepto, $instructor_id, $fecha_eval, $eval_id]);
-
-                        $stmtHist = $this->db->prepare("
-                            INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo)
-                            VALUES (?, ?, ?, ?, 'Importado masivo desde reporte Sofia Plus (Excel)')
-                        ");
-                        $stmtHist->execute([$eval_id, $userId, $concepto_anterior, $concepto]);
-                        $stats['evaluaciones_actualizadas']++;
-                        $eval_accion = 'Actualizado';
-                    }
-                } else {
-                    $stmtInsertEval = $this->db->prepare("
-                        INSERT INTO evaluaciones (resultado_aprendizaje_id, aprendiz_id, instructor_id, ficha_id, concepto, fecha_evaluacion)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ");
-                    $stmtInsertEval->execute([$ra_id, $aprendiz_id, $instructor_id, $ficha_id, $concepto, $fecha_eval]);
+                if ($resultado['accion'] === 'creada') {
                     $stats['evaluaciones_creadas']++;
                     $eval_accion = 'Creado';
+                } elseif ($resultado['accion'] === 'actualizada') {
+                    $stats['evaluaciones_actualizadas']++;
+                    $eval_accion = 'Actualizado';
                 }
 
                 if (!isset($stats['detalles'][$num_doc])) {

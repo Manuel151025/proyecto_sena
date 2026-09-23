@@ -3,15 +3,22 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
+use Core\Support\Validador;
 use Core\Database;
+use Core\Services\EvaluacionService;
+use Core\Services\InstructorAccessService;
 use PDO;
 use Exception;
 
 class EvaluacionesModel {
     private PDO $db;
+    private EvaluacionService $evaluacionService;
+    private InstructorAccessService $accessService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
+        $this->evaluacionService = new EvaluacionService($this->db);
+        $this->accessService = new InstructorAccessService($this->db);
     }
 
     public function getAprendizId(int $user_id): int {
@@ -20,72 +27,32 @@ class EvaluacionesModel {
         return (int)($stmt->fetchColumn() ?: 0);
     }
 
-    public function getEvaluacionAnterior(int $eval_id, string $user_rol, int $user_id) {
-        if ($user_rol === ROL_INSTRUCTOR) {
-            $stmtCurrent = $this->db->prepare("
-                SELECT eval.concepto 
-                FROM evaluaciones eval
-                JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-                JOIN competencias c ON ra.competencia_id = c.id
-                JOIN fichas f ON eval.ficha_id = f.id
-                JOIN aprendices ap ON eval.aprendiz_id = ap.id
-                WHERE eval.id = ? AND (
-                    EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = eval.ficha_id 
-                          AND asg.competencia_id = c.id 
-                          AND asg.instructor_id = ?
-                    )
-                    OR
-                    (
-                        f.instructor_id = ?
-                        AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                        AND NOT EXISTS (
-                            SELECT 1 FROM asignaciones asg 
-                            WHERE asg.ficha_id = eval.ficha_id 
-                              AND asg.competencia_id = c.id
-                        )
-                    )
-                    OR
-                    (
-                        (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                        AND ap.instructor_seguimiento_id = ?
-                    )
-                )
-            ");
-            $stmtCurrent->execute([$eval_id, $user_id, $user_id, $user_id]);
-        } else {
-            $stmtCurrent = $this->db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
-            $stmtCurrent->execute([$eval_id]);
+    /**
+     * Concepto actual de una evaluación, o false si el instructor no tiene
+     * autoridad sobre ella.
+     *
+     * La comprobación de permiso era una copia literal del SQL de
+     * InstructorAccessService, la tercera de cuatro que había en el
+     * proyecto. Ahora delega en el servicio, que es donde vive la regla.
+     */
+    public function getEvaluacionAnterior(int $eval_id, string $user_rol, int $user_id): string|false {
+        if ($user_rol === ROL_INSTRUCTOR
+            && !$this->accessService->tieneAccesoEvaluacion($eval_id, $user_id)) {
+            return false;
         }
-        return $stmtCurrent->fetchColumn();
+
+        $stmt = $this->db->prepare("SELECT concepto FROM evaluaciones WHERE id = ?");
+        $stmt->execute([$eval_id]);
+        return $stmt->fetchColumn();
     }
 
     public function actualizarEvaluacion(int $eval_id, string $nuevo_concepto, string $comentario, string $motivo, int $user_id, string $conceptoAnterior): void {
-        $stmtUpdate = $this->db->prepare("UPDATE evaluaciones SET concepto = ?, comentario = ?, instructor_id = ?, fecha_evaluacion = CURDATE(), fecha_actualizacion = NOW() WHERE id = ?");
-        $stmtUpdate->execute([$nuevo_concepto, $comentario, $user_id, $eval_id]);
-
-        if ($conceptoAnterior !== $nuevo_concepto) {
-            $stmtHist = $this->db->prepare("INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo) VALUES (?, ?, ?, ?, ?)");
-            $stmtHist->execute([$eval_id, $user_id, $conceptoAnterior, $nuevo_concepto, $motivo ?: 'Calificación inicial']);
-        }
-
-        // Registrar el comentario en retroalimentacion (mismo patron que EvidenciasModel::
-        // calificarEvidencia) para que el aprendiz lo vea en su feedback; antes solo la
-        // calificacion de evidencias generaba esta fila.
-        if (trim($comentario) !== '') {
-            $stmtAp = $this->db->prepare("SELECT aprendiz_id FROM evaluaciones WHERE id = ?");
-            $stmtAp->execute([$eval_id]);
-            $aprendizId = (int)$stmtAp->fetchColumn();
-
-            if ($aprendizId > 0) {
-                $tipo = $nuevo_concepto === 'A' ? 'fortaleza' : 'aspecto_mejorar';
-                $this->db->prepare("
-                    INSERT INTO retroalimentacion (evaluacion_id, aprendiz_id, instructor_id, tipo, contenido)
-                    VALUES (?, ?, ?, ?, ?)
-                ")->execute([$eval_id, $aprendizId, $user_id, $tipo, $comentario]);
-            }
-        }
+        $this->evaluacionService->actualizarPorId($eval_id, [
+            'concepto'   => $nuevo_concepto,
+            'comentario' => $comentario,
+            'motivo'     => $motivo,
+            'usuario_id' => $user_id,
+        ]);
     }
 
     public function getFichas(string $user_rol, int $user_id): array {
@@ -167,29 +134,7 @@ class EvaluacionesModel {
             $sql .= " AND eval.aprendiz_id = ?";
             $params[] = $aprendiz_id;
         } elseif ($user_rol === ROL_INSTRUCTOR) {
-            $sql .= " AND (
-                EXISTS (
-                    SELECT 1 FROM asignaciones asg 
-                    WHERE asg.ficha_id = eval.ficha_id 
-                      AND asg.competencia_id = c.id 
-                      AND asg.instructor_id = ?
-                )
-                OR
-                (
-                    f.instructor_id = ?
-                    AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                    AND NOT EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = eval.ficha_id 
-                          AND asg.competencia_id = c.id
-                    )
-                )
-                OR
-                (
-                    (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                    AND ap.instructor_seguimiento_id = ?
-                )
-            )";
+            $sql .= " AND (" . InstructorAccessService::sqlCondicionAcceso() . ")";
             $params[] = $user_id;
             $params[] = $user_id;
             $params[] = $user_id;
@@ -206,9 +151,9 @@ class EvaluacionesModel {
 
         if (!empty($search)) {
             $sql .= " AND (u_ap.nombre LIKE ? OR ra.codigo LIKE ? OR ra.denominacion LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
+            $params[] = "%" . Validador::escaparLike($search) . "%";
         }
 
         if (!empty($filter_concepto)) {
@@ -255,7 +200,7 @@ class EvaluacionesModel {
                     OR
                     (
                         f.instructor_id = ?
-                        AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                        AND c.es_etapa_practica = 0
                         AND NOT EXISTS (
                             SELECT 1 FROM asignaciones asg 
                             WHERE asg.ficha_id = eval.ficha_id 
@@ -264,7 +209,7 @@ class EvaluacionesModel {
                     )
                     OR
                     (
-                        (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                        c.es_etapa_practica = 1
                         AND ap.instructor_seguimiento_id = ?
                     )
                 )";

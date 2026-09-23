@@ -4,14 +4,20 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
+use Core\Services\EvaluacionService;
+use Core\Services\InstructorAccessService;
 use PDO;
 use Exception;
 
 class EvidenciasModel {
     private PDO $db;
+    private EvaluacionService $evaluacionService;
+    private InstructorAccessService $accessService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
+        $this->evaluacionService = new EvaluacionService($this->db);
+        $this->accessService = new InstructorAccessService($this->db);
     }
 
     public function getAprendizPerfil(int $user_id): ?array {
@@ -49,55 +55,19 @@ class EvidenciasModel {
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
+    /**
+     * ¿Puede este instructor calificar esta evidencia?
+     *
+     * Era la cuarta copia literal del SQL de InstructorAccessService. Ahora
+     * delega en el servicio, que ya distingue los dos casos: si la evidencia
+     * cuelga de una evaluación, manda la autoridad sobre ese RAP concreto;
+     * si no, basta con tener relación con el aprendiz.
+     */
     public function checkPermisoCalificar(array $evidencia, int $user_id): bool {
-        if ($evidencia['evaluacion_id']) {
-            $stmtCheck = $this->db->prepare("
-                SELECT 1 FROM evaluaciones eval
-                JOIN resultados_aprendizaje ra ON eval.resultado_aprendizaje_id = ra.id
-                JOIN competencias c ON ra.competencia_id = c.id
-                JOIN fichas f ON eval.ficha_id = f.id
-                JOIN aprendices ap ON eval.aprendiz_id = ap.id
-                WHERE eval.id = ? AND (
-                    EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = eval.ficha_id 
-                          AND asg.competencia_id = c.id 
-                          AND asg.instructor_id = ?
-                    )
-                    OR
-                    (
-                        f.instructor_id = ?
-                        AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                        AND NOT EXISTS (
-                            SELECT 1 FROM asignaciones asg 
-                            WHERE asg.ficha_id = eval.ficha_id 
-                              AND asg.competencia_id = c.id
-                        )
-                    )
-                    OR
-                    (
-                        (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
-                        AND ap.instructor_seguimiento_id = ?
-                    )
-                )
-            ");
-            $stmtCheck->execute([$evidencia['evaluacion_id'], $user_id, $user_id, $user_id]);
-        } else {
-            $stmtCheck = $this->db->prepare("
-                SELECT 1 FROM fichas f
-                JOIN aprendices ap ON ap.id = ?
-                WHERE f.id = ? AND (
-                    f.instructor_id = ?
-                    OR EXISTS (
-                        SELECT 1 FROM asignaciones asg 
-                        WHERE asg.ficha_id = f.id AND asg.instructor_id = ?
-                    )
-                    OR ap.instructor_seguimiento_id = ?
-                )
-            ");
-            $stmtCheck->execute([$evidencia['aprendiz_id'], $evidencia['ficha_id'], $user_id, $user_id, $user_id]);
+        if (!empty($evidencia['evaluacion_id'])) {
+            return $this->accessService->tieneAccesoEvaluacion((int)$evidencia['evaluacion_id'], $user_id);
         }
-        return (bool)$stmtCheck->fetchColumn();
+        return $this->accessService->tieneAccesoAprendiz((int)$evidencia['aprendiz_id'], $user_id);
     }
 
     public function calificarEvidencia(array $evidencia, string $estado_evidencia, string $concepto_db, string $comentario, string $tipo_retro, int $user_id): void {
@@ -113,13 +83,25 @@ class EvidenciasModel {
             ");
             $stmt->execute([$estado_evidencia, $comentario, $evidencia_id]);
 
+            // Calificar una evidencia cambia el juicio del RAP asociado, así
+            // que pasa por el servicio y queda en `historial_evaluaciones`.
+            // Este era el agujero de RNF02: la nota cambiaba aquí sin dejar
+            // constancia de quién ni por qué.
+            //
+            // `exigir_motivo => false` porque este formulario no pide motivo;
+            // se registra uno descriptivo en vez de bloquear la calificación.
+            // `retroalimentacion => false` porque la fila la escribe este
+            // mismo método justo debajo, que además cubre el caso en el que
+            // la evidencia no tiene evaluación asociada.
             if ($eval_id) {
-                $stmt = $this->db->prepare("
-                    UPDATE evaluaciones
-                    SET concepto = ?, comentario = ?, instructor_id = ?, fecha_evaluacion = CURRENT_DATE
-                    WHERE id = ?
-                ");
-                $stmt->execute([$concepto_db, $comentario, $user_id, $eval_id]);
+                $this->evaluacionService->actualizarPorId((int)$eval_id, [
+                    'concepto'          => $concepto_db,
+                    'comentario'        => $comentario,
+                    'usuario_id'        => $user_id,
+                    'motivo'            => 'Calificación de la evidencia: ' . $evidencia['titulo'],
+                    'exigir_motivo'     => false,
+                    'retroalimentacion' => false,
+                ]);
             }
 
             $stmt = $this->db->prepare("
@@ -186,7 +168,7 @@ class EvidenciasModel {
                         OR
                         (
                             f.instructor_id = ?
-                            AND (c.id IS NULL OR (NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            AND (c.id IS NULL OR (c.es_etapa_practica = 0
                             AND NOT EXISTS (
                                 SELECT 1 FROM asignaciones asg 
                                 WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -194,7 +176,7 @@ class EvidenciasModel {
                         )
                         OR
                         (
-                            (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                            c.es_etapa_practica = 1
                             AND ap.instructor_seguimiento_id = ?
                         )
                         OR

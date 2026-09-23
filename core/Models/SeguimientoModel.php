@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Core\Models;
 
 use Core\Database;
+use Core\Services\EvaluacionService;
 use Core\Services\InstructorAccessService;
 use PDO;
 use Exception;
@@ -11,89 +12,37 @@ use Exception;
 class SeguimientoModel {
     private PDO $db;
     private InstructorAccessService $accessService;
+    private EvaluacionService $evaluacionService;
 
     public function __construct(?PDO $db = null) {
         $this->db = $db ?? Database::getConnection();
         $this->accessService = new InstructorAccessService($this->db);
+        $this->evaluacionService = new EvaluacionService($this->db);
     }
 
     public function checkInstructorPermission(int $ra_id, int $aprendiz_id_p, int $ficha_id_p, int $user_id): bool {
         return $this->accessService->tieneAccesoResultadoAprendizaje($ra_id, $aprendiz_id_p, $ficha_id_p, $user_id);
     }
 
-    public function registrarEvaluacion(int $ra_id, int $aprendiz_id_p, int $ficha_id_p, string $concepto, string $comentario, string $motivo, int $user_id): void {
-        $stmt = $this->db->prepare("
-            SELECT id, concepto FROM evaluaciones
-            WHERE resultado_aprendizaje_id = ? AND aprendiz_id = ? AND ficha_id = ?
-        ");
-        $stmt->execute([$ra_id, $aprendiz_id_p, $ficha_id_p]);
-        $eval_row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($eval_row) {
-            $eval_id = (int)$eval_row['id'];
-            $conceptoAnterior = $eval_row['concepto'];
-
-            if ($conceptoAnterior !== $concepto) {
-                if (in_array($conceptoAnterior, ['A', 'D']) && empty($motivo)) {
-                    throw new Exception('El motivo del cambio de calificación es requerido.');
-                }
-
-                $stmt = $this->db->prepare("
-                    UPDATE evaluaciones
-                    SET concepto = ?, comentario = ?, instructor_id = ?, fecha_evaluacion = ?, fecha_actualizacion = NOW()
-                    WHERE id = ?
-                ");
-                $stmt->execute([$concepto, $comentario, $user_id, date('Y-m-d'), $eval_id]);
-
-                $stmtHist = $this->db->prepare("
-                    INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo)
-                    VALUES (?, ?, ?, ?, ?)
-                ");
-                $stmtHist->execute([$eval_id, $user_id, $conceptoAnterior, $concepto, $motivo ?: 'Calificación inicial']);
-                $this->registrarRetroalimentacionEvaluacion($eval_id, $aprendiz_id_p, $user_id, $concepto, $comentario);
-            } else {
-                $stmt = $this->db->prepare("
-                    UPDATE evaluaciones
-                    SET comentario = ?, instructor_id = ?, fecha_actualizacion = NOW()
-                    WHERE id = ?
-                ");
-                $stmt->execute([$comentario, $user_id, $eval_id]);
-                $this->registrarRetroalimentacionEvaluacion($eval_id, $aprendiz_id_p, $user_id, $concepto, $comentario);
-            }
-        } else {
-            $stmt = $this->db->prepare("
-                INSERT INTO evaluaciones
-                    (resultado_aprendizaje_id, aprendiz_id, instructor_id, ficha_id, concepto, comentario, fecha_evaluacion)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([$ra_id, $aprendiz_id_p, $user_id, $ficha_id_p, $concepto, $comentario, date('Y-m-d')]);
-            $new_eval_id = (int)$this->db->lastInsertId();
-
-            $stmtHist = $this->db->prepare("
-                INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo)
-                VALUES (?, ?, 'pendiente', ?, 'Calificación inicial')
-            ");
-            $stmtHist->execute([$new_eval_id, $user_id, $concepto]);
-            $this->registrarRetroalimentacionEvaluacion($new_eval_id, $aprendiz_id_p, $user_id, $concepto, $comentario);
-        }
-    }
-
     /**
-     * Registra en retroalimentacion el comentario de una evaluación calificada,
-     * para que el aprendiz lo vea junto al resto de su feedback (getMisRetroalimentaciones).
-     * Antes, solo la calificación de evidencias generaba esta fila; calificar
-     * directamente desde seguimiento o evaluaciones dejaba el comentario "atrapado"
-     * en evaluaciones.comentario, sin aparecer en el feedback del aprendiz.
+     * Registra el juicio evaluativo de un RAP para un aprendiz.
+     *
+     * La escritura vive en Core\Services\EvaluacionService, que es la
+     * única puerta a `evaluaciones.concepto`: abre la transacción, bloquea
+     * la fila antes de leer el concepto anterior y garantiza el historial.
+     * Antes esto eran tres INSERT/UPDATE sueltos sin transacción: si fallaba
+     * el del historial, la nota quedaba cambiada sin constancia de quién.
      */
-    private function registrarRetroalimentacionEvaluacion(int $eval_id, int $aprendiz_id, int $instructor_id, string $concepto, string $comentario): void {
-        if (trim($comentario) === '') {
-            return;
-        }
-        $tipo = $concepto === 'A' ? 'fortaleza' : 'aspecto_mejorar';
-        $this->db->prepare("
-            INSERT INTO retroalimentacion (evaluacion_id, aprendiz_id, instructor_id, tipo, contenido)
-            VALUES (?, ?, ?, ?, ?)
-        ")->execute([$eval_id, $aprendiz_id, $instructor_id, $tipo, $comentario]);
+    public function registrarEvaluacion(int $ra_id, int $aprendiz_id_p, int $ficha_id_p, string $concepto, string $comentario, string $motivo, int $user_id): void {
+        $this->evaluacionService->registrar([
+            'resultado_aprendizaje_id' => $ra_id,
+            'aprendiz_id'              => $aprendiz_id_p,
+            'ficha_id'                 => $ficha_id_p,
+            'concepto'                 => $concepto,
+            'comentario'               => $comentario,
+            'motivo'                   => $motivo,
+            'usuario_id'               => $user_id,
+        ]);
     }
 
     public function checkRetroalimentacionPermission(int $aprendiz_id_r, int $user_id): bool {
@@ -234,7 +183,7 @@ class SeguimientoModel {
                            OR
                            (
                                f.instructor_id = ?
-                               AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               AND c.es_etapa_practica = 0
                                AND NOT EXISTS (
                                    SELECT 1 FROM asignaciones asg 
                                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -242,7 +191,7 @@ class SeguimientoModel {
                            )
                            OR
                            (
-                               (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               c.es_etapa_practica = 1
                                AND ap.instructor_seguimiento_id = ?
                            )
                        )
@@ -260,7 +209,7 @@ class SeguimientoModel {
                            OR
                            (
                                f.instructor_id = ?
-                               AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               AND c.es_etapa_practica = 0
                                AND NOT EXISTS (
                                    SELECT 1 FROM asignaciones asg 
                                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -268,7 +217,7 @@ class SeguimientoModel {
                            )
                            OR
                            (
-                               (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               c.es_etapa_practica = 1
                                AND ap.instructor_seguimiento_id = ?
                            )
                        )
@@ -286,7 +235,7 @@ class SeguimientoModel {
                            OR
                            (
                                f.instructor_id = ?
-                               AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               AND c.es_etapa_practica = 0
                                AND NOT EXISTS (
                                    SELECT 1 FROM asignaciones asg 
                                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -294,7 +243,7 @@ class SeguimientoModel {
                            )
                            OR
                            (
-                               (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               c.es_etapa_practica = 1
                                AND ap.instructor_seguimiento_id = ?
                            )
                        )
@@ -312,7 +261,7 @@ class SeguimientoModel {
                            OR
                            (
                                f.instructor_id = ?
-                               AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               AND c.es_etapa_practica = 0
                                AND NOT EXISTS (
                                    SELECT 1 FROM asignaciones asg 
                                    WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id
@@ -320,7 +269,7 @@ class SeguimientoModel {
                            )
                            OR
                            (
-                               (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                               c.es_etapa_practica = 1
                                AND ap.instructor_seguimiento_id = ?
                            )
                        )
@@ -406,7 +355,7 @@ class SeguimientoModel {
                       OR
                       (
                           f.instructor_id = ?
-                          AND NOT (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                          AND c.es_etapa_practica = 0
                           AND NOT EXISTS (
                               SELECT 1 FROM asignaciones asg
                               WHERE asg.ficha_id = f.id
@@ -415,7 +364,7 @@ class SeguimientoModel {
                       )
                       OR
                       (
-                          (c.nombre LIKE '%ETAPA PRÁCTICA%' OR c.nombre LIKE '%ETAPA PRACTICA%')
+                          c.es_etapa_practica = 1
                           AND EXISTS (
                               SELECT 1 FROM aprendices ap
                               WHERE ap.ficha_id = f.id
