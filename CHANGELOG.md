@@ -29,7 +29,7 @@ Reconstruido a partir del historial real del repositorio: **145 commits** entre 
 Cierre del proyecto. Todos los módulos pasan a la misma arquitectura en capas, se completan los requisitos que estaban a medias (RF02, RF04, RF05), se cierra la revisión de seguridad y se documenta el sistema entero.
 
 ```
-594 pruebas · 4.481 comprobaciones · instalación limpia verificada en CI
+595 pruebas · 4.484 comprobaciones · instalación limpia verificada en CI
 111 rutas y acciones con sus roles · 18 migraciones · 11 documentos
 ```
 
@@ -65,6 +65,7 @@ Cada módulo sigue el mismo camino: **ruta con sus roles → controlador (PRG) �
 
 ### Operación
 
+- **Zona horaria.** PHP no la fijaba y usaba la del `php.ini` (Europe/Berlin en XAMPP, UTC en Docker) mientras la base usaba la del servidor: desde las 7 de la noche en Colombia un juicio quedaba fechado al día siguiente y un plan que vencía hoy salía vencido. Ahora PHP y la sesión de la base usan `America/Bogota` (configurable con `APP_TIMEZONE`), con una prueba que compara las dos horas.
 - `bin/crear-coordinador.php`: una instalación sin demostración nacía sin usuarios y sin forma de crear el primero.
 - `docker-compose.yml` montaba un volcado local que no está en el repositorio: en un clon limpio la base quedaba vacía. Ahora usa `database/esquema.sql`, que también entra en la imagen.
 - `bin/generar-docs.php` genera desde el código la matriz de rutas y permisos, el diccionario de datos con su diagrama entidad-relación y los formatos de importación.

@@ -20,7 +20,7 @@ Aplicación web en PHP 8.2 sin framework, con arquitectura en capas sobre un ún
 | Migraciones versionadas | 18 |
 | Destinos del enrutador (pantallas, descargas y acciones) | 111 ([tabla](RUTAS_Y_PERMISOS.md)) |
 | Controladores / servicios / modelos / formularios | 25 / 26 / 22 / 12 |
-| Pruebas automáticas (PHPUnit) | 594, en local y en integración continua |
+| Pruebas automáticas (PHPUnit) | 595, en local y en integración continua |
 
 ### Tecnologías
 
@@ -69,7 +69,7 @@ Antes cada controlador validaba a mano, escribía SQL y decidía permisos en el 
 
 - **Una sola condición de acceso** del instructor (`InstructorAccessService::sqlCondicionAcceso()`), usada por el permiso de calificar y por todos los listados.
 - **Una sola puerta de escritura del juicio** (`EvaluacionService`): transacción, bloqueo de fila, historial en cada cambio y aviso al aprendiz, venga de donde venga (pantalla de juicios, expediente, evidencias, planes, importación).
-- Probar las reglas sin navegador (594 pruebas).
+- Probar las reglas sin navegador (595 pruebas).
 
 ---
 

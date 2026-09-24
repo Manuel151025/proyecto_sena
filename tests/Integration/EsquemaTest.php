@@ -110,6 +110,19 @@ final class EsquemaTest extends CasoConBaseDeDatos {
             'sin modo estricto, la base acepta en silencio lo que no cabe');
     }
 
+    /**
+     * PHP usaba la zona del php.ini (Europe/Berlin en XAMPP, UTC en Docker)
+     * y la base la del servidor: desde las 7 de la noche en Colombia, un
+     * juicio quedaba fechado mañana y un plan que vence hoy salía vencido.
+     */
+    #[TestDox('PHP y la base marcan la misma fecha y hora, en la zona de la aplicación')]
+    public function testMismaHoraQuePhp(): void {
+        $this->assertSame(APP_TIMEZONE, date_default_timezone_get());
+        $base = (string)$this->db->query("SELECT DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')")->fetchColumn();
+        $this->assertLessThan(90, abs(strtotime($base) - time()), "la base dice $base y PHP " . date('Y-m-d H:i:s'));
+        $this->assertSame(date('Y-m-d'), (string)$this->db->query('SELECT CURDATE()')->fetchColumn());
+    }
+
     #[TestDox('la base rechaza un valor fuera del ENUM')]
     public function testBaseRechazaEnumInvalido(): void {
         $this->expectException(\PDOException::class);
