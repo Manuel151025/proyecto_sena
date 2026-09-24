@@ -60,18 +60,36 @@ final class SeguridadTest extends CasoDePrueba {
     }
 
     /**
-     * Documenta una limitación conocida, no un acierto: mientras
-     * `'unsafe-inline'` siga en script-src, la CSP limita de dónde vienen
-     * los scripts pero no protege frente a un XSS incrustado en la página.
-     * Si alguien lo quita, esta prueba falla y hay que actualizar el estado.
+     * Sin `'unsafe-inline'` en script-src, un script inyectado en la página
+     * no se ejecuta. Solo puede volver si alguien reintroduce código en línea.
      */
-    #[TestDox('unsafe-inline sigue presente: limitación conocida y pendiente')]
-    public function testUnsafeInlineSigueSiendoUnaDeuda(): void {
-        $this->assertStringContainsString(
-            "'unsafe-inline'",
-            $this->csp(),
-            'Si se ha eliminado unsafe-inline, actualiza esta prueba y el CHANGELOG: es una mejora real.'
-        );
+    #[TestDox('script-src no admite código en línea')]
+    public function testScriptSrcSinUnsafeInline(): void {
+        preg_match('/script-src ([^;]+)/', $this->csp(), $m);
+        $this->assertStringNotContainsString("'unsafe-inline'", $m[1] ?? '', 'script-src vuelve a admitir código en línea');
+        $this->assertStringNotContainsString("'unsafe-eval'", $m[1] ?? '');
+    }
+
+    /**
+     * La garantía anterior solo vale si ninguna vista trae scripts o
+     * manejadores en línea: si alguien añade uno, la pantalla se rompe en
+     * silencio (la CSP lo bloquea). Esta prueba lo detecta antes.
+     */
+    #[TestDox('ninguna vista trae scripts ni manejadores de eventos en línea')]
+    public function testSinCodigoEnLinea(): void {
+        $raiz = dirname(__DIR__, 3);
+        $archivos = array_merge(glob($raiz . '/modules/*/views/*.php') ?: [], glob($raiz . '/layouts/*.php') ?: [],
+                                glob($raiz . '/components/*.php') ?: [], [$raiz . '/login.php', $raiz . '/recover.php']);
+        $conCodigo = [];
+        foreach ($archivos as $f) {
+            $html = (string)file_get_contents($f);
+            // Los <script type="application/json"> son datos, no código.
+            if (preg_match('/<script(?![^>]*\\bsrc=)(?![^>]*type="application\/json")[^>]*>/i', $html)
+                || preg_match('/\\son(click|change|submit|input|load|error|focus|blur|key\w+|mouse\w+)\\s*=/i', $html)) {
+                $conCodigo[] = str_replace($raiz . '/', '', $f);
+            }
+        }
+        $this->assertSame([], $conCodigo, 'con JavaScript en línea (la CSP lo bloquearía): ' . implode(', ', $conCodigo));
     }
 
     // =================================================================

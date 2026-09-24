@@ -16,12 +16,15 @@ namespace Core\Support;
  * desde jsdelivr y las fuentes desde Google, así que esos orígenes se
  * declaran uno a uno en vez de abrir `*`.
  *
- * `'unsafe-inline'` sigue permitido para scripts y estilos porque las 36
- * vistas llevan `<script>` y `style=` incrustados; quitarlo exige moverlos
- * a archivos o firmarlos con nonce, y romper la interfaz entera de golpe
- * sería peor que la mejora. Queda anotado como el siguiente paso real de
- * endurecimiento: mientras esté, la CSP limita el origen de los scripts
- * pero no protege frente a un XSS incrustado.
+ * script-src ya NO admite `'unsafe-inline'`: todo el JavaScript está en
+ * archivos (assets/js), los manejadores `onclick=` pasaron a atributos
+ * `data-*` que interpreta comportamientos.js y los datos viajan como JSON
+ * en atributos o en <script type="application/json">. Un script inyectado
+ * en la página (XSS) no se ejecuta aunque llegue al HTML.
+ *
+ * style-src sí lo mantiene: las vistas usan atributos `style` para valores
+ * que salen de datos ya validados (el color del avatar, el ancho de una
+ * barra de avance). Un estilo inyectado no ejecuta código.
  */
 final class Seguridad {
     /** Orígenes desde los que la aplicación carga scripts y estilos. */
@@ -94,7 +97,7 @@ final class Seguridad {
         return implode('; ', [
             "default-src 'self'",
             // Ver nota de la cabecera sobre 'unsafe-inline'.
-            "script-src 'self' 'unsafe-inline' {$cdn}",
+            "script-src 'self' {$cdn}",
             "style-src 'self' 'unsafe-inline' {$cdn} {$fCss}",
             "font-src 'self' {$cdn} {$fFiles} data:",
             // data: por los gráficos de Chart.js; blob: por la descarga de

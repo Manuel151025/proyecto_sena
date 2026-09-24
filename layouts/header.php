@@ -2,23 +2,14 @@
 declare(strict_types=1);
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-app-url="<?= e(APP_URL) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle ?? 'SENA') ?></title>
-    <script>
-    // Tema aplicado antes de pintar: app.js se carga en el footer, así que
-    // el modo oscuro llegaba tarde y la página parpadeaba en blanco.
-    // data-bs-theme acompaña a data-theme para que los componentes de
-    // Bootstrap (dropdowns, selects, alertas...) también se oscurezcan.
-    (function () {
-      if (localStorage.getItem('sena-theme') === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        document.documentElement.setAttribute('data-bs-theme', 'dark');
-      }
-    })();
-    </script>
+    <meta name="csrf-token" content="<?= e(getCsrfToken()) ?>">
+    <!-- Tema antes de pintar (síncrono): evita el parpadeo del modo oscuro. -->
+    <script src="<?= APP_URL ?>/assets/js/tema-inicial.js?v=<?= filemtime(BASE_PATH . 'assets/js/tema-inicial.js') ?>"></script>
     <!-- Los recursos de CDN llevan integrity (SRI): si jsdelivr sirviera un
          archivo distinto al esperado, el navegador lo descarta en vez de
          ejecutarlo. Sin esto, un compromiso del CDN se traducia en control
@@ -47,49 +38,5 @@ declare(strict_types=1);
     <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
 </head>
 <body>
-<script>
-(function () {
-  // Recuperar o generar el ID de pestaña persistido en sessionStorage
-  // (sessionStorage es exclusivo de cada pestaña, a diferencia de localStorage)
-  var t = sessionStorage.getItem('sena_tab_id');
-  if (!t) {
-    t = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 6);
-    sessionStorage.setItem('sena_tab_id', t);
-  }
-  window.__tabId = t;
-  window.__csrfToken = '<?= getCsrfToken() ?>';
-
-  // Establecer la cookie inmediatamente (cubre recargas y navegaciones directas)
-  document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
-
-  // JIT antes de cualquier clic en enlace
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest('a[href]');
-    if (a) document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
-  }, true);
-
-  // JIT antes de cualquier envío de formulario + inyectar _tab y csrf_token como hidden
-  document.addEventListener('submit', function (e) {
-    document.cookie = 'sena_tab=' + t + '; path=/; SameSite=Lax';
-    if (!e.target.querySelector('input[name="_tab"]')) {
-      var inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = '_tab'; inp.value = t;
-      e.target.appendChild(inp);
-    }
-    if (e.target.method && e.target.method.toUpperCase() === 'POST' && !e.target.querySelector('input[name="csrf_token"]')) {
-      var csrfInp = document.createElement('input');
-      csrfInp.type = 'hidden'; csrfInp.name = 'csrf_token'; csrfInp.value = window.__csrfToken || '';
-      e.target.appendChild(csrfInp);
-    }
-  }, true);
-
-  // Registro del Service Worker para PWA
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      navigator.serviceWorker.register('<?= APP_URL ?>/sw.js').catch(function (err) {
-        console.error('ServiceWorker registration failed: ', err);
-      });
-    });
-  }
-})();
-</script>
+<!-- Sesión por pestaña y CSRF antes de cualquier formulario. -->
+<script src="<?= APP_URL ?>/assets/js/pestana.js?v=<?= filemtime(BASE_PATH . 'assets/js/pestana.js') ?>"></script>
