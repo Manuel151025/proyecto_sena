@@ -30,16 +30,6 @@ return static function (Router $router): void {
     $GESTION     = [ROL_COORDINADOR, ROL_INSTRUCTOR];
     $COORDINADOR = [ROL_COORDINADOR];
 
-    /**
-     * Registra una ruta para GET y POST a la vez, que es el patrón de casi
-     * todas las pantallas de este sistema (listan y procesan en el mismo
-     * `index()`).
-     */
-    $ambos = static function (string $ruta, string $ctrl, string $accion, array $roles) use ($router): void {
-        $router->add('GET',  $ruta, $ctrl, $accion, $roles);
-        $router->add('POST', $ruta, $ctrl, $accion, $roles);
-    };
-
     // ---------------------------------------------------------------------
     // PANEL
     // ---------------------------------------------------------------------

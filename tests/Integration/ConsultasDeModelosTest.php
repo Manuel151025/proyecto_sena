@@ -235,6 +235,22 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         $this->assertSame(1, $alcance['fichas_activas'] <= 1 ? 1 : 0, 'el aprendiz alcanza más de una ficha');
     }
 
+    /**
+     * Los paneles cuentan el semáforo en SQL y el expediente lo calcula en
+     * PHP: si las dos versiones de la regla divergen, el panel y la ficha
+     * clasifican distinto al mismo aprendiz.
+     */
+    #[TestDox('la regla del semáforo en SQL da lo mismo que en PHP')]
+    public function testSemaforoSqlIgualQuePhp(): void {
+        $casos = [[null, 0], [100.0, 0], [80.0, 0], [79.9, 0], [95.0, 1], [90.0, 2], [90.0, 3], [60.0, 1], [59.9, 1], [0.0, 1]];
+        $st = $this->db->prepare('SELECT ' . \Core\Support\Semaforo::sqlAprendiz('CAST(? AS DECIMAL(6,2))', 'CAST(? AS SIGNED)'));
+        foreach ($casos as [$pct, $enD]) {
+            // Los dos marcadores de la expresión aparecen dos y tres veces.
+            $st->execute([$pct, $pct, $enD, $pct, $enD]);
+            $this->assertSame(\Core\Support\Semaforo::aprendiz($pct, $enD), $st->fetchColumn(), "pct=$pct, D=$enD");
+        }
+    }
+
     // =================================================================
     // REPORTES
     // =================================================================

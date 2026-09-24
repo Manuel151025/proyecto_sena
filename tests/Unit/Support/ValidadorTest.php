@@ -403,4 +403,34 @@ final class ValidadorTest extends CasoDePrueba {
         $_POST = ['n' => '5'];
         $this->assertSame(5, (new Validador())->entero('n', 'N'));
     }
+
+    /**
+     * El color del avatar termina en un atributo style: sin esta regla,
+     * «red;background:url(...)» inyectaba CSS en la página de quien lo viera.
+     */
+    #[DataProvider('coloresInvalidos')]
+    #[TestDox('colorHex() solo acepta #RRGGBB: nada de CSS arbitrario')]
+    public function testColorHexRechazaCss(string $valor): void {
+        $v = new Validador(['c' => $valor]);
+        $this->assertSame('#39A900', $v->colorHex('c', 'El color', '#39A900'));
+        $this->assertNotSame([], $v->errores());
+    }
+
+    public static function coloresInvalidos(): array {
+        return [
+            'declaración extra' => ['#39A900;background:url(//x.y/a.png)'],
+            'nombre de color'   => ['red'],
+            'corto'             => ['#fff'],
+            'no hexadecimal'    => ['#12345G'],
+            'comillas'          => ['#39A900" onmouseover="x'],
+            'expresión'         => ['expression(alert(1))'],
+        ];
+    }
+
+    #[TestDox('colorHex() normaliza a mayúsculas un color válido')]
+    public function testColorHexValido(): void {
+        $v = new Validador(['c' => ' #a1b2c3 ']);
+        $this->assertSame('#A1B2C3', $v->colorHex('c', 'El color', '#000000'));
+        $this->assertSame([], $v->errores());
+    }
 }

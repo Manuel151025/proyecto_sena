@@ -87,3 +87,7 @@ if (opcion('--demo')) {
 
 linea();
 linea('Instalación terminada.');
+if (!opcion('--demo')) {
+    linea('La base no tiene usuarios. Crea la primera cuenta de coordinación con:');
+    linea('  php bin/crear-coordinador.php correo@dominio "NOMBRE COMPLETO"');
+}

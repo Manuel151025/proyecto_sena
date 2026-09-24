@@ -100,6 +100,7 @@ $MENU_CONFIG = [
             'icon' => 'bi bi-mortarboard',
             'items' => [
                 ['title' => 'Mi ficha', 'url' => APP_URL . '/index.php/fichas'],
+                ['title' => 'Mi seguimiento', 'url' => APP_URL . '/index.php/seguimiento'],
                 ['title' => 'Mi proyecto', 'url' => APP_URL . '/index.php/proyectos'],
                 ['title' => 'Actividades', 'url' => APP_URL . '/index.php/actividades'],
             ]

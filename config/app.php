@@ -5,7 +5,7 @@
 
 // Configuración de la aplicación
 define('APP_NAME', 'SENA Seguimiento');
-define('APP_VERSION', '1.0.0');
+define('APP_VERSION', '3.2.0');
 define('APP_URL', getenv('APP_URL') !== false ? getenv('APP_URL') : '/proyecto_sena');
 
 // Dominio de confianza para construir URLs absolutas (ej. enlaces de correo).

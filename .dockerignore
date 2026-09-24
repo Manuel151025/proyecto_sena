@@ -17,6 +17,8 @@
 
 # Datos y volcados locales.
 *.sql
+# El esquema sí: lo necesita bin/instalar.php dentro del contenedor.
+!database/esquema.sql
 uploads/*
 !uploads/.htaccess
 logs/*.log
