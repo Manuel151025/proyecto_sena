@@ -48,6 +48,12 @@ class Database {
                     "SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,"
                     . "ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'"
                 );
+                // La misma hora que PHP para NOW() y CURDATE(): con la zona
+                // del servidor de base de datos (UTC en Docker) un plan
+                // vencía a las 7 de la noche. Se usa el desfase y no el
+                // nombre porque las tablas de zonas de MySQL no suelen estar
+                // cargadas.
+                self::$instance->exec("SET time_zone = '" . date('P') . "'");
             } catch (PDOException $e) {
                 // El mensaje de PDO lleva host, usuario y nombre de base de
                 // datos: se registra, pero no se enseña.

@@ -91,7 +91,7 @@ final class ImportadorJuicios extends Importador {
         return ['tipo_documento' => 'CC', 'numero_documento' => '1117500123', 'nombre' => 'LAURA CAMILA', 'apellidos' => 'VARGAS RUIZ',
                 'estado' => 'EN FORMACION', 'competencia' => '220501046 - Utilizar herramientas informáticas',
                 'resultado' => '220501046 - 01 Configurar el equipo según el manual', 'juicio' => 'APROBADO',
-                'fecha' => date('d/m/Y'), 'funcionario' => ''];
+                'fecha' => '15/03/2026', 'funcionario' => ''];
     }
 
     public function instrucciones(): array {

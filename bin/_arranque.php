@@ -53,5 +53,6 @@ function conexion(bool $conBase = true): PDO {
         abortar('No se pudo conectar a MySQL/MariaDB en ' . DB_HOST . ': ' . $e->getMessage());
     }
     $pdo->exec("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+    $pdo->exec("SET time_zone = '" . date('P') . "'");
     return $pdo;
 }

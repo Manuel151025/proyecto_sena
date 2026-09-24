@@ -14,6 +14,18 @@ define('APP_URL', getenv('APP_URL') !== false ? getenv('APP_URL') : '/proyecto_s
 // definirse APP_HOST en .env para no confiar en un header controlado por el cliente.
 define('APP_HOST', getenv('APP_HOST') !== false ? getenv('APP_HOST') : ($_SERVER['HTTP_HOST'] ?? 'localhost'));
 
+// Zona horaria. Sin fijarla, PHP usaba la del php.ini (Europe/Berlin en
+// XAMPP, UTC en la imagen Docker): desde las 7 de la noche en Colombia, la
+// fecha de un juicio o el vencimiento de un plan salían con el día
+// siguiente, mientras la base (CURDATE) seguía en el de hoy.
+$zonaHoraria = getenv('APP_TIMEZONE') !== false && getenv('APP_TIMEZONE') !== '' ? (string)getenv('APP_TIMEZONE') : 'America/Bogota';
+if (!in_array($zonaHoraria, timezone_identifiers_list(), true)) {
+    $zonaHoraria = 'America/Bogota';
+}
+date_default_timezone_set($zonaHoraria);
+define('APP_TIMEZONE', $zonaHoraria);
+unset($zonaHoraria);
+
 // Rutas base
 define('BASE_PATH', dirname(__DIR__) . '/');
 define('ASSETS_PATH', APP_URL . '/assets');

@@ -108,7 +108,7 @@ Ruta: `/evaluaciones/importar` · Quién: Instructor y coordinación · Máximo 
 | `fecha` | Fecha del juicio — DD/MM/AAAA | no | `fecha_juicio` |
 | `funcionario` | Funcionario que registró | no | `instructor` |
 
-**Ejemplo:** tipo_documento=`CC` · numero_documento=`1117500123` · nombre=`LAURA CAMILA` · apellidos=`VARGAS RUIZ` · estado=`EN FORMACION` · competencia=`220501046 - Utilizar herramientas informáticas` · resultado=`220501046 - 01 Configurar el equipo según el manual` · juicio=`APROBADO` · fecha=`24/09/2026` · funcionario=``
+**Ejemplo:** tipo_documento=`CC` · numero_documento=`1117500123` · nombre=`LAURA CAMILA` · apellidos=`VARGAS RUIZ` · estado=`EN FORMACION` · competencia=`220501046 - Utilizar herramientas informáticas` · resultado=`220501046 - 01 Configurar el equipo según el manual` · juicio=`APROBADO` · fecha=`15/03/2026` · funcionario=``
 
 **Reglas:**
 

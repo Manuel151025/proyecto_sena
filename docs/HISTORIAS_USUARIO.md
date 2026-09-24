@@ -473,7 +473,7 @@ Sprint 4 · Media · ✅
 ### HU-47 · Pruebas automáticas
 > **Como** equipo de desarrollo **quiero** que cada cambio se pruebe solo **para** no romper lo que funciona.
 
-1. 594 pruebas (unitarias, de integración y de seguridad) en cada envío al repositorio, sobre una instalación limpia ([PRUEBAS.md](PRUEBAS.md)).
+1. 595 pruebas (unitarias, de integración y de seguridad) en cada envío al repositorio, sobre una instalación limpia ([PRUEBAS.md](PRUEBAS.md)).
 
 Sprint 4 · Media · ✅
 

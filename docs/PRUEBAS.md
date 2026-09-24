@@ -12,8 +12,8 @@ Cómo se verifica el sistema: pruebas automáticas, integración continua y reco
 |---|---:|---:|---|
 | Unitarias (`tests/Unit`) | 232 | 831 | No |
 | Seguridad (`tests/Security`) | 190 | 1.992 | Algunas |
-| Integración (`tests/Integration`) | 172 | 1.658 | Sí |
-| **Total** | **594** | **4.481** | |
+| Integración (`tests/Integration`) | 173 | 1.661 | Sí |
+| **Total** | **595** | **4.484** | |
 
 ```bash
 composer test                 # todas
@@ -60,7 +60,7 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 
 | Clase | Casos | Qué garantiza |
 |---|---:|---|
-| `EsquemaTest` | 38 | Modo estricto, llaves foráneas, índices, únicos, trazabilidad completa de los juicios |
+| `EsquemaTest` | 39 | Modo estricto, misma hora en PHP y en la base, llaves foráneas, índices, únicos, trazabilidad completa de los juicios |
 | `EvaluacionServiceTest` | 24 | Única puerta de escritura del juicio: historial solo si cambia, transacción, bloqueo de fila, motivo obligatorio |
 | `ModelosRestantesTest` | 19 | Consultas de todos los modelos en los tres roles; conteos que cuadran |
 | `GestionAcademicaTest` | 17 | Reglas de fichas, matrículas, traslados, asignaciones y cuentas de coordinación |
@@ -81,7 +81,8 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 3. Comprobación de sintaxis de todo el PHP.
 4. **Instalación desde cero** con `bin/instalar.php --confirmar-borrado-total --demo`: prueba que el esquema y las 18 migraciones producen una base válida.
 5. `bin/verificar-esquema.php`: sin migraciones pendientes y enums del código iguales a los de la base.
-6. Las tres suites. Si una falla, sus casos se publican como anotaciones del commit (`bin/anotar-junit.php`).
+6. `bin/generar-docs.php` y comparación con lo versionado: falla si alguien cambió rutas, tablas o importaciones sin regenerar la documentación.
+7. Las tres suites. Si una falla, sus casos se publican como anotaciones del commit (`bin/anotar-junit.php`).
 
 ## 4. Pruebas en navegador
 
@@ -105,7 +106,7 @@ DB_NAME=sena_verificacion php bin/verificar-esquema.php
 DB_NAME=sena_verificacion vendor/bin/phpunit
 ```
 
-Las 594 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
+Las 595 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
 
 ## 6. Cómo añadir una prueba
 

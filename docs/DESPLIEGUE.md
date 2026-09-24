@@ -25,6 +25,7 @@ Se leen del archivo `.env` en la raíz (copiar de `.env.example`) o del entorno 
 | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` | Sí | Conexión a la base. |
 | `DEV_MODE` | Sí | **`false` en producción.** En `true` muestra la causa técnica de los errores y el enlace de recuperación en pantalla. |
 | `APP_URL` | Según el caso | Carpeta desde la que se sirve, sin barra final (`/proyecto_sena` en XAMPP). Vacía si se sirve desde la raíz del dominio (Docker). |
+| `APP_TIMEZONE` | No | Zona horaria de la aplicación y de la sesión de la base; por defecto `America/Bogota`. Define la fecha de los juicios y cuándo vence un plan. |
 | `APP_HOST` | Sí en producción | Dominio real (sin `https://`). Los enlaces de los correos se construyen con él y no con la cabecera `Host`, que controla el cliente. |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION` | Para enviar correo | SMTP. Gmail: `smtp.gmail.com`, `587`, `tls`. |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | Para enviar correo | Con Gmail, una **contraseña de aplicación** (exige verificación en dos pasos). Si están vacías, no se envía nada y el motivo queda en `logs/mail.log`. |

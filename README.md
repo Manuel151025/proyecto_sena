@@ -5,7 +5,7 @@ Plataforma web para planear, evaluar y hacer seguimiento a los proyectos formati
 ![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB-10.4-003545?logo=mariadb&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)
-![Pruebas](https://img.shields.io/badge/pruebas-594-39A900)
+![Pruebas](https://img.shields.io/badge/pruebas-595-39A900)
 ![Versión](https://img.shields.io/badge/versión-3.2-39A900)
 
 ---
@@ -46,7 +46,7 @@ El seguimiento se llevaba en hojas de cálculo de cada instructor y en los repor
 | [Seguridad](docs/SEGURIDAD.md) | Revisión OWASP: 36 hallazgos corregidos, controles por capa, límites de entrada y salida, riesgos residuales |
 | [Manual de usuario](docs/MANUAL_USUARIO.md) | Uso paso a paso para aprendiz, instructor y coordinador |
 | [Despliegue](docs/DESPLIEGUE.md) | Instalación (Apache y Docker), variables de entorno, actualización, copias de seguridad |
-| [Pruebas](docs/PRUEBAS.md) | 594 pruebas automáticas, integración continua y recorridos en navegador |
+| [Pruebas](docs/PRUEBAS.md) | 595 pruebas automáticas, integración continua y recorridos en navegador |
 | [Datos](docs/DATOS.md) · [Rutas y permisos](docs/RUTAS_Y_PERMISOS.md) · [Formatos de importación](docs/FORMATOS_IMPORTACION.md) | Generados desde el código con `php bin/generar-docs.php` |
 | [Historial de versiones](CHANGELOG.md) | Qué cambió en cada versión y por qué |
 
@@ -88,7 +88,7 @@ Detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 |---|---|---|---|
 | **111** rutas y acciones | **25** controladores | **22** modelos | **26** servicios |
 | **12** formularios | **5** importaciones | **22** tablas | **18** migraciones |
-| **27** vistas | **594** pruebas | **≈24.700** líneas de PHP | **≈1.800** líneas de JS |
+| **27** vistas | **595** pruebas | **≈24.700** líneas de PHP | **≈1.800** líneas de JS |
 
 ---
 
@@ -162,7 +162,7 @@ Para producción (sin demostración, primera cuenta, Docker, HTTPS, copias de se
 | `php bin/verificar-esquema.php` | Comprobar que la base coincide con el código |
 | `php bin/volcar-esquema.php` | Regenerar `database/esquema.sql` tras una migración |
 | `php bin/generar-docs.php` | Regenerar rutas, diccionario de datos y formatos de importación |
-| `composer test` | Las 594 pruebas |
+| `composer test` | Las 595 pruebas |
 
 ---
 
