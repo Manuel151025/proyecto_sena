@@ -2,10 +2,11 @@
 
 **Sistema de Seguimiento de Proyectos Formativos — SENA**
 
-Reconstruido a partir del historial real del repositorio: **121 commits** entre el 19 de mayo y el 11 de agosto de 2026. Las versiones agrupan el trabajo por objetivo, no por fecha arbitraria.
+Reconstruido a partir del historial real del repositorio: **145 commits** entre el 19 de mayo y el 23 de septiembre de 2026. Las versiones agrupan el trabajo por objetivo, no por fecha arbitraria.
 
 | Versión | Fecha | Commits | Objetivo |
 |---|---|---:|---|
+| [v3.2](#v32) | 23 sep 2026 | 17 | Cierre: módulos por capas, analítica por rol, seguridad OWASP y documentación completa |
 | [v3.1](#v31) | 23 sep 2026 | 1 | Suite de pruebas: 492 casos unitarios, de seguridad e integración |
 | [v3.0](#v30) | 23 sep 2026 | 1 | Endurecimiento: entrada, errores, permisos y arquitectura |
 | [v2.2](#v22) | 22 sep 2026 | 1 | Exportación real a PDF (RNF03) |
@@ -18,6 +19,59 @@ Reconstruido a partir del historial real del repositorio: **121 commits** entre 
 | [v0.3](#v03) | 18–22 jun 2026 | 46 | Despliegue, PWA y rediseño |
 | [v0.2](#v02) | 2–3 jun 2026 | 13 | Enrutador, roles y calendario |
 | [v0.1](#v01) | 19–27 may 2026 | 5 | Arranque del proyecto |
+
+---
+
+## v3.2
+
+**23 de septiembre de 2026 · 17 commits**
+
+Cierre del proyecto. Todos los módulos pasan a la misma arquitectura en capas, se completan los requisitos que estaban a medias (RF02, RF04, RF05), se cierra la revisión de seguridad y se documenta el sistema entero.
+
+```
+594 pruebas · 4.481 comprobaciones · instalación limpia verificada en CI
+111 rutas y acciones con sus roles · 18 migraciones · 11 documentos
+```
+
+### Arquitectura: un solo patrón en todos los módulos
+
+Cada módulo sigue el mismo camino: **ruta con sus roles → controlador (PRG) → formulario (validación) → servicio (reglas y permiso por dato, con el `Actor`) → modelo (SQL acotado por rol)**. Antes convivían tres estilos: controladores con SQL, vistas que respondían por AJAX y reglas repetidas con criterios distintos.
+
+- **Esquema versionado** (`c0776ac`). Había tres fuentes del esquema que no coincidían y dos no estaban en el repositorio. Ahora `database/esquema.sql` más 18 migraciones idempotentes registradas en la tabla `migraciones`; `bin/instalar.php`, `bin/migrar.php`, `bin/verificar-esquema.php`, y una semilla de demostración que da datos a todas las tablas.
+- **Importación común en dos pasos** (`581e7c8`). Usuarios, matrículas, competencias, RAP y juicios de Sofia Plus: CSV, XLSX y XLS con detección de codificación y separador, límites de tamaño, filas, columnas y descompresión, vista previa fila por fila en el servidor y confirmación aparte. Se retiró SheetJS 0.18.5 (vulnerable) del navegador.
+- **Exportación común.** `.xlsx` real (antes HTML con extensión `.xls`), CSV con BOM y `;`, neutralización de fórmulas, tope de 20.000 filas.
+- **Una sola regla de responsabilidad** para quién califica: asignación de la competencia, seguimiento de etapa práctica o líder de la ficha. Asignar, reasignar o cambiar de líder mueve las evaluaciones pendientes.
+- Se eliminaron el código muerto y las copias: `EvaluacionController`, `JuiciosImportService`, tres modelos de panel, `includes/SimpleXLS.php` y su script de PowerShell, y el JavaScript de los paneles antiguos.
+
+### Requisitos completados
+
+| Requisito | Antes | Ahora |
+|---|---|---|
+| RF02 Proyecto formativo | Actividades sueltas por ficha | Actividades por fase; avance de fase y proyecto calculado (`f89f59d`) |
+| RF03 Evaluación | El importador leía «NO APROBADO» como A y «POR EVALUAR» borraba juicios; «rechazar» una evidencia devolvía el RAP a pendiente | Conceptos correctos, juicio y revisión separados, evidencias ligadas a un RAP propio (`e27acd5`, `f23d64a`) |
+| RF04 Progreso | Paneles con contadores desviados y tendencias escritas a mano | Paneles por rol calculados al leer; expediente del aprendiz; planes de mejoramiento con estados, plazo y cierre que actualiza el juicio (`981bd84`, `1f30569`, `1a636f3`) |
+| RF05 Reportes | Cuatro reportes con definiciones propias | Seis reportes definidos una vez y entregados en Excel, CSV y PDF (`b5dee1d`) |
+| RNF02 Trazabilidad | — | Historial visible en cada juicio; bitácora con filtros y exportación (`cd411c8`) |
+
+### Seguridad
+
+36 hallazgos corregidos (detalle en `docs/SEGURIDAD.md`). Los más graves de esta versión:
+
+- **`.env`, `.git/` y el volcado SQL se descargaban por web**, y las migraciones se ejecutaban por URL (`46c4e51`). En Docker, Apache ignoraba todos los `.htaccess`.
+- **`uploads/` era público**: evidencias y copias de importaciones con listados de aprendices se descargaban conociendo el nombre (`e27acd5`). Ahora cerrado, con descarga por controlador que comprueba el permiso.
+- **XSS almacenado** en el calendario y en la campana de avisos (`46c4e51`, `cd411c8`).
+- **CSP sin `'unsafe-inline'`** en `script-src`: todo el JavaScript pasa a archivos y los comportamientos a atributos `data-*` (`9c971a3`).
+- SRI en todos los recursos de CDN (las páginas públicas cargaban los iconos sin él).
+
+### Operación
+
+- `bin/crear-coordinador.php`: una instalación sin demostración nacía sin usuarios y sin forma de crear el primero.
+- `docker-compose.yml` montaba un volcado local que no está en el repositorio: en un clon limpio la base quedaba vacía. Ahora usa `database/esquema.sql`, que también entra en la imagen.
+- `bin/generar-docs.php` genera desde el código la matriz de rutas y permisos, el diccionario de datos con su diagrama entidad-relación y los formatos de importación.
+
+### Documentación
+
+Historias de usuario v3 (47, con trazabilidad a RF/RNF), arquitectura, 17 flujos, analítica por rol, seguridad, manual de usuario por rol, despliegue, pruebas, y los tres documentos generados.
 
 ---
 

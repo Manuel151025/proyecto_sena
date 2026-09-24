@@ -1,32 +1,37 @@
 # Sistema de Seguimiento de Proyectos Formativos — SENA
 
-Plataforma web para la gestión, evaluación y seguimiento de proyectos formativos del Servicio Nacional de Aprendizaje. Centraliza la estructura curricular, la matrícula, el juicio evaluativo y la nivelación académica en una sola herramienta con control de acceso por rol y trazabilidad completa.
+Plataforma web para planear, evaluar y hacer seguimiento a los proyectos formativos de las fichas del **Centro Tecnológico de la Amazonia**. Reúne la estructura curricular, las fichas y matrículas, el proyecto formativo con sus fases y actividades, el juicio evaluativo por resultado de aprendizaje con su historial, las evidencias, los planes de mejoramiento y la analítica por rol, con permisos por rol y por dato y bitácora de auditoría.
 
 ![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB-10.4-003545?logo=mariadb&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)
-![Estado](https://img.shields.io/badge/estado-en%20producción-39A900)
+![Pruebas](https://img.shields.io/badge/pruebas-594-39A900)
+![Versión](https://img.shields.io/badge/versión-3.2-39A900)
 
 ---
 
 ## El problema
 
-El seguimiento de proyectos formativos se llevaba en hojas de cálculo repartidas entre instructores. Eso producía tres problemas concretos:
+El seguimiento se llevaba en hojas de cálculo de cada instructor y en los reportes de Sofia Plus:
 
-- **Sin fuente única de verdad.** El juicio evaluativo de un aprendiz vivía en el archivo de su instructor, así que la coordinación no podía conocer el cumplimiento real de una ficha sin pedir los archivos uno a uno.
-- **Sin trazabilidad.** Cambiar una nota no dejaba constancia de quién la cambió, cuándo ni por qué.
-- **Nivelación manual.** Detectar qué aprendices tenían un resultado de aprendizaje en «D» y requerían plan de mejoramiento exigía revisar cada archivo a mano.
+- **Sin fuente única.** La coordinación no conocía el avance real de una ficha sin pedir los archivos uno a uno.
+- **Sin trazabilidad.** Cambiar un juicio no dejaba constancia de quién, cuándo ni por qué.
+- **Nivelación manual.** Detectar RAP en «D» y dar seguimiento a su plan dependía de revisar cada archivo.
+- **Proyecto desconectado.** Las fases y actividades del proyecto formativo no estaban ligadas al avance de la ficha.
 
 ## La solución
 
-| | |
+| Requisito | Qué hace el sistema |
 |---|---|
-| **Estructura curricular** | Programas, competencias y resultados de aprendizaje (RAP), importables desde el PDF institucional |
-| **Gestión académica** | Fichas, matrículas y asignación de instructores por competencia |
-| **Evaluación** | Juicio evaluativo A/D por RAP, con historial auditable de cada modificación |
-| **Nivelación** | Detección automática de RAP en «D» y formato imprimible del plan de mejoramiento |
-| **Seguimiento** | Indicadores por rol, alertas Crítico/Riesgo/Al Día y cuatro reportes exportables |
-| **Trazabilidad** | Bitácora de auditoría de todas las operaciones |
+| **RF01** Estructura curricular | Programas, competencias y RAP; importación desde el PDF del programa o desde hoja de cálculo |
+| **RF02** Proyecto formativo | Proyectos por programa, fases con fechas, actividades por ficha y fase, avance calculado |
+| **RF03** Evaluación | Juicio A / D / pendiente por RAP; importación del reporte de Sofia Plus en dos pasos; evidencias ligadas al RAP |
+| **RF04** Progreso | Paneles por rol con semáforo de riesgo; expediente de cada aprendiz; planes de mejoramiento con plazo y cierre |
+| **RF05** Reportes | Por ficha, instructor, competencia, aprendices en riesgo e historial de cambios |
+| **RNF01** Roles | Coordinador, instructor y aprendiz; permisos por ruta y por dato |
+| **RNF02** Trazabilidad | Historial de cada cambio de juicio y bitácora de todas las operaciones |
+| **RNF03** Exportación | Excel (.xlsx real), CSV y PDF |
+| Móvil | Todas las pantallas usables a 390 px; instalable como aplicación; modo oscuro |
 
 ---
 
@@ -34,50 +39,56 @@ El seguimiento de proyectos formativos se llevaba en hojas de cálculo repartida
 
 | Documento | Contenido |
 |---|---|
-| **[docs/HISTORIAS_USUARIO.md](docs/HISTORIAS_USUARIO.md)** | 34 historias de usuario con criterios de aceptación y trazabilidad al código |
-| **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** | Diagramas de componentes, modelo entidad-relación, casos de uso y flujo de evaluación |
-
----
-
-## Stack tecnológico
-
-**Backend** — PHP 8.2 con tipado estricto, orientado a objetos y sin framework. Autocarga PSR-4 mediante Composer.
-**Base de datos** — MariaDB 10.4, acceso exclusivo por PDO con consultas preparadas.
-**Frontend** — Bootstrap 5.3 como base de grilla, sistema de diseño propio en `theme.css` (tokens CSS con modo claro/oscuro), JavaScript ES6 sin framework, Chart.js para gráficas.
-**Dependencias** — PHPMailer (SMTP) y SimpleXLS (lectura de Excel).
-
-### Cifras
-
-| | | | |
-|---|---|---|---|
-| **22** módulos | **23** controladores | **23** modelos | **6** servicios |
-| **36** vistas | **69** rutas | **18** tablas | **≈24.300** líneas de PHP |
+| [Historias de usuario](docs/HISTORIAS_USUARIO.md) | 47 historias en 12 épicas con criterios de aceptación y trazabilidad a RF/RNF y al código |
+| [Arquitectura](docs/ARQUITECTURA.md) | Capas, secuencia de una petición, control de acceso, dominio, decisiones de diseño |
+| [Flujos](docs/FLUJOS.md) | 17 diagramas de flujo y de estados: acceso, evaluación, importación, evidencias, planes, avisos… |
+| [Analítica](docs/ANALITICA.md) | Indicadores de cada rol, fórmulas, semáforo y catálogo de reportes |
+| [Seguridad](docs/SEGURIDAD.md) | Revisión OWASP: 36 hallazgos corregidos, controles por capa, límites de entrada y salida, riesgos residuales |
+| [Manual de usuario](docs/MANUAL_USUARIO.md) | Uso paso a paso para aprendiz, instructor y coordinador |
+| [Despliegue](docs/DESPLIEGUE.md) | Instalación (Apache y Docker), variables de entorno, actualización, copias de seguridad |
+| [Pruebas](docs/PRUEBAS.md) | 594 pruebas automáticas, integración continua y recorridos en navegador |
+| [Datos](docs/DATOS.md) · [Rutas y permisos](docs/RUTAS_Y_PERMISOS.md) · [Formatos de importación](docs/FORMATOS_IMPORTACION.md) | Generados desde el código con `php bin/generar-docs.php` |
+| [Historial de versiones](CHANGELOG.md) | Qué cambió en cada versión y por qué |
 
 ---
 
 ## Arquitectura
 
-Aplicación monolítica con separación estricta en capas y **punto de entrada único**: todas las peticiones pasan por `index.php`, que enruta, valida CSRF y delega.
+Monolito PHP sin framework, en capas, con **punto de entrada único**:
 
-```
+```text
 Navegador
-   ↓
-index.php  →  Core\Router  →  requireCsrf() en todo POST
-                                    ↓
-                            Controlador (exige rol)
-                                ↓        ↓
-                         Servicios    Modelos  →  PDO  →  MariaDB
-                                ↓
-                            Vista + layout
+   │
+index.php ── sesión por pestaña, CSRF en todo POST
+   │
+Router ───── config/rutas.php: cada ruta declara qué roles la alcanzan
+   │
+Controlador ── orquesta y responde (PRG); no contiene reglas ni SQL
+   │
+Formulario ─── Validador: tipos, rangos y listas blancas
+   │
+Servicio ───── reglas de negocio y permiso por dato (recibe el Actor)
+   │
+Modelo ─────── SQL preparado, acotado por rol en el WHERE
+   │
+MariaDB (modo estricto)
 ```
 
-Los principios que la sostienen:
+Principios:
 
-1. **El controlador orquesta, el modelo sabe de datos.** Ningún SQL vive en una vista.
-2. **La regla que se repite se extrae a un servicio.** Cuando una misma regla apareció en dos sitios con criterios distintos, se unificó en una sola implementación.
-3. **La autorización se comprueba en el servidor, siempre.** Ocultar un enlace del menú no es una medida de seguridad: cada controlador exige el rol y comprueba la propiedad del recurso.
+1. **Cada regla en un solo sitio.** Quién califica (`InstructorAccessService`), cómo se escribe un juicio (`EvaluacionService`), cómo se clasifica el riesgo (`Semaforo`), cómo se importa (`Importador`) y cómo se exporta (`Exportador`).
+2. **Las cifras se calculan al leer.** Nada de contadores guardados que se desvían.
+3. **La autorización se comprueba en el servidor, dos veces:** por rol en la ruta y por dato en el servicio y la consulta.
 
-Detalle completo, con diagramas, en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
+Detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+
+### Cifras
+
+| | | | |
+|---|---|---|---|
+| **111** rutas y acciones | **25** controladores | **22** modelos | **26** servicios |
+| **12** formularios | **5** importaciones | **22** tablas | **18** migraciones |
+| **27** vistas | **594** pruebas | **≈24.700** líneas de PHP | **≈1.800** líneas de JS |
 
 ---
 
@@ -85,78 +96,73 @@ Detalle completo, con diagramas, en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.m
 
 | Módulo | Coordinador | Instructor | Aprendiz |
 |---|:---:|:---:|:---:|
-| Panel de indicadores | ✅ | ✅ | ✅ |
-| Calendario académico | ✅ | ✅ | ✅ |
+| Panel de indicadores | Centro | Sus fichas y su carga | Su progreso |
+| Calendario | ✅ | Sus fichas | Su ficha |
 | Usuarios | ✅ | — | — |
-| Estructura curricular | ✅ | — | — |
-| Fichas de formación | ✅ | Solo las propias | Solo la suya |
-| Matrículas | ✅ | Solo sus aprendices | — |
-| Asignar instructores | ✅ | — | — |
-| Proyectos y fases | ✅ | ✅ | Solo el suyo |
-| Actividades | ✅ | ✅ | ✅ |
-| Seguimiento | ✅ | Solo sus fichas | — |
-| Evaluaciones | ✅ | Según asignación | Solo las suyas |
-| Evidencias | ✅ | ✅ | Solo las suyas |
-| Retroalimentación | ✅ | ✅ | Solo la suya |
-| Plan de mejoramiento | ✅ | ✅ | Solo el suyo |
-| Reportes | ✅ | Solo su alcance | — |
-| Configuración | ✅ | — | — |
-| Auditoría | ✅ | — | — |
+| Estructura curricular | ✅ | Consulta | — |
+| Fichas | ✅ | Sus fichas | La suya |
+| Matrículas | ✅ | Consulta | — |
+| Asignación de instructores | ✅ | Consulta | — |
+| Proyectos, fases y actividades | ✅ | ✅ en sus fichas | Consulta |
+| Seguimiento (expediente) | ✅ | Sus aprendices | El suyo |
+| Evaluaciones | ✅ | Lo que califica | Las suyas |
+| Evidencias | ✅ | Revisa las de sus aprendices | Envía las suyas |
+| Retroalimentación | ✅ | ✅ | La pública suya |
+| Plan de mejoramiento | ✅ | ✅ | Los suyos |
+| Reportes | Centro | Lo que califica | — |
+| Configuración y bitácora | ✅ | — | — |
 
-El alcance del instructor no es una simple comprobación de rol: se resuelve en `InstructorAccessService`, que centraliza la regla considerando tres vías (asignación por competencia, ficha propia y seguimiento de etapa práctica).
+Matriz completa, ruta por ruta, en [docs/RUTAS_Y_PERMISOS.md](docs/RUTAS_Y_PERMISOS.md).
 
 ---
 
 ## Seguridad
 
+Revisión completa contra el OWASP Top 10 con **36 hallazgos corregidos** (3 críticos: `.env` y `.git` descargables por web, `.htaccess` ignorados en Docker, instalador con `DROP DATABASE` accesible por URL). Controles vigentes:
+
 | Control | Implementación |
 |---|---|
-| Contraseñas | `bcrypt` vía `password_hash()` |
-| Sesión | Regeneración de identificador y limpieza en cada acceso |
-| CSRF | Obligatorio en el enrutador para todo `POST`, con token por pestaña |
-| Inyección SQL | Consultas preparadas en el 100 % de los accesos |
-| XSS | Escape en la salida y lista blanca de caracteres en importaciones |
-| Autorización | Rol exigido en el constructor del controlador más comprobación de propiedad |
-| Subida de archivos | Tipo real validado con `finfo`, nombre aleatorio y `.htaccess` que impide ejecución |
-| Recuperación de acceso | Token de un solo uso, 30 min de vigencia, guardado como *hash* |
-| Borrado | Lógico, preservando historial y auditoría |
-| Trazabilidad | Bitácora de operaciones e historial de cambios de juicio |
+| Inyección SQL | Sentencias preparadas en todas las consultas; identificadores dinámicos por lista blanca |
+| XSS | Escape en toda salida; CSP sin `'unsafe-inline'` en scripts; JavaScript sin `innerHTML` con datos |
+| CSRF | Token en todo POST, comparación en tiempo constante |
+| Acceso | Roles por ruta, permiso por dato en servicio y consulta |
+| Sesión | Por pestaña, `HttpOnly`, `SameSite`, caducidad por inactividad (2 h) y absoluta (12 h) |
+| Contraseñas | bcrypt, política única, clave temporal obligatoria de cambiar, bloqueo tras intentos fallidos |
+| Archivos | Extensión, tamaño, firma y MIME real; fuera de la web; descarga con permiso |
+| Importación / exportación | Límites de tamaño, filas, columnas y descompresión; neutralización de fórmulas |
+| Auditoría | Bitácora de accesos, fallos, denegaciones y operaciones |
 
-Las brechas conocidas se declaran de forma explícita en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md#brechas-conocidas), sin darlas por resueltas.
+Informe completo y acciones pendientes del responsable en [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 
 ---
 
-## Instalación
+## Instalación rápida
 
-### Requisitos
-
-- PHP ≥ 8.1 con `pdo_mysql`, `finfo`, `mbstring` y `openssl`
-- MariaDB ≥ 10.4 o MySQL ≥ 5.7
-- Apache con `AllowOverride All` (necesario para que los `.htaccess` de `uploads/` y `logs/` surtan efecto)
-- Composer
-
-### Pasos
+Requisitos: PHP 8.2 (`pdo_mysql`, `mbstring`, `zip`, `dom`, `fileinfo`), MariaDB 10.4+ o MySQL 8, Apache con `AllowOverride All`, Composer.
 
 ```bash
 git clone https://github.com/Manuel151025/proyecto_sena.git
 cd proyecto_sena
 composer install
-
-# Base de datos
-mysql -u root -p -e "CREATE DATABASE sena_seguimiento CHARACTER SET utf8mb4"
-mysql -u root -p sena_seguimiento < sena_seguimiento.sql
-
-# Configuración
-cp .env.example .env      # editar credenciales y APP_HOST
-
-# Migraciones (no se ejecutan solas)
-php migrations/add_password_change_required.php
-php migrations/fix_cascade_to_restrict.php
-php migrations/add_unique_codigos.php
-php migrations/backfill_evaluaciones_pendientes.php
+cp .env.example .env                                    # credenciales, DEV_MODE, APP_URL, APP_HOST
+php bin/instalar.php --confirmar-borrado-total --demo   # base nueva con datos de demostración
 ```
 
-> **Importante.** El despliegue automático actualiza el código, **no la base de datos**. Las migraciones se ejecutan a mano. `backfill_evaluaciones_pendientes.php` admite `--dry-run` para comprobar antes de aplicar.
+Cuentas de demostración (contraseña `Demo2026*`): `coordinador@sena.edu.co`, `instructor@sena.edu.co`, `aprendiz@sena.edu.co`.
+
+Para producción (sin demostración, primera cuenta, Docker, HTTPS, copias de seguridad) ver **[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)**.
+
+### Comandos
+
+| Comando | Para qué |
+|---|---|
+| `php bin/instalar.php --confirmar-borrado-total [--demo]` | Base nueva desde el esquema (borra la existente) |
+| `php bin/migrar.php [--estado]` | Aplicar migraciones pendientes tras actualizar |
+| `php bin/crear-coordinador.php correo "NOMBRE"` | Primera cuenta de coordinación (o recuperar el acceso) |
+| `php bin/verificar-esquema.php` | Comprobar que la base coincide con el código |
+| `php bin/volcar-esquema.php` | Regenerar `database/esquema.sql` tras una migración |
+| `php bin/generar-docs.php` | Regenerar rutas, diccionario de datos y formatos de importación |
+| `composer test` | Las 594 pruebas |
 
 ---
 
@@ -164,55 +170,45 @@ php migrations/backfill_evaluaciones_pendientes.php
 
 ```text
 proyecto_sena/
-├── index.php              Punto de entrada único: bootstrap + 69 rutas
-├── login.php              Acceso
-├── recover.php            Recuperación de contraseña
-│
-├── core/                  Núcleo (PSR-4: Core\)
-│   ├── Router.php         Resuelve ruta, exige CSRF, delega
-│   ├── Database.php       Singleton PDO
-│   ├── Controllers/       23 controladores
-│   ├── Models/            23 modelos
-│   ├── Services/          6 servicios de dominio
-│   └── Interfaces/        Contratos de repositorio
-│
-├── config/                app.php · navigation.php (menú por rol)
-├── includes/              config · session · auth · functions
-├── modules/               22 módulos (stub de redirección + vistas)
-├── layouts/               header · app · footer
-├── components/            sidebar · navbar · paginacion · modales
-├── assets/                css (theme.css) · js · img
-├── migrations/            8 migraciones versionadas
-├── uploads/               Evidencias (ejecución bloqueada)
-└── docs/                  Documentación del proyecto
+├── index.php            Punto de entrada único
+├── login.php · recover.php
+├── config/              app, database, navigation, rutas (matriz de accesos)
+├── core/                Núcleo (PSR-4 Core\)
+│   ├── Router.php · BaseController.php · Database.php
+│   ├── Controllers/     25 controladores
+│   ├── Formularios/     12 formularios (validación de entrada)
+│   ├── Services/        26 servicios (reglas de negocio)
+│   ├── Models/          22 modelos (SQL)
+│   ├── Importacion/     Importación en dos pasos (CSV, XLSX, XLS)
+│   ├── Exportacion/     Exportador XLSX y CSV
+│   └── Support/         Actor, Validador, Semaforo, Seguridad, Descarga…
+├── includes/            Sesión, autenticación, utilidades
+├── modules/*/views/     Vistas por módulo
+├── layouts/ · components/
+├── assets/              CSS (theme.css), JS por módulo, imágenes
+├── database/            esquema.sql, migraciones/, semillas/
+├── bin/                 Comandos de consola
+├── tests/               Unit, Security, Integration
+├── docs/                Documentación
+└── uploads/ · logs/ · cache/   Escritura del servidor (cerradas a la web)
 ```
 
 ---
 
 ## Convenciones de desarrollo
 
-Si vas a trabajar sobre el código, estas cuatro convenciones son transversales y romperlas produce inconsistencias difíciles de rastrear:
-
-1. **Encabezado de página** — usar `<div class="page-header">` con un `<div>` de título y un `<div class="d-flex gap-2">` de acciones. No escribirlo a mano con utilidades de Bootstrap.
-2. **Colores semánticos** — `--danger` es para rellenos; `--danger-text` para texto. Nunca un color literal (`#fff`, `#555`) en una vista.
-3. **Selects** — todo `<select>` lleva `data-picker`; los renderiza `searchable-picker.js`.
-4. **Listados paginados** — la búsqueda va en SQL, nunca filtrando filas en JavaScript: con paginación solo alcanzaría a la página visible.
-
----
-
-## Verificación
-
-| Aspecto | Cómo se verificó |
-|---|---|
-| Interfaz móvil | Navegador real a 390 px, tema claro y oscuro, 9 pantallas sin desplazamiento horizontal |
-| Paginación | 14 pruebas funcionales: navegación, persistencia de filtros, página fuera de rango, conteo cuadrando en los cuatro roles |
-| Sincronización de evaluaciones | Probada en transacción revertida: idempotente y sin alterar juicios ya emitidos |
-| Integridad de datos | Verificado que el rellenado no modificó ninguno de los 987 juicios existentes |
+1. **Una acción, una ruta.** Declarada en `config/rutas.php` con sus roles; el controlador valida con un `Formulario`, delega en un servicio y responde con PRG.
+2. **Nada de SQL fuera de los modelos**, y todo modelo acota por el `Actor`.
+3. **Nada de JavaScript en línea.** Comportamientos con atributos `data-*` (`comportamientos.js`); datos para scripts en `<script type="application/json">`; scripts propios en `$scriptsVista`.
+4. **Interfaz:** `page-header` para el encabezado, tokens de color de `theme.css` (nunca colores literales), `data-picker` en todo `<select>`, un solo modal por formulario.
+5. **Listados:** paginación y búsqueda en SQL, nunca filtrando en JavaScript.
+6. **Esquema:** todo cambio es una migración nueva en `database/migraciones/`; después `bin/volcar-esquema.php` y `bin/generar-docs.php`.
+7. **Cada corrección con su prueba.**
 
 ---
 
 ## Licencia y autoría
 
-Proyecto formativo desarrollado para el Servicio Nacional de Aprendizaje (SENA).
+Proyecto formativo desarrollado para el Servicio Nacional de Aprendizaje (SENA), Centro Tecnológico de la Amazonia.
 
 **Repositorio:** [github.com/Manuel151025/proyecto_sena](https://github.com/Manuel151025/proyecto_sena)

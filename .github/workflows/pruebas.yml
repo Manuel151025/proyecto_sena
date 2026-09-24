@@ -77,6 +77,15 @@ jobs:
       - name: Verificar migraciones y enums contra el esquema
         run: php bin/verificar-esquema.php
 
+      # Rutas y permisos, diccionario de datos y formatos de importación
+      # salen del código: si alguien cambia una ruta o una tabla y no
+      # regenera la documentación, se detiene aquí.
+      - name: Documentación generada al día
+        run: |
+          php bin/generar-docs.php
+          git diff --exit-code -- docs/RUTAS_Y_PERMISOS.md docs/DATOS.md docs/FORMATOS_IMPORTACION.md \
+            || { echo "::error::Documentación desactualizada: ejecuta php bin/generar-docs.php"; exit 1; }
+
       # Cada suite deja un informe JUnit; si falla, sus casos se publican
       # como anotaciones del commit (consultables sin permisos de
       # administrador, a diferencia del registro completo).
