@@ -82,8 +82,8 @@ final class InyeccionTest extends CasoConBaseDeDatos {
     #[TestDox('la búsqueda en la bitácora trata la carga como texto')]
     public function testBusquedaEnLogs(string $carga): void {
         $modelo = new LogsModel($this->db);
-        $filas = $modelo->getLogs($carga, '', 25, 0);
-        $this->assertIsArray($filas);
+        $this->assertIsArray($modelo->listar(['search' => $carga, 'accion' => $carga, 'modulo' => $carga], 25, 0));
+        $this->assertLessThanOrEqual($modelo->contar([]), $modelo->contar(['search' => $carga]));
     }
 
     /**

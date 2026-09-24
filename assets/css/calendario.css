@@ -1,0 +1,302 @@
+/* Calendario (modules/calendario): tema del sistema sobre FullCalendar y ajustes para móvil. */
+/* ── Contenedor general ── */
+.cal-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Encabezado de página ── */
+.cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+.cal-header h1 {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+.cal-header .role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .3rem .8rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--sena-primary);
+}
+
+/* ── Leyenda de colores ── */
+.cal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    align-items: center;
+}
+.cal-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .78rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.cal-legend-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ── Tarjeta del calendario ── */
+.cal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 1.25rem;
+}
+
+/* ── Override FullCalendar para el tema del sistema ── */
+.fc {
+    font-family: var(--font-sans);
+    --fc-border-color: var(--border);
+    --fc-today-bg-color: rgba(57,169,0,.07);
+    --fc-page-bg-color: transparent;
+    --fc-neutral-bg-color: var(--surface-2);
+    --fc-list-event-hover-bg-color: var(--surface-2);
+    --fc-button-bg-color: var(--surface-2);
+    --fc-button-border-color: var(--border);
+    --fc-button-hover-bg-color: var(--border);
+    --fc-button-active-bg-color: var(--sena-primary);
+    --fc-button-active-border-color: var(--sena-primary);
+    --fc-button-text-color: var(--text);
+}
+.fc .fc-toolbar-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.fc .fc-button {
+    border-radius: 8px !important;
+    font-size: .8rem;
+    font-weight: 500;
+    padding: .35rem .75rem;
+    text-transform: capitalize;
+}
+.fc .fc-button:focus { box-shadow: 0 0 0 3px rgba(57,169,0,.2); }
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+    background: var(--sena-primary) !important;
+    border-color: var(--sena-primary) !important;
+    color: #fff !important;
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: .82rem;
+}
+.fc .fc-event {
+    border-radius: 6px !important;
+    border: none !important;
+    padding: 2px 5px;
+    font-size: .75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .15s;
+}
+.fc .fc-event:hover {
+    opacity: .9;
+    transform: translateY(-1px);
+}
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background: var(--sena-primary);
+    color: #fff;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+}
+.fc .fc-list-event-title a { color: var(--text) !important; text-decoration: none; }
+.fc .fc-list-empty { color: var(--text-muted); }
+.fc .fc-list-day-cushion { background: var(--surface-2) !important; }
+
+/* ── Modal de detalle de evento ──
+   Contenedor y encabezado los estilan .ui-modal-overlay / .modal-* de
+   theme.css; aquí solo queda lo propio del contenido del evento. ── */
+.modal-event-dot {
+    width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+    flex-shrink: 0;
+}
+.cal-meta-row {
+    display: flex; align-items: flex-start; gap: .5rem;
+    font-size: .82rem; color: var(--text-muted); margin-bottom: .35rem;
+}
+.cal-meta-row strong { color: var(--text); white-space: nowrap; }
+
+/* ── Selector de vista (Día / Semana / Mes / Agenda) para móvil:
+      sustituye a los botones nativos de FullCalendar, que no caben. ── */
+.cal-view-switcher {
+    display: none;
+    gap: .35rem;
+    margin-bottom: .85rem;
+    padding: .25rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+.cal-view-btn {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    font-size: .8rem;
+    font-weight: 600;
+    padding: .5rem .25rem;
+    border-radius: 8px;
+    min-height: 40px;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+}
+.cal-view-btn:hover { color: var(--text); }
+.cal-view-btn.is-active {
+    background: var(--sena-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(57,169,0,.25);
+}
+/* Pista visual de swipe (solo aparece en móvil) */
+.cal-swipe-hint {
+    display: none;
+    text-align: center;
+    font-size: .72rem;
+    color: var(--text-muted);
+    margin-top: .5rem;
+}
+
+/* ── Adaptabilidad Móvil (Responsive CSS overrides) ── */
+@media (max-width: 768px) {
+    .cal-wrap {
+        gap: 1rem;
+    }
+    .cal-card {
+        padding: 0.75rem;
+    }
+    .cal-view-switcher {
+        display: flex;
+    }
+    .cal-swipe-hint {
+        display: block;
+    }
+    .fc .fc-toolbar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.6rem;
+    }
+    /* Sin botones de vista nativos en móvil: solo título + navegación prev/next/hoy */
+    .fc .fc-toolbar-chunk:nth-child(2) {
+        order: 1;
+        text-align: center;
+    }
+    .fc .fc-toolbar-chunk:nth-child(1) {
+        order: 2;
+        display: flex;
+        justify-content: center;
+        gap: .35rem;
+    }
+    .fc .fc-toolbar-title {
+        font-size: 1.05rem !important;
+    }
+    .fc .fc-button {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.78rem;
+        min-height: 38px;
+    }
+    /* Celdas del mes más compactas para que quepan 7 columnas */
+    .fc .fc-daygrid-day-number {
+        font-size: .75rem;
+        padding: 2px 4px;
+    }
+    .fc .fc-col-header-cell-cushion {
+        font-size: .72rem;
+        padding: 6px 2px;
+    }
+    .fc .fc-daygrid-day-frame {
+        min-height: 62px;
+    }
+    .fc .fc-event {
+        font-size: .68rem;
+        padding: 1px 3px;
+    }
+    .fc .fc-daygrid-more-link {
+        font-size: .68rem;
+    }
+    /* Agenda: filas más cómodas para el dedo */
+    .fc .fc-list-event-title {
+        font-size: .85rem;
+    }
+    .fc .fc-list-event td {
+        padding: .65rem .5rem;
+    }
+    /* La leyenda pasa a una fila deslizable en vez de ocupar cuatro líneas */
+    .cal-legend {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 0.4rem;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+    }
+    .cal-legend::-webkit-scrollbar {
+        display: none;
+    }
+    .cal-legend-item {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        font-size: 0.72rem;
+        padding: 0.25rem 0.55rem;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+    }
+}
+
+@media (max-width: 576px) {
+    .cal-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+    }
+    .cal-header h1 {
+        font-size: 1.25rem;
+    }
+    .cal-header .cal-header-actions {
+        justify-content: space-between;
+    }
+    .cal-header .role-badge {
+        padding: 0.25rem 0.65rem;
+        font-size: 0.75rem;
+    }
+    .cal-view-btn {
+        font-size: .74rem;
+        padding: .5rem .15rem;
+    }
+    .fc .fc-daygrid-day-frame {
+        min-height: 54px;
+    }
+    /* En pantallas muy angostas los eventos del mes se reducen a un punto:
+       el detalle se consulta con un toque (abre el modal). */
+    .fc .fc-daygrid-event .fc-event-time,
+    .fc .fc-daygrid-event .fc-event-title {
+        font-size: .65rem;
+    }
+}

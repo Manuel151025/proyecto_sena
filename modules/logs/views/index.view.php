@@ -1,119 +1,85 @@
 <?php
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
 }
+$url = static fn(string $r) => e(APP_URL . '/index.php' . $r);
+$activos = array_filter($filtros, static fn($x) => $x !== '' && $x !== 0 && $x !== null);
+$qs = http_build_query($activos);
 ?>
-﻿<div class="page-header">
+<div class="page-header">
   <div>
-  <h1 class="mb-1">Auditoría del Sistema</h1>
-  <p class="text-muted mb-0">Revisa la bitácora de acciones y modificaciones del sistema para control de calidad y trazabilidad.</p>
+    <h1 class="mb-1">Bitácora de auditoría</h1>
+    <p class="text-muted mb-0">Quién hizo qué, cuándo y desde dónde. Los registros no se editan ni se borran desde la aplicación.</p>
   </div>
+  <a href="<?= $url('/logs/exportar' . ($qs ? '?' . $qs . '&' : '?') . 'formato=xlsx') ?>" class="btn btn-soft"><i class="bi bi-file-earmark-excel me-1"></i>Exportar</a>
 </div>
 
-<?php if (!empty($errors)): ?>
-<div class="alert alert-danger alert-dismissible fade show border-0 glass-card text-danger" role="alert">
-  <i class="bi bi-exclamation-triangle-fill me-2"></i>
-  <ul class="mb-0 ps-3 d-inline-block">
-    <?php foreach ($errors as $err): ?>
-      <li><?= htmlspecialchars($err) ?></li>
-    <?php endforeach; ?>
-  </ul>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<?php endif; ?>
+<?php foreach ($errors as $err): ?>
+<div class="alert-flat danger mb-3"><i class="bi bi-exclamation-triangle-fill"></i><div><?= e($err) ?></div></div>
+<?php endforeach; ?>
 
-<!-- Barra de filtros -->
-<div class="card glass-card mb-4 border-0">
-  <div class="card-body">
-    <form method="GET" class="row g-3 align-items-end">
-      <div class="col-md-6">
-        <label class="form-label text-muted small">Buscar por Usuario, Descripción o Módulo</label>
-        <div class="input-group">
-          <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Buscar..." value="<?= htmlspecialchars($search) ?>">
-        </div>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label text-muted small">Acción realizada</label>
-        <select name="accion" class="form-select"
-                data-picker
-                data-picker-label="Acción realizada"
-                data-picker-placeholder="Todas las acciones">
-          <option value="">Todas las acciones</option>
-          <option value="Crear" <?= $filter_accion === 'Crear' ? 'selected' : '' ?>>Crear</option>
-          <option value="Calificar" <?= $filter_accion === 'Calificar' ? 'selected' : '' ?>>Calificar</option>
-          <option value="Modificar" <?= $filter_accion === 'Modificar' ? 'selected' : '' ?>>Modificar</option>
-          <option value="Eliminar" <?= $filter_accion === 'Eliminar' ? 'selected' : '' ?>>Eliminar</option>
-          <option value="Login" <?= $filter_accion === 'Login' ? 'selected' : '' ?>>Login</option>
-        </select>
-      </div>
-      <div class="col-md-2 d-grid">
-        <button type="submit" class="btn btn-soft">Filtrar</button>
-      </div>
-    </form>
+<form method="GET" class="card border-0 shadow-sm mb-3"><div class="card-body row g-2 align-items-end">
+  <div class="col-md-4">
+    <label class="form-label small text-muted" for="f_search">Buscar</label>
+    <input type="search" name="search" id="f_search" class="form-control" maxlength="100" placeholder="Usuario, correo, descripción o IP..." value="<?= e($filtros['search']) ?>">
   </div>
-</div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small text-muted" for="f_accion">Acción</label>
+    <select name="accion" id="f_accion" class="form-select" data-autoenvio>
+      <option value="">Todas</option>
+      <?php foreach ($acciones as $a): ?><option value="<?= e($a) ?>" <?= $filtros['accion'] === $a ? 'selected' : '' ?>><?= e($a) ?></option><?php endforeach; ?>
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small text-muted" for="f_modulo">Módulo</label>
+    <select name="modulo" id="f_modulo" class="form-select" data-autoenvio>
+      <option value="">Todos</option>
+      <?php foreach ($modulos as $m): ?><option value="<?= e($m) ?>" <?= $filtros['modulo'] === $m ? 'selected' : '' ?>><?= e($m) ?></option><?php endforeach; ?>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label small text-muted" for="f_usuario">Usuario</label>
+    <select name="usuario_id" id="f_usuario" class="form-select" data-autoenvio data-picker data-picker-label="Usuario">
+      <option value="0">Todos</option>
+      <?php foreach ($usuarios as $u): ?><option value="<?= (int)$u['id'] ?>" <?= $filtros['usuario_id'] === (int)$u['id'] ? 'selected' : '' ?>><?= e($u['nombre']) ?></option><?php endforeach; ?>
+    </select>
+  </div>
+  <div class="col-6 col-md-3">
+    <label class="form-label small text-muted" for="f_desde">Desde</label>
+    <input type="date" name="desde" id="f_desde" class="form-control" value="<?= e((string)$filtros['desde']) ?>">
+  </div>
+  <div class="col-6 col-md-3">
+    <label class="form-label small text-muted" for="f_hasta">Hasta</label>
+    <input type="date" name="hasta" id="f_hasta" class="form-control" value="<?= e((string)$filtros['hasta']) ?>">
+  </div>
+  <div class="col-md-6 d-flex gap-2">
+    <button type="submit" class="btn btn-soft flex-grow-1"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+    <?php if ($activos): ?><a class="btn btn-soft" href="<?= $url('/logs') ?>" aria-label="Quitar filtros"><i class="bi bi-x-lg"></i></a><?php endif; ?>
+  </div>
+</div></form>
 
-<!-- Bitácora de Auditoría -->
-<div class="card glass-card border-0 shadow-sm">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table mb-0 align-middle table-hover">
-        <thead class="table-light-head" style="background: var(--surface-2);">
-          <tr>
-            <th class="ps-4">Fecha / Hora</th>
-            <th>Usuario</th>
-            <th>Acción</th>
-            <th>Módulo</th>
-            <th>Descripción</th>
-            <th class="pe-4">IP Address</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($logs as $log): ?>
-          <tr>
-            <td class="ps-4 text-muted small">
-              <?= date('d/m/Y h:i:s A', strtotime($log['fecha'])) ?>
-            </td>
-            <td>
-              <div class="fw-semibold text-dark"><?= htmlspecialchars($log['usuario_nombre'] ?: 'Sistema / Anon') ?></div>
-              <small class="text-muted"><?= htmlspecialchars($log['usuario_email'] ?: '') ?></small>
-            </td>
-            <td>
-              <span class="badge bg-<?= $acciones_badge[$log['accion']] ?? 'secondary' ?>">
-                <?= htmlspecialchars($log['accion']) ?>
-              </span>
-            </td>
-            <td>
-              <span class="badge bg-soft info"><?= htmlspecialchars($log['modulo'] ?: 'General') ?></span>
-            </td>
-            <td>
-              <div class="text-wrap small text-dark" style="max-width: 400px;">
-                <?= htmlspecialchars($log['descripcion']) ?>
-              </div>
-              <small class="text-muted">ID Registro: <?= $log['id_registro'] ?: 'N/A' ?></small>
-            </td>
-            <td class="pe-4 font-monospace small text-muted">
-              <?= htmlspecialchars($log['ip_address'] ?: '127.0.0.1') ?>
-            </td>
-          </tr>
-          <?php endforeach; ?>
-          <?php if (empty($logs)): ?>
-          <tr>
-            <td colspan="6" class="text-center py-5 text-muted">
-              <i class="bi bi-shield-check d-block mb-2" style="font-size:2rem; opacity:0.5;"></i>
-              No hay logs registrados en la bitácora todavía.
-            </td>
-          </tr>
-          <?php endif; ?>
-        </tbody>
-      </table>
-    </div>
-    <?php $paginador = $paginacion; $paginacionEtiqueta = 'registros de auditoría'; require BASE_PATH . 'components/paginacion.php'; ?>
-  </div>
+<div class="table-wrap">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Descripción</th><th>IP</th></tr></thead>
+    <tbody>
+      <?php foreach ($logs as $l): ?>
+      <tr>
+        <td class="small text-nowrap"><?= e(date('d/m/Y H:i', strtotime((string)$l['fecha']))) ?></td>
+        <td class="small"><?php if ($l['usuario_nombre']): ?><div class="fw-semibold"><?= e($l['usuario_nombre']) ?></div><span class="text-muted"><?= e((string)$l['usuario_rol']) ?></span><?php else: ?><span class="text-muted">Sistema / anónimo</span><?php endif; ?></td>
+        <td><span class="badge-soft <?= e($colores[$l['accion']] ?? 'secondary') ?> text-nowrap"><?= e($l['accion']) ?></span></td>
+        <td class="small"><?= e((string)$l['modulo']) ?><?= $l['id_registro'] ? '<span class="text-muted"> #' . (int)$l['id_registro'] . '</span>' : '' ?></td>
+        <td class="small text-break"><?= e((string)$l['descripcion']) ?></td>
+        <td class="small font-monospace text-nowrap"><?= e((string)$l['ip_address']) ?></td>
+      </tr>
+      <?php endforeach; ?>
+      <?php if (empty($logs)): ?>
+      <tr><td colspan="6" class="celda-vacia"><div><i class="bi bi-journal-x"></i>No hay registros con esos filtros.</div></td></tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
 </div>
+<?php $paginador = $paginacion; $paginacionEtiqueta = 'registros'; require BASE_PATH . 'components/paginacion.php'; ?>

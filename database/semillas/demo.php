@@ -369,10 +369,6 @@ return static function (PDO $db): array {
         $nEv++;
     }
 
-    // Recuento guardado coherente con el real (lo usa quien lea la tabla).
-    $db->exec("UPDATE fichas f SET cantidad_aprendices =
-               (SELECT COUNT(*) FROM aprendices a WHERE a.ficha_id = f.id AND a.estado <> 'desertado')");
-
     return [
         'usuarios'                => 1 + count($instructores) + $contador,
         'programas'               => count($progIds),

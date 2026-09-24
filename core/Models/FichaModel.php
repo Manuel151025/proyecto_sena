@@ -20,9 +20,9 @@ use PDO;
  *    aprendices (el avance académico de la ficha);
  *  - avance del proyecto: promedio del avance de sus actividades.
  *
- * `fichas.cantidad_aprendices` y `fichas.cumplimiento_porcentaje` siguen en
- * el esquema pero ya no se leen: eran contadores con varios escritores que
- * nadie recalculaba, desviados en 5 de las 7 fichas.
+ * Antes había dos contadores guardados (`fichas.cantidad_aprendices` y
+ * `fichas.cumplimiento_porcentaje`) con varios escritores que nadie
+ * recalculaba, desviados en 5 de las 7 fichas; la migración 0018 los retiró.
  */
 class FichaModel {
     private PDO $db;

@@ -17,6 +17,11 @@ declare(strict_types=1);
     // Scripts propios de la pantalla, declarados por la vista en
     // $scriptsVista (rutas relativas a assets/js). Van en archivos para que
     // la CSP no tenga que admitir código en línea.
+    // Bibliotecas de terceros pedidas por la vista, solo de la lista blanca
+    // y con su hash de integridad (ver Core\Support\RecursosCdn).
+    foreach (\Core\Support\RecursosCdn::scripts($scriptsCdn ?? []) as [$srcCdn, $sri]): ?>
+    <script src="<?= e($srcCdn) ?>" integrity="<?= e($sri) ?>" crossorigin="anonymous"></script>
+    <?php endforeach;
     foreach (($scriptsVista ?? []) as $js):
         $rutaJs = BASE_PATH . 'assets/js/' . $js;
         if (preg_match('#^[a-z0-9/_\-]+\.js$#', $js) && is_file($rutaJs)): ?>

@@ -3,147 +3,93 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\Validador;
-
 use Core\BaseController;
-use Core\Database;
 use Core\Models\CalendarioModel;
-use Core\Models\FichaModel;
-use PDO;
-use Exception;
+use Core\Models\EvaluacionesModel;
+use Core\Services\Auditoria;
+use Core\Services\InstructorAccessService;
+use Core\Services\Notificador;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Core\Support\Transaccion;
+use Core\Database;
 
+/**
+ * Calendario académico.
+ *
+ *   GET  /calendario
+ *   GET  /calendario/api?start=&end=        eventos en JSON (FullCalendar)
+ *   POST /calendario  action=crear|eliminar  instructor y coordinación
+ */
 class CalendarioController extends BaseController {
-    private PDO $db;
-    private CalendarioModel $calendarioModel;
-    private FichaModel $fichaModel;
+    /** Un rango mayor no lo pide ninguna vista y solo serviría para volcar datos. */
+    private const MAX_DIAS = 100;
 
-    public function __construct(?PDO $db = null, ?CalendarioModel $calendarioModel = null, ?FichaModel $fichaModel = null) {
-        $this->db = $db ?? Database::getConnection();
-        $this->calendarioModel = $calendarioModel ?? new CalendarioModel($this->db);
-        $this->fichaModel = $fichaModel ?? new FichaModel($this->db);
+    private CalendarioModel $modelo;
+
+    public function __construct(?CalendarioModel $modelo = null) {
+        $this->modelo = $modelo ?? new CalendarioModel();
     }
 
     public function index(): void {
-        requireAuth();
-
-        $rol     = getCurrentRole();
-        $user    = getCurrentUser();
-        $user_id = (int)$user['id'];
-        $puedeCrearEvento = in_array($rol, [ROL_COORDINADOR, ROL_INSTRUCTOR], true);
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $puedeCrearEvento) {
-            requireCsrf();
-
-            if ($_POST['action'] === 'crear_evento') {
-                $titulo = trim($_POST['titulo'] ?? '');
-                $descripcion = trim($_POST['descripcion'] ?? '');
-                $fecha = (new Validador($_POST))->fecha('fecha', 'La fecha del evento') ?? '';
-                $ficha_id = (int)($_POST['ficha_id'] ?? 0);
-
-                if ($titulo === '' || mb_strlen($titulo) > 150) {
-                    setFlashMessage('El título del evento es obligatorio (máximo 150 caracteres).', 'danger');
-                } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
-                    setFlashMessage('Fecha inválida.', 'danger');
-                } elseif ($ficha_id <= 0) {
-                    setFlashMessage('Debe seleccionar una ficha.', 'danger');
-                } else {
-                    // Verificar que la ficha esté dentro del alcance del usuario
-                    $fichasPermitidas = $rol === ROL_COORDINADOR
-                        ? $this->fichaModel->getAll()
-                        : $this->fichaModel->getByInstructor($user_id);
-                    $idsPermitidos = array_column($fichasPermitidas, 'id');
-
-                    if (!in_array($ficha_id, $idsPermitidos, true)) {
-                        setFlashMessage('No tiene acceso a esa ficha.', 'danger');
-                    } else {
-                        try {
-                            $this->calendarioModel->crearEvento($titulo, $descripcion ?: null, $fecha, $ficha_id, $user_id);
-                            setFlashMessage('Evento agregado al calendario.', 'success');
-                        } catch (Exception $e) {
-                            error_log('CalendarioController::index crearEvento - ' . $e->getMessage());
-                            setFlashMessage('Error al crear el evento.', 'danger');
-                        }
-                    }
-                }
-            } elseif ($_POST['action'] === 'eliminar_evento') {
-                $evento_id = (int)($_POST['evento_id'] ?? 0);
-                if ($evento_id <= 0) {
-                    setFlashMessage('Evento no válido.', 'danger');
-                } else {
-                    $ok = $this->calendarioModel->eliminarEvento($evento_id, $user_id, $rol === ROL_COORDINADOR);
-                    setFlashMessage($ok ? 'Evento eliminado.' : 'No se pudo eliminar el evento (no existe o no tiene permiso).', $ok ? 'success' : 'danger');
-                }
-            }
-
-            $this->redirect(APP_URL . '/index.php/calendario');
-        }
-
-        $rolLabels = [
-            ROL_COORDINADOR => 'Coordinador',
-            ROL_INSTRUCTOR  => 'Instructor',
-            ROL_APRENDIZ    => 'Aprendiz',
-        ];
-
-        $roleColors = [
-            ROL_COORDINADOR => '#39A900',
-            ROL_INSTRUCTOR  => '#3B82F6',
-            ROL_APRENDIZ    => '#8B5CF6',
-        ];
-
-        $apiUrl = APP_URL . '/index.php/calendario/api';
-
-        $fichasDisponibles = [];
-        if ($puedeCrearEvento) {
-            $fichasDisponibles = $rol === ROL_COORDINADOR
-                ? $this->fichaModel->getAll()
-                : $this->fichaModel->getByInstructor($user_id);
-        }
-
-        $this->render(
-            BASE_PATH . 'modules/calendario/views/index.view.php',
-            [
-                'rol' => $rol,
-                'user' => $user,
-                'rolLabels' => $rolLabels,
-                'roleColors' => $roleColors,
-                'apiUrl' => $apiUrl,
-                'puedeCrearEvento' => $puedeCrearEvento,
-                'fichasDisponibles' => $fichasDisponibles,
-            ],
-            'Calendario · SENA'
-        );
+        $actor = Actor::actual();
+        $this->render(BASE_PATH . 'modules/calendario/views/index.view.php', [
+            'actor'  => $actor,
+            'fichas' => $actor->gestiona() ? (new EvaluacionesModel())->fichasDelActor($actor) : [],
+            'apiUrl' => APP_URL . '/index.php/calendario/api',
+        ], 'Calendario · SENA');
     }
 
-    public function apiEvents(): void {
-        if (!isAuthenticated()) {
-            http_response_code(401);
-            echo json_encode(['error' => 'No autenticado']);
-            exit;
+    public function apiEvents(): never {
+        $desde = self::fecha($_GET['start'] ?? '') ?? date('Y-m-01');
+        $hasta = self::fecha($_GET['end'] ?? '') ?? date('Y-m-t');
+        if ($hasta < $desde || (strtotime($hasta) - strtotime($desde)) / 86400 > self::MAX_DIAS) {
+            $this->json(['error' => 'Rango de fechas no válido.'], 400);
         }
+        $this->json($this->modelo->eventos(Actor::actual(), $desde, $hasta));
+    }
 
-        header('Content-Type: application/json; charset=utf-8');
+    public function crear(): never {
+        $actor = Actor::actual();
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $titulo = $v->nombre('titulo', 'El título', 3, 150);
+        $descripcion = $v->texto('descripcion', 'La descripción', 0, 1000, false);
+        $fecha = $v->fecha('fecha', 'La fecha');
+        $fichaId = $v->id('ficha_id', 'La ficha');
+        $this->siHayErrores($v, '/calendario');
+        $this->ejecutar(function () use ($actor, $titulo, $descripcion, $fecha, $fichaId) {
+            if (!(new InstructorAccessService())->puedeGestionarFicha($actor, $fichaId)) {
+                throw new ErrorDeNegocio('No tienes a cargo esa ficha.');
+            }
+            $db = Database::getConnection();
+            Transaccion::ejecutar($db, function () use ($db, $actor, $titulo, $descripcion, $fecha, $fichaId) {
+                $id = $this->modelo->crearEvento($titulo, $descripcion !== '' ? $descripcion : null, (string)$fecha, $fichaId, $actor->id);
+                (new Auditoria($db))->operacion($actor, 'Crear', 'Calendario', 'eventos_calendario', $id, "Creó el evento «{$titulo}» ({$fecha})");
+                (new Notificador($db))->notificarVarios($this->modelo->usuariosDeFicha($fichaId), 'Nuevo evento en tu ficha',
+                    "«{$titulo}» el " . date('d/m/Y', strtotime((string)$fecha)) . '.', 'info', '/index.php/calendario');
+            });
+        }, '/calendario', 'Evento agregado; los aprendices de la ficha recibieron un aviso.', 'No se pudo crear el evento');
+    }
 
-        $start = $_GET['start'] ?? date('Y-m-01');
-        $end   = $_GET['end']   ?? date('Y-m-t');
+    public function eliminar(): never {
+        $actor = Actor::actual();
+        $this->exigirRol(ROL_COORDINADOR, ROL_INSTRUCTOR);
+        $v = $this->entrada();
+        $id = $v->id('evento_id', 'El evento');
+        $this->siHayErrores($v, '/calendario');
+        $this->ejecutar(function () use ($actor, $id) {
+            $e = $this->modelo->findEvento($id) ?? throw new ErrorDeNegocio('El evento no existe.');
+            if (!$actor->esCoordinador() && (int)$e['creado_por'] !== $actor->id) {
+                throw new ErrorDeNegocio('Solo quien creó el evento o la coordinación pueden eliminarlo.');
+            }
+            $this->modelo->eliminarEvento($id);
+            (new Auditoria())->operacion($actor, 'Eliminar', 'Calendario', 'eventos_calendario', $id, "Eliminó el evento «{$e['titulo']}»");
+        }, '/calendario', 'Evento eliminado.', 'No se pudo eliminar el evento');
+    }
 
-        // Sanitizar fechas
-        $start = preg_match('/^\d{4}-\d{2}-\d{2}/', $start) ? substr($start, 0, 10) : date('Y-m-01');
-        $end   = preg_match('/^\d{4}-\d{2}-\d{2}/', $end)   ? substr($end,   0, 10) : date('Y-m-t');
-
-        $user    = getCurrentUser();
-        $user_id = (int)$user['id'];
-        $rol     = getCurrentRole();
-        $events  = [];
-
-        if ($rol === ROL_COORDINADOR) {
-            $events = $this->calendarioModel->getCoordinadorEvents($start, $end);
-        } elseif ($rol === ROL_INSTRUCTOR) {
-            $events = $this->calendarioModel->getInstructorEvents($user_id, $start, $end);
-        } elseif ($rol === ROL_APRENDIZ) {
-            $events = $this->calendarioModel->getAprendizEvents($user_id, $start, $end);
-        }
-
-        echo json_encode($events, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        exit;
+    private static function fecha(string $valor): ?string {
+        $f = substr($valor, 0, 10);
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $f) && checkdate((int)substr($f, 5, 2), (int)substr($f, 8, 2), (int)substr($f, 0, 4)) ? $f : null;
     }
 }

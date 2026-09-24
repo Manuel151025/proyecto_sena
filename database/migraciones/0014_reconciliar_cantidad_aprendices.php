@@ -18,6 +18,11 @@ return new class extends Migracion {
     public string $descripcion = 'Recuento guardado de aprendices por ficha alineado con el real';
 
     public function aplicar(PDO $db): void {
+        // La 0018 retira la columna: en una instalación nueva el esquema ya
+        // no la trae y no hay nada que reconciliar.
+        if (!$this->existeColumna($db, 'fichas', 'cantidad_aprendices')) {
+            return;
+        }
         $n = $db->exec("
             UPDATE fichas f
                SET f.cantidad_aprendices = (SELECT COUNT(*) FROM aprendices a

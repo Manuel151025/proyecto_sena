@@ -187,19 +187,28 @@ return static function (Router $router): void {
     $RP = 'Core\Controllers\ReportesController';
     $router->add('GET', '/reportes',           $RP, 'index',     $GESTION);
     $router->add('GET', '/reportes/descargar', $RP, 'descargar', $GESTION);
-    $router->add('GET', '/logs', 'Core\Controllers\LogsController', 'index', $COORDINADOR);
+    $router->add('GET', '/logs',          'Core\Controllers\LogsController', 'index',    $COORDINADOR);
+    $router->add('GET', '/logs/exportar', 'Core\Controllers\LogsController', 'exportar', $COORDINADOR);
 
     // ---------------------------------------------------------------------
     // TRANSVERSALES
     // ---------------------------------------------------------------------
-    $ambos('/perfil',       'Core\Controllers\PerfilController',       'index', $TODOS);
-    $ambos('/calendario',   'Core\Controllers\CalendarioController',   'index', $TODOS);
-    $router->add('GET', '/calendario/api', 'Core\Controllers\CalendarioController', 'apiEvents', $TODOS);
+    $PF = 'Core\Controllers\PerfilController';
+    $router->add('GET', '/perfil', $PF, 'index', $TODOS);
+    $router->accion('/perfil', 'datos',      $PF, 'datos',      $TODOS);
+    $router->accion('/perfil', 'contrasena', $PF, 'contrasena', $TODOS);
+    $CA = 'Core\Controllers\CalendarioController';
+    $router->add('GET', '/calendario',     $CA, 'index',     $TODOS);
+    $router->add('GET', '/calendario/api', $CA, 'apiEvents', $TODOS);
+    $router->accion('/calendario', 'crear',    $CA, 'crear',    $GESTION);
+    $router->accion('/calendario', 'eliminar', $CA, 'eliminar', $GESTION);
 
     // Sesión y avisos. Pasan por el enrutador para que ningún archivo de
     // `includes/` tenga que ser accesible desde el navegador.
     $router->add('POST', '/logout',             'Core\Controllers\SesionController',         'cerrar', $TODOS);
     $router->add('GET',  '/api/notificaciones', 'Core\Controllers\NotificacionesController', 'listar', $TODOS);
     $router->add('POST', '/api/notificaciones', 'Core\Controllers\NotificacionesController', 'marcar', $TODOS);
-    $ambos('/configuracion', 'Core\Controllers\ConfiguracionController', 'index', $COORDINADOR);
+    $CF = 'Core\Controllers\ConfiguracionController';
+    $router->add('GET', '/configuracion', $CF, 'index', $COORDINADOR);
+    $router->accion('/configuracion', 'guardar', $CF, 'guardar', $COORDINADOR);
 };

@@ -1,8 +1,7 @@
 <?php
 // Esta vista solo debe renderizarse desde un controlador, a traves del
 // layout. Abierta directamente por URL, se ejecutaria sin las variables
-// que espera y sin ninguna comprobacion de permisos: el resultado eran
-// avisos de PHP con rutas del servidor, y fragmentos de la pagina.
+// que espera y sin ninguna comprobacion de permisos.
 if (!defined('VISTA_PERMITIDA')) {
     http_response_code(404);
     exit('404 - No encontrado');
@@ -10,71 +9,39 @@ if (!defined('VISTA_PERMITIDA')) {
 ?>
 <div class="page-header">
   <div>
-  <h1 class="mb-1">Configuración General</h1>
-  <p class="text-muted mb-0">Ajusta los parámetros académicos, nombres institucionales y credenciales del sistema.</p>
+    <h1 class="mb-1">Configuración</h1>
+    <p class="text-muted mb-0">Datos institucionales que aparecen en los reportes, y los parámetros con los que funciona el sistema.</p>
   </div>
 </div>
 
-<?php if (!empty($successMessage)): ?>
-<div class="alert alert-success alert-dismissible fade show border-0 glass-card text-success" role="alert">
-  <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($successMessage) ?>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<?php endif; ?>
-
-<div class="row">
-  <div class="col-lg-8">
-    <div class="card glass-card border-0 shadow-sm">
-      <div class="card-body">
-        <form method="POST">
-          <?= csrfField() ?>
-          <h5 class="fw-bold text-dark mb-4"><i class="bi bi-gear-fill me-2 text-primary"></i>Parámetros Institucionales</h5>
-          
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-3"><i class="bi bi-building me-2 text-success"></i>Datos institucionales</h2>
+      <form method="POST">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="guardar">
+        <?php foreach ($claves as $clave => [$etiqueta]): ?>
           <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Nombre del Sistema</label>
-            <input type="text" name="system_title" class="form-control" value="<?= htmlspecialchars($system_title) ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]/g, '')" required>
+            <label class="form-label fw-semibold" for="cfg_<?= e($clave) ?>"><?= e($etiqueta) ?></label>
+            <input type="text" name="<?= e($clave) ?>" id="cfg_<?= e($clave) ?>" class="form-control" required minlength="3" maxlength="120" data-filtro="nombre" value="<?= e($valores[$clave]) ?>">
           </div>
-
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Regional / Centro de Formación</label>
-            <input type="text" name="regional" class="form-control" value="<?= htmlspecialchars($regional) ?>" minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
-          </div>
-
-          <div class="row g-3 mb-4">
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Porcentaje Mínimo Aprobación</label>
-              <select name="pass_score" class="form-select"
-                      data-picker
-                      data-picker-label="Porcentaje mínimo de aprobación"
-                      data-picker-placeholder="Seleccionar porcentaje...">
-                <option value="60%" <?= $pass_score === '60%' ? 'selected' : '' ?>>60%</option>
-                <option value="70%" <?= $pass_score === '70%' ? 'selected' : '' ?>>70% (Por defecto)</option>
-                <option value="80%" <?= $pass_score === '80%' ? 'selected' : '' ?>>80%</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label text-muted small fw-semibold">Servidor SMTP de Correo Institucional</label>
-              <input type="text" name="smtp_server" class="form-control" value="<?= htmlspecialchars($smtp_server) ?>" minlength="3" maxlength="100" pattern="^[a-zA-Z0-9.\-]+$" oninput="this.value = this.value.replace(/[^a-zA-Z0-9.\-]/g, '')" required>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Guardar Cambios</button>
-        </form>
-      </div>
-    </div>
+        <?php endforeach; ?>
+        <small class="d-block text-muted mb-3">Se imprimen en el encabezado de los reportes PDF.</small>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Guardar</button>
+      </form>
+    </div></div>
   </div>
-
-  <div class="col-lg-4">
-    <div class="card bg-light border-0">
-      <div class="card-body">
-        <h5><i class="bi bi-info-circle-fill text-primary me-2"></i>Información Técnica</h5>
-        <ul class="text-muted small ps-3 mb-0 mt-3">
-          <li class="mb-2"><strong>Versión del Sistema:</strong> 1.5.0-premium</li>
-          <li class="mb-2"><strong>Motor de BD:</strong> MySQL 8.0 (PDO utf8mb4)</li>
-          <li class="mb-2"><strong>Límite de subida:</strong> 15MB por evidencia</li>
-          <li class="mb-2"><strong>Zona Horaria:</strong> America/Bogota</li>
-        </ul>
-      </div>
-    </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h2 class="h6 fw-bold mb-3"><i class="bi bi-sliders me-2 text-success"></i>Parámetros del sistema</h2>
+      <dl class="row small mb-0">
+        <?php foreach ($tecnica as $etiqueta => $valor): ?>
+          <dt class="col-sm-4 text-muted"><?= e($etiqueta) ?></dt>
+          <dd class="col-sm-8 text-break"><?= e($valor) ?></dd>
+        <?php endforeach; ?>
+      </dl>
+      <p class="small text-muted mt-3 mb-0">Estos valores se definen en el código y en el entorno del servidor (.env), no desde esta pantalla: ver docs/DESPLIEGUE.md.</p>
+    </div></div>
   </div>
 </div>

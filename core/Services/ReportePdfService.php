@@ -130,7 +130,8 @@ final class ReportePdfService {
             $html .= '<img class="logo" src="' . $logo . '" alt="">';
         }
         $html .= '<div class="titulos">';
-        $html .= '<div class="marca">SENA · Sistema de Seguimiento de Proyectos Formativos</div>';
+        $html .= '<div class="marca">' . $this->e(\Core\Support\Configuracion::valor('system_title')) . ' · '
+               . $this->e(\Core\Support\Configuracion::valor('regional')) . '</div>';
         $html .= '<h1>' . $this->e($titulo) . '</h1>';
         if ($subtitulo !== '') {
             $html .= '<div class="subtitulo">' . $this->e($subtitulo) . '</div>';

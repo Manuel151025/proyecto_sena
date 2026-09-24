@@ -3,10 +3,14 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
-use Core\Support\Validador;
 use Core\Database;
+use Core\Support\Validador;
 use PDO;
 
+/**
+ * Bitácora de auditoría (`logs_sistema`), solo lectura. La escribe
+ * Core\Services\Auditoria.
+ */
 class LogsModel {
     private PDO $db;
 
@@ -14,65 +18,68 @@ class LogsModel {
         $this->db = $db ?? Database::getConnection();
     }
 
-    public function getLogs(string $search, string $filter_accion, ?int $limit = null, int $offset = 0): array {
-        [$from, $params] = $this->construirConsulta($search, $filter_accion);
-
-        // Antes había un `LIMIT 100` fijo: en una bitácora de auditoría, que
-        // solo crece, eso volvía inalcanzable todo el historial anterior a
-        // los últimos 100 apuntes. Ahora el corte lo pone la paginación y el
-        // total queda visible.
-        $sql = "
-            SELECT logs.*, u.nombre as usuario_nombre, u.email as usuario_email, u.rol as usuario_rol
-            $from
-            ORDER BY logs.fecha DESC, logs.id DESC
-        ";
-
-        if ($limit !== null) {
-            // Enteros interpolados: con ATTR_EMULATE_PREPARES en false,
-            // MariaDB no acepta parámetros ligados en LIMIT/OFFSET.
-            $sql .= ' LIMIT ' . (int)$limit . ' OFFSET ' . max(0, $offset);
+    /** @return array{0:string, 1:array} FROM + WHERE comunes al listado, el conteo y la exportación. */
+    private function construirConsulta(array $f): array {
+        $sql = " FROM logs_sistema l LEFT JOIN usuarios u ON u.id = l.usuario_id WHERE 1=1";
+        $p = [];
+        if (($f['search'] ?? '') !== '') {
+            $t = '%' . Validador::escaparLike((string)$f['search']) . '%';
+            $sql .= " AND (u.nombre LIKE ? OR u.email LIKE ? OR l.descripcion LIKE ? OR l.ip_address LIKE ?)";
+            array_push($p, $t, $t, $t, $t);
         }
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach (['accion' => 'l.accion', 'modulo' => 'l.modulo'] as $clave => $col) {
+            if (($f[$clave] ?? '') !== '') {
+                $sql .= " AND $col = ?";
+                $p[] = (string)$f[$clave];
+            }
+        }
+        if (!empty($f['usuario_id'])) {
+            $sql .= " AND l.usuario_id = ?";
+            $p[] = (int)$f['usuario_id'];
+        }
+        if (!empty($f['desde'])) {
+            $sql .= " AND l.fecha >= ?";
+            $p[] = $f['desde'];
+        }
+        if (!empty($f['hasta'])) {
+            $sql .= " AND l.fecha < ? + INTERVAL 1 DAY";
+            $p[] = $f['hasta'];
+        }
+        return [$sql, $p];
     }
 
-    /**
-     * Total de apuntes que cumplen los mismos filtros, para paginar.
-     */
-    public function contarLogs(string $search, string $filter_accion): int {
-        [$from, $params] = $this->construirConsulta($search, $filter_accion);
-        $stmt = $this->db->prepare("SELECT COUNT(*) $from");
-        $stmt->execute($params);
-        return (int)$stmt->fetchColumn();
+    public function contar(array $filtros): int {
+        [$desde, $p] = $this->construirConsulta($filtros);
+        $st = $this->db->prepare("SELECT COUNT(*) $desde");
+        $st->execute($p);
+        return (int)$st->fetchColumn();
     }
 
-    /**
-     * FROM + WHERE compartidos por el listado y el conteo.
-     *
-     * @return array{0:string, 1:array}
-     */
-    private function construirConsulta(string $search, string $filter_accion): array {
-        $from = "
-            FROM logs_sistema logs
-            LEFT JOIN usuarios u ON logs.usuario_id = u.id
-            WHERE 1=1
-        ";
-        $params = [];
+    public function listar(array $filtros, int $limite, int $offset): array {
+        [$desde, $p] = $this->construirConsulta($filtros);
+        $st = $this->db->prepare("SELECT l.id, l.fecha, l.accion, l.modulo, l.tabla_afectada, l.id_registro, l.descripcion, l.ip_address,
+                   u.nombre AS usuario_nombre, u.email AS usuario_email, u.rol AS usuario_rol
+            $desde ORDER BY l.fecha DESC, l.id DESC LIMIT " . max(1, min($limite, 200)) . ' OFFSET ' . max(0, $offset));
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-        if (!empty($search)) {
-            $from .= " AND (u.nombre LIKE ? OR logs.descripcion LIKE ? OR logs.modulo LIKE ?)";
-            $params[] = "%" . Validador::escaparLike($search) . "%";
-            $params[] = "%" . Validador::escaparLike($search) . "%";
-            $params[] = "%" . Validador::escaparLike($search) . "%";
-        }
+    public function paraExportar(array $filtros, int $maximo): array {
+        [$desde, $p] = $this->construirConsulta($filtros);
+        $st = $this->db->prepare("SELECT DATE_FORMAT(l.fecha, '%Y-%m-%d %H:%i:%s'), COALESCE(u.nombre, 'Sistema'), COALESCE(u.rol, ''), l.accion,
+                   COALESCE(l.modulo, ''), COALESCE(l.tabla_afectada, ''), COALESCE(l.id_registro, ''), COALESCE(l.descripcion, ''), COALESCE(l.ip_address, '')
+            $desde ORDER BY l.fecha DESC, l.id DESC LIMIT " . max(1, $maximo));
+        $st->execute($p);
+        return $st->fetchAll(PDO::FETCH_NUM);
+    }
 
-        if (!empty($filter_accion)) {
-            $from .= " AND logs.accion = ?";
-            $params[] = $filter_accion;
-        }
+    /** Valores que existen, para los filtros (la bitácora crece con acciones nuevas). */
+    public function valores(string $columna): array {
+        $col = match ($columna) { 'accion' => 'accion', 'modulo' => 'modulo', default => throw new \InvalidArgumentException('Columna no permitida') };
+        return $this->db->query("SELECT DISTINCT $col FROM logs_sistema WHERE $col IS NOT NULL AND $col <> '' ORDER BY $col")->fetchAll(PDO::FETCH_COLUMN);
+    }
 
-        return [$from, $params];
+    public function usuarios(): array {
+        return $this->db->query("SELECT DISTINCT u.id, u.nombre FROM logs_sistema l JOIN usuarios u ON u.id = l.usuario_id ORDER BY u.nombre")->fetchAll(PDO::FETCH_ASSOC);
     }
 }
