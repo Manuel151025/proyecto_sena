@@ -306,7 +306,9 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         $this->ejecuta(fn() => $us->findById($this->idCoordinador()), 'findById');
 
         $lg = new Models\LogsModel($this->db);
-        $this->ejecuta(fn() => $lg->getLogs('', '', 25, 0), 'getLogs');
+        $this->ejecuta(fn() => $lg->listar(['accion' => 'Crear', 'desde' => '2020-01-01', 'hasta' => date('Y-m-d')], 25, 0), 'listar');
+        $this->ejecuta(fn() => $lg->valores('accion'), 'acciones');
+        $this->ejecuta(fn() => $lg->paraExportar([], 10), 'paraExportar');
 
         $cf = new Models\ConfiguracionModel($this->db);
         $this->ejecuta(fn() => $cf->getAll(), 'getAll');
@@ -314,9 +316,16 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         $cal = new Models\CalendarioModel($this->db);
         $desde = date('Y-01-01');
         $hasta = date('Y-12-31');
-        $this->ejecuta(fn() => $cal->getCoordinadorEvents($desde, $hasta), 'getCoordinadorEvents');
-        $this->ejecuta(fn() => $cal->getInstructorEvents($this->idInstructorConFicha(), $desde, $hasta), 'getInstructorEvents');
-        $this->ejecuta(fn() => $cal->getAprendizEvents($apUid, $desde, $hasta), 'getAprendizEvents');
+        $porRol = [];
+        foreach ([[ROL_COORDINADOR, $this->idCoordinador()], [ROL_INSTRUCTOR, $this->idInstructorConFicha()], [ROL_APRENDIZ, $apUid]] as [$rol, $uid]) {
+            $porRol[$rol] = $this->ejecuta(fn() => $cal->eventos(new \Core\Support\Actor($uid, $rol), '2000-01-01', '2100-12-31'), "eventos ($rol)");
+            foreach ($porRol[$rol] as $e) {
+                $this->assertArrayHasKey('title', $e);
+                $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $e['start']);
+            }
+        }
+        $this->assertSame([], $cal->eventos(new \Core\Support\Actor($this->idInstructorAjeno(), ROL_INSTRUCTOR), '2000-01-01', '2100-12-31'),
+            'un instructor sin fichas ve eventos');
 
         $pr = new Models\ProyectosModel($this->db);
         $this->ejecuta(fn() => $pr->listar(new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR)), 'ProyectosModel::listar');

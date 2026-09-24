@@ -3,63 +3,84 @@ declare(strict_types=1);
 
 namespace Core\Controllers;
 
-use Core\Support\ErrorDeNegocio;
 use Core\BaseController;
-use Core\Database;
+use Core\Exportacion\Exportador;
 use Core\Models\LogsModel;
-use PDO;
-use Exception;
+use Core\Services\Auditoria;
+use Core\Services\Paginator;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Core\Support\Validador;
+use Throwable;
 
+/**
+ * Bitácora de auditoría (RNF02), solo coordinación.
+ *
+ *   GET /logs?search=&accion=&modulo=&usuario_id=&desde=&hasta=
+ *   GET /logs/exportar?...&formato=xlsx|csv
+ */
 class LogsController extends BaseController {
-    private PDO $db;
-    private LogsModel $logsModel;
+    private const COLOR = [
+        'Crear' => 'success', 'Matricular' => 'success', 'Asignar' => 'success', 'Importar' => 'success',
+        'Editar' => 'warning', 'Modificar' => 'warning', 'Reasignar' => 'warning', 'Revisar' => 'primary', 'Calificar' => 'primary', 'Cerrar' => 'primary',
+        'Eliminar' => 'danger', 'Retirar' => 'danger', 'Acceso denegado' => 'danger', 'Login fallido' => 'danger',
+        'Login' => 'info', 'Logout' => 'secondary', 'Exportar' => 'secondary',
+    ];
 
-    public function __construct(?PDO $db = null, ?LogsModel $logsModel = null) {
-        requireRole(ROL_COORDINADOR);
-        $this->db = $db ?? Database::getConnection();
-        $this->logsModel = $logsModel ?? new LogsModel($this->db);
+    private LogsModel $modelo;
+
+    public function __construct(?LogsModel $modelo = null) {
+        $this->modelo = $modelo ?? new LogsModel();
     }
 
     public function index(): void {
-        $errors = [];
-        $search = trim($_GET['search'] ?? '');
-        $filter_accion = $_GET['accion'] ?? '';
-
-        $logs = [];
+        $this->exigirRol(ROL_COORDINADOR);
+        [$filtros, $errors] = $this->filtros();
+        $logs = $acciones = $modulos = $usuarios = [];
         $paginacion = null;
         try {
-            $total = $this->logsModel->contarLogs($search, $filter_accion);
-            $paginacion = \Core\Services\Paginator::desdePeticion($total, 50);
-            $logs = $this->logsModel->getLogs(
-                $search,
-                $filter_accion,
-                $paginacion->perPage(),
-                $paginacion->offset()
-            );
-        } catch (Exception $e) {
-            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar los registros de auditoría');
+            $paginacion = Paginator::desdePeticion($this->modelo->contar($filtros), 50);
+            $logs = $this->modelo->listar($filtros, $paginacion->perPage(), $paginacion->offset());
+            $acciones = $this->modelo->valores('accion');
+            $modulos = $this->modelo->valores('modulo');
+            $usuarios = $this->modelo->usuarios();
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar la bitácora');
         }
+        $this->render(BASE_PATH . 'modules/logs/views/index.view.php', [
+            'errors' => $errors, 'logs' => $logs, 'filtros' => $filtros, 'paginacion' => $paginacion,
+            'acciones' => $acciones, 'modulos' => $modulos, 'usuarios' => $usuarios, 'colores' => self::COLOR,
+        ], 'Bitácora de auditoría · SENA');
+    }
 
-        $acciones_badge = [
-            'Crear' => 'success',
-            'Calificar' => 'primary',
-            'Modificar' => 'warning',
-            'Eliminar' => 'danger',
-            'Login' => 'info',
-            'Logout' => 'secondary'
+    public function exportar(): never {
+        $this->exigirRol(ROL_COORDINADOR);
+        [$filtros, $errors] = $this->filtros();
+        if ($errors !== []) {
+            $this->fallo($errors, '/logs');
+        }
+        $formato = ($_GET['formato'] ?? '') === 'csv' ? 'csv' : 'xlsx';
+        $filas = $this->modelo->paraExportar($filtros, Exportador::MAX_FILAS);
+        (new Auditoria())->operacion(Actor::actual(), 'Exportar', 'Auditoría', 'logs_sistema', null, count($filas) . " registros de la bitácora en $formato");
+        $enc = ['Fecha', 'Usuario', 'Rol', 'Acción', 'Módulo', 'Tabla', 'Registro', 'Descripción', 'IP'];
+        $nombre = 'bitacora_' . date('Ymd_His') . '.' . $formato;
+        Exportador::descargar($formato === 'csv' ? Exportador::csv($nombre, $enc, $filas)
+            : Exportador::xlsx('Bitácora', $enc, $filas, ['titulo' => 'Bitácora de auditoría · ' . date('d/m/Y'), 'anchos' => [19, 26, 12, 16, 16, 18, 9, 60, 15]]),
+            $nombre, $formato);
+    }
+
+    /** @return array{0:array, 1:string[]} */
+    private function filtros(): array {
+        $v = new Validador($_GET);
+        $f = [
+            'search'     => $this->consulta()->busquedaCruda('search'),
+            'accion'     => $v->texto('accion', 'La acción', 0, 100, false),
+            'modulo'     => $v->texto('modulo', 'El módulo', 0, 100, false),
+            'usuario_id' => $v->id('usuario_id', 'El usuario', false),
+            'desde'      => $v->fecha('desde', 'La fecha inicial', false),
+            'hasta'      => $v->fecha('hasta', 'La fecha final', false),
         ];
-
-        $this->render(
-            BASE_PATH . 'modules/logs/views/index.view.php',
-            [
-                'errors' => $errors,
-                'logs' => $logs,
-                'search' => $search,
-                'filter_accion' => $filter_accion,
-                'acciones_badge' => $acciones_badge,
-                'paginacion' => $paginacion
-            ],
-            'Bitácora de Auditoría · SENA'
-        );
+        $v->rangoFechas($f['desde'], $f['hasta'], 'La fecha final');
+        return [$f, $v->errores()];
     }
 }

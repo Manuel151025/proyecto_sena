@@ -23,13 +23,6 @@ if (!defined('VISTA_PERMITIDA')) {
   </div>
 <?php endif; ?>
 
-<?php if (!empty($success)): ?>
-  <div class="alert-flat success mb-3">
-    <i class="bi bi-check-circle"></i>
-    <div><?= htmlspecialchars($success) ?></div>
-  </div>
-<?php endif; ?>
-
 <?php if (!empty($errors)): ?>
   <div class="alert-flat danger mb-3">
     <i class="bi bi-exclamation-circle"></i>
@@ -50,11 +43,11 @@ if (!defined('VISTA_PERMITIDA')) {
       <div class="card-body">
 
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="avatar lg" style="background: <?= htmlspecialchars($user['avatar_color']) ?>">
-            <?= getInitials($user['nombre']) ?>
+          <div class="avatar lg" style="background: <?= e($user['avatar_color'] ?: '#39A900') ?>">
+            <?= e(getInitials($user['nombre'])) ?>
           </div>
           <div>
-            <div class="fw-semibold"><?= htmlspecialchars($user['nombre']) ?></div>
+            <div class="fw-semibold"><?= e($user['nombre']) ?></div>
             <div class="small text-muted">
               Miembro desde
               <?= !empty($user['fecha_creacion']) ? date('M Y', strtotime($user['fecha_creacion'])) : '—' ?>
@@ -62,41 +55,38 @@ if (!defined('VISTA_PERMITIDA')) {
           </div>
         </div>
 
-        <form method="POST" action="">
+        <form method="POST">
           <?= csrfField() ?>
-          <input type="hidden" name="action" value="update_profile">
+          <input type="hidden" name="action" value="datos">
 
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="perfil-nombre">Nombres y apellidos</label>
               <input type="text" id="perfil-nombre" name="nombre" class="form-control"
-                     value="<?= htmlspecialchars($user['nombre']) ?>"
-                     minlength="3" maxlength="100" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')" required>
+                     value="<?= e($user['nombre']) ?>"
+                     minlength="3" maxlength="<?= \Core\Formularios\UsuarioFormulario::MAX_NOMBRE ?>" data-filtro="persona" required>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="perfil-email">Correo institucional</label>
-              <input type="email" id="perfil-email" class="form-control" value="<?= htmlspecialchars($user['email']) ?>" disabled>
+              <input type="email" id="perfil-email" class="form-control" value="<?= e($user['email']) ?>" disabled>
               <div class="small text-muted mt-1">Para cambiar el correo contacta al coordinador.</div>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="perfil-rol">Rol</label>
-              <input type="text" id="perfil-rol" class="form-control" value="<?= ucfirst(htmlspecialchars($user['rol'])) ?>" disabled>
+              <input type="text" id="perfil-rol" class="form-control" value="<?= e(ucfirst((string)$user['rol'])) ?>" disabled>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Color de avatar</label>
-              <div class="d-flex flex-wrap gap-2">
-                <?php foreach ($colores_validos as $color): ?>
-                  <label class="d-inline-block" style="cursor:pointer">
-                    <input type="radio" name="avatar_color" value="<?= $color ?>"
-                           class="d-none"
-                           <?= $user['avatar_color'] === $color ? 'checked' : '' ?>>
-                    <span class="d-inline-block rounded-circle"
-                          style="width:32px;height:32px;background:<?= $color ?>;
-                                 border:3px solid <?= $user['avatar_color'] === $color ? '#1f2937' : 'transparent' ?>;
-                                 transition:border-color .15s"></span>
-                  </label>
-                <?php endforeach; ?>
-              </div>
+              <fieldset>
+                <legend class="form-label fs-6">Color de avatar</legend>
+                <div class="selector-colores">
+                  <?php foreach ($colores as $i => $c): ?>
+                    <label class="muestra-color" style="--color: <?= e($c) ?>">
+                      <input type="radio" name="avatar_color" value="<?= e($c) ?>" <?= strcasecmp((string)$user['avatar_color'], $c) === 0 ? 'checked' : '' ?> required>
+                      <span class="visually-hidden">Color <?= $i + 1 ?></span>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+              </fieldset>
             </div>
           </div>
 
@@ -115,15 +105,15 @@ if (!defined('VISTA_PERMITIDA')) {
     <div class="card">
       <div class="card-header">Cambiar contraseña</div>
       <div class="card-body">
-        <form method="POST" action="">
+        <form method="POST">
           <?= csrfField() ?>
-          <input type="hidden" name="action" value="change_password">
+          <input type="hidden" name="action" value="contrasena">
 
           <div class="mb-3">
             <label class="form-label" for="pw-cur">Contraseña actual</label>
             <div class="position-relative">
               <input type="password" name="password_actual" id="pw-cur"
-                     class="form-control pe-5" required>
+                     class="form-control pe-5" required autocomplete="current-password">
               <button type="button" class="btn btn-link position-absolute end-0 top-0 text-muted"
                       data-pw-toggle="#pw-cur" style="height:100%">
                 <i class="bi bi-eye"></i>
@@ -134,10 +124,10 @@ if (!defined('VISTA_PERMITIDA')) {
           <div class="mb-3">
             <label class="form-label" for="pw-nueva">Nueva contraseña</label>
             <input type="password" id="pw-nueva" name="password_nueva" class="form-control"
-                   data-pw-strength required minlength="8">
+                   data-pw-strength required minlength="<?= (int)$minimo ?>" maxlength="72" autocomplete="new-password">
             <div class="pw-strength mt-2"><span></span><span></span><span></span><span></span></div>
             <div class="mt-2">
-              <div class="pw-req" data-req="len"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
+              <div class="pw-req" data-req="len"><i class="bi bi-circle"></i> Mínimo <?= (int)$minimo ?> caracteres</div>
               <div class="pw-req" data-req="letter"><i class="bi bi-circle"></i> Contiene letras</div>
               <div class="pw-req" data-req="num"><i class="bi bi-circle"></i> Contiene números</div>
             </div>
@@ -146,7 +136,7 @@ if (!defined('VISTA_PERMITIDA')) {
           <div class="mb-3">
             <label class="form-label" for="pw-confirmar">Confirmar nueva contraseña</label>
             <input type="password" id="pw-confirmar" name="password_confirmar" class="form-control"
-                   required minlength="8">
+                   required minlength="<?= (int)$minimo ?>" maxlength="72" autocomplete="new-password">
           </div>
 
           <button type="submit" class="btn btn-primary w-100">

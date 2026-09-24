@@ -94,8 +94,8 @@ final class BusquedaYFiltrosTest extends CasoConBaseDeDatos {
         ")->execute([$this->idCoordinador()]);
 
         $modelo = new \Core\Models\LogsModel($this->db);
-        $conLiteral = $modelo->getLogs('50%', '', 25, 0);
-        $sinRelacion = $modelo->getLogs('99%', '', 25, 0);
+        $conLiteral = $modelo->listar(['search' => '50%'], 25, 0);
+        $sinRelacion = $modelo->listar(['search' => '99%'], 25, 0);
 
         $this->assertNotEmpty($conLiteral, 'no encuentra el porcentaje literal');
         $this->assertCount(0, $sinRelacion, 'el % sigue actuando como comodín');

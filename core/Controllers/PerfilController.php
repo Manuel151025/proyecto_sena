@@ -4,119 +4,95 @@ declare(strict_types=1);
 namespace Core\Controllers;
 
 use Core\BaseController;
-use Core\Database;
+use Core\Formularios\UsuarioFormulario;
 use Core\Models\PerfilModel;
-use PDO;
-use Exception;
+use Core\Services\Auditoria;
+use Core\Support\Actor;
+use Core\Support\ErrorDeNegocio;
+use Core\Support\PoliticaContrasena;
+use Core\Support\Validador;
+use Throwable;
 
+/**
+ * Perfil propio (todos los roles).
+ *
+ *   GET  /perfil
+ *   POST /perfil  action=datos        nombre y color del avatar
+ *   POST /perfil  action=contrasena   cambio de contraseña (la temporal obliga a pasar por aquí)
+ *
+ * El nombre y los colores usan las mismas reglas que la gestión de usuarios
+ * (antes el perfil rechazaba apóstrofos que la coordinación sí admitía, y
+ * tenía otra paleta), y la contraseña, PoliticaContrasena.
+ */
 class PerfilController extends BaseController {
-    private PDO $db;
-    private PerfilModel $perfilModel;
+    private PerfilModel $modelo;
 
-    public function __construct(?PDO $db = null, ?PerfilModel $perfilModel = null) {
-        requireAuth();
-        $this->db = $db ?? Database::getConnection();
-        $this->perfilModel = $perfilModel ?? new PerfilModel($this->db);
+    public function __construct(?PerfilModel $modelo = null) {
+        $this->modelo = $modelo ?? new PerfilModel();
     }
 
     public function index(): void {
-        $user_id = (int)getCurrentUser()['id'];
-        $errors  = [];
-        $success = '';
-
-        $colores_validos = [
-            '#39A900', '#2E7D32', '#1976D2', '#7B1FA2',
-            '#F59E0B', '#E53935', '#00897B', '#5D4037',
-        ];
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            requireCsrf();
-            if (($_POST['action'] ?? '') === 'update_profile') {
-                $nombre = trim($_POST['nombre'] ?? '');
-                $color  = trim($_POST['avatar_color'] ?? '');
-
-                if (mb_strlen($nombre, 'UTF-8') < 3) {
-                    $errors[] = 'El nombre debe tener al menos 3 caracteres.';
-                } elseif (mb_strlen($nombre, 'UTF-8') > 100) {
-                    $errors[] = 'El nombre no puede exceder los 100 caracteres.';
-                } elseif (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/', $nombre)) {
-                    $errors[] = 'El nombre solo puede contener letras y espacios.';
-                }
-                $nombre = strip_tags($nombre);
-                if (!in_array($color, $colores_validos, true)) {
-                    $errors[] = 'Color de avatar no válido.';
-                }
-
-                if (empty($errors)) {
-                    try {
-                        $this->perfilModel->updateProfile($user_id, $nombre, $color);
-
-                        // Refrescar sesión de esta pestaña para que el cambio se vea de inmediato
-                        $_SESSION['tabs'][getTabId()]['user_nombre']       = $nombre;
-                        $_SESSION['tabs'][getTabId()]['user_avatar_color'] = $color;
-
-                        $success = 'Datos personales actualizados correctamente.';
-                    } catch (Exception $e) {
-                        $errors[] = 'No se pudieron guardar los cambios.';
-                    }
-                }
-            } elseif (($_POST['action'] ?? '') === 'change_password') {
-                $actual    = $_POST['password_actual'] ?? '';
-                $nueva     = $_POST['password_nueva'] ?? '';
-                $confirmar = $_POST['password_confirmar'] ?? '';
-
-                if (empty($actual)) {
-                    $errors[] = 'Debes ingresar tu contraseña actual.';
-                }
-                if (strlen($nueva) < 8) {
-                    $errors[] = 'La nueva contraseña debe tener al menos 8 caracteres.';
-                }
-                if (!preg_match('/[A-Za-z]/', $nueva) || !preg_match('/[0-9]/', $nueva)) {
-                    $errors[] = 'La nueva contraseña debe contener letras y números.';
-                }
-                if ($nueva !== $confirmar) {
-                    $errors[] = 'La confirmación no coincide con la nueva contraseña.';
-                }
-                if ($nueva === $actual && empty($errors)) {
-                    $errors[] = 'La nueva contraseña no puede ser igual a la actual.';
-                }
-
-                if (empty($errors)) {
-                    try {
-                        if (!$this->perfilModel->verifyPassword($user_id, $actual)) {
-                            $errors[] = 'La contraseña actual es incorrecta.';
-                        } else {
-                            $this->perfilModel->changePassword($user_id, $nueva);
-                            $_SESSION['tabs'][getTabId()]['debe_cambiar_password'] = false;
-                            $success = 'Contraseña actualizada correctamente.';
-                        }
-                    } catch (Exception $e) {
-                        $errors[] = 'No se pudo cambiar la contraseña.';
-                    }
-                }
-            }
-        }
-
+        $errors = [];
         $user = ['nombre' => '', 'email' => '', 'rol' => '', 'avatar_color' => '#39A900', 'fecha_creacion' => ''];
         try {
-            $row = $this->perfilModel->getPerfil($user_id);
-            if ($row) {
-                $user = $row;
-            }
-        } catch (Exception $e) {
-            $errors[] = 'Error al cargar tu perfil.';
+            $user = $this->modelo->getPerfil(Actor::actual()->id) ?? $user;
+        } catch (Throwable $e) {
+            $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar tu perfil');
         }
+        $this->render(BASE_PATH . 'modules/perfil/views/index.view.php', [
+            'errors'              => $errors,
+            'user'                => $user,
+            'colores'             => UsuarioFormulario::COLORES,
+            'debeCambiarPassword' => (bool)(tabData()['debe_cambiar_password'] ?? false),
+            'minimo'              => PoliticaContrasena::MIN,
+        ], 'Mi perfil · SENA');
+    }
 
-        $this->render(
-            BASE_PATH . 'modules/perfil/views/index.view.php',
-            [
-                'errors' => $errors,
-                'success' => $success,
-                'user' => $user,
-                'colores_validos' => $colores_validos,
-                'debeCambiarPassword' => (bool)(tabData()['debe_cambiar_password'] ?? false),
-            ],
-            'Mi Perfil · SENA'
-        );
+    public function datos(): never {
+        $actor = Actor::actual();
+        $v = $this->entrada();
+        $nombre = $v->patron('nombre', 'El nombre', Validador::PATRON_PERSONA, 'letras, espacios, apóstrofo y guion', 3, UsuarioFormulario::MAX_NOMBRE);
+        $color = $v->enum('avatar_color', 'El color', UsuarioFormulario::COLORES);
+        $this->siHayErrores($v, '/perfil');
+        $this->ejecutar(function () use ($actor, $nombre, $color) {
+            $this->modelo->updateProfile($actor->id, $nombre, $color);
+            // La cabecera lee el nombre y el color de la sesión de la pestaña.
+            $_SESSION['tabs'][getTabId()]['user_nombre'] = $nombre;
+            $_SESSION['tabs'][getTabId()]['user_avatar_color'] = $color;
+            (new Auditoria())->operacion($actor, 'Editar', 'Perfil', 'usuarios', $actor->id, 'Actualizó sus datos personales');
+        }, '/perfil', 'Datos actualizados.', 'No se pudieron guardar los cambios');
+    }
+
+    public function contrasena(): never {
+        $actor = Actor::actual();
+        $actual = (string)($_POST['password_actual'] ?? '');
+        $nueva = (string)($_POST['password_nueva'] ?? '');
+        $confirmar = (string)($_POST['password_confirmar'] ?? '');
+        $perfil = $this->modelo->getPerfil($actor->id) ?? [];
+
+        $errores = PoliticaContrasena::errores($nueva, (string)($perfil['email'] ?? ''), (string)($perfil['nombre'] ?? ''));
+        if ($actual === '') {
+            $errores[] = 'Escribe tu contraseña actual.';
+        }
+        if ($nueva !== $confirmar) {
+            $errores[] = 'La confirmación no coincide con la nueva contraseña.';
+        }
+        if ($errores === [] && hash_equals($actual, $nueva)) {
+            $errores[] = 'La nueva contraseña tiene que ser distinta de la actual.';
+        }
+        if ($errores === [] && !$this->modelo->verifyPassword($actor->id, $actual)) {
+            (new Auditoria())->operacion($actor, 'Contraseña incorrecta', 'Perfil', 'usuarios', $actor->id, 'Intento de cambio de contraseña con la actual errada');
+            $errores[] = 'La contraseña actual no es correcta.';
+        }
+        if ($errores !== []) {
+            $this->fallo($errores, '/perfil');
+        }
+        $this->ejecutar(function () use ($actor, $nueva) {
+            $this->modelo->changePassword($actor->id, $nueva);
+            $_SESSION['tabs'][getTabId()]['debe_cambiar_password'] = false;
+            // Identificador de sesión nuevo tras cambiar la credencial.
+            session_regenerate_id(true);
+            (new Auditoria())->operacion($actor, 'Cambiar contraseña', 'Perfil', 'usuarios', $actor->id, 'Cambió su contraseña');
+        }, '/perfil', 'Contraseña actualizada.', 'No se pudo cambiar la contraseña');
     }
 }
