@@ -6,6 +6,7 @@ namespace Tests\Integration;
 use Core\Services\AsignacionesService;
 use Core\Services\FichasService;
 use Core\Services\MatriculasService;
+use Core\Services\UsuariosService;
 use Core\Support\Actor;
 use Core\Support\ErrorDeNegocio;
 use Core\Support\PoliticaContrasena;
@@ -246,5 +247,28 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
 
         $s->eliminar($id, $this->coordinador());
         $this->assertSame($total, $pendientesDe((int)$x['lider']));
+    }
+
+    // =================================================================
+    // CUENTAS DE COORDINACIÓN
+    // =================================================================
+
+    /**
+     * Un clic dejaba a la institución sin nadie que pudiera administrar
+     * cuentas: el coordinador podía desactivarse a sí mismo o desactivar al
+     * último que quedaba.
+     */
+    #[TestDox('la coordinación no puede quedarse sin ningún coordinador activo')]
+    public function testSiempreQuedaUnCoordinador(): void {
+        $s = new UsuariosService($this->db);
+        $yo = $this->coordinador();
+        $this->esperarError(fn() => $s->cambiarEstado($yo->id, 'inactivo', $yo), 'propia');
+
+        // Solo queda un coordinador activo; otro actor con rol de
+        // coordinación intenta desactivarlo.
+        $this->db->prepare("UPDATE usuarios SET estado = 'inactivo' WHERE rol = 'coordinador' AND id <> ?")->execute([$yo->id]);
+        $otro = new Actor($this->idInstructorConFicha(), ROL_COORDINADOR);
+        $this->esperarError(fn() => $s->cambiarEstado($yo->id, 'inactivo', $otro), 'al menos un coordinador');
+        $this->assertSame('activo', (string)$this->db->query("SELECT estado FROM usuarios WHERE id = {$yo->id}")->fetchColumn());
     }
 }

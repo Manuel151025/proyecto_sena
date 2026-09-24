@@ -92,6 +92,57 @@ final class SeguridadTest extends CasoDePrueba {
         $this->assertSame([], $conCodigo, 'con JavaScript en línea (la CSP lo bloquearía): ' . implode(', ', $conCodigo));
     }
 
+    /**
+     * Sin integridad, un CDN comprometido sirve el JavaScript o el CSS que
+     * quiera a todas las pantallas. Las páginas públicas cargaban los iconos
+     * sin ella.
+     */
+    #[TestDox('todo recurso de un CDN lleva su hash de integridad (SRI)')]
+    public function testRecursosExternosConIntegridad(): void {
+        $raiz = dirname(__DIR__, 3);
+        $archivos = array_merge(glob($raiz . '/modules/*/views/*.php') ?: [], glob($raiz . '/layouts/*.php') ?: [],
+                                glob($raiz . '/components/*.php') ?: [], [$raiz . '/login.php', $raiz . '/recover.php']);
+        $sinIntegridad = [];
+        foreach ($archivos as $f) {
+            preg_match_all('/<(?:script|link)\b[^>]*(?:src|href)="https:\/\/cdn\.[^"]+"[^>]*>/i', (string)file_get_contents($f), $m);
+            foreach ($m[0] as $etiqueta) {
+                if (!preg_match('/integrity="sha(256|384|512)-/', $etiqueta)) {
+                    $sinIntegridad[] = str_replace($raiz . '/', '', $f);
+                }
+            }
+        }
+        $this->assertSame([], $sinIntegridad, 'recursos de CDN sin SRI en: ' . implode(', ', $sinIntegridad));
+        foreach (\Core\Support\RecursosCdn::SCRIPTS as $nombre => $recursos) {
+            foreach ($recursos as [$url, $hash]) {
+                $this->assertStringStartsWith('https://cdn.jsdelivr.net/', $url, $nombre);
+                $this->assertMatchesRegularExpression('/^sha(256|384|512)-[A-Za-z0-9+\/=]{40,}$/', $hash, $nombre);
+            }
+        }
+    }
+
+    /**
+     * El calendario y la campana de avisos pintaban datos de usuarios con
+     * innerHTML (XSS almacenado). El único archivo que sigue usándolo es el
+     * selector, que escapa todo antes.
+     */
+    #[TestDox('el JavaScript no pinta datos con innerHTML (salvo el selector, que escapa)')]
+    public function testJavascriptSinSumiderosHtml(): void {
+        $raiz = dirname(__DIR__, 3);
+        $permitidos = ['assets/js/searchable-picker.js'];
+        $archivos = array_merge(glob($raiz . '/assets/js/*.js') ?: [], glob($raiz . '/assets/js/*/*.js') ?: []);
+        $this->assertNotEmpty($archivos);
+        $conSumidero = [];
+        foreach ($archivos as $f) {
+            $rel = str_replace($raiz . '/', '', $f);
+            $codigo = preg_replace('~/\*.*?\*/|^\s*//.*$~ms', '', (string)file_get_contents($f));
+            if (!in_array($rel, $permitidos, true)
+                && preg_match('/\.(innerHTML|outerHTML)\s*\+?=|insertAdjacentHTML|document\.write/', (string)$codigo)) {
+                $conSumidero[] = $rel;
+            }
+        }
+        $this->assertSame([], $conSumidero, 'escriben HTML sin escapar: ' . implode(', ', $conSumidero));
+    }
+
     // =================================================================
     // DETECCIÓN DE HTTPS
     // =================================================================
