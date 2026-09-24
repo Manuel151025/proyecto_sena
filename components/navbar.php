@@ -30,7 +30,7 @@ $tipoIconos = [
 ];
 ?>
 <header class="navbar-top">
-  <button class="toggle-sidebar" onclick="toggleSidebar()" aria-label="Alternar menú">
+  <button type="button" class="toggle-sidebar" data-accion="menu" aria-label="Alternar menú">
     <i class="bi bi-list"></i>
   </button>
   <div class="breadcrumb-nav">
@@ -47,7 +47,7 @@ $tipoIconos = [
     ?>
   </div>
   <div class="nav-actions">
-    <button type="button" class="icon-btn" onclick="toggleTheme()" aria-label="Cambiar tema">
+    <button type="button" class="icon-btn" data-accion="tema" aria-label="Cambiar tema">
       <i class="bi bi-moon-stars" data-theme-icon></i>
     </button>
 
