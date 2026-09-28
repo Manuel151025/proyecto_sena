@@ -44,9 +44,12 @@
     }
   }, true);
 
-  // Service worker de la PWA (la URL base va en <html data-app-url>).
-  var base = document.documentElement.getAttribute('data-app-url') || '';
-  if ('serviceWorker' in navigator && base !== '') {
+  // Service worker de la PWA (la URL base va en <html data-app-url>). La
+  // base vacía es legítima: en Docker y en el VPS la aplicación se sirve
+  // desde la raíz del dominio, y ahí es donde más importa la PWA.
+  var raiz = document.documentElement;
+  var base = raiz.getAttribute('data-app-url') || '';
+  if ('serviceWorker' in navigator && raiz.hasAttribute('data-app-url')) {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register(base + '/sw.js').catch(function () { /* sin PWA */ });
     });

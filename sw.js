@@ -1,4 +1,4 @@
-const CACHE_NAME = "sena-cache-v2";
+const CACHE_NAME = "sena-cache-v3";
 const ASSETS_TO_CACHE = [
   "./assets/css/theme.css",
   "./assets/css/picker.css",
@@ -50,12 +50,21 @@ self.addEventListener("fetch", event => {
     caches.match(event.request)
       .then(response => {
         return response || fetch(event.request).then(fetchResponse => {
-          // Si el recurso es estático y del mismo origen, guardarlo en caché
+          // Si el recurso es estático, del mismo origen y llegó bien, guardarlo
+          // en caché (antes se guardaban también los 404).
           if (
+            fetchResponse.ok &&
             event.request.url.startsWith(self.location.origin) &&
             (url.pathname.includes("/css/") || url.pathname.includes("/js/") || url.pathname.includes("/img/"))
           ) {
             return caches.open(CACHE_NAME).then(cache => {
+              // Una sola versión por archivo: los recursos llevan ?v=<fecha> y
+              // cada despliegue añadía otra copia sin retirar la anterior.
+              cache.keys().then(claves => claves.forEach(clave => {
+                if (new URL(clave.url).pathname === url.pathname && clave.url !== event.request.url) {
+                  cache.delete(clave);
+                }
+              }));
               cache.put(event.request, fetchResponse.clone());
               return fetchResponse;
             });

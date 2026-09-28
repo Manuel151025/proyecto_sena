@@ -1,6 +1,6 @@
 # Despliegue y operación
 
-**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.2
+**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.3
 
 Cómo instalar, configurar, actualizar y mantener el sistema. Para la seguridad del despliegue ver también [SEGURIDAD.md](SEGURIDAD.md).
 
@@ -115,6 +115,17 @@ php bin/verificar-esquema.php
 
 Una base anterior a la versión 3 (sin tabla `migraciones`) se pone al día con el mismo comando: cada migración comprueba si su cambio ya existe antes de aplicarlo.
 
+### Contraseñas publicadas (hacerlo una vez en producción)
+
+La base del VPS se creó con un volcado que quedó en el historial público del repositorio: 123 cuentas con la contraseña `admin123`. Tras actualizar:
+
+```bash
+php bin/auditar-claves.php                                   # informe: qué cuentas usan una contraseña conocida
+php bin/auditar-claves.php --aplicar > /root/claves-temporales.csv   # anula y genera temporales
+```
+
+Con `--aplicar`, cada cuenta recibe una contraseña temporal que debe cambiar al entrar; la anterior deja de servir en el acto. El archivo `correo;rol;clave_temporal` es para entregar las claves: guárdalo **fuera** de la carpeta web y bórralo al terminar. Quien tenga correo institucional también puede usar «¿Olvidaste tu contraseña?». En Docker: `docker compose exec app php bin/auditar-claves.php`.
+
 ## 6. Lista de comprobación de producción
 
 - [ ] `DEV_MODE=false`.
@@ -123,6 +134,8 @@ Una base anterior a la versión 3 (sin tabla `migraciones`) se pone al día con 
 - [ ] `AllowOverride All` activo: `https://dominio/.env`, `https://dominio/.git/config` y `https://dominio/uploads/` deben responder **403**.
 - [ ] Contraseñas propias en la base (no las de `docker-compose.yml` de ejemplo) y **contraseña de aplicación de Gmail rotada** si la anterior estuvo en un `.env` expuesto.
 - [ ] Sin datos de demostración, o con sus contraseñas cambiadas.
+- [ ] `php bin/auditar-claves.php` no encuentra ninguna cuenta.
+- [ ] `php bin/probar-correo.php tu-correo` entrega el mensaje de prueba.
 - [ ] `install.php` y volcados `.sql` fuera de la carpeta web (el `.htaccess` los niega, pero no deben estar).
 - [ ] Copias de seguridad programadas (§7).
 - [ ] Detrás de un proxy inverso: `mod_remoteip` para que el limitador de intentos vea la IP real.
@@ -170,6 +183,6 @@ php bin/migrar.php
 
 ## 10. Rotación de credenciales
 
-1. **Gmail**: en la cuenta de Google → Seguridad → Contraseñas de aplicación, revocar la anterior y crear una nueva; ponerla en `MAIL_PASSWORD`.
+1. **Gmail**: en la cuenta de Google → Seguridad → Contraseñas de aplicación, revocar la anterior y crear una nueva; ponerla en `MAIL_PASSWORD` y comprobar con `php bin/probar-correo.php tu-correo`.
 2. **Base de datos**: `ALTER USER 'usuario'@'host' IDENTIFIED BY 'nueva';` y actualizar `DB_PASS`.
-3. **Cuentas de usuario**: la coordinación puede restablecer la contraseña de cualquier cuenta desde **Usuarios**; se genera una temporal que se debe cambiar al entrar.
+3. **Cuentas de usuario**: la coordinación puede restablecer la contraseña de cualquier cuenta desde **Usuarios**; se genera una temporal que se debe cambiar al entrar. Para anular en bloque las contraseñas conocidas o publicadas: `php bin/auditar-claves.php --aplicar`.

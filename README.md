@@ -5,8 +5,8 @@ Plataforma web para planear, evaluar y hacer seguimiento a los proyectos formati
 ![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB-10.4-003545?logo=mariadb&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)
-![Pruebas](https://img.shields.io/badge/pruebas-595-39A900)
-![Versión](https://img.shields.io/badge/versión-3.2-39A900)
+![Pruebas](https://img.shields.io/badge/pruebas-600-39A900)
+![Versión](https://img.shields.io/badge/versión-3.3-39A900)
 
 ---
 
@@ -43,10 +43,10 @@ El seguimiento se llevaba en hojas de cálculo de cada instructor y en los repor
 | [Arquitectura](docs/ARQUITECTURA.md) | Capas, secuencia de una petición, control de acceso, dominio, decisiones de diseño |
 | [Flujos](docs/FLUJOS.md) | 17 diagramas de flujo y de estados: acceso, evaluación, importación, evidencias, planes, avisos… |
 | [Analítica](docs/ANALITICA.md) | Indicadores de cada rol, fórmulas, semáforo y catálogo de reportes |
-| [Seguridad](docs/SEGURIDAD.md) | Revisión OWASP: 36 hallazgos corregidos, controles por capa, límites de entrada y salida, riesgos residuales |
+| [Seguridad](docs/SEGURIDAD.md) | Revisión OWASP: 38 hallazgos, controles por capa, límites de entrada y salida, riesgos residuales |
 | [Manual de usuario](docs/MANUAL_USUARIO.md) | Uso paso a paso para aprendiz, instructor y coordinador |
 | [Despliegue](docs/DESPLIEGUE.md) | Instalación (Apache y Docker), variables de entorno, actualización, copias de seguridad |
-| [Pruebas](docs/PRUEBAS.md) | 595 pruebas automáticas, integración continua y recorridos en navegador |
+| [Pruebas](docs/PRUEBAS.md) | 600 pruebas automáticas, integración continua y recorridos en navegador |
 | [Datos](docs/DATOS.md) · [Rutas y permisos](docs/RUTAS_Y_PERMISOS.md) · [Formatos de importación](docs/FORMATOS_IMPORTACION.md) | Generados desde el código con `php bin/generar-docs.php` |
 | [Historial de versiones](CHANGELOG.md) | Qué cambió en cada versión y por qué |
 
@@ -88,7 +88,7 @@ Detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 |---|---|---|---|
 | **111** rutas y acciones | **25** controladores | **22** modelos | **26** servicios |
 | **12** formularios | **5** importaciones | **22** tablas | **18** migraciones |
-| **27** vistas | **595** pruebas | **≈24.700** líneas de PHP | **≈1.800** líneas de JS |
+| **27** vistas | **600** pruebas | **≈24.700** líneas de PHP | **≈1.800** líneas de JS |
 
 ---
 
@@ -118,12 +118,12 @@ Matriz completa, ruta por ruta, en [docs/RUTAS_Y_PERMISOS.md](docs/RUTAS_Y_PERMI
 
 ## Seguridad
 
-Revisión completa contra el OWASP Top 10 con **36 hallazgos corregidos** (3 críticos: `.env` y `.git` descargables por web, `.htaccess` ignorados en Docker, instalador con `DROP DATABASE` accesible por URL). Controles vigentes:
+Revisión completa contra el OWASP Top 10 con **38 hallazgos** (4 críticos: `.env` y `.git` descargables por web, `.htaccess` ignorados en Docker, instalador con `DROP DATABASE` accesible por URL, y un volcado con contraseñas en el historial público del repositorio, este último pendiente de pasos del responsable). Controles vigentes:
 
 | Control | Implementación |
 |---|---|
 | Inyección SQL | Sentencias preparadas en todas las consultas; identificadores dinámicos por lista blanca |
-| XSS | Escape en toda salida; CSP sin `'unsafe-inline'` en scripts; JavaScript sin `innerHTML` con datos |
+| XSS | Escape en toda salida; CSP sin `'unsafe-inline'` en scripts ni en estilos; JavaScript sin `innerHTML` con datos |
 | CSRF | Token en todo POST, comparación en tiempo constante |
 | Acceso | Roles por ruta, permiso por dato en servicio y consulta |
 | Sesión | Por pestaña, `HttpOnly`, `SameSite`, caducidad por inactividad (2 h) y absoluta (12 h) |
@@ -159,10 +159,12 @@ Para producción (sin demostración, primera cuenta, Docker, HTTPS, copias de se
 | `php bin/instalar.php --confirmar-borrado-total [--demo]` | Base nueva desde el esquema (borra la existente) |
 | `php bin/migrar.php [--estado]` | Aplicar migraciones pendientes tras actualizar |
 | `php bin/crear-coordinador.php correo "NOMBRE"` | Primera cuenta de coordinación (o recuperar el acceso) |
+| `php bin/auditar-claves.php [--aplicar]` | Detectar y anular contraseñas conocidas o publicadas |
+| `php bin/probar-correo.php correo` | Comprobar el SMTP (tras rotar `MAIL_PASSWORD`) |
 | `php bin/verificar-esquema.php` | Comprobar que la base coincide con el código |
 | `php bin/volcar-esquema.php` | Regenerar `database/esquema.sql` tras una migración |
 | `php bin/generar-docs.php` | Regenerar rutas, diccionario de datos y formatos de importación |
-| `composer test` | Las 595 pruebas |
+| `composer test` | Las 600 pruebas |
 
 ---
 

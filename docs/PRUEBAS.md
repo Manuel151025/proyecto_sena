@@ -1,6 +1,6 @@
 # Pruebas
 
-**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.2
+**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.3
 
 Cómo se verifica el sistema: pruebas automáticas, integración continua y recorridos en navegador. La guía práctica para ejecutarlas está en [tests/README.md](../tests/README.md).
 
@@ -10,10 +10,10 @@ Cómo se verifica el sistema: pruebas automáticas, integración continua y reco
 
 | Suite | Casos | Comprobaciones | Base de datos |
 |---|---:|---:|---|
-| Unitarias (`tests/Unit`) | 232 | 831 | No |
-| Seguridad (`tests/Security`) | 190 | 1.992 | Algunas |
-| Integración (`tests/Integration`) | 173 | 1.661 | Sí |
-| **Total** | **595** | **4.484** | |
+| Unitarias (`tests/Unit`) | 235 | 851 | No |
+| Seguridad (`tests/Security`) | 190 | 1.991 | Algunas |
+| Integración (`tests/Integration`) | 175 | 1.671 | Sí |
+| **Total** | **600** | **4.513** | |
 
 ```bash
 composer test                 # todas
@@ -38,8 +38,8 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 | `SemaforoTest` | 16 | Bordes de la regla del semáforo (59,9 / 60 / 79,9 / 80 %, 0–3 D, sin juicios) |
 | `ErrorDeNegocioTest` | 14 | Qué mensajes se muestran al usuario y cuáles se ocultan (errores de base de datos) |
 | `ManejadorErroresTest` | 12 | Errores y excepciones no capturadas: referencia al usuario, detalle al registro, JSON si la petición lo espera |
-| `SeguridadTest` | 22 | CSP sin scripts en línea, ninguna vista con código en línea, SRI en todo recurso externo, JavaScript sin `innerHTML` con datos, detección de HTTPS |
-| `PoliticaContrasenaTest` | 10 | Longitud, letras y números, 72 bytes, caracteres de control, usuario del correo; la clave temporal siempre cumple |
+| `SeguridadTest` | 24 | CSP sin scripts ni estilos en línea (salvo nonce), ninguna vista con código o `style=` en línea, SRI en todo recurso externo, JavaScript sin `innerHTML` con datos, detección de HTTPS |
+| `PoliticaContrasenaTest` | 11 | Longitud, letras y números, 72 bytes, caracteres de control, usuario del correo; la clave temporal siempre cumple |
 | `EnumsTest` | 9 | Listas blancas de estados y conceptos |
 | `ArranqueTest` | 3 | El entorno de pruebas carga y aísla la sesión entre casos |
 
@@ -71,6 +71,7 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 | `EvidenciasTest` | 9 | Envío ligado a un RAP propio, descarga con permiso, revisión y juicio separados |
 | `RutasYPermisosTest` | 8 | Matriz de accesos; canario del número de rutas (111) |
 | `PlanesMejoramientoTest` | 7 | Ciclo del plan: apertura sobre un D, en curso, cierre cumplido (A) o no cumplido |
+| `AuditoriaContrasenasTest` | 2 | Detecta las cuentas con contraseñas conocidas (también si comparten hash) y las anula con temporal y bitácora |
 
 ## 3. Integración continua
 
@@ -106,7 +107,7 @@ DB_NAME=sena_verificacion php bin/verificar-esquema.php
 DB_NAME=sena_verificacion vendor/bin/phpunit
 ```
 
-Las 595 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
+Las 600 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
 
 ## 6. Cómo añadir una prueba
 

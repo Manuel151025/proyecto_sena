@@ -6,6 +6,7 @@ Reconstruido a partir del historial real del repositorio: **145 commits** entre 
 
 | Versión | Fecha | Commits | Objetivo |
 |---|---|---:|---|
+| [v3.3](#v33) | 28 sep 2026 | 3 | Contraseñas publicadas en el historial, CSP estricta también para estilos y PWA en producción |
 | [v3.2](#v32) | 23 sep 2026 | 17 | Cierre: módulos por capas, analítica por rol, seguridad OWASP y documentación completa |
 | [v3.1](#v31) | 23 sep 2026 | 1 | Suite de pruebas: 492 casos unitarios, de seguridad e integración |
 | [v3.0](#v30) | 23 sep 2026 | 1 | Endurecimiento: entrada, errores, permisos y arquitectura |
@@ -19,6 +20,40 @@ Reconstruido a partir del historial real del repositorio: **145 commits** entre 
 | [v0.3](#v03) | 18–22 jun 2026 | 46 | Despliegue, PWA y rediseño |
 | [v0.2](#v02) | 2–3 jun 2026 | 13 | Enrutador, roles y calendario |
 | [v0.1](#v01) | 19–27 may 2026 | 5 | Arranque del proyecto |
+
+---
+
+## v3.3
+
+**28 de septiembre de 2026**
+
+### El hallazgo: contraseñas publicadas en el historial
+
+El repositorio es público y su historial conserva un volcado SQL de mayo (`sena_seguimiento.sql`, retirado del árbol en julio pero no del historial) con 117 aprendices y 123 cuentas. **Todas tienen la misma contraseña: `admin123`.** La base del VPS se creó a partir de ese volcado, así que cualquier cuenta de producción que no la haya cambiado, incluida la de coordinación, se abre con una contraseña que cualquiera puede leer en GitHub. En la base local, las 123 siguen activas con ella.
+
+- `bin/auditar-claves.php` recorre las cuentas y detecta las que usan una contraseña conocida: la del volcado y las que el sistema usó por defecto en otras épocas. Con `--aplicar` les asigna una temporal obligatoria de cambiar, la anterior deja de servir y queda constancia en la bitácora. Memoriza cada hash ya comprobado: las 123 cuentas del volcado comparten el mismo y se verifica una sola vez (33 s para 162 cuentas).
+- `admin123` y las demás claves por defecto quedan prohibidas en la política de contraseñas.
+- `bin/probar-correo.php` comprueba el SMTP, para después de rotar la contraseña de aplicación de Gmail.
+
+Lo que el código no puede hacer queda en `docs/SEGURIDAD.md` §6: poner el repositorio en privado, ejecutar la auditoría en producción y reescribir el historial.
+
+### CSP estricta también para los estilos
+
+`style-src` ya no admite `'unsafe-inline'`. Un estilo inyectado no ejecuta código, pero puede tapar la página con un formulario falso o leer valores con selectores de atributo.
+
+- Los 43 atributos `style` de las vistas pasan a clases, o a `data-ancho`, `data-fondo` y `data-color` cuando el valor sale de datos (barras de avance, avatares, leyenda del calendario). Los aplica `comportamientos.js` por CSSOM, que la CSP permite, y valida cada valor: un ancho entre 0 y 100, un color `#RRGGBB`.
+- Los bloques `<style>` de inicio de sesión (470 líneas) y recuperación (600) pasan a `login.css` y `recuperar.css`, que el navegador puede guardar en caché. La plantilla del correo de recuperación sale a `includes/correo_recuperacion.php`: en un correo los estilos en línea son obligatorios.
+- Las páginas de error y el `<style>` que inyecta FullCalendar usan el nonce de la respuesta (`<meta name="csp-nonce">`).
+- Nuevas pruebas: `testStyleSrcSinUnsafeInline` y `testSinEstilosEnLinea`, que falla si una vista o un script vuelve a escribir un atributo `style`. Comprobado además en el navegador: las 51 pantallas sin bloqueos, y barras, avatares, calendario y páginas públicas con el aspecto de antes.
+
+### PWA en producción
+
+El service worker no se registraba cuando la aplicación se sirve desde la raíz del dominio (Docker, VPS). Fue una regresión de la v3.2: al sacar el registro a `pestana.js` se exigió una URL base no vacía. Además, la caché guardaba también las respuestas 404 y acumulaba una copia de cada archivo por despliegue. Ahora guarda una sola versión por archivo y solo respuestas correctas.
+
+### De paso
+
+- Acciones del CI en versiones con Node 24 (`checkout@v7`, `cache@v6`): Node 20 está obsoleto en GitHub Actions.
+- Borrados los 7 restos de importaciones interrumpidas que quedaban en `uploads/` con datos de aprendices. Ninguna evidencia los usaba.
 
 ---
 

@@ -20,7 +20,7 @@ Aplicación web en PHP 8.2 sin framework, con arquitectura en capas sobre un ún
 | Migraciones versionadas | 18 |
 | Destinos del enrutador (pantallas, descargas y acciones) | 111 ([tabla](RUTAS_Y_PERMISOS.md)) |
 | Controladores / servicios / modelos / formularios | 25 / 26 / 22 / 12 |
-| Pruebas automáticas (PHPUnit) | 595, en local y en integración continua |
+| Pruebas automáticas (PHPUnit) | 600, en local y en integración continua |
 
 ### Tecnologías
 
@@ -69,7 +69,7 @@ Antes cada controlador validaba a mano, escribía SQL y decidía permisos en el 
 
 - **Una sola condición de acceso** del instructor (`InstructorAccessService::sqlCondicionAcceso()`), usada por el permiso de calificar y por todos los listados.
 - **Una sola puerta de escritura del juicio** (`EvaluacionService`): transacción, bloqueo de fila, historial en cada cambio y aviso al aprendiz, venga de donde venga (pantalla de juicios, expediente, evidencias, planes, importación).
-- Probar las reglas sin navegador (595 pruebas).
+- Probar las reglas sin navegador (600 pruebas).
 
 ---
 
@@ -121,7 +121,7 @@ Si el motivo falta al cambiar un juicio emitido, `EvaluacionService` lanza `Erro
 | `Core\Support\PoliticaContrasena` | Mínimo 8 caracteres y máximo 72 bytes (límite de bcrypt), letras y números, sin caracteres de control, sin el usuario del correo y sin las más comunes; claves temporales aleatorias que cumplen la política. |
 | `Core\Support\ArchivoSubido` | Subidas seguras: errores de PHP, tamaño, lista blanca de extensiones, tipo real (finfo) y firma del archivo. |
 | `Core\Support\Descarga` | Envío de archivos con permiso comprobado, `nosniff` y sandbox para lo que se abre en el navegador. |
-| `Core\Support\Seguridad` | Cabeceras (CSP sin `unsafe-inline` en scripts, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS bajo HTTPS) y sin caché en páginas autenticadas. |
+| `Core\Support\Seguridad` | Cabeceras (CSP sin `unsafe-inline` en scripts ni estilos, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS bajo HTTPS) y sin caché en páginas autenticadas. |
 | `Core\Services\Auditoria` | Bitácora: quién, qué, sobre qué registro, desde qué IP. |
 | `Core\Services\Notificador` | Avisos internos; solo admite rutas internas como enlace. |
 | `Core\Services\EvaluacionesSyncService` | Garantiza una evaluación pendiente por aprendiz y RAP del programa, y que cada pendiente tenga como responsable a quien la califica. |
