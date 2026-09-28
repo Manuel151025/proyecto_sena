@@ -20,6 +20,9 @@
  *   <button data-alerta="texto">                          muestra un aviso
  *   <button data-pulsar="#pdf_estructura">                pulsa otro elemento
  *   <input type="file" data-nombre-en="#etiqueta">        muestra el archivo elegido
+ *   <div data-ancho="45">                                 ancho en % (barras de avance)
+ *   <div data-fondo="#39A900">                            color de fondo (avatares)
+ *   <label data-color="#39A900">                          variable --color (muestras)
  *
  * Los textos llegan en atributos (escapados por PHP) y se usan como texto:
  * nunca se interpretan como HTML ni como código.
@@ -194,6 +197,29 @@
     var modal = document.querySelector(btn.getAttribute('data-bs-target') || btn.getAttribute('data-modal'));
     if (modal) window.bootstrap.Modal.getOrCreateInstance(modal).show();
   });
+
+  // -------------------------------------------------------------------
+  // ESTILOS QUE SALEN DE DATOS
+  // La CSP prohíbe los atributos style, pero no asignar estilos desde un
+  // script propio (CSSOM). Los valores se validan aquí: un ancho es un
+  // número entre 0 y 100 y un color, un hexadecimal #RRGGBB.
+  // -------------------------------------------------------------------
+  var HEX = /^#[0-9a-f]{6}$/i;
+  function aplicarEstilos(raiz) {
+    raiz.querySelectorAll('[data-ancho]').forEach(function (el) {
+      var n = parseFloat(el.getAttribute('data-ancho'));
+      if (!isNaN(n)) el.style.width = Math.max(0, Math.min(100, n)) + '%';
+    });
+    raiz.querySelectorAll('[data-fondo]').forEach(function (el) {
+      var c = el.getAttribute('data-fondo');
+      if (HEX.test(c)) el.style.backgroundColor = c;
+    });
+    raiz.querySelectorAll('[data-color]').forEach(function (el) {
+      var c = el.getAttribute('data-color');
+      if (HEX.test(c)) el.style.setProperty('--color', c);
+    });
+  }
+  aplicarEstilos(document);
 
   // -------------------------------------------------------------------
   // LÍMITE DE TAMAÑO DE ARCHIVOS

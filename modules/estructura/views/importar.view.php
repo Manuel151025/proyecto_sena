@@ -86,7 +86,7 @@ if (!defined('VISTA_PERMITIDA')) {
 <div class="row">
   <div class="col-12">
     <div class="alert alert-flat warning mb-4 border-0 d-flex gap-3 align-items-center">
-      <i class="bi bi-info-circle-fill text-warning" style="font-size: 1.5rem;"></i>
+      <i class="texto-2xl bi bi-info-circle-fill text-warning"></i>
       <div>
         <h6 class="fw-bold mb-1">Previsualización de Importación</h6>
         Revisa los datos extraídos de los documentos PDF. Si estás conforme, pulsa <strong>Confirmar e importar</strong> para registrarlos.
@@ -121,31 +121,31 @@ if (!defined('VISTA_PERMITIDA')) {
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Código del Programa</small>
-              <strong style="font-size: 1.1rem;"><code class="text-uppercase-visual"><?= htmlspecialchars($parsed_estructura['programa_codigo']) ?></code></strong>
+              <strong class="texto-lg"><code class="text-uppercase-visual"><?= htmlspecialchars($parsed_estructura['programa_codigo']) ?></code></strong>
             </div>
           </div>
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Total Competencias</small>
-              <strong style="font-size: 1.1rem;"><?= count($parsed_estructura['competencias']) ?></strong>
+              <strong class="texto-lg"><?= count($parsed_estructura['competencias']) ?></strong>
             </div>
           </div>
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Duración Estimada</small>
-              <strong style="font-size: 1.1rem;"><?= (int)$parsed_estructura['programa_duracion'] ?> horas</strong>
+              <strong class="texto-lg"><?= (int)$parsed_estructura['programa_duracion'] ?> horas</strong>
             </div>
           </div>
         </div>
 
         <div class="accordion" id="accordionEstructura">
           <?php foreach ($parsed_estructura['competencias'] as $index => $comp): ?>
-          <div class="accordion-item" style="border-radius: var(--radius-lg); margin-bottom: 0.5rem; overflow: hidden; border: 1px solid var(--border);">
+          <div class="acordeon-tarjeta accordion-item">
             <h2 class="accordion-header" id="headingEst<?= $index ?>">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEst<?= $index ?>" aria-expanded="false" style="font-size: 0.95rem; font-weight: 600; padding: 1rem 1.25rem;">
+              <button class="acordeon-titulo accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEst<?= $index ?>" aria-expanded="false">
                 <span class="badge bg-soft primary me-2">Código: <span class="text-uppercase-visual"><?= htmlspecialchars($comp['codigo']) ?></span></span>
                 <span class="text-uppercase-visual"><?= e(mb_substr((string)$comp['nombre'], 0, 110)) ?><?= mb_strlen((string)$comp['nombre']) > 110 ? '…' : '' ?></span>
-                <span class="badge bg-secondary ms-auto text-white ms-2" style="font-size: 0.72rem;"><?= count($comp['resultados']) ?> RAs</span>
+                <span class="texto-xs badge bg-secondary ms-auto text-white ms-2"><?= count($comp['resultados']) ?> RAs</span>
               </button>
             </h2>
             <div id="collapseEst<?= $index ?>" class="accordion-collapse collapse" data-bs-parent="#accordionEstructura">
@@ -155,8 +155,8 @@ if (!defined('VISTA_PERMITIDA')) {
                 <ul class="list-group list-group-flush">
                   <?php foreach ($comp['resultados'] as $ra): ?>
                   <li class="list-group-item px-0 py-2 d-flex align-items-start gap-2">
-                    <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.72rem; font-family: monospace;">RA-<?= str_pad((string)$ra['numero'], 2, '0', STR_PAD_LEFT) ?></span>
-                    <span class="text-uppercase-visual" style="font-size: 0.9rem;"><?= htmlspecialchars($ra['denominacion']) ?></span>
+                    <span class="texto-xs font-monospace badge bg-light text-dark border px-2 py-1">RA-<?= str_pad((string)$ra['numero'], 2, '0', STR_PAD_LEFT) ?></span>
+                    <span class="texto-md text-uppercase-visual"><?= htmlspecialchars($ra['denominacion']) ?></span>
                   </li>
                   <?php endforeach; ?>
                 </ul>
@@ -180,26 +180,26 @@ if (!defined('VISTA_PERMITIDA')) {
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Código del Proyecto</small>
-              <strong style="font-size: 1.1rem;"><code class="text-uppercase-visual"><?= htmlspecialchars($parsed_proyecto['proyecto_codigo']) ?></code></strong>
+              <strong class="texto-lg"><code class="text-uppercase-visual"><?= htmlspecialchars($parsed_proyecto['proyecto_codigo']) ?></code></strong>
             </div>
           </div>
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Fases del Proyecto</small>
-              <strong style="font-size: 1.1rem; text-transform: capitalize;"><?= count($parsed_proyecto['fases']) ?> fases</strong>
+              <strong class="texto-lg text-capitalize"><?= count($parsed_proyecto['fases']) ?> fases</strong>
             </div>
           </div>
           <div class="col-sm-6 col-lg-3">
             <div class="p-3 border rounded-3 bg-light">
               <small class="text-muted d-block">Programa Asociado</small>
-              <strong style="font-size: 1.05rem;" class="text-truncate d-block text-uppercase-visual" title="<?= htmlspecialchars($parsed_proyecto['programa_nombre']) ?>"><?= htmlspecialchars($parsed_proyecto['programa_nombre'] ?: 'Desconocido') ?></strong>
+              <strong class="texto-lg text-truncate d-block text-uppercase-visual" title="<?= htmlspecialchars($parsed_proyecto['programa_nombre']) ?>"><?= htmlspecialchars($parsed_proyecto['programa_nombre'] ?: 'Desconocido') ?></strong>
             </div>
           </div>
         </div>
 
         <div class="mb-3">
           <h6 class="fw-bold text-dark mb-1">Objetivo General del Proyecto:</h6>
-          <p class="p-3 border rounded-3 bg-light text-muted mb-0" style="font-size: 0.92rem; line-height: 1.6;"><?= htmlspecialchars($parsed_proyecto['proyecto_objetivo']) ?></p>
+          <p class="texto-md lh-amplio p-3 border rounded-3 bg-light text-muted mb-0"><?= htmlspecialchars($parsed_proyecto['proyecto_objetivo']) ?></p>
         </div>
 
         <h6 class="fw-bold text-dark mt-4 mb-3"><i class="bi bi-diagram-2 me-2"></i>Fases y Resultados del Proyecto Formativo</h6>
@@ -217,18 +217,18 @@ if (!defined('VISTA_PERMITIDA')) {
           }
           ?>
           <?php foreach ($parsed_proyecto['fases'] as $index => $fase): ?>
-          <div class="accordion-item" style="border-radius: var(--radius-lg); margin-bottom: 0.5rem; overflow: hidden; border: 1px solid var(--border);">
+          <div class="acordeon-tarjeta accordion-item">
             <h2 class="accordion-header" id="headingProj<?= $index ?>">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProj<?= $index ?>" aria-expanded="false" style="font-size: 0.95rem; font-weight: 600; padding: 1rem 1.25rem;">
+              <button class="acordeon-titulo accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProj<?= $index ?>" aria-expanded="false">
                 <span class="badge bg-success me-2">Fase</span>
                 <?= htmlspecialchars($fase) ?>
-                <span class="badge bg-secondary ms-auto text-white ms-2" style="font-size: 0.72rem;"><?= count($raPorFase[$fase] ?? []) ?> RAs en esta fase</span>
+                <span class="texto-xs badge bg-secondary ms-auto text-white ms-2"><?= count($raPorFase[$fase] ?? []) ?> RAs en esta fase</span>
               </button>
             </h2>
             <div id="collapseProj<?= $index ?>" class="accordion-collapse collapse" data-bs-parent="#accordionProyecto">
               <div class="accordion-body bg-white p-3">
                 <div class="table-wrap border-0 rounded-0">
-                  <table class="table mb-0" style="font-size: 0.85rem;">
+                  <table class="texto-sm table mb-0">
                     <thead>
                       <tr>
                         <th>Código RA</th>
@@ -239,10 +239,10 @@ if (!defined('VISTA_PERMITIDA')) {
                     <tbody>
                       <?php foreach (($raPorFase[$fase] ?? []) as $ra): ?>
                       <tr>
-                        <td style="white-space: nowrap;"><strong class="text-uppercase-visual"><?= htmlspecialchars($ra['ra_code']) ?>-<?= str_pad((string)$ra['ra_num'], 2, '0', STR_PAD_LEFT) ?></strong></td>
+                        <td class="text-nowrap"><strong class="text-uppercase-visual"><?= htmlspecialchars($ra['ra_code']) ?>-<?= str_pad((string)$ra['ra_num'], 2, '0', STR_PAD_LEFT) ?></strong></td>
                         <td class="text-uppercase-visual"><?= htmlspecialchars($ra['denominacion']) ?></td>
                         <td>
-                          <div class="text-truncate text-uppercase-visual" style="max-width: 250px;" title="<?= htmlspecialchars($ra['competencia_code'] . ' - ' . ($parsed_proyecto['competencias'][$ra['competencia_code']] ?? '')) ?>">
+                          <div class="ancho-max-250 text-truncate text-uppercase-visual" title="<?= htmlspecialchars($ra['competencia_code'] . ' - ' . ($parsed_proyecto['competencias'][$ra['competencia_code']] ?? '')) ?>">
                             <small class="badge bg-light text-dark border"><?= htmlspecialchars($ra['competencia_code']) ?></small>
                             <?= htmlspecialchars($parsed_proyecto['competencias'][$ra['competencia_code']] ?? 'Ver competencia') ?>
                           </div>

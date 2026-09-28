@@ -32,6 +32,7 @@ final class PoliticaContrasenaTest extends CasoDePrueba {
             'caracter de control'    => ["clave123\x00x", 'con un byte nulo'],
             'usuario del correo'     => ['ana.perez2026', 'con el usuario del correo'],
             'común'                  => ['sena2026', 'común'],
+            'la del volcado público' => ['Admin123', 'la del volcado filtrado'],
         ];
     }
 

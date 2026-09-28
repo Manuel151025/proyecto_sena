@@ -80,7 +80,7 @@ $exportar = APP_URL . '/index.php/fichas/exportar?' . http_build_query(array_fil
             <strong><?= e($pct($f['pct_a'])) ?> <span class="badge-soft <?= e(Semaforo::clase($sem)) ?> ms-1"><?= e(Semaforo::etiqueta($sem)) ?></span></strong></div>
           <div class="d-flex justify-content-between mb-1" title="RAP en A sobre el total del programa"><span class="text-muted">Avance de RAP</span><strong><?= e($pct($f['cumplimiento'])) ?></strong></div>
           <div class="progress barra-avance mb-2" role="progressbar" aria-label="Avance de RAP" aria-valuenow="<?= (int)round((float)$f['cumplimiento']) ?>" aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar bg-success" style="width: <?= (int)round((float)$f['cumplimiento']) ?>%"></div>
+            <div class="progress-bar bg-success" data-ancho="<?= (int)round((float)$f['cumplimiento']) ?>"></div>
           </div>
           <div class="d-flex justify-content-between"><span class="text-muted">Avance del proyecto</span><strong><?= e($pct($f['avance_proyecto'])) ?></strong></div>
         </div>

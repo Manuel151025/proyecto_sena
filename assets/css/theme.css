@@ -1797,3 +1797,24 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .panel-hero { background: linear-gradient(135deg, var(--sena-primary) 0%, #0f172a 100%); border-radius: 12px; color: #fff; overflow: hidden; }
 .panel-hero .etiqueta { background: #fff; color: var(--sena-primary); font-size: .65rem; letter-spacing: .05em; border-radius: 30px; padding: .25rem .6rem; font-weight: 700; display: inline-block; }
 .panel-hero p { color: rgba(255,255,255,.75); max-width: 620px; }
+
+/* ==========================================================================
+   Utilidades que sustituyen a los atributos style
+   La CSP prohíbe los estilos en línea: lo fijo va en clases, y los valores
+   que salen de datos (ancho de una barra, color de un avatar) en atributos
+   data-ancho / data-fondo / data-color que aplica comportamientos.js.
+   La especificidad replica la de los antiguos atributos donde había reglas
+   que competían.
+   ========================================================================== */
+.texto-xs { font-size: .72rem; }
+.texto-sm { font-size: .85rem; }
+.texto-md { font-size: .92rem; }
+.texto-lg { font-size: 1.1rem; }
+.texto-2xl { font-size: 1.5rem; }
+.lh-amplio { line-height: 1.6; }
+.ancho-max-250 { max-width: 250px; }
+.accordion-item.acordeon-tarjeta { border-radius: var(--radius-lg); margin-bottom: .5rem; overflow: hidden; border: 1px solid var(--border); }
+.accordion-button.acordeon-titulo { font-size: .95rem; font-weight: 600; padding: 1rem 1.25rem; }
+.icon-btn.icon-btn-avatar { width: auto; padding: 0; border-radius: 50%; }
+.dropdown-menu.menu-usuario { margin-top: 10px; }
+.sidebar-brand .brand-mark .logo-marca { width: 38px; height: 38px; object-fit: contain; }

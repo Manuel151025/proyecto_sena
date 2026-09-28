@@ -10,9 +10,9 @@ $menu = $menuConfig[$role] ?? [];
 $user = getCurrentUser();
 ?>
 <aside class="sidebar">
-  <a href="<?= APP_URL ?>/index.php/dashboard" class="sidebar-brand" style="text-decoration: none; color: inherit; cursor: pointer;">
-    <div class="brand-mark" style="background: transparent;">
-      <img src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA Logo" style="width: 38px; height: 38px; object-fit: contain;">
+  <a href="<?= APP_URL ?>/index.php/dashboard" class="text-decoration-none text-reset sidebar-brand">
+    <div class="bg-transparent brand-mark">
+      <img class="logo-marca" src="<?= APP_URL ?>/assets/img/sena_logo.png" alt="SENA Logo">
     </div>
     <div class="brand-text">
       <strong>SENA</strong>

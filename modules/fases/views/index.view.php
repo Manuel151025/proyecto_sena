@@ -106,7 +106,7 @@ $fechaCorta = static fn(?string $f) => $f ? date('d/m/Y', strtotime($f)) : '—'
             <?php else: ?>
               <div class="progress barra-avance" role="progressbar" aria-label="Avance de la fase"
                    aria-valuenow="<?= (int)round($avance) ?>" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar bg-<?= claseAvance($avance) ?>" style="width: <?= (int)round($avance) ?>%"></div>
+                <div class="progress-bar bg-<?= claseAvance($avance) ?>" data-ancho="<?= (int)round($avance) ?>"></div>
               </div>
               <div class="text-end fw-bold mt-1 small"><?= (int)round($avance) ?>%</div>
             <?php endif; ?>

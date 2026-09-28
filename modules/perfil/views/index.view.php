@@ -43,7 +43,7 @@ if (!defined('VISTA_PERMITIDA')) {
       <div class="card-body">
 
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="avatar lg" style="background: <?= e($user['avatar_color'] ?: '#39A900') ?>">
+          <div class="avatar lg" data-fondo="<?= e($user['avatar_color'] ?: '#39A900') ?>">
             <?= e(getInitials($user['nombre'])) ?>
           </div>
           <div>
@@ -80,7 +80,7 @@ if (!defined('VISTA_PERMITIDA')) {
                 <legend class="form-label fs-6">Color de avatar</legend>
                 <div class="selector-colores">
                   <?php foreach ($colores as $i => $c): ?>
-                    <label class="muestra-color" style="--color: <?= e($c) ?>">
+                    <label class="muestra-color" data-color="<?= e($c) ?>">
                       <input type="radio" name="avatar_color" value="<?= e($c) ?>" <?= strcasecmp((string)$user['avatar_color'], $c) === 0 ? 'checked' : '' ?> required>
                       <span class="visually-hidden">Color <?= $i + 1 ?></span>
                     </label>
@@ -114,8 +114,8 @@ if (!defined('VISTA_PERMITIDA')) {
             <div class="position-relative">
               <input type="password" name="password_actual" id="pw-cur"
                      class="form-control pe-5" required autocomplete="current-password">
-              <button type="button" class="btn btn-link position-absolute end-0 top-0 text-muted"
-                      data-pw-toggle="#pw-cur" style="height:100%">
+              <button type="button" class="h-100 btn btn-link position-absolute end-0 top-0 text-muted"
+                      data-pw-toggle="#pw-cur">
                 <i class="bi bi-eye"></i>
               </button>
             </div>

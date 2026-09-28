@@ -78,9 +78,8 @@ $tipoIconos = [
                 $tipo = $tipoIconos[$notif['tipo']] ?? $tipoIconos['info'];
             ?>
               <a href="<?= htmlspecialchars(Core\Services\Notificador::urlSegura($notif['url'] ?? null) ?? '#', ENT_QUOTES, 'UTF-8') ?>"
-                 class="dropdown-item d-flex gap-3 py-2 px-3 border-bottom notif-item"
-                 data-notif-id="<?= (int)$notif['id'] ?>"
-                 style="white-space:normal">
+                 class="dropdown-item d-flex gap-3 py-2 px-3 border-bottom notif-item text-wrap"
+                 data-notif-id="<?= (int)$notif['id'] ?>">
                 <div class="flex-shrink-0 mt-1">
                   <i class="bi <?= $tipo['icon'] ?> <?= $tipo['color'] ?>"></i>
                 </div>
@@ -97,10 +96,10 @@ $tipoIconos = [
     </div>
 
     <div class="dropdown">
-      <button class="icon-btn" style="width:auto;padding:0;border-radius:50%" data-bs-toggle="dropdown">
+      <button class="icon-btn-avatar icon-btn" data-bs-toggle="dropdown">
         <div class="avatar"><?= getInitials($user['nombre']) ?></div>
       </button>
-      <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="margin-top:10px">
+      <ul class="menu-usuario dropdown-menu dropdown-menu-end shadow-sm border-0">
         <li><h6 class="dropdown-header"><?= htmlspecialchars($user['nombre']) ?></h6></li>
         <li><a class="dropdown-item" href="<?= APP_URL ?>/index.php/perfil"><i class="bi bi-person me-2"></i>Mi perfil</a></li>
         <li><hr class="dropdown-divider"></li>

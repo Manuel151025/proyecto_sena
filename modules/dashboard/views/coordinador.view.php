@@ -174,7 +174,7 @@ $r = $resumen;
       <?php foreach ($competencias as $c): ?>
         <div class="mb-2">
           <div class="d-flex justify-content-between small"><span class="texto-recortado-2 me-2"><span class="font-monospace"><?= e($c['codigo']) ?></span> · <?= e($c['nombre']) ?></span><strong class="text-danger text-nowrap"><?= e((string)$c['pct_d']) ?>% D</strong></div>
-          <div class="progress barra-avance" role="progressbar" aria-label="Proporción en D" aria-valuenow="<?= (int)round($c['pct_d']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-danger" style="width: <?= (int)round($c['pct_d']) ?>%"></div></div>
+          <div class="progress barra-avance" role="progressbar" aria-label="Proporción en D" aria-valuenow="<?= (int)round($c['pct_d']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-danger" data-ancho="<?= (int)round($c['pct_d']) ?>"></div></div>
         </div>
       <?php endforeach; ?>
       <?php if (empty($competencias)): ?><div class="text-muted small">Sin competencias con D.</div><?php endif; ?>

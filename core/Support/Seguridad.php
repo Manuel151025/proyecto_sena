@@ -22,9 +22,14 @@ namespace Core\Support;
  * en atributos o en <script type="application/json">. Un script inyectado
  * en la página (XSS) no se ejecuta aunque llegue al HTML.
  *
- * style-src sí lo mantiene: las vistas usan atributos `style` para valores
- * que salen de datos ya validados (el color del avatar, el ancho de una
- * barra de avance). Un estilo inyectado no ejecuta código.
+ * style-src tampoco lo admite: los estilos fijos están en archivos CSS y
+ * los que salen de datos (el ancho de una barra, el color de un avatar)
+ * viajan en atributos data-* que comportamientos.js aplica por CSSOM, que
+ * la CSP permite. Un estilo inyectado no ejecuta código, pero sí puede
+ * tapar la página con un formulario falso o sacar datos con selectores de
+ * atributo; prohibirlo cierra esa puerta. Los únicos <style> en línea
+ * (páginas de error y el que inyecta FullCalendar) llevan el nonce de la
+ * respuesta.
  */
 final class Seguridad {
     /** Orígenes desde los que la aplicación carga scripts y estilos. */
@@ -36,8 +41,8 @@ final class Seguridad {
     private static ?string $nonce = null;
 
     /**
-     * Valor aleatorio que autoriza un <script> concreto de esta respuesta.
-     * Un script inyectado no lo conoce, así que la CSP no lo ejecuta.
+     * Valor aleatorio que autoriza un <style> concreto de esta respuesta.
+     * Un estilo inyectado no lo conoce, así que la CSP no lo aplica.
      */
     public static function nonce(): string {
         return self::$nonce ??= rtrim(strtr(base64_encode(random_bytes(18)), '+/', '-_'), '=');
@@ -98,7 +103,7 @@ final class Seguridad {
             "default-src 'self'",
             // Ver nota de la cabecera sobre 'unsafe-inline'.
             "script-src 'self' {$cdn}",
-            "style-src 'self' 'unsafe-inline' {$cdn} {$fCss}",
+            "style-src 'self' 'nonce-" . self::nonce() . "' {$cdn} {$fCss}",
             "font-src 'self' {$cdn} {$fFiles} data:",
             // data: por los gráficos de Chart.js; blob: por la descarga de
             // exportaciones generadas en el navegador.

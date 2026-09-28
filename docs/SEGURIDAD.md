@@ -1,6 +1,6 @@
 # Seguridad
 
-**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.2 · septiembre de 2026
+**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.3 · septiembre de 2026
 
 Informe de la revisión de seguridad: qué se encontró, cómo se corrigió, qué prueba lo protege y qué queda pendiente. La referencia es el **OWASP Top 10 (2021)**.
 
@@ -20,11 +20,11 @@ Informe de la revisión de seguridad: qué se encontró, cómo se corrigió, qu�
 
 | Severidad | Hallazgos | Corregidos |
 |---|---:|---:|
-| Crítica | 3 | 3 |
+| Crítica | 4 | 3 + 1 mitigado (ver §6) |
 | Alta | 12 | 12 |
-| Media | 15 | 15 |
+| Media | 16 | 16 |
 | Baja | 6 | 6 |
-| **Total** | **36** | **36** |
+| **Total** | **38** | **37 + 1 mitigado** |
 
 Quedan **riesgos residuales** que no se resuelven con código (rotar credenciales expuestas, HTTPS, copias de seguridad): ver §6.
 
@@ -55,6 +55,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 
 | # | Sev. | Hallazgo | Corrección | Prueba |
 |---|---|---|---|---|
+| 37 | C | **El historial público del repositorio contiene un volcado SQL** (mayo de 2026) con 117 aprendices y 123 cuentas, **todas con la contraseña `admin123`**. La base del VPS se creó con ese volcado: toda cuenta que no la haya cambiado se abre con una clave publicada. | `bin/auditar-claves.php` detecta las cuentas con contraseñas conocidas y, con `--aplicar`, les asigna una temporal obligatoria de cambiar. `admin123` y las demás claves por defecto quedan prohibidas. **Falta** ejecutarlo en producción, poner el repositorio en privado y reescribir el historial (§6). | `AuditoriaContrasenasTest`, `PoliticaContrasenaTest` |
 | 13 | A | `logs/password_resets.log`, con enlaces de recuperación reales, estaba versionado en git. | Se dejó de versionar; el enlace solo se escribe en `DEV_MODE`. El historial de git aún lo contiene: ver §6. | `FugaDeInformacionTest` |
 | 14 | M | La contraseña inicial la tecleaba el coordinador (bastaban 6 caracteres) y la conocía para siempre. | El sistema genera una clave temporal y obliga a cambiarla; política única (8+ caracteres, letras y números, máximo 72 bytes, sin el usuario del correo). | `PoliticaContrasenaTest`, `AutenticacionTest` |
 | 15 | B | Lo que pasaba de 72 bytes en una contraseña se truncaba en silencio (límite de bcrypt). | `PoliticaContrasena` lo rechaza. | `PoliticaContrasenaTest` |
@@ -66,6 +67,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 | 16 | A | **XSS almacenado en el calendario**: la descripción de un evento se pintaba con `innerHTML` y se ejecutaba en el navegador de quien lo abría. | Todo texto con `textContent`. | `SeguridadTest::testJavascriptSinSumiderosHtml`, recorrido e2e |
 | 17 | A | **XSS almacenado en la campana de avisos**: título, mensaje y URL en `innerHTML`; un `href="javascript:"` se ejecutaba. | Nodos con `textContent`; la URL se valida como ruta interna en servidor y cliente. | `SeguridadTest::testJavascriptSinSumiderosHtml` |
 | 18 | A | La CSP permitía `'unsafe-inline'` en `script-src`: cualquier XSS que llegara al HTML se ejecutaba. | Todo el JavaScript en archivos; `script-src 'self'` más el CDN con SRI. | `SeguridadTest::testSinCodigoEnLinea` |
+| 38 | M | La CSP seguía admitiendo `'unsafe-inline'` en `style-src`: un estilo inyectado no ejecuta código, pero puede tapar la página con un formulario falso o leer valores con selectores de atributo. | Sin atributos `style` ni bloques `<style>`: lo fijo en clases y archivos CSS, lo que sale de datos en `data-ancho`, `data-fondo` y `data-color` (aplicados por CSSOM); las páginas de error y FullCalendar usan el nonce de la respuesta. | `SeguridadTest::testStyleSrcSinUnsafeInline`, `testSinEstilosEnLinea` |
 | 19 | M | `avatar_color` iba sin validar a un atributo `style` (inyección de CSS). | Solo se acepta un color `#RRGGBB`. | `ValidadorTest::testColorHexRechazaCss` |
 | 20 | M | **Inyección de fórmulas** en CSV: un texto que empieza por `=` se ejecutaba al abrir el archivo en Excel. | El exportador neutraliza `= + - @`, tabulador y retorno al inicio de la celda. | `SemaforoReporteTest` |
 | 21 | M | Los comodines `%` y `_` no se escapaban en los 19 buscadores: buscar «%» devolvía la tabla entera. | `Validador::escaparLike()` en todos. | `BusquedaYFiltrosTest` |
@@ -137,7 +139,7 @@ flowchart LR
 | Autorización por rol | La tabla de rutas; una prueba falla si una escritura administrativa se abre a otro rol o si cambia el número de destinos sin revisarlo. |
 | Autorización por dato | Los servicios reciben el `Actor` y los modelos acotan cada consulta (`InstructorAccessService`); el aprendiz solo ve registros con su `usuario_id`. |
 | Entrada | `Validador`: enteros y fechas reales, textos con longitud y juego de caracteres, enums con lista blanca, identificadores de opciones existentes. |
-| Salida | Escape en toda salida HTML (`e()`), datos para JavaScript como JSON en `<script type="application/json">`, CSV neutralizado, descargas con `Content-Disposition` y `sandbox`. |
+| Salida | Escape en toda salida HTML (`e()`), datos para JavaScript como JSON en `<script type="application/json">`, CSP sin scripts ni estilos en línea, CSV neutralizado, descargas con `Content-Disposition` y `sandbox`. |
 | Archivos | Extensión en lista blanca, tamaño, **firma de los primeros bytes** y tipo MIME real; nombre aleatorio; fuera de la web. |
 | Errores | Mensaje genérico con referencia; detalle solo en `logs/`. |
 | Auditoría | Accesos, fallos, denegaciones, creaciones, cambios, eliminaciones, importaciones y exportaciones, con IP. |
@@ -166,13 +168,13 @@ flowchart LR
 
 | Prioridad | Acción | Motivo |
 |---|---|---|
-| **Inmediata** | **Rotar la contraseña de aplicación de Gmail** (`MAIL_PASSWORD`) y la contraseña de la base de datos. | Estuvieron en un `.env` descargable por web hasta el commit `46c4e51`. Si el servidor fue accesible desde fuera en ese tiempo, deben considerarse comprometidas. |
+| **Inmediata** | **Poner el repositorio en privado** (GitHub → Settings → General → Danger Zone). | Mientras sea público, cualquiera descarga del historial el volcado con 117 aprendices y los hashes de `admin123` (hallazgo 37). |
+| **Inmediata** | **En producción: `php bin/auditar-claves.php`** y, si encuentra cuentas, `--aplicar`. | Anula las contraseñas publicadas. Las claves temporales salen una vez por la consola para entregarlas. |
+| **Inmediata** | **Rotar la contraseña de aplicación de Gmail** (`MAIL_PASSWORD`) y la de la base de datos; comprobar con `php bin/probar-correo.php`. | Estuvieron en un `.env` descargable por web hasta el commit `46c4e51`. Si el servidor fue accesible desde fuera en ese tiempo, deben considerarse comprometidas. |
+| Alta | **Reescribir el historial de git** para eliminar `sena_seguimiento.sql`, `database.sql` y `logs/password_resets.log`, y pedir a GitHub que purgue las referencias en caché (los PR #1 y #2 conservan los commits antiguos). | Poner el repositorio en privado corta el acceso, pero los datos siguen en cada clon y en la caché de GitHub. |
 | Alta | Servir solo por **HTTPS** y definir `APP_HOST`. | Sin HTTPS la cookie de sesión viaja en claro; HSTS y `Secure` se activan solos al detectar HTTPS. |
 | Alta | `DEV_MODE=false` en producción. | En `true` se muestran causas técnicas y el enlace de recuperación. |
-| Media | Borrar los restos de importaciones antiguas en `uploads/` (`ajax_*.xls`, `import_*.csv`). | Contienen datos personales de aprendices. Ya no son accesibles por web, pero no deben conservarse sin necesidad. |
-| Media | Decidir si se limpia el historial de git (`logs/password_resets.log`). | Contiene correos y enlaces de recuperación. Los enlaces caducaron (30 minutos, un solo uso), pero los correos siguen en el historial. Reescribir el historial obliga a todos los clones a sincronizarse. |
 | Media | Copias de seguridad automáticas de la base y de `uploads/evidencias`. | Ver [DESPLIEGUE.md](DESPLIEGUE.md#7-copias-de-seguridad). |
-| Baja | `style-src` mantiene `'unsafe-inline'`. | Por atributos `style` con valores validados (color del avatar, ancho de barras). No ejecuta código; retirarlo exige mover esos valores a clases. |
 | Baja | Limitador por IP detrás de un proxy. | Deliberadamente no lee `X-Forwarded-For` (el cliente la controla). Detrás de un proxy inverso, todas las peticiones parecen venir de la misma IP: hay que resolver la IP real en Apache con `mod_remoteip`. |
 
 ## 7. Cómo reportar una vulnerabilidad

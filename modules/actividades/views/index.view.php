@@ -109,7 +109,7 @@ $hayFiltros = $filtros['search'] !== '' || $filtros['ficha_id'] || $filtros['fas
           <div class="d-flex justify-content-between mb-2"><span class="text-muted">Responsable</span><span class="fw-semibold text-end"><?= e($act['responsable_nombre'] ?: 'Sin asignar') ?></span></div>
           <div class="progress barra-avance" role="progressbar" aria-label="Avance de la actividad"
                aria-valuenow="<?= (int)round($pct) ?>" aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar bg-<?= claseAvance($pct) ?>" style="width: <?= (int)round($pct) ?>%"></div>
+            <div class="progress-bar bg-<?= claseAvance($pct) ?>" data-ancho="<?= (int)round($pct) ?>"></div>
           </div>
           <div class="text-end fw-bold mt-1 small"><?= (int)round($pct) ?>%</div>
         </div>

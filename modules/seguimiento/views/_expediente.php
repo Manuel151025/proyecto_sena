@@ -13,7 +13,7 @@ $desertado = $r['estado'] === 'desertado';
 <article class="card border-0 shadow-sm mb-3">
   <div class="card-body">
     <div class="d-flex flex-wrap align-items-start gap-3">
-      <div class="avatar lg" style="background: <?= e($r['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($r['nombre'])) ?></div>
+      <div class="avatar lg" data-fondo="<?= e($r['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($r['nombre'])) ?></div>
       <div class="flex-grow-1 min-w-0">
         <h2 class="h5 fw-bold mb-0 text-break"><?= e($r['nombre']) ?></h2>
         <div class="small text-muted"><?= e($r['tipo_documento'] . ' ' . $r['numero_documento']) ?> · Ficha <?= e($r['numero_ficha']) ?> · <?= e(ucfirst(str_replace('_', ' ', $r['estado']))) ?></div>
@@ -28,7 +28,7 @@ $desertado = $r['estado'] === 'desertado';
       <div class="col-6 col-sm-3"><div class="panel-cifras"><div class="fw-bold fs-5"><?= e($pct($r['pct_a'])) ?></div><div class="small text-muted">Desempeño</div></div></div>
     </div>
     <div class="progress barra-avance mt-3" role="progressbar" aria-label="Avance de RAP" aria-valuenow="<?= (int)round($r['avance']) ?>" aria-valuemin="0" aria-valuemax="100">
-      <div class="progress-bar bg-success" style="width: <?= (int)round($r['avance']) ?>%"></div>
+      <div class="progress-bar bg-success" data-ancho="<?= (int)round($r['avance']) ?>"></div>
     </div>
     <div class="small text-muted mt-1">Avance: <?= e($pct($r['avance'])) ?> de los RAP del programa aprobados<?= (int)$r['planes_vigentes'] > 0 ? ' · ' . (int)$r['planes_vigentes'] . ' plan(es) de mejoramiento vigente(s)' : '' ?></div>
     <div class="d-flex flex-wrap gap-2 mt-3">

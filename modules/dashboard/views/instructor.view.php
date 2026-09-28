@@ -83,7 +83,7 @@ $c = $carga;
         <div class="small text-muted text-uppercase-visual mb-2"><?= e($f['programa']) ?></div>
         <div class="d-flex justify-content-between small"><span>Desempeño</span><strong><?= e($pct($f['pct_a'])) ?></strong></div>
         <div class="d-flex justify-content-between small"><span>Avance de RAP</span><strong><?= e($pct($f['cumplimiento'])) ?></strong></div>
-        <div class="progress barra-avance my-1" role="progressbar" aria-label="Avance de RAP" aria-valuenow="<?= (int)round((float)$f['cumplimiento']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-success" style="width: <?= (int)round((float)$f['cumplimiento']) ?>%"></div></div>
+        <div class="progress barra-avance my-1" role="progressbar" aria-label="Avance de RAP" aria-valuenow="<?= (int)round((float)$f['cumplimiento']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-success" data-ancho="<?= (int)round((float)$f['cumplimiento']) ?>"></div></div>
         <div class="d-flex justify-content-between small"><span>Proyecto formativo</span><strong><?= e($pct($f['avance_proyecto'])) ?></strong></div>
         <div class="small text-muted mt-1"><?= (int)$f['aprendices_activos'] ?> aprendices · <?= (int)$f['en_d'] ?> RAP en D</div>
       </div>
@@ -117,7 +117,7 @@ $c = $carga;
       <?php foreach ($competencias as $co): ?>
         <div class="mb-2">
           <div class="d-flex justify-content-between small"><span class="texto-recortado-2 me-2"><span class="font-monospace"><?= e($co['codigo']) ?></span> · <?= e($co['nombre']) ?></span><strong class="text-danger text-nowrap"><?= e((string)$co['pct_d']) ?>% D</strong></div>
-          <div class="progress barra-avance" role="progressbar" aria-label="Proporción en D" aria-valuenow="<?= (int)round($co['pct_d']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-danger" style="width: <?= (int)round($co['pct_d']) ?>%"></div></div>
+          <div class="progress barra-avance" role="progressbar" aria-label="Proporción en D" aria-valuenow="<?= (int)round($co['pct_d']) ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-danger" data-ancho="<?= (int)round($co['pct_d']) ?>"></div></div>
         </div>
       <?php endforeach; ?>
       <?php if (empty($competencias)): ?><div class="text-muted small">Sin competencias con D.</div><?php endif; ?>

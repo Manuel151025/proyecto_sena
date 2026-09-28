@@ -37,7 +37,7 @@ $leyenda = array_filter([
 
 <div class="cal-legend mb-3">
   <?php foreach ($leyenda as [$color, $texto]): ?>
-    <span class="cal-legend-item"><span class="cal-legend-dot" style="background: <?= e($color) ?>"></span><?= e($texto) ?></span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" data-fondo="<?= e($color) ?>"></span><?= e($texto) ?></span>
   <?php endforeach; ?>
 </div>
 

@@ -179,7 +179,7 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
             <legend class="form-label fw-semibold fs-6">Color del avatar</legend>
             <div class="selector-colores">
               <?php foreach ($colores as $i => $c): ?>
-                <label class="muestra-color" style="--color: <?= e($c) ?>">
+                <label class="muestra-color" data-color="<?= e($c) ?>">
                   <input type="radio" name="avatar_color" value="<?= e($c) ?>" <?= $i === 0 ? 'checked' : '' ?>>
                   <span class="visually-hidden">Color <?= $i + 1 ?></span>
                 </label>

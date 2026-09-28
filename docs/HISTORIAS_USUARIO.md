@@ -458,7 +458,7 @@ Sprint 4 · Baja · ✅
 ### HU-45 · Protección de la información
 > **Como** coordinador **quiero** que el sistema resista los ataques habituales **para** proteger los datos de aprendices e instructores.
 
-1. Consultas preparadas (inyección SQL), salida escapada y CSP sin scripts en línea (XSS), CSRF, control por rol y por dato (IDOR), subidas verificadas, descargas con permiso, archivos internos cerrados a la web.
+1. Consultas preparadas (inyección SQL), salida escapada y CSP sin scripts ni estilos en línea (XSS), CSRF, control por rol y por dato (IDOR), subidas verificadas, descargas con permiso, archivos internos cerrados a la web.
 2. Detalle y evidencias en [SEGURIDAD.md](SEGURIDAD.md).
 
 Sprint 4 · Alta · ✅
@@ -473,7 +473,7 @@ Sprint 4 · Media · ✅
 ### HU-47 · Pruebas automáticas
 > **Como** desarrollador del sistema **quiero** que cada cambio se pruebe solo **para** no romper lo que funciona.
 
-1. 595 pruebas (unitarias, de integración y de seguridad) en cada envío al repositorio, sobre una instalación limpia ([PRUEBAS.md](PRUEBAS.md)).
+1. 600 pruebas (unitarias, de integración y de seguridad) en cada envío al repositorio, sobre una instalación limpia ([PRUEBAS.md](PRUEBAS.md)).
 
 Sprint 4 · Media · ✅
 

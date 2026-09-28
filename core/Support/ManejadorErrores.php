@@ -193,8 +193,7 @@ final class ManejadorErrores {
         $detalle   = '';
 
         if ($e !== null) {
-            $detalle = '<pre style="text-align:left;background:#0f1720;color:#e6edf3;padding:16px;'
-                . 'border-radius:8px;overflow:auto;font-size:12px;line-height:1.5">'
+            $detalle = '<pre class="traza">'
                 . htmlspecialchars(
                     get_class($e) . ': ' . $e->getMessage()
                     . "\n\n" . $e->getFile() . ':' . $e->getLine()
@@ -207,7 +206,7 @@ final class ManejadorErrores {
 
         return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
             . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<title>Error del sistema</title><style>'
+            . '<title>Error del sistema</title><style nonce="' . Seguridad::nonce() . '">'
             . 'body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f7fa;color:#1f2933;'
             . 'display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px}'
             . '.caja{background:#fff;border-radius:14px;box-shadow:0 8px 28px rgba(16,24,40,.09);'
@@ -216,6 +215,8 @@ final class ManejadorErrores {
             . 'code{background:#eef2f6;padding:3px 9px;border-radius:5px;font-size:14px;color:#00324D}'
             . 'a{display:inline-block;margin-top:22px;background:#39A900;color:#fff;text-decoration:none;'
             . 'padding:11px 26px;border-radius:8px;font-weight:600}'
+            . '.traza{text-align:left;background:#0f1720;color:#e6edf3;padding:16px;border-radius:8px;'
+            . 'overflow:auto;font-size:12px;line-height:1.5}'
             . '</style></head><body><div class="caja">'
             . '<h1>Ha ocurrido un error inesperado</h1>'
             . '<p>No se ha podido completar la operación. El incidente ha quedado registrado.</p>'

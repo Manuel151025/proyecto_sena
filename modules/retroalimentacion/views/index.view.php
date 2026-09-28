@@ -69,7 +69,7 @@ $hayFiltros = $filtros['search'] !== '' || $filtros['tipo'] !== '' || $filtros['
         <?php if ($r['ra_codigo']): ?><div class="small text-muted font-monospace"><?= e($r['ra_codigo']) ?></div><?php endif; ?>
         <p class="mt-2 mb-3 text-break texto-multilinea"><?= e($r['contenido']) ?></p>
         <div class="d-flex align-items-center gap-2 mt-auto small text-muted">
-          <div class="avatar sm" style="background: <?= e($r['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($r['instructor_nombre'])) ?></div>
+          <div class="avatar sm" data-fondo="<?= e($r['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($r['instructor_nombre'])) ?></div>
           <span><?= e($r['instructor_nombre']) ?> · <?= e(date('d/m/Y', strtotime((string)$r['fecha_creacion']))) ?></span>
         </div>
       </div>
