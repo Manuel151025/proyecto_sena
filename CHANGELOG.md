@@ -35,7 +35,9 @@ El repositorio es público y su historial conserva un volcado SQL de mayo (`sena
 - `admin123` y las demás claves por defecto quedan prohibidas en la política de contraseñas.
 - `bin/probar-correo.php` comprueba el SMTP, para después de rotar la contraseña de aplicación de Gmail.
 
-Lo que el código no puede hacer queda en `docs/SEGURIDAD.md` §6: poner el repositorio en privado, ejecutar la auditoría en producción y reescribir el historial.
+- **Historial reescrito** con `git filter-repo`: `sena_seguimiento.sql`, `database.sql` y `logs/password_resets.log` desaparecen de los 154 commits, de las 5 ramas y de las 4 etiquetas. El contenido de cada versión es idéntico, pero todos los hashes cambian (esta documentación ya cita los nuevos).
+
+Lo que el código no puede hacer queda en `docs/SEGURIDAD.md` §6: poner el repositorio en privado, ejecutar la auditoría en producción y pedir a GitHub que purgue su caché.
 
 ### CSP estricta también para los estilos
 
@@ -72,8 +74,8 @@ Cierre del proyecto. Todos los módulos pasan a la misma arquitectura en capas, 
 
 Cada módulo sigue el mismo camino: **ruta con sus roles → controlador (PRG) → formulario (validación) → servicio (reglas y permiso por dato, con el `Actor`) → modelo (SQL acotado por rol)**. Antes convivían tres estilos: controladores con SQL, vistas que respondían por AJAX y reglas repetidas con criterios distintos.
 
-- **Esquema versionado** (`c0776ac`). Había tres fuentes del esquema que no coincidían y dos no estaban en el repositorio. Ahora `database/esquema.sql` más 18 migraciones idempotentes registradas en la tabla `migraciones`; `bin/instalar.php`, `bin/migrar.php`, `bin/verificar-esquema.php`, y una semilla de demostración que da datos a todas las tablas.
-- **Importación común en dos pasos** (`581e7c8`). Usuarios, matrículas, competencias, RAP y juicios de Sofia Plus: CSV, XLSX y XLS con detección de codificación y separador, límites de tamaño, filas, columnas y descompresión, vista previa fila por fila en el servidor y confirmación aparte. Se retiró SheetJS 0.18.5 (vulnerable) del navegador.
+- **Esquema versionado** (`95ff34e`). Había tres fuentes del esquema que no coincidían y dos no estaban en el repositorio. Ahora `database/esquema.sql` más 18 migraciones idempotentes registradas en la tabla `migraciones`; `bin/instalar.php`, `bin/migrar.php`, `bin/verificar-esquema.php`, y una semilla de demostración que da datos a todas las tablas.
+- **Importación común en dos pasos** (`dd070f2`). Usuarios, matrículas, competencias, RAP y juicios de Sofia Plus: CSV, XLSX y XLS con detección de codificación y separador, límites de tamaño, filas, columnas y descompresión, vista previa fila por fila en el servidor y confirmación aparte. Se retiró SheetJS 0.18.5 (vulnerable) del navegador.
 - **Exportación común.** `.xlsx` real (antes HTML con extensión `.xls`), CSV con BOM y `;`, neutralización de fórmulas, tope de 20.000 filas.
 - **Una sola regla de responsabilidad** para quién califica: asignación de la competencia, seguimiento de etapa práctica o líder de la ficha. Asignar, reasignar o cambiar de líder mueve las evaluaciones pendientes.
 - Se eliminaron el código muerto y las copias: `EvaluacionController`, `JuiciosImportService`, tres modelos de panel, `includes/SimpleXLS.php` y su script de PowerShell, y el JavaScript de los paneles antiguos.
@@ -82,20 +84,20 @@ Cada módulo sigue el mismo camino: **ruta con sus roles → controlador (PRG) �
 
 | Requisito | Antes | Ahora |
 |---|---|---|
-| RF02 Proyecto formativo | Actividades sueltas por ficha | Actividades por fase; avance de fase y proyecto calculado (`f89f59d`) |
-| RF03 Evaluación | El importador leía «NO APROBADO» como A y «POR EVALUAR» borraba juicios; «rechazar» una evidencia devolvía el RAP a pendiente | Conceptos correctos, juicio y revisión separados, evidencias ligadas a un RAP propio (`e27acd5`, `f23d64a`) |
-| RF04 Progreso | Paneles con contadores desviados y tendencias escritas a mano | Paneles por rol calculados al leer; expediente del aprendiz; planes de mejoramiento con estados, plazo y cierre que actualiza el juicio (`981bd84`, `1f30569`, `1a636f3`) |
-| RF05 Reportes | Cuatro reportes con definiciones propias | Seis reportes definidos una vez y entregados en Excel, CSV y PDF (`b5dee1d`) |
-| RNF02 Trazabilidad | — | Historial visible en cada juicio; bitácora con filtros y exportación (`cd411c8`) |
+| RF02 Proyecto formativo | Actividades sueltas por ficha | Actividades por fase; avance de fase y proyecto calculado (`d2194b6`) |
+| RF03 Evaluación | El importador leía «NO APROBADO» como A y «POR EVALUAR» borraba juicios; «rechazar» una evidencia devolvía el RAP a pendiente | Conceptos correctos, juicio y revisión separados, evidencias ligadas a un RAP propio (`131eda5`, `b21b307`) |
+| RF04 Progreso | Paneles con contadores desviados y tendencias escritas a mano | Paneles por rol calculados al leer; expediente del aprendiz; planes de mejoramiento con estados, plazo y cierre que actualiza el juicio (`ef495aa`, `2a2190b`, `a7b846d`) |
+| RF05 Reportes | Cuatro reportes con definiciones propias | Seis reportes definidos una vez y entregados en Excel, CSV y PDF (`a54f12b`) |
+| RNF02 Trazabilidad | — | Historial visible en cada juicio; bitácora con filtros y exportación (`4884fd6`) |
 
 ### Seguridad
 
 36 hallazgos corregidos (detalle en `docs/SEGURIDAD.md`). Los más graves de esta versión:
 
-- **`.env`, `.git/` y el volcado SQL se descargaban por web**, y las migraciones se ejecutaban por URL (`46c4e51`). En Docker, Apache ignoraba todos los `.htaccess`.
-- **`uploads/` era público**: evidencias y copias de importaciones con listados de aprendices se descargaban conociendo el nombre (`e27acd5`). Ahora cerrado, con descarga por controlador que comprueba el permiso.
-- **XSS almacenado** en el calendario y en la campana de avisos (`46c4e51`, `cd411c8`).
-- **CSP sin `'unsafe-inline'`** en `script-src`: todo el JavaScript pasa a archivos y los comportamientos a atributos `data-*` (`9c971a3`).
+- **`.env`, `.git/` y el volcado SQL se descargaban por web**, y las migraciones se ejecutaban por URL (`d6c052b`). En Docker, Apache ignoraba todos los `.htaccess`.
+- **`uploads/` era público**: evidencias y copias de importaciones con listados de aprendices se descargaban conociendo el nombre (`131eda5`). Ahora cerrado, con descarga por controlador que comprueba el permiso.
+- **XSS almacenado** en el calendario y en la campana de avisos (`d6c052b`, `4884fd6`).
+- **CSP sin `'unsafe-inline'`** en `script-src`: todo el JavaScript pasa a archivos y los comportamientos a atributos `data-*` (`e290148`).
 - SRI en todos los recursos de CDN (las páginas públicas cargaban los iconos sin él).
 
 ### Operación
