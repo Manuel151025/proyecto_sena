@@ -1,0 +1,101 @@
+name: Pruebas
+
+# Las 500 comprobaciones existían pero nadie las ejecutaba. Este flujo las
+# corre en cada push y en cada pull request, que es lo que convierte una
+# suite en una red de seguridad real.
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'docs/**', 'refactor/**', 'release/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+
+    services:
+      # Las pruebas de integración y de seguridad necesitan la base de
+      # datos: comprueban invariantes del esquema y el aislamiento entre
+      # roles, y eso no se puede simular con dobles.
+      mariadb:
+        image: mariadb:10.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: sena_seguimiento
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          # dom y mbstring las exige dompdf; gd es opcional (el logo del
+          # PDF se incrusta solo si está disponible).
+          extensions: pdo_mysql, mbstring, dom, zip, gd
+          coverage: xdebug
+
+      - name: Validar composer.json
+        run: composer validate --strict
+
+      - name: Caché de dependencias
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Instalar dependencias
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Comprobar sintaxis de todo el PHP
+        run: |
+          find core includes modules components layouts config database bin tests -name "*.php" -print0 | xargs -0 -n1 php -l > /dev/null
+          php -l index.php && php -l login.php && php -l recover.php
+
+      - name: Configurar el entorno
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_USER=.*/DB_USER=root/'  .env
+          sed -i 's/^DB_PASS=.*/DB_PASS=root/'  .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^DEV_MODE=.*/DEV_MODE=false/' .env
+
+      # Una sola fuente del esquema: database/esquema.sql más las migraciones
+      # versionadas. La semilla de demostración da datos a TODAS las tablas,
+      # para que las pruebas de acceso no pasen en vacío.
+      - name: Instalar la base con datos de demostración
+        run: php bin/instalar.php --confirmar-borrado-total --demo
+
+      - name: Verificar migraciones y enums contra el esquema
+        run: php bin/verificar-esquema.php
+
+      # Rutas y permisos, diccionario de datos y formatos de importación
+      # salen del código: si alguien cambia una ruta o una tabla y no
+      # regenera la documentación, se detiene aquí.
+      - name: Documentación generada al día
+        run: |
+          php bin/generar-docs.php
+          git diff --exit-code -- docs/RUTAS_Y_PERMISOS.md docs/DATOS.md docs/FORMATOS_IMPORTACION.md \
+            || { echo "::error::Documentación desactualizada: ejecuta php bin/generar-docs.php"; exit 1; }
+
+      # Cada suite deja un informe JUnit; si falla, sus casos se publican
+      # como anotaciones del commit (consultables sin permisos de
+      # administrador, a diferencia del registro completo).
+      - name: Pruebas unitarias
+        run: |
+          mkdir -p build
+          vendor/bin/phpunit --testsuite unitarias --log-junit build/unitarias.xml || { php bin/anotar-junit.php build/unitarias.xml; exit 1; }
+
+      - name: Pruebas de seguridad
+        run: vendor/bin/phpunit --testsuite seguridad --log-junit build/seguridad.xml || { php bin/anotar-junit.php build/seguridad.xml; exit 1; }
+
+      - name: Pruebas de integración
+        run: vendor/bin/phpunit --testsuite integracion --log-junit build/integracion.xml || { php bin/anotar-junit.php build/integracion.xml; exit 1; }

@@ -1,0 +1,6 @@
+/* Estados compartidos de las pantallas públicas (recuperación). */
+@keyframes giro { to { transform: rotate(360deg); } }
+button.procesando::before {
+  content: ""; display: inline-block; width: 1em; height: 1em; margin-right: .5rem; vertical-align: -0.15em;
+  border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff; border-radius: 50%; animation: giro .7s linear infinite;
+}

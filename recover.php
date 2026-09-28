@@ -49,17 +49,31 @@ $dev_link   = ''; // link a mostrar en modo DEV en step=2
 // HELPERS
 // =====================================================================
 
+/**
+ * Registra el enlace de recuperación para poder probarlo sin correo.
+ *
+ * Solo en DEV_MODE. El enlace lleva el token en claro, es decir, la llave
+ * para cambiar la contraseña de esa cuenta: escribirlo siempre convertía
+ * `logs/password_resets.log` en una lista de llaves válidas. De hecho ese
+ * archivo llegó a versionarse en git con enlaces reales dentro.
+ *
+ * Fuera de desarrollo se registra únicamente que hubo una solicitud, sin
+ * el token y sin el correo completo.
+ */
 function log_reset_link(string $email, string $link): void {
     $log_dir = dirname(RESET_LOG);
     if (!is_dir($log_dir)) {
         @mkdir($log_dir, 0755, true);
     }
-    $line = sprintf(
-        "[%s] %s -> %s\n",
-        date('Y-m-d H:i:s'),
-        $email,
-        $link
-    );
+
+    if (defined('DEV_MODE') && DEV_MODE) {
+        $line = sprintf("[%s] %s -> %s\n", date('Y-m-d H:i:s'), $email, $link);
+    } else {
+        // Solo el dominio: basta para diagnosticar y no identifica a nadie.
+        $dominio = strstr($email, '@') ?: '@?';
+        $line = sprintf("[%s] solicitud de recuperación para una cuenta %s\n", date('Y-m-d H:i:s'), $dominio);
+    }
+
     @file_put_contents(RESET_LOG, $line, FILE_APPEND | LOCK_EX);
 }
 
@@ -75,13 +89,27 @@ function build_reset_link(string $token): string {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'request') {
     requireCsrf();
 
-    $email = strip_tags(trim($_POST['email'] ?? ''));
+    $bruto = $_POST['email'] ?? '';
+    $email = is_array($bruto) ? '' : strip_tags(trim((string)$bruto));
 
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    // Sin límite, este formulario permitía dos abusos: averiguar qué correos
+    // están dados de alta (probando de uno en uno y midiendo la respuesta) y
+    // bombardear de correos a una víctima pulsando "enviar" en bucle.
+    $limitador = new Core\Services\LimitadorIntentos();
+    $bloqueo   = $limitador->segundosBloqueo('recuperacion', $email);
+
+    if ($bloqueo > 0) {
+        $minutos = Core\Services\LimitadorIntentos::minutos($bloqueo);
+        $errors[] = "Demasiadas solicitudes. Inténtalo de nuevo en {$minutos} minuto(s).";
+    } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Por favor ingresa un correo válido.';
     } elseif (mb_strlen($email, 'UTF-8') > 100) {
         $errors[] = 'El correo no puede exceder los 100 caracteres.';
     } else {
+        // Se cuenta toda solicitud, exista la cuenta o no: contar solo las
+        // que aciertan volvería a distinguir unas de otras.
+        $limitador->registrarFallo('recuperacion', $email);
+
         try {
             $db = Database::getConnection();
 
@@ -257,14 +285,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset
     $password    = $_POST['password'] ?? '';
     $password2   = $_POST['password_confirm'] ?? '';
 
-    if (strlen($password) < 8) {
-        $errors[] = 'La contraseña debe tener al menos 8 caracteres.';
-    } elseif (strlen($password) > 60) {
-        $errors[] = 'La contraseña no puede exceder los 60 caracteres.';
-    }
-    if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
-        $errors[] = 'La contraseña debe contener letras y números.';
-    }
+    // La misma política que el perfil y la gestión de usuarios.
+    array_push($errors, ...\Core\Support\PoliticaContrasena::errores($password));
     if ($password !== $password2) {
         $errors[] = 'Las contraseñas no coinciden.';
     }
@@ -359,7 +381,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
 
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-app-url="<?= e(APP_URL) ?>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -368,7 +390,8 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
   
   <!-- PWA Manifest & Meta Tags -->
   <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
@@ -377,17 +400,9 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
 
-  <script>
-    // Registro del Service Worker para PWA
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('<?= APP_URL ?>/sw.js').catch(function (err) {
-          console.error('ServiceWorker registration failed: ', err);
-        });
-      });
-    }
-  </script>
 
+
+  <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/publico.css?v=<?= filemtime(__DIR__ . '/assets/css/publico.css') ?>">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -990,6 +1005,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
   </style>
 </head>
 <body>
+<script src="<?= APP_URL ?>/assets/js/pestana.js?v=<?= filemtime(__DIR__ . '/assets/js/pestana.js') ?>"></script>
 <canvas id="particle-canvas"></canvas>
 
 <div class="shell">
@@ -1119,7 +1135,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
             <label for="pw-new">Nueva contraseña</label>
             <div class="input-icon-wrap">
               <input type="password" name="password" id="pw-new"
-                     placeholder="••••••••" required minlength="8" maxlength="60">
+                     placeholder="••••••••" required minlength="8" maxlength="72" autocomplete="new-password">
               <i class="bi bi-lock-fill input-icon"></i>
               <button type="button" class="pw-toggle-btn" data-pw-toggle="#pw-new"><i class="bi bi-eye"></i></button>
             </div>
@@ -1136,7 +1152,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
             <label for="pw-confirm">Confirmar contraseña</label>
             <div class="input-icon-wrap">
               <input type="password" name="password_confirm" id="pw-confirm"
-                     placeholder="••••••••" required minlength="8" maxlength="60">
+                     placeholder="••••••••" required minlength="8" maxlength="72" autocomplete="new-password">
               <i class="bi bi-shield-lock-fill input-icon"></i>
               <button type="button" class="pw-toggle-btn" data-pw-toggle="#pw-confirm"><i class="bi bi-eye"></i></button>
             </div>
@@ -1157,174 +1173,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
 
 </div>
 
-<script>
-// Toggle Password Visibility
-document.querySelectorAll('[data-pw-toggle]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const inp = document.querySelector(btn.dataset.pwToggle);
-    const icon = btn.querySelector('i');
-    if (!inp) return;
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-    icon.classList.toggle('bi-eye', inp.type === 'password');
-    icon.classList.toggle('bi-eye-slash', inp.type !== 'password');
-  });
-});
-
-// Password Strength Checker
-const pwInput = document.getElementById('pw-new');
-const pwBar = document.getElementById('pw-bar');
-const pwConf = document.getElementById('pw-confirm');
-
-if (pwInput) {
-  pwInput.addEventListener('input', () => {
-    const v = pwInput.value;
-    const r = {
-      len: v.length >= 8,
-      letter: /[A-Za-z]/.test(v),
-      num: /[0-9]/.test(v),
-      upper: /[A-Z]/.test(v)
-    };
-
-    document.querySelectorAll('.pw-req').forEach(el => {
-      const ok = r[el.dataset.req];
-      el.classList.toggle('ok', ok);
-      el.querySelector('i').className = ok ? 'bi bi-check-circle-fill' : 'bi bi-circle';
-    });
-
-    if (pwBar) {
-      const score = Object.values(r).filter(Boolean).length;
-      pwBar.className = 'pw-strength' + (score ? ` s${score}` : '');
-    }
-  });
-}
-
-if (pwConf && pwInput) {
-  pwConf.addEventListener('input', () => {
-    const mismatch = pwConf.value && pwConf.value !== pwInput.value;
-    pwConf.style.borderColor = mismatch ? 'rgba(239, 68, 68, 0.6)' : '';
-    pwConf.style.boxShadow = mismatch ? '0 0 0 3px rgba(239, 68, 68, 0.12)' : '';
-  });
-}
-
-// Button loading state spinners
-['recover-form', 'reset-form'].forEach(id => {
-  document.getElementById(id)?.addEventListener('submit', function() {
-    const btn = this.querySelector('[type="submit"]');
-    if (btn && !btn.disabled) {
-      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation:spin .7s linear infinite; margin-right:8px;"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/></svg> Procesando...';
-      btn.disabled = true;
-    }
-  });
-});
-
-// Add CSS keyframe animation for spinner
-const style = document.createElement('style');
-style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
-document.head.appendChild(style);
-
-// Particle Canvas Animation
-(function() {
-  var canvas = document.getElementById('particle-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W, H, nodes = [], mouse = { x: -999, y: -999 }, animId;
-
-  function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-
-  function mkNode() {
-    return {
-      x: Math.random() * W,
-      y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      r: Math.random() * 1.5 + 0.4,
-      phi: Math.random() * Math.PI * 2
-    };
-  }
-
-  function initNodes() {
-    nodes = [];
-    var count = Math.min(70, Math.floor(W * H / 18000));
-    for (var i = 0; i < count; i++) nodes.push(mkNode());
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    var maxD = 140, mouseD = 160;
-
-    for (var i = 0; i < nodes.length; i++) {
-      for (var j = i + 1; j < nodes.length; j++) {
-        var dx = nodes[i].x - nodes[j].x;
-        var dy = nodes[i].y - nodes[j].y;
-        var d = Math.hypot(dx, dy);
-        if (d < maxD) {
-          ctx.beginPath();
-          ctx.moveTo(nodes[i].x, nodes[i].y);
-          ctx.lineTo(nodes[j].x, nodes[j].y);
-          ctx.strokeStyle = 'rgba(52,211,153,' + ((1 - d / maxD) * 0.2) + ')';
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
-        }
-      }
-    }
-
-    for (var k = 0; k < nodes.length; k++) {
-      var n = nodes[k];
-      n.phi += 0.01;
-      var glow = Math.sin(n.phi) * 0.3 + 0.5;
-
-      var mdx = n.x - mouse.x, mdy = n.y - mouse.y;
-      var md = Math.hypot(mdx, mdy);
-      if (md < mouseD && md > 0) {
-        var force = (1 - md / mouseD) * 0.4;
-        n.vx += (mdx / md) * force;
-        n.vy += (mdy / md) * force;
-      }
-      n.vx *= 0.97;
-      n.vy *= 0.97;
-
-      ctx.beginPath();
-      var radius = n.r * (md < mouseD ? 1 + (1 - md / mouseD) * 0.8 : 1);
-      ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(52,211,153,' + glow + ')';
-      ctx.shadowBlur = md < mouseD ? 12 : 6;
-      ctx.shadowColor = 'rgba(52,211,153,0.4)';
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      n.x += n.vx;
-      n.y += n.vy;
-      if (n.x < 0 || n.x > W) n.vx *= -1;
-      if (n.y < 0 || n.y > H) n.vy *= -1;
-    }
-
-    animId = requestAnimationFrame(draw);
-  }
-
-  window.addEventListener('mousemove', function(e) { mouse.x = e.clientX; mouse.y = e.clientY; });
-  window.addEventListener('mouseleave', function() { mouse.x = -999; mouse.y = -999; });
-
-  window.addEventListener('click', function(e) {
-    for (var i = 0; i < 4; i++) {
-      var n = mkNode();
-      n.x = e.clientX; n.y = e.clientY;
-      var angle = (Math.PI * 2 / 4) * i;
-      n.vx = Math.cos(angle) * 1.5;
-      n.vy = Math.sin(angle) * 1.5;
-      nodes.push(n);
-      if (nodes.length > 100) nodes.shift();
-    }
-  });
-
-  resize(); initNodes(); draw();
-  window.addEventListener('resize', function() {
-    cancelAnimationFrame(animId);
-    resize(); initNodes(); draw();
-  });
-})();
-</script>
+<script src="<?= APP_URL ?>/assets/js/publico/recuperar.js?v=<?= filemtime(__DIR__ . '/assets/js/publico/recuperar.js') ?>"></script>
+<script src="<?= APP_URL ?>/assets/js/publico/particulas.js?v=<?= filemtime(__DIR__ . '/assets/js/publico/particulas.js') ?>"></script>
 </body>
 </html>

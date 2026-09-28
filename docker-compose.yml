@@ -1,5 +1,12 @@
 version: '3.8'
 
+# Entorno con Docker. Guía completa en docs/DESPLIEGUE.md.
+#
+# La aplicación lee su configuración del .env montado con el código; para
+# este entorno debe llevar DB_HOST=db, APP_URL= (vacío) y las credenciales
+# de la base de abajo (DB_USER=sena_user). En un servidor real, cambia
+# estas contraseñas antes del primer arranque.
+
 services:
   app:
     build: .
@@ -23,8 +30,12 @@ services:
       MYSQL_ROOT_PASSWORD: sena_root_password
     volumes:
       - sena_db_data:/var/lib/mysql
-      # Importación automática de la base de datos al iniciar por primera vez
-      - ./sena_seguimiento.sql:/docker-entrypoint-initdb.d/init.sql
+      # Solo en el primer arranque (volumen vacío) se crea la estructura
+      # desde el esquema versionado. Después hay que registrar las
+      # migraciones una vez:  docker compose exec app php bin/migrar.php
+      # Antes se montaba ./sena_seguimiento.sql, un volcado local que no
+      # está en el repositorio: en un clon limpio la base quedaba vacía.
+      - ./database/esquema.sql:/docker-entrypoint-initdb.d/01-esquema.sql:ro
 
 volumes:
   sena_db_data:

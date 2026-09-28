@@ -15,7 +15,8 @@ assets/uploads/
 !uploads/.htaccess
 
 # === Caché y temporales ===
-cache/
+cache/*
+!cache/.htaccess
 tmp/
 temp/
 *.tmp
@@ -42,6 +43,9 @@ error_log
 
 # === Base de datos local (no subir dumps personales) ===
 *.sql
+# El esquema sí se versiona: es la fuente única de la estructura (solo DDL,
+# sin datos). Lo genera bin/volcar-esquema.php.
+!database/esquema.sql
 
 # === install.php (peligroso en producción) ===
 install.php
@@ -50,3 +54,13 @@ install.php
 .vscode/
 settings.json
 scratch/
+# Script de depuracion puntual, no forma parte del sistema
+test_accents.php
+
+
+# Cache de PHPUnit
+.phpunit.cache/
+.phpunit.result.cache
+
+# Informes de pruebas del CI
+build/
