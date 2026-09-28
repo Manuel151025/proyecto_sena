@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Versión del documento | 3.0 (septiembre de 2026) |
-| Público | Equipo de desarrollo, instructores evaluadores y quien mantenga el sistema |
+| Público | El desarrollador del proyecto, los instructores evaluadores y quien mantenga el sistema en el futuro |
 | Documentos relacionados | [Flujos](FLUJOS.md) · [Datos](DATOS.md) · [Rutas y permisos](RUTAS_Y_PERMISOS.md) · [Seguridad](SEGURIDAD.md) · [Analítica](ANALITICA.md) · [Despliegue](DESPLIEGUE.md) · [Pruebas](PRUEBAS.md) |
 
 ---
