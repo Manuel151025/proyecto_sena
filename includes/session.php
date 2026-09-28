@@ -419,14 +419,16 @@ function requireCsrf(): void {
     http_response_code(403);
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
-       . '<title>Sesión expirada</title></head><body style="font-family:system-ui,sans-serif;'
-       . 'max-width:520px;margin:12vh auto;text-align:center;color:#1f2933">'
-       . '<h1 style="font-size:20px;color:#00324D">No se pudo procesar el formulario</h1>'
-       . '<p style="color:#52606d;line-height:1.6">Es probable que la sesión haya expirado o que '
+       . '<title>Sesión expirada</title><style nonce="' . Core\Support\Seguridad::nonce() . '">'
+       . 'body{font-family:system-ui,sans-serif;max-width:520px;margin:12vh auto;text-align:center;color:#1f2933}'
+       . 'h1{font-size:20px;color:#00324D}p{color:#52606d;line-height:1.6}'
+       . 'a{display:inline-block;margin-top:16px;background:#39A900;color:#fff;text-decoration:none;'
+       . 'padding:10px 24px;border-radius:8px}'
+       . '</style></head><body>'
+       . '<h1>No se pudo procesar el formulario</h1>'
+       . '<p>Es probable que la sesión haya expirado o que '
        . 'el formulario llevara demasiado tiempo abierto. Vuelve a iniciar sesión e inténtalo de nuevo.</p>'
-       . '<a href="' . htmlspecialchars(APP_URL . '/login.php', ENT_QUOTES, 'UTF-8') . '" '
-       . 'style="display:inline-block;margin-top:16px;background:#39A900;color:#fff;'
-       . 'text-decoration:none;padding:10px 24px;border-radius:8px">Ir al inicio de sesión</a>'
+       . '<a href="' . htmlspecialchars(APP_URL . '/login.php', ENT_QUOTES, 'UTF-8') . '">Ir al inicio de sesión</a>'
        . '</body></html>';
     exit;
 }

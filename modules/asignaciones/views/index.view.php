@@ -59,7 +59,7 @@ $hayFiltros = $busqueda !== '' || $fichaId || $instructorId;
         <td><span class="badge bg-soft info font-monospace"><?= e($asg['competencia_codigo']) ?></span><small class="d-block texto-recortado-2"><?= e($asg['competencia_nombre']) ?></small></td>
         <td>
           <div class="d-flex align-items-center gap-2">
-            <div class="avatar sm" style="background: <?= e($asg['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($asg['instructor_nombre'])) ?></div>
+            <div class="avatar sm" data-fondo="<?= e($asg['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($asg['instructor_nombre'])) ?></div>
             <div><strong class="d-block"><?= e($asg['instructor_nombre']) ?></strong><small class="text-muted"><?= e($asg['instructor_email']) ?></small></div>
           </div>
         </td>

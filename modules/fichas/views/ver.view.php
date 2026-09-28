@@ -72,7 +72,7 @@ $id = (int)$ficha['id'];
                 <span class="text-muted"><?= $tot > 0 ? ((int)$fase['actividades_completadas'] . '/' . $tot . ' act. · ' . (int)round($av) . '%') : 'sin actividades' ?></span>
               </div>
               <div class="progress barra-avance" role="progressbar" aria-label="Avance de la fase <?= e($fase['nombre']) ?>" aria-valuenow="<?= (int)round((float)$av) ?>" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar bg-<?= claseAvance($av) ?>" style="width: <?= (int)round((float)$av) ?>%"></div>
+                <div class="progress-bar bg-<?= claseAvance($av) ?>" data-ancho="<?= (int)round((float)$av) ?>"></div>
               </div>
             </div>
           <?php endforeach; ?>

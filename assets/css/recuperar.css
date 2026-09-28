@@ -1,0 +1,610 @@
+/* Estilos de recover.php. Estaban en un bloque <style> de la página; en un
+   archivo, la CSP puede prohibir los estilos en línea. */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #0a0f0d;
+  --bg-card: rgba(14, 22, 17, 0.65);
+  --emerald: #34d399;
+  --emerald-dim: #059669;
+  --emerald-glow: rgba(52, 211, 153, 0.12);
+  --text-primary: #f0fdf4;
+  --text-secondary: #a7b5ae;
+  --text-muted: #5a6b62;
+  --border: rgba(52, 211, 153, 0.1);
+  --border-hover: rgba(52, 211, 153, 0.25);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --input-border: rgba(255, 255, 255, 0.08);
+  --radius: 12px;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Canvas ── */
+#particle-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Ambient glow spots ── */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(100px);
+}
+
+body::before {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.08), transparent 70%);
+  top: -10%;
+  left: -5%;
+  animation: floatA 20s ease-in-out infinite;
+}
+
+body::after {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.06), transparent 70%);
+  bottom: -15%;
+  right: -5%;
+  animation: floatB 24s ease-in-out infinite;
+}
+
+@keyframes floatA {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(40px, 30px); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-30px, -40px); }
+}
+
+/* ── Shell ── */
+.shell {
+  position: relative;
+  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ── Left Panel ── */
+.brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 5rem;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 3rem;
+}
+
+.brand-logo img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px var(--emerald-glow));
+}
+
+.brand-logo span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--emerald);
+  text-transform: uppercase;
+}
+
+.brand h1 {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.08;
+  color: var(--text-primary);
+  margin-bottom: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.brand h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--emerald), #6ee7b7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brand p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 440px;
+}
+
+.brand-features {
+  margin-top: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.brand-features .feat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.brand-features .feat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.brand-footer {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ── Right Panel ── */
+.form-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px 36px;
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 0 60px rgba(52, 211, 153, 0.04);
+}
+
+/* ── Back Link ── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  transition: all 0.25s;
+}
+
+.back-link:hover {
+  color: var(--emerald);
+  border-color: var(--border-hover);
+  background: rgba(52, 211, 153, 0.04);
+  transform: translateX(-2px);
+}
+
+.back-link i {
+  font-size: 0.85rem;
+  transition: transform 0.25s;
+}
+
+.back-link:hover i {
+  transform: translateX(-2px);
+}
+
+/* ── Step Track ── */
+.step-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.step-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  z-index: 2;
+}
+
+.step-node .circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.step-node.active .circle {
+  border-color: var(--emerald);
+  color: var(--emerald);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.2);
+}
+
+.step-node.done .circle {
+  border-color: var(--emerald);
+  background: var(--emerald);
+  color: #022c22;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.2);
+}
+
+.step-node .slabel {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+
+.step-node.active .slabel {
+  color: var(--text-primary);
+}
+
+.step-node.done .slabel {
+  color: var(--emerald);
+}
+
+.step-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  transform: translateY(-9px);
+  z-index: 1;
+  transition: background 0.3s;
+}
+
+.step-line.done {
+  background: var(--emerald);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+/* ── Form elements ── */
+.field {
+  margin-bottom: 20px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.input-icon-wrap {
+  position: relative;
+}
+
+.input-icon-wrap input {
+  width: 100%;
+  padding: 13px 16px 13px 42px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.input-icon-wrap input[type="password"] {
+  padding-right: 42px;
+}
+
+.input-icon-wrap input::placeholder {
+  color: var(--text-muted);
+}
+
+.input-icon-wrap input:focus {
+  outline: none;
+  border-color: var(--emerald);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.1), 0 0 20px rgba(52, 211, 153, 0.05);
+}
+
+.input-icon-wrap .input-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  font-size: 1.05rem;
+  transition: color 0.3s;
+}
+
+.input-icon-wrap input:focus ~ .input-icon {
+  color: var(--emerald);
+}
+
+.pw-toggle-btn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
+}
+
+.pw-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+/* ── Buttons ── */
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 4px;
+  background: var(--emerald-dim);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.submit-btn:hover {
+  background: var(--emerald);
+  color: #022c22;
+  box-shadow: 0 4px 20px rgba(52, 211, 153, 0.3);
+  transform: translateY(-1px);
+}
+
+.submit-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
+}
+
+.btn-outline {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--emerald);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: rgba(52, 211, 153, 0.05);
+  border-color: var(--emerald);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.1);
+  transform: translateY(-1px);
+}
+
+/* ── Alerts ── */
+.alert {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  margin-bottom: 24px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.alert i {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alert-error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.alert-success {
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  color: #6ee7b7;
+}
+
+/* ── Step 2 Specific ── */
+.success-orb {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(52, 211, 153, 0.05);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1.2rem;
+  font-size: 1.5rem;
+  color: var(--emerald);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.1);
+}
+
+/* ── Step 3: Password strength & requirements ── */
+.pw-strength {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.pw-strength span {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.3s;
+}
+
+.pw-strength.s1 span:nth-child(1) { background: #ef4444; }
+.pw-strength.s2 span:nth-child(-n+2) { background: #f59e0b; }
+.pw-strength.s3 span:nth-child(-n+3) { background: #3b82f6; }
+.pw-strength.s4 span { background: var(--emerald); }
+
+.pw-req {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 4px 0;
+  transition: color 0.25s;
+}
+
+.pw-req i {
+  font-size: 0.75rem;
+  transition: all 0.25s;
+}
+
+.pw-req.ok {
+  color: var(--emerald);
+}
+
+/* ── Dev Mode Box ── */
+.dev-box {
+  background: rgba(52, 211, 153, 0.03);
+  border: 1px dashed rgba(52, 211, 153, 0.2);
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.dev-box strong {
+  color: var(--emerald);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.dev-box a {
+  color: #6ee7b7;
+  word-break: break-all;
+  text-decoration: underline;
+}
+
+.dev-box .dev-note {
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-size: 0.7rem;
+}
+
+.card-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .shell { grid-template-columns: 1fr; }
+  .brand { display: none; }
+  .card { max-width: 420px; }
+}
+
+@media (max-width: 480px) {
+  .card { padding: 32px 24px; border-radius: 16px; }
+}
+
+/* Encabezados de cada paso (antes atributos style). */
+.rec-encabezado { margin-bottom: 1.4rem; }
+.rec-titulo { font-size: 1.35rem; font-weight: 700; margin-bottom: 6px; color: var(--text-primary); }
+.rec-titulo-exito { margin-bottom: 8px; }
+.rec-subtitulo { font-size: 0.82rem; color: var(--text-muted); }
+.rec-exito { text-align: center; padding: 0.5rem 0 1.4rem; }
+.rec-texto { font-size: 0.84rem; color: var(--text-secondary); line-height: 1.75; margin-bottom: 12px; }
+.rec-nota { font-size: 0.78rem; color: var(--text-muted); }

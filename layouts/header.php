@@ -7,6 +7,7 @@ declare(strict_types=1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle ?? 'SENA') ?></title>
+    <meta name="csp-nonce" content="<?= nonce() ?>">
     <meta name="csrf-token" content="<?= e(getCsrfToken()) ?>">
     <!-- Tema antes de pintar (síncrono): evita el parpadeo del modo oscuro. -->
     <script src="<?= APP_URL ?>/assets/js/tema-inicial.js?v=<?= filemtime(BASE_PATH . 'assets/js/tema-inicial.js') ?>"></script>

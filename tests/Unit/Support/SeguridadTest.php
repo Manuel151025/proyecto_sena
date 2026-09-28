@@ -71,6 +71,48 @@ final class SeguridadTest extends CasoDePrueba {
     }
 
     /**
+     * Un estilo inyectado no ejecuta código, pero puede tapar la página con
+     * un formulario falso o leer valores con selectores de atributo. Solo
+     * los <style> que llevan el nonce de la respuesta se aplican.
+     */
+    #[TestDox('style-src no admite estilos en línea salvo con el nonce de la respuesta')]
+    public function testStyleSrcSinUnsafeInline(): void {
+        preg_match('/style-src ([^;]+)/', $this->csp(), $m);
+        $this->assertStringNotContainsString("'unsafe-inline'", $m[1] ?? '', 'style-src vuelve a admitir estilos en línea');
+        $this->assertStringContainsString("'nonce-" . Seguridad::nonce() . "'", $m[1] ?? '');
+    }
+
+    /**
+     * La garantía anterior solo vale si nada genera estilos en línea: un
+     * atributo style= se ignoraría en silencio y la pantalla saldría rota.
+     * Los valores que salen de datos van en data-ancho / data-fondo /
+     * data-color (comportamientos.js). La plantilla del correo de
+     * recuperación no es una página y sus estilos en línea son obligatorios.
+     */
+    #[TestDox('ninguna página ni script genera estilos en línea sin nonce')]
+    public function testSinEstilosEnLinea(): void {
+        $raiz = dirname(__DIR__, 3);
+        $paginas = array_merge(glob($raiz . '/modules/*/views/*.php') ?: [], glob($raiz . '/layouts/*.php') ?: [],
+                               glob($raiz . '/components/*.php') ?: [],
+                               [$raiz . '/login.php', $raiz . '/recover.php', $raiz . '/includes/session.php',
+                                $raiz . '/core/Support/ManejadorErrores.php']);
+        $conEstilos = [];
+        foreach ($paginas as $f) {
+            $html = (string)file_get_contents($f);
+            if (preg_match('/\sstyle\s*=\s*["\']/i', $html) || preg_match('/<style(?![^>]*\bnonce=)[^>]*>/i', $html)) {
+                $conEstilos[] = str_replace($raiz . '/', '', $f);
+            }
+        }
+        $this->assertSame([], $conEstilos, 'con estilos en línea (la CSP los bloquearía): ' . implode(', ', $conEstilos));
+
+        $scripts = array_merge(glob($raiz . '/assets/js/*.js') ?: [], glob($raiz . '/assets/js/*/*.js') ?: []);
+        foreach ($scripts as $f) {
+            $this->assertDoesNotMatchRegularExpression('/setAttribute\(\s*[\'"]style|style=\\\\?["\']|\.cssText\s*=/',
+                (string)file_get_contents($f), str_replace($raiz . '/', '', $f) . ' escribe un atributo style');
+        }
+    }
+
+    /**
      * La garantía anterior solo vale si ninguna vista trae scripts o
      * manejadores en línea: si alguien añade uno, la pantalla se rompe en
      * silencio (la CSP lo bloquea). Esta prueba lo detecta antes.
