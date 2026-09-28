@@ -16,6 +16,15 @@ final class PoliticaContrasena {
     /** Límite de bcrypt, en bytes (una ñ o una tilde ocupan dos). */
     public const MAX_BYTES = 72;
 
+    /**
+     * Contraseñas prohibidas por conocidas (en minúsculas). `admin123` era
+     * la de las 123 cuentas del volcado SQL que quedó en el historial
+     * público del repositorio; las demás son las que este mismo sistema
+     * usó por defecto en algún momento.
+     */
+    private const COMUNES = ['admin123', 'admin1234', 'admin2026', 'sena2026', 'sena12345', 'demo2026*',
+                             'password1', 'contrasena1', 'contraseña1', '12345678a', 'aprendiz1', 'instructor1'];
+
     /** @return string[] Errores; vacío si es válida. */
     public static function errores(string $clave, string $email = '', string $nombre = ''): array {
         $e = [];
@@ -36,7 +45,7 @@ final class PoliticaContrasena {
         if ($usuarioCorreo !== '' && mb_strlen($usuarioCorreo) >= 4 && str_contains($minus, $usuarioCorreo)) {
             $e[] = 'La contraseña no puede contener tu usuario de correo.';
         }
-        if (in_array($minus, ['sena2026', 'password1', 'contrasena1', '12345678a', 'admin1234', 'demo2026*'], true)) {
+        if (in_array($minus, self::COMUNES, true)) {
             $e[] = 'Esa contraseña es demasiado común.';
         }
         return $e;
