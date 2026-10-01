@@ -64,3 +64,7 @@ test_accents.php
 
 # Informes de pruebas del CI
 build/
+
+# Pruebas en navegador (tests/e2e): resultados e informes de cada ejecución
+tests/e2e/resultados/
+tests/e2e/informe/

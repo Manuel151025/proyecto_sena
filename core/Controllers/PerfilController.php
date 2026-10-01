@@ -51,7 +51,10 @@ class PerfilController extends BaseController {
     public function datos(): never {
         $actor = Actor::actual();
         $v = $this->entrada();
-        $nombre = $v->patron('nombre', 'El nombre', Validador::PATRON_PERSONA, 'letras, espacios, apóstrofo y guion', 3, UsuarioFormulario::MAX_NOMBRE);
+        // En mayúsculas, como en la gestión de usuarios, la importación y las
+        // matrículas: guardado tal cual, quien editaba su perfil quedaba
+        // escrito distinto al resto en todos los listados.
+        $nombre = mb_strtoupper($v->patron('nombre', 'El nombre', Validador::PATRON_PERSONA, 'letras, espacios, apóstrofo y guion', 3, UsuarioFormulario::MAX_NOMBRE), 'UTF-8');
         $color = $v->enum('avatar_color', 'El color', UsuarioFormulario::COLORES);
         $this->siHayErrores($v, '/perfil');
         $this->ejecutar(function () use ($actor, $nombre, $color) {

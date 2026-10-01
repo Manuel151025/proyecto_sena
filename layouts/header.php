@@ -36,6 +36,7 @@ declare(strict_types=1);
     <meta name="theme-color" content="#39A900">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="<?= APP_URL ?>/assets/img/sena_logo.png">
     <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
 </head>
 <body>

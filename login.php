@@ -100,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isBlocked) {
   <meta name="theme-color" content="#39A900">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="<?= APP_URL ?>/assets/img/sena_logo.png">
   <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
   <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/login.css?v=<?= filemtime(__DIR__ . '/assets/css/login.css') ?>">
 </head>

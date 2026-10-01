@@ -196,11 +196,13 @@ return static function (PDO $db): array {
     // Asignaciones: en la ficha ADSO principal, dos competencias las lleva
     // otro instructor. Así se ejercitan las tres vías de acceso.
     $nAsig = 0;
+    $asignado = [];   // [ficha][competencia] => instructor que la califica
     foreach ([[0, 2, 4], [0, 3, 1], [2, 1, 4]] as [$fi, $ci, $ii]) {
         $num = $fichas[$fi][0];
         $prog = $fichas[$fi][1];
         $ins("INSERT INTO asignaciones (ficha_id, competencia_id, instructor_id) VALUES (?,?,?)",
             [$fichaIds[$num], $compIds[$prog][$ci], $instructores[$ii]]);
+        $asignado[$fichaIds[$num]][$compIds[$prog][$ci]] = $instructores[$ii];
         $nAsig++;
     }
 
@@ -243,7 +245,7 @@ return static function (PDO $db): array {
                  $mujer ? 'F' : 'M', $fecha('-' . mt_rand(17, 29) . ' years'), '31' . mt_rand(10000000, 99999999),
                  $azar(['Florencia', 'Morelia', 'Belén de los Andaquíes', 'La Montañita', 'El Doncello']), $estado]
             );
-            $aprendicesPorFicha[$num][] = ['id' => $aid, 'usuario' => $uid, 'estado' => $estado];
+            $aprendicesPorFicha[$num][] = ['id' => $aid, 'usuario' => $uid, 'estado' => $estado, 'seguimiento' => $seguimiento];
         }
     }
 
@@ -266,6 +268,14 @@ return static function (PDO $db): array {
                 continue;
             }
             foreach ($raps as $ir => $rap) {
+                // Quien responde por el juicio, con la misma regla que la
+                // aplicación (EvaluacionesSyncService::RESPONSABLE): el
+                // instructor asignado a la competencia, el de seguimiento en
+                // la etapa práctica, o el líder. Antes todo quedaba a nombre
+                // del líder y la carga por instructor de la demo no cuadraba.
+                $responsable = $rap['etapa']
+                    ? ($ap['seguimiento'] ?? $lider)
+                    : ($asignado[$fichaIds[$num]][$rap['competencia']] ?? $lider);
                 $evaluado = !$rap['etapa'] && $ir < (int)round(count($raps) * $proporcion);
                 $concepto = 'pendiente';
                 if ($evaluado) {
@@ -275,19 +285,19 @@ return static function (PDO $db): array {
                 $eid = $ins(
                     "INSERT INTO evaluaciones (resultado_aprendizaje_id, aprendiz_id, instructor_id, ficha_id, concepto, comentario, fecha_evaluacion)
                      VALUES (?,?,?,?,?,?,?)",
-                    [$rap['id'], $ap['id'], $lider, $fichaIds[$num], $concepto,
+                    [$rap['id'], $ap['id'], $responsable, $fichaIds[$num], $concepto,
                      $concepto === 'A' ? $azar($comentA) : ($concepto === 'D' ? $azar($comentD) : null), $fechaEval]
                 );
                 $nEval++;
                 if ($concepto !== 'pendiente') {
                     $ins("INSERT INTO historial_evaluaciones (evaluacion_id, usuario_id, concepto_anterior, concepto_nuevo, motivo, fecha_cambio)
                           VALUES (?,?,?,?,?,?)",
-                        [$eid, $lider, 'pendiente', $concepto, 'Juicio evaluativo inicial', $fechaEval . ' 10:00:00']);
+                        [$eid, $responsable, 'pendiente', $concepto, 'Juicio evaluativo inicial', $fechaEval . ' 10:00:00']);
                     $nHist++;
                 }
                 if ($concepto === 'D') {
                     $evalD[] = ['id' => $eid, 'aprendiz' => $ap['id'], 'usuario' => $ap['usuario'],
-                                'ficha' => $fichaIds[$num], 'instructor' => $lider];
+                                'ficha' => $fichaIds[$num], 'instructor' => $responsable];
                 }
             }
         }

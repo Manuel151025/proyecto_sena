@@ -294,6 +294,9 @@ function requireRole(string ...$roles): void {
             parse_url($_SERVER['REQUEST_URI'] ?? '-', PHP_URL_PATH) ?: '-',
             'Rol actual: ' . getCurrentRole() . '; requeridos: ' . implode(', ', $roles)
         );
+        // Sin el aviso, quien siguió un enlace viejo o cambió la URL aterrizaba
+        // en su panel sin saber por qué.
+        setFlashMessage('No tienes permiso para acceder a esa sección.', 'danger');
         header('Location: ' . APP_URL . '/index.php/dashboard');
         exit;
     }

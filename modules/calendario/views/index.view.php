@@ -99,7 +99,7 @@ $leyenda = array_filter([
           <div class="row g-2 mb-3">
             <div class="col-sm-5">
               <label for="ev_fecha" class="form-label fw-semibold">Fecha <span class="text-danger">*</span></label>
-              <input type="date" class="form-control" id="ev_fecha" name="fecha" required value="<?= e(date('Y-m-d')) ?>">
+              <input type="date" class="form-control" id="ev_fecha" name="fecha" required min="2000-01-01" max="2100-12-31" value="<?= e(date('Y-m-d')) ?>">
             </div>
             <div class="col-sm-7">
               <label for="ev_ficha" class="form-label fw-semibold">Ficha <span class="text-danger">*</span></label>

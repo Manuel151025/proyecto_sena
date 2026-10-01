@@ -50,11 +50,11 @@ $qs = http_build_query($activos);
   </div>
   <div class="col-6 col-md-3">
     <label class="form-label small text-muted" for="f_desde">Desde</label>
-    <input type="date" name="desde" id="f_desde" class="form-control" value="<?= e((string)$filtros['desde']) ?>">
+    <input type="date" name="desde" id="f_desde" class="form-control" min="2000-01-01" max="<?= e(date('Y-m-d')) ?>" value="<?= e((string)$filtros['desde']) ?>">
   </div>
   <div class="col-6 col-md-3">
     <label class="form-label small text-muted" for="f_hasta">Hasta</label>
-    <input type="date" name="hasta" id="f_hasta" class="form-control" value="<?= e((string)$filtros['hasta']) ?>">
+    <input type="date" name="hasta" id="f_hasta" class="form-control" min="2000-01-01" max="<?= e(date('Y-m-d')) ?>" value="<?= e((string)$filtros['hasta']) ?>">
   </div>
   <div class="col-md-6 d-flex gap-2">
     <button type="submit" class="btn btn-soft flex-grow-1"><i class="bi bi-funnel me-1"></i>Filtrar</button>
