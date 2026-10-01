@@ -1,0 +1,12 @@
+{
+  "name": "sena-e2e",
+  "private": true,
+  "description": "Pruebas en navegador por rol (Playwright) del Sistema de Seguimiento de Proyectos Formativos",
+  "scripts": {
+    "test": "playwright test",
+    "informe": "playwright show-report informe"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

@@ -99,3 +99,77 @@ jobs:
 
       - name: Pruebas de integración
         run: vendor/bin/phpunit --testsuite integracion --log-junit build/integracion.xml || { php bin/anotar-junit.php build/integracion.xml; exit 1; }
+
+  # Recorridos en el navegador por rol (tests/e2e): coordinación, instructor
+  # y aprendiz usan la aplicación de verdad —iniciar sesión, calificar,
+  # importar, entregar evidencias, cerrar planes, descargar reportes— y se
+  # comprueban todas las pantallas en escritorio y en el teléfono. La
+  # aplicación se sirve con el servidor integrado de PHP contra su propia
+  # base (sena_e2e), que se reinstala con los datos de demostración.
+  navegador:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: sena_seguimiento
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Preparar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, mbstring, dom, zip, gd
+
+      - name: Caché de dependencias
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Instalar dependencias
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Configurar el entorno
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_USER=.*/DB_USER=root/'  .env
+          sed -i 's/^DB_PASS=.*/DB_PASS=root/'  .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+
+      - name: Preparar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Instalar Playwright y Chromium
+        working-directory: tests/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Pruebas en navegador
+        working-directory: tests/e2e
+        run: npx playwright test
+
+      - name: Informe de las pruebas en navegador
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: informe-navegador
+          path: |
+            tests/e2e/informe
+            tests/e2e/resultados
+          retention-days: 7
