@@ -125,6 +125,30 @@ final class FugaDeInformacionTest extends CasoConBaseDeDatos {
             "vuelven a enseñarse mensajes de excepción sin filtrar en: " . implode(', ', $sospechosos));
     }
 
+    /**
+     * Un ErrorDeNegocio se muestra entero en pantalla: envolver en él el
+     * mensaje de otra excepción (un SQLSTATE con tablas y columnas) se salta
+     * el filtro de mensajeSeguro. Lo hacía la configuración al guardar.
+     */
+    #[TestDox('ningún ErrorDeNegocio lleva dentro el mensaje de otra excepción')]
+    public function testErrorDeNegocioSinMensajeTecnico(): void {
+        $sospechosos = [];
+        $raiz = dirname(__DIR__, 2);
+        foreach (['core', 'modules', 'includes', 'components', 'layouts'] as $dir) {
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$raiz/$dir", \FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $archivo) {
+                if ($archivo->getExtension() !== 'php') {
+                    continue;
+                }
+                $fuente = (string)file_get_contents($archivo->getPathname());
+                if (preg_match('/new\s+(?:\\\\?Core\\\\Support\\\\)?ErrorDeNegocio\s*\([^;]*->getMessage\(\)/', $fuente)) {
+                    $sospechosos[] = substr($archivo->getPathname(), strlen($raiz) + 1);
+                }
+            }
+        }
+        $this->assertSame([], $sospechosos, 'mensajes técnicos que llegarían a la pantalla: ' . implode(', ', $sospechosos));
+    }
+
     #[TestDox('los modelos no exponen el mensaje de PDO al propagar')]
     public function testModelosNoPropaganDetalleDePdo(): void {
         // Los modelos pueden envolver la excepción, pero el mensaje que

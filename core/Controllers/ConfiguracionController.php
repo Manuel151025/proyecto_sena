@@ -14,6 +14,7 @@ use Core\Support\Configuracion;
 use Core\Support\ErrorDeNegocio;
 use Core\Support\PoliticaContrasena;
 use Core\Support\Semaforo;
+use Core\Support\Transaccion;
 use Throwable;
 
 /**
@@ -63,9 +64,12 @@ class ConfiguracionController extends BaseController {
         $this->siHayErrores($v, '/configuracion');
         $this->ejecutar(function () use ($datos) {
             $modelo = new ConfiguracionModel();
-            foreach ($datos as $clave => $valor) {
-                $modelo->save($clave, $valor);
-            }
+            // Todas o ninguna: un fallo a mitad dejaba la configuración a medias.
+            Transaccion::ejecutar(Database::getConnection(), function () use ($modelo, $datos) {
+                foreach ($datos as $clave => $valor) {
+                    $modelo->save($clave, $valor);
+                }
+            });
             Configuracion::olvidar();
             (new Auditoria())->operacion(Actor::actual(), 'Editar', 'Configuración', 'configuraciones_sistema', null,
                 'Actualizó: ' . implode(' · ', $datos));

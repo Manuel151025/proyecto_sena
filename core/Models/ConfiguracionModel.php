@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Core\Models;
 
-use Core\Support\ErrorDeNegocio;
 use Core\Database;
 use PDO;
 use Exception;
@@ -15,17 +14,19 @@ class ConfiguracionModel {
         $this->db = $db ?? Database::getConnection();
     }
 
+    /**
+     * Un fallo de la base sube tal cual. Antes se envolvía su mensaje en un
+     * ErrorDeNegocio, que la pantalla muestra entero: el usuario veía el
+     * SQLSTATE con tablas y columnas. Así lo registra ErrorDeNegocio::
+     * mensajeSeguro y en pantalla solo queda una referencia.
+     */
     public function save(string $clave, string $valor): bool {
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO configuraciones_sistema (clave, valor) 
-                VALUES (?, ?) 
-                ON DUPLICATE KEY UPDATE valor = VALUES(valor)
-            ");
-            return $stmt->execute([$clave, $valor]);
-        } catch (Exception $e) {
-            throw new ErrorDeNegocio("Error al guardar configuración: " . $e->getMessage());
-        }
+        $stmt = $this->db->prepare("
+            INSERT INTO configuraciones_sistema (clave, valor)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE valor = VALUES(valor)
+        ");
+        return $stmt->execute([$clave, $valor]);
     }
 
     /**
