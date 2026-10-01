@@ -768,7 +768,8 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
   margin:0;
 }
 .modal-title i{color:var(--sena-primary);font-size:1.15rem;line-height:1;}
-.modal-header .btn-close{margin:0;flex-shrink:0;}
+/* Al borde derecho, como en Bootstrap: con margin:0 la X quedaba pegada al título. */
+.modal-header .btn-close{margin:0 0 0 auto;flex-shrink:0;}
 .modal-body{padding:1.25rem;}
 .modal-footer{
   background:var(--surface);
