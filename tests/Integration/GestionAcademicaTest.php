@@ -272,6 +272,29 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
         $this->esperarError(fn() => (new MatriculasService($this->db))->retirar($id, $this->coordinador()), 'egresó');
     }
 
+    /**
+     * La rejilla de pendientes solo se completa para quien está en
+     * formación: un RAP creado mientras el aprendiz estaba desertado no le
+     * llegaba nunca, ni siquiera al reintegrarlo.
+     */
+    #[TestDox('al reintegrar a un desertado recibe los RAP creados mientras estuvo fuera')]
+    public function testReintegroCompletaPendientes(): void {
+        $f = $this->unaFila("
+            SELECT f.id, c.id AS competencia FROM fichas f JOIN competencias c ON c.programa_id = f.programa_id
+             WHERE f.estado <> 'cierre' LIMIT 1");
+        $s = new MatriculasService($this->db);
+        $id = $s->matricular($this->datosMatricula((int)$f['id']), $this->coordinador())['id'];
+        $s->editar($id, $this->matriculaActual($id, ['estado' => 'desertado']), $this->coordinador());
+
+        $rap = (new \Core\Services\CompetenciasService($this->db))->crearRap(
+            ['competencia_id' => (int)$f['competencia'], 'codigo' => 'QA-REIN-01', 'denominacion' => 'RESULTADO CREADO DURANTE LA DESERCIÓN'],
+            $this->coordinador())['id'];
+        $this->assertSame(0, $this->contar('evaluaciones', 'aprendiz_id = ? AND resultado_aprendizaje_id = ?', [$id, $rap]));
+
+        $s->editar($id, $this->matriculaActual($id, ['estado' => 'matriculado']), $this->coordinador());
+        $this->assertSame(1, $this->contar('evaluaciones', "aprendiz_id = ? AND resultado_aprendizaje_id = ? AND concepto = 'pendiente'", [$id, $rap]));
+    }
+
     #[TestDox('no se traslada a un aprendiz a una ficha en cierre')]
     public function testTrasladoAFichaEnCierre(): void {
         $a = $this->unaFila("

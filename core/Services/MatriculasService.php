@@ -33,6 +33,8 @@ use Throwable;
  *  - Quien deja la formación (retiro, deserción o egreso) no conserva planes
  *    de mejoramiento vigentes: se cierran como no cumplidos con constancia.
  *  - Una ficha en cierre no recibe aprendices, ni nuevos ni trasladados.
+ *  - Al reintegrar a un desertado se le crean las pendientes de los RAP
+ *    que se crearon mientras estuvo fuera; antes no le llegaban nunca.
  *  - Una cuenta de aprendiz sin matrícula (las creaba la gestión de
  *    usuarios) se completa al matricular con su correo; antes el correo se
  *    rechazaba como ya registrado y esa persona no se podía matricular.
@@ -96,8 +98,12 @@ final class MatriculasService {
             $evaluaciones = new EvaluacionesSyncService($this->db);
             if ($traslado) {
                 $this->aprendices->trasladarRegistros($id, (int)$d['ficha_id']);
-                $evaluaciones->sincronizar(['aprendiz_id' => $id]);
             }
+            // Las pendientes que falten: las del programa de destino en un
+            // traslado y, al reintegrar a un desertado, las de los RAP creados
+            // mientras estuvo fuera (la rejilla solo se completa para quien
+            // está en formación). Si no lo está, no crea nada.
+            $evaluaciones->sincronizar(['aprendiz_id' => $id]);
             // Traslado o cambio de instructor de seguimiento: sus pendientes
             // pasan a quien ahora responde por cada una.
             $evaluaciones->actualizarResponsables(['aprendiz_id' => $id]);
