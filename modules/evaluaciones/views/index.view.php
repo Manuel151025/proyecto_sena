@@ -74,7 +74,7 @@ $evaluados = $cifras['a'] + $cifras['d'];
   <?php endif; ?>
   <div class="toolbar-filter">
     <label class="visually-hidden" for="f_concepto">Concepto</label>
-    <select name="concepto" id="f_concepto" class="form-select" data-autoenvio>
+    <select name="concepto" id="f_concepto" class="form-select" data-autoenvio data-picker data-picker-label="Concepto">
       <option value="">Todos los conceptos</option>
       <?php foreach ($conceptos as $valor => [$texto]): ?><option value="<?= e($valor) ?>" <?= $filtros['concepto'] === $valor ? 'selected' : '' ?>><?= e($texto) ?></option><?php endforeach; ?>
     </select>

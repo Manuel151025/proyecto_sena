@@ -49,7 +49,7 @@ $conceptoTexto = ['A' => 'A', 'D' => 'D', 'pendiente' => 'Pendiente'];
   </div>
   <div class="toolbar-filter">
     <label class="visually-hidden" for="f_estado">Estado</label>
-    <select name="estado" id="f_estado" class="form-select" data-autoenvio>
+    <select name="estado" id="f_estado" class="form-select" data-autoenvio data-picker data-picker-label="Estado">
       <option value="">Todos los estados</option>
       <?php foreach ($estados as $valor => [$texto]): ?><option value="<?= e($valor) ?>" <?= $filtros['estado'] === $valor ? 'selected' : '' ?>><?= e($texto) ?></option><?php endforeach; ?>
     </select>
@@ -201,7 +201,7 @@ $conceptoTexto = ['A' => 'A', 'D' => 'D', 'pendiente' => 'Pendiente'];
           </div>
           <div>
             <label class="form-label fw-semibold" for="rev_juicio">Juicio del RAP</label>
-            <select name="juicio" id="rev_juicio" class="form-select">
+            <select name="juicio" id="rev_juicio" class="form-select" data-picker data-picker-label="Juicio del RAP">
               <option value="">No cambiar el juicio</option>
               <option value="A">Registrar A (aprobado)</option>
               <option value="D">Registrar D (aún no aprobado)</option>

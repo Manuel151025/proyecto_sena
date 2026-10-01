@@ -60,7 +60,7 @@ $maxLimite = date('Y-m-d', strtotime('+' . PlanFormulario::MAX_DIAS . ' days'));
   </div>
   <div class="toolbar-filter">
     <label class="visually-hidden" for="f_estado">Estado</label>
-    <select name="estado" id="f_estado" class="form-select" data-autoenvio>
+    <select name="estado" id="f_estado" class="form-select" data-autoenvio data-picker data-picker-label="Estado del plan">
       <option value="">Todos los planes</option>
       <option value="vigente" <?= $filtros['estado'] === 'vigente' ? 'selected' : '' ?>>Vigentes</option>
       <option value="vencido" <?= $filtros['estado'] === 'vencido' ? 'selected' : '' ?>>Vencidos</option>

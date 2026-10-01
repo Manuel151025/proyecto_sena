@@ -36,7 +36,7 @@ $hayFiltros = $filtros['search'] !== '' || $filtros['tipo'] !== '' || $filtros['
   </div>
   <div class="toolbar-filter">
     <label class="visually-hidden" for="f_tipo">Tipo</label>
-    <select name="tipo" id="f_tipo" class="form-select" data-autoenvio>
+    <select name="tipo" id="f_tipo" class="form-select" data-autoenvio data-picker data-picker-label="Tipo">
       <option value="">Todos los tipos</option>
       <?php foreach ($tipos as $valor => [$texto]): ?><option value="<?= e($valor) ?>" <?= $filtros['tipo'] === $valor ? 'selected' : '' ?>><?= e($texto) ?></option><?php endforeach; ?>
     </select>

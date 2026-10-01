@@ -29,14 +29,14 @@ $qs = http_build_query($activos);
   </div>
   <div class="col-6 col-md-2">
     <label class="form-label small text-muted" for="f_accion">Acción</label>
-    <select name="accion" id="f_accion" class="form-select" data-autoenvio>
+    <select name="accion" id="f_accion" class="form-select" data-autoenvio data-picker data-picker-label="Acción">
       <option value="">Todas</option>
       <?php foreach ($acciones as $a): ?><option value="<?= e($a) ?>" <?= $filtros['accion'] === $a ? 'selected' : '' ?>><?= e($a) ?></option><?php endforeach; ?>
     </select>
   </div>
   <div class="col-6 col-md-2">
     <label class="form-label small text-muted" for="f_modulo">Módulo</label>
-    <select name="modulo" id="f_modulo" class="form-select" data-autoenvio>
+    <select name="modulo" id="f_modulo" class="form-select" data-autoenvio data-picker data-picker-label="Módulo">
       <option value="">Todos</option>
       <?php foreach ($modulos as $m): ?><option value="<?= e($m) ?>" <?= $filtros['modulo'] === $m ? 'selected' : '' ?>><?= e($m) ?></option><?php endforeach; ?>
     </select>

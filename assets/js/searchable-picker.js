@@ -175,10 +175,19 @@
             }));
         }
 
+        // Valor "sin elegir": '' o, en los selects cuya opción «Todas» o
+        // «Ninguno» vale 0 (filtros por id), '0'. Con solo '' esos filtros
+        // mostraban la X de limpiar y el texto de un filtro activo sin
+        // haber filtrado nada, y al limpiarlos quedaba «Seleccionar...».
+        function valorVacio() {
+            const valores = Array.from(select.options, o => o.value);
+            return valores.includes('') || !valores.includes('0') ? '' : '0';
+        }
+
         // Sincronizar el texto del trigger con la opción seleccionada
         function syncTriggerLabel() {
             const selectedOpt = select.options[select.selectedIndex];
-            if (selectedOpt && selectedOpt.value !== '') {
+            if (selectedOpt && selectedOpt.value !== valorVacio()) {
                 text.textContent = selectedOpt.textContent.trim();
                 trigger.classList.remove('is-empty');
                 trigger.classList.add('has-value');
@@ -342,7 +351,7 @@
 
         clearBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            chooseValue('');
+            chooseValue(valorVacio());
         });
 
         closeBtn.addEventListener('click', close);

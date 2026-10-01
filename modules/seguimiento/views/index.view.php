@@ -41,7 +41,7 @@ $enlaceAprendiz = static fn(int $id) => $url('/seguimiento?ficha_id=' . $fichaId
     </div>
     <div class="toolbar-filter">
       <label class="visually-hidden" for="f_sem">Semáforo</label>
-      <select name="semaforo" id="f_sem" class="form-select" data-autoenvio>
+      <select name="semaforo" id="f_sem" class="form-select" data-autoenvio data-picker data-picker-label="Semáforo">
         <option value="">Todos los aprendices</option>
         <?php foreach ([Semaforo::CRITICO, Semaforo::RIESGO, Semaforo::AL_DIA, Semaforo::SIN_DATOS] as $s): ?>
           <option value="<?= e($s) ?>" <?= $semaforo === $s ? 'selected' : '' ?>><?= e(Semaforo::etiqueta($s)) ?></option>
