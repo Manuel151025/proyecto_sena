@@ -19,7 +19,11 @@ module.exports = defineConfig({
   retries: process.env.CI ? 1 : 0,
   timeout: 90_000,
   expect: { timeout: 10_000 },
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'informe' }]],
+  // En el CI, 'github' publica cada fallo como anotación del commit (se lee
+  // sin permisos de administrador, a diferencia del registro completo).
+  reporter: process.env.CI
+    ? [['github'], ['list'], ['html', { open: 'never', outputFolder: 'informe' }]]
+    : [['list'], ['html', { open: 'never', outputFolder: 'informe' }]],
   outputDir: 'resultados',
   globalSetup: require.resolve('./global-setup.js'),
   use: {
@@ -36,6 +40,9 @@ module.exports = defineConfig({
     url: `http://127.0.0.1:${PUERTO}/login.php`,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
-    env: { ...process.env, DB_NAME: BASE_DATOS, APP_URL: '', DEV_MODE: 'true', APP_TIMEZONE: 'America/Bogota' },
+    // Sin credenciales de correo: con las del .env de un desarrollador, la
+    // prueba de recuperación de contraseña enviaba correos reales.
+    env: { ...process.env, DB_NAME: BASE_DATOS, APP_URL: '', DEV_MODE: 'true', APP_TIMEZONE: 'America/Bogota',
+           MAIL_USERNAME: '', MAIL_PASSWORD: '' },
   },
 });

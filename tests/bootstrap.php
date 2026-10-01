@@ -23,6 +23,12 @@ $_SERVER['HTTP_USER_AGENT'] = 'PHPUnit';
 
 $raiz = dirname(__DIR__);
 
+// Ninguna prueba envía correo de verdad: con las credenciales del .env de
+// un desarrollador, una prueba que pasara por la recuperación de contraseña
+// mandaría correos reales. Las variables del entorno mandan sobre el .env.
+putenv('MAIL_USERNAME=');
+putenv('MAIL_PASSWORD=');
+
 require_once $raiz . '/includes/config.php';
 require_once $raiz . '/includes/session.php';
 require_once $raiz . '/includes/functions.php';
