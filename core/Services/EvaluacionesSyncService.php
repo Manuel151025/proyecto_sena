@@ -112,6 +112,11 @@ class EvaluacionesSyncService {
      * una ficha, trasladar a un aprendiz o cambiar su instructor de
      * seguimiento. Los juicios ya emitidos conservan a su autor.
      *
+     * Los planes de mejoramiento vigentes también pasan a quien hoy responde
+     * por su RAP: el responsable del plan puede cerrarlo como cumplido (y con
+     * eso aprobar el RAP), y antes conservaba ese poder aunque el RAP pasara
+     * a otro instructor.
+     *
      * @param array $scope Mismas claves que sincronizar().
      * @return int Evaluaciones que cambiaron de responsable.
      */
@@ -129,7 +134,21 @@ class EvaluacionesSyncService {
                $where
         ");
         $stmt->execute($params);
-        return $stmt->rowCount();
+        $cambiadas = $stmt->rowCount();
+
+        $this->db->prepare("
+            UPDATE planes_mejoramiento pm
+              JOIN evaluaciones e            ON e.id = pm.evaluacion_id
+              JOIN aprendices a              ON a.id = pm.aprendiz_id
+              JOIN fichas f                  ON f.id = a.ficha_id
+              JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c            ON c.id = ra.competencia_id
+               SET pm.instructor_id = " . self::RESPONSABLE . "
+             WHERE pm.estado IN ('abierto', 'en_curso')
+               AND f.instructor_id IS NOT NULL AND f.instructor_id <> 0
+               $where
+        ")->execute($params);
+        return $cambiadas;
     }
 
     /**

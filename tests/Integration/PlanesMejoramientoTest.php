@@ -174,4 +174,41 @@ final class PlanesMejoramientoTest extends CasoConBaseDeDatos {
         $this->assertSame($this->idCoordinador(), (int)$plan['cerrado_por']);
         $this->assertStringContainsString('el RAP se aprobó', (string)$plan['observaciones_cierre']);
     }
+
+    /**
+     * El responsable del plan tiene autoridad sobre él (y, al cerrarlo como
+     * cumplido, sobre el juicio). Antes lo conservaba aunque el RAP pasara a
+     * otro instructor por una asignación, un traslado o un cambio de líder.
+     */
+    #[TestDox('si el RAP pasa a otro instructor, su plan vigente pasa con él y el anterior ya no lo cierra')]
+    public function testElPlanSigueAQuienCalifica(): void {
+        $id = (new PlanesService($this->db))->crear($this->datos(), $this->coordinador());
+        $anterior = (int)(new MejoramientoModel($this->db))->findById($id)['instructor_id'];
+        $ctx = $this->db->query("
+            SELECT e.ficha_id, ra.competencia_id, c.es_etapa_practica,
+                   (SELECT asg.id FROM asignaciones asg WHERE asg.ficha_id = e.ficha_id AND asg.competencia_id = ra.competencia_id) AS asignacion
+              FROM evaluaciones e JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c ON c.id = ra.competencia_id
+             WHERE e.id = {$this->eval['id']}")->fetch();
+        if ((int)$ctx['es_etapa_practica'] === 1) {
+            $this->markTestSkipped('el RAP elegido es de etapa práctica: no se asigna');
+        }
+        $nuevo = (int)$this->db->query("SELECT id FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' AND id <> $anterior LIMIT 1")->fetchColumn()
+            ?: $this->markTestSkipped('hace falta otro instructor activo');
+
+        $asignaciones = new \Core\Services\AsignacionesService($this->db);
+        $ctx['asignacion']
+            ? $asignaciones->cambiarInstructor((int)$ctx['asignacion'], $nuevo, $this->coordinador())
+            : $asignaciones->asignar((int)$ctx['ficha_id'], (int)$ctx['competencia_id'], $nuevo, $this->coordinador());
+
+        $this->assertSame($nuevo, (int)(new MejoramientoModel($this->db))->findById($id)['instructor_id']);
+        try {
+            (new PlanesService($this->db))->cerrar(['id' => $id, 'resultado' => 'cumplido', 'observaciones' => 'Lo cierra quien ya no califica'],
+                new Actor($anterior, ROL_INSTRUCTOR));
+            $this->fail('el instructor anterior cerró el plan y aprobó un RAP que ya no califica');
+        } catch (ErrorDeNegocio $e) {
+            $this->assertStringContainsString('No calificas', $e->getMessage());
+        }
+        $this->assertSame('D', $this->concepto());
+    }
 }
