@@ -81,7 +81,7 @@ if (opcion('--demo')) {
     linea();
     linea('Cuentas de demostración (contraseña: Demo2026*):');
     linea('  coordinador@sena.edu.co');
-    linea('  instructor@sena.edu.co … instructor5@sena.edu.co');
+    linea('  instructor@sena.edu.co … instructor6@sena.edu.co');
     linea('  aprendiz@sena.edu.co   … aprendiz5@sena.edu.co');
 }
 

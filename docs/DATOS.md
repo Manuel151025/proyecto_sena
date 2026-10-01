@@ -342,7 +342,7 @@ Programas de formación del SENA (ADSO, Contabilidad…).
 
 ### `proyectos`
 
-Proyectos formativos, asociados a un programa.
+Proyectos formativos. No dependen de un programa: cada ficha elige el que desarrolla (fichas.proyecto_id).
 
 | Columna | Tipo | Nulo | Por defecto | Clave / referencia |
 |---|---|---|---|---|
