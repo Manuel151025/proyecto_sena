@@ -219,7 +219,12 @@ final class Validador {
      * Se comprueba que la fecha exista de verdad: '2026-02-30' encaja con el
      * patrón pero no es un día del calendario.
      */
-    public function fecha(string $campo, string $etiqueta, bool $obligatorio = true): ?string {
+    /**
+     * Fecha AAAA-MM-DD que existe. Por defecto acota el año a 2000-2100, que
+     * es lo razonable para una fecha académica; una fecha de nacimiento pide
+     * otro rango (`anioMin`).
+     */
+    public function fecha(string $campo, string $etiqueta, bool $obligatorio = true, int $anioMin = 2000, int $anioMax = 2100): ?string {
         $valor = trim((string)($this->bruto($campo) ?? ''));
 
         if ($valor === '') {
@@ -238,8 +243,8 @@ final class Validador {
         // Cota de cordura: fuera de este rango es un error de tecleo o una
         // prueba, nunca una fecha académica real.
         $anio = (int)$d->format('Y');
-        if ($anio < 2000 || $anio > 2100) {
-            $this->error($etiqueta . ' está fuera del rango admitido (2000-2100).');
+        if ($anio < $anioMin || $anio > $anioMax) {
+            $this->error(sprintf('%s está fuera del rango admitido (%d-%d).', $etiqueta, $anioMin, $anioMax));
             return null;
         }
         return $valor;

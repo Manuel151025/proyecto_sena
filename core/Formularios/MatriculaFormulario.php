@@ -20,7 +20,10 @@ final class MatriculaFormulario {
             'numero_documento' => $v->patron('numero_documento', 'El número de documento', '/^[A-Za-z0-9]+$/', 'letras y números, sin puntos ni espacios', 5, 20),
             'ficha_id'         => $v->id('ficha_id', 'La ficha'),
             'genero'           => $v->enum('genero', 'El género', Enums::APRENDIZ_GENERO, 'O'),
-            'fecha_nacimiento' => $v->fecha('fecha_nacimiento', 'La fecha de nacimiento', false),
+            // Sin la cota académica 2000-2100: rechazaba a todo aprendiz nacido
+            // antes del 2000 (y no dejaba editar su matrícula). La regla real
+            // es la de la edad, justo debajo.
+            'fecha_nacimiento' => $v->fecha('fecha_nacimiento', 'La fecha de nacimiento', false, 1900, (int)date('Y')),
             'telefono'         => $v->patron('telefono', 'El teléfono', '/^\+?[0-9 ]{7,15}$/', 'dígitos (7 a 15), opcionalmente con + al inicio', 7, 20, false),
             'ciudad'           => $v->nombre('ciudad', 'La ciudad', 2, self::MAX_CIUDAD, false),
             'instructor_seguimiento_id' => $v->id('instructor_seguimiento_id', 'El instructor de seguimiento', false) ?: null,
