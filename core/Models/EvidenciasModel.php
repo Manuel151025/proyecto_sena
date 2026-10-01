@@ -98,7 +98,7 @@ class EvidenciasModel {
     public function findById(int $id): ?array {
         $st = $this->db->prepare("
             SELECT ev.*, ev.`tamaño_kb` AS tamano_kb, ap.usuario_id AS aprendiz_usuario_id, ap.ficha_id AS ficha_aprendiz,
-                   f.numero_ficha, ra.codigo AS ra_codigo, e.concepto
+                   ap.estado AS aprendiz_estado, f.numero_ficha, ra.codigo AS ra_codigo, e.concepto
               FROM evidencias ev
               JOIN aprendices ap ON ap.id = ev.aprendiz_id
               JOIN fichas f ON f.id = ev.ficha_id

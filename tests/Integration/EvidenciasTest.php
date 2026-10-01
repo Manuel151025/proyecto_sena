@@ -170,4 +170,30 @@ final class EvidenciasTest extends CasoConBaseDeDatos {
         $this->expectException(ErrorDeNegocio::class);
         $this->servicio()->eliminar($id, $this->actorAprendiz());
     }
+
+    #[TestDox('al revisar la evidencia de un aprendiz desertado no se le registra un juicio nuevo')]
+    public function testJuicioADesertadoDesdeEvidencia(): void {
+        $e = $this->db->query("
+            SELECT e.id, e.aprendiz_id, e.ficha_id FROM evaluaciones e JOIN aprendices a ON a.id = e.aprendiz_id
+             WHERE a.estado = 'matriculado' AND e.concepto = 'pendiente' LIMIT 1")->fetch() ?: $this->markTestSkipped('sin evaluaciones pendientes');
+        $this->db->prepare("INSERT INTO evidencias (aprendiz_id, ficha_id, evaluacion_id, titulo, descripcion, estado) VALUES (?, ?, ?, 'Informe', 'Entrega', 'enviada')")
+                 ->execute([(int)$e['aprendiz_id'], (int)$e['ficha_id'], (int)$e['id']]);
+        $evidencia = (int)$this->db->lastInsertId();
+        $this->db->exec("UPDATE aprendices SET estado = 'desertado' WHERE id = {$e['aprendiz_id']}");
+        $coordinador = new \Core\Support\Actor($this->idCoordinador(), ROL_COORDINADOR);
+
+        try {
+            (new \Core\Services\EvidenciasService($this->db))->revisar(['id' => $evidencia, 'estado' => 'aprobada',
+                'retroalimentacion' => 'Cumple los criterios', 'juicio' => 'A'], $coordinador);
+            $this->fail('registró un juicio a un aprendiz desertado');
+        } catch (\Core\Support\ErrorDeNegocio $x) {
+            $this->assertStringContainsString('desertado', $x->getMessage());
+        }
+        $this->assertSame('pendiente', (string)$this->db->query("SELECT concepto FROM evaluaciones WHERE id = {$e['id']}")->fetchColumn());
+
+        // Revisar sin tocar el juicio sí se permite.
+        (new \Core\Services\EvidenciasService($this->db))->revisar(['id' => $evidencia, 'estado' => 'aprobada',
+            'retroalimentacion' => 'Cumple los criterios', 'juicio' => ''], $coordinador);
+        $this->assertSame('aprobada', (string)$this->db->query("SELECT estado FROM evidencias WHERE id = $evidencia")->fetchColumn());
+    }
 }

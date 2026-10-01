@@ -93,6 +93,12 @@ final class EvidenciasService {
         if ($d['juicio'] !== '' && !$ev['evaluacion_id']) {
             throw new ErrorDeNegocio('La evidencia no está ligada a un resultado de aprendizaje: no se puede registrar un juicio desde aquí.');
         }
+        // La misma regla que al calificar desde Evaluaciones (JuiciosService):
+        // este camino no la aplicaba, y una evidencia enviada antes de la
+        // deserción y revisada después le ponía un juicio a un desertado.
+        if ($d['juicio'] !== '' && $ev['aprendiz_estado'] === 'desertado') {
+            throw new ErrorDeNegocio('El aprendiz está desertado: se puede revisar la evidencia, pero no registrar un juicio nuevo.');
+        }
         Transaccion::ejecutar($this->db, function () use ($d, $ev, $actor) {
             $this->modelo->revisar((int)$ev['id'], $d['estado'], $d['retroalimentacion']);
             $juicio = '';
