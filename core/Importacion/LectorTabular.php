@@ -124,21 +124,25 @@ final class LectorTabular {
         if ($zip->open($ruta) !== true) {
             throw new ErrorDeNegocio('El archivo .xlsx está dañado o no es un libro de Excel.');
         }
-        foreach (['xl/worksheets/sheet1.xml', 'xl/sharedStrings.xml'] as $entrada) {
+        // La primera hoja se resuelve como la ve el usuario (workbook.xml), no
+        // por un nombre fijo: al reordenar hojas deja de ser sheet1.xml.
+        $hoja = XlsxParser::primeraHoja($zip);
+        if ($zip->statName($hoja) === false) {
+            $zip->close();
+            throw new ErrorDeNegocio('El libro no tiene una primera hoja legible. Deja los datos en la primera hoja.');
+        }
+        // Bomba zip: se mide el tamaño DESCOMPRIMIDO de lo que se va a leer.
+        foreach ([$hoja, 'xl/sharedStrings.xml', 'xl/styles.xml'] as $entrada) {
             $st = $zip->statName($entrada);
             if ($st !== false && (int)$st['size'] > self::MAX_XML_BYTES) {
                 $zip->close();
                 throw new ErrorDeNegocio('La hoja de cálculo es demasiado grande una vez descomprimida. Divide el archivo o guárdalo como CSV.');
             }
         }
-        if ($zip->statName('xl/worksheets/sheet1.xml') === false) {
-            $zip->close();
-            throw new ErrorDeNegocio('El libro no tiene una primera hoja legible. Deja los datos en la primera hoja.');
-        }
         $zip->close();
 
         try {
-            $filas = XlsxParser::parse($ruta) ?? [];
+            $filas = XlsxParser::parse($ruta);
         } catch (\Throwable $e) {
             throw new ErrorDeNegocio('No se pudo leer el archivo .xlsx. Ábrelo en Excel y guárdalo de nuevo, o expórtalo como CSV.');
         }

@@ -1,0 +1,4 @@
+nombre;email;tipo_documento;numero_documento;genero;telefono;ciudad;fecha_nacimiento
+VALENTINA ORTIZ CASTRO;vortiz.ejemplo@soy.sena.edu.co;CC;1117600001;F;3101234567;Florencia;2005-04-12
+SANTIAGO MORALES RÍOS;smorales.ejemplo@soy.sena.edu.co;TI;1117600002;M;3119876543;Florencia;2008-09-30
+DANIELA ACOSTA MUÑOZ;dacosta.ejemplo@soy.sena.edu.co;CC;1117600003;F;;San Vicente del Caguán;2003-01-25
