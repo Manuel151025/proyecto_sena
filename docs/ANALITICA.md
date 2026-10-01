@@ -1,6 +1,6 @@
 # Analítica por rol
 
-**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.2
+**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.4
 
 Qué cifras ve cada rol, cómo se calculan y de dónde salen. Cubre el **RF04** (panel de progreso individual y grupal) y el **RF05** (reportes por instructor, ficha y competencia), con la exportación del **RNF03**.
 

@@ -11,9 +11,9 @@ Cómo se verifica el sistema: pruebas automáticas de PHPUnit, recorridos autom�
 | Suite | Casos | Comprobaciones | Base de datos |
 |---|---:|---:|---|
 | Unitarias (`tests/Unit`) | 409 | 1.160 | No |
-| Seguridad (`tests/Security`) | 190 | 2.013 | Algunas |
-| Integración (`tests/Integration`) | 219 | 1.766 | Sí |
-| **Total PHPUnit** | **818** | **4.939** | |
+| Seguridad (`tests/Security`) | 191 | 2.014 | Algunas |
+| Integración (`tests/Integration`) | 222 | 1.775 | Sí |
+| **Total PHPUnit** | **822** | **4.949** | |
 | Navegador (`tests/e2e`, Playwright) | 46 recorridos | | Propia (`sena_e2e`) |
 
 ```bash
@@ -61,7 +61,7 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 | `AutorizacionTest` | 20 | IDOR sobre evaluaciones, evidencias, notificaciones y reportes; escalada de privilegios; aislamiento por rol |
 | `BusquedaYFiltrosTest` | 19 | Comodines `%` y `_`, filtros manipulados que mostraban de más |
 | `AutenticacionTest` | 16 | Fuerza bruta sin cookies, barrido de cuentas, `X-Forwarded-For` rotado, enumeración por tiempo, cuentas inactivas, contraseñas hasheadas |
-| `FugaDeInformacionTest` | 16 | Volcado de depuración en el 403, `getMessage()` en pantalla, vistas sin guarda, registros de recuperación fuera de git |
+| `FugaDeInformacionTest` | 17 | Volcado de depuración en el 403, `getMessage()` en pantalla (también envuelto en un `ErrorDeNegocio`), vistas sin guarda, registros de recuperación fuera de git |
 | `SuperficieWebTest` | 6 | Toda carpeta de la raíz es pública a propósito o está negada; ningún script de consola se ejecuta por URL |
 
 ### Integración
@@ -70,7 +70,7 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 |---|---:|---|
 | `EsquemaTest` | 39 | Modo estricto, misma hora en PHP y en la base, llaves foráneas, índices, únicos, trazabilidad completa de los juicios |
 | `EvaluacionServiceTest` | 24 | Única puerta de escritura del juicio: historial solo si cambia, transacción, bloqueo de fila, motivo obligatorio |
-| `GestionAcademicaTest` | 22 | Fichas (programa activo, cambio de programa sin arrastrar RAP del anterior), matrículas, traslados, retiros que cierran planes, asignaciones y cuentas de coordinación |
+| `GestionAcademicaTest` | 23 | Fichas (programa activo, cambio de programa sin arrastrar RAP del anterior), matrículas, traslados, retiros que cierran planes, reintegros que completan los RAP, asignaciones y cuentas de coordinación |
 | `ModelosRestantesTest` | 19 | Consultas de todos los modelos en los tres roles; conteos que cuadran |
 | `SoporteTest` | 16 | Transacciones anidadas y revertidas, traducción de errores reales de la base, configuración |
 | `ConsultasDeModelosTest` | 15 | Analítica por rol, semáforo SQL = PHP, progreso del aprendiz |
@@ -80,7 +80,7 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 | `AuditoriaYReportesTest` | 10 | Eventos de la bitácora; cada reporte en PDF y Excel; volumen grande |
 | `EvidenciasTest` | 10 | Envío ligado a un RAP propio, descarga con permiso, revisión y juicio separados, sin juicios nuevos a un desertado |
 | `CuentasDeAprendizTest` | 9 | El rol de aprendiz va con la matrícula: Usuarios no lo da ni lo quita, y una cuenta de aprendiz sin ficha se completa al matricularla |
-| `PlanesMejoramientoTest` | 8 | Ciclo del plan: apertura sobre un D, en curso, cierre cumplido (A) o no cumplido; el plazo no se mueve al pasado |
+| `PlanesMejoramientoTest` | 10 | Ciclo del plan: apertura sobre un D, en curso, cierre cumplido (A) o no cumplido; el plazo no se mueve al pasado; se cierra solo si el RAP se aprueba por otra vía y pasa a quien califica el RAP |
 | `RutasYPermisosTest` | 8 | Matriz de accesos; canario del número de rutas (111) |
 | `AuditoriaContrasenasTest` | 2 | Detecta las cuentas con contraseñas conocidas (también si comparten hash) y las anula con temporal y bitácora |
 
@@ -129,7 +129,7 @@ DB_NAME=sena_verificacion php bin/verificar-esquema.php
 DB_NAME=sena_verificacion vendor/bin/phpunit
 ```
 
-Las 818 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
+Las 822 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
 
 ## 6. Cómo añadir una prueba
 

@@ -46,7 +46,7 @@ El seguimiento se llevaba en hojas de cálculo de cada instructor y en los repor
 | [Seguridad](docs/SEGURIDAD.md) | Revisión OWASP: 44 hallazgos, controles por capa, límites de entrada y salida, riesgos residuales |
 | [Manual de usuario](docs/MANUAL_USUARIO.md) | Uso paso a paso para aprendiz, instructor y coordinador |
 | [Despliegue](docs/DESPLIEGUE.md) | Instalación (Apache y Docker), variables de entorno, actualización, copias de seguridad |
-| [Pruebas](docs/PRUEBAS.md) | 818 pruebas de PHPUnit, 46 recorridos en navegador e integración continua |
+| [Pruebas](docs/PRUEBAS.md) | 822 pruebas de PHPUnit, 46 recorridos en navegador e integración continua |
 | [Datos](docs/DATOS.md) · [Rutas y permisos](docs/RUTAS_Y_PERMISOS.md) · [Formatos de importación](docs/FORMATOS_IMPORTACION.md) | Generados desde el código con `php bin/generar-docs.php` |
 | [Historial de versiones](CHANGELOG.md) | Qué cambió en cada versión y por qué |
 
@@ -164,7 +164,7 @@ Para producción (sin demostración, primera cuenta, Docker, HTTPS, copias de se
 | `php bin/verificar-esquema.php` | Comprobar que la base coincide con el código |
 | `php bin/volcar-esquema.php` | Regenerar `database/esquema.sql` tras una migración |
 | `php bin/generar-docs.php` | Regenerar rutas, diccionario de datos y formatos de importación |
-| `composer test` | Las 818 pruebas de PHPUnit |
+| `composer test` | Las 822 pruebas de PHPUnit |
 | `cd tests/e2e && npx playwright test` | Los 46 recorridos en navegador ([guía](tests/e2e/README.md)) |
 
 ---

@@ -1,6 +1,6 @@
 # Despliegue y operación
 
-**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.3
+**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.4
 
 Cómo instalar, configurar, actualizar y mantener el sistema. Para la seguridad del despliegue ver también [SEGURIDAD.md](SEGURIDAD.md).
 
@@ -73,7 +73,7 @@ Siembra un centro completo y sintético (programas, fichas, aprendices, juicios,
 | Rol | Correo |
 |---|---|
 | Coordinador | `coordinador@sena.edu.co` |
-| Instructor | `instructor@sena.edu.co` … `instructor5@sena.edu.co` |
+| Instructor | `instructor@sena.edu.co` … `instructor6@sena.edu.co` |
 | Aprendiz | `aprendiz@sena.edu.co`, `aprendiz2@sena.edu.co` … |
 
 > **Nunca** instalar la demostración en producción, o cambiar esas contraseñas de inmediato.
@@ -114,6 +114,8 @@ php bin/verificar-esquema.php
 > **El despliegue actualiza el código, no la base.** Hay que ejecutar `bin/migrar.php` después de cada actualización. `php bin/migrar.php --estado` lista las aplicadas y las pendientes sin cambiar nada.
 
 Una base anterior a la versión 3 (sin tabla `migraciones`) se pone al día con el mismo comando: cada migración comprueba si su cambio ya existe antes de aplicarlo.
+
+**Al pasar a la v3.4** la migración `0019` indexa los enlaces de recuperación de contraseña (ahora se guarda su huella SHA-256) y anula los que quedaran pendientes del formato anterior, que con el código nuevo ya no sirven: quien tuviera uno a medio usar solo tiene que pedir otro. Ningún otro dato cambia.
 
 ### Contraseñas publicadas (hacerlo una vez en producción)
 

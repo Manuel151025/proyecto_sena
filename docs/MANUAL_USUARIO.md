@@ -1,6 +1,6 @@
 # Manual de usuario
 
-**Sistema de Seguimiento de Proyectos Formativos — SENA, Centro Tecnológico de la Amazonia** · versión 3.2
+**Sistema de Seguimiento de Proyectos Formativos — SENA, Centro Tecnológico de la Amazonia** · versión 3.4
 
 Guía de uso por rol: qué puede hacer cada persona y cómo hacerlo, paso a paso.
 
@@ -128,6 +128,8 @@ Detalle del formato en [FORMATOS_IMPORTACION.md](FORMATOS_IMPORTACION.md).
 3. Cuando el aprendiz entregue evidencia, el plan pasa a **En curso**.
 4. **Cerrar plan**: como **cumplido** (el RAP pasa a A, con historial) o **no cumplido** (sigue en D y puede abrir otro plan).
 
+Si el RAP se aprueba por otro camino (desde **Evaluaciones**, al revisar una evidencia o al importar el reporte de Sofia Plus), el plan se cierra solo como cumplido y la constancia dice quién lo aprobó. Si el RAP pasa a otro instructor (asignación, traslado o cambio de líder), el plan pasa con él.
+
 Los planes vencidos aparecen resaltados en su panel, en el listado y en el calendario.
 
 ### Retroalimentación y observaciones
@@ -160,7 +162,9 @@ Además de todo lo del instructor, sobre **todo el centro**:
 
 ### Crear cuentas
 
-**Usuarios → Nuevo usuario**: correo, nombre, rol. El sistema genera una **contraseña temporal** que se muestra **una sola vez**: entréguela a la persona; deberá cambiarla al entrar. **Restablecer contraseña** genera otra temporal.
+**Usuarios → Nuevo usuario**: correo, nombre y rol (coordinación o instructor). El sistema genera una **contraseña temporal** que se muestra **una sola vez**: entréguela a la persona; deberá cambiarla al entrar. **Restablecer contraseña** genera otra temporal.
+
+Las cuentas de **aprendiz** no se crean aquí: nacen al matricularlo en **Matrículas**, que también lo inscribe en su ficha. Por eso, desde Usuarios no se da ni se quita el rol de aprendiz, ni se reactiva la cuenta de un aprendiz desertado o egresado (eso se hace cambiando su estado en Matrículas). Si quedó alguna cuenta de aprendiz sin ficha de versiones anteriores, matricúlela con el mismo correo: la cuenta se completa con la matrícula y una contraseña temporal nueva.
 
 Para muchas cuentas: **Usuarios → Importar**, descargue la **Plantilla CSV**, complétela, **Analizar archivo**, revise la vista previa e **Importar**. Al final puede **Imprimir credenciales**.
 
@@ -183,11 +187,12 @@ Para muchas cuentas: **Usuarios → Importar**, descargue la **Plantilla CSV**, 
 
 - **Trasladar** a otra ficha del mismo programa: se mueven sus registros.
 - **Etapa práctica**: exige elegir el instructor de seguimiento.
-- **Retirar**: el aprendiz queda desertado y sin acceso; su historial se conserva.
+- **Retirar**: el aprendiz queda desertado y sin acceso; su historial se conserva y sus planes vigentes se cierran como no cumplidos.
+- **Reintegrar** (de desertado a matriculado): recupera el acceso y recibe las evaluaciones pendientes de los RAP que se crearon mientras estuvo fuera.
 
 ### Reportes
 
-**Reportes**: elija el reporte, los parámetros (ficha o fechas si aplica) y el formato (**Excel**, **CSV** o **PDF**).
+**Reportes**: elija el reporte, los parámetros (ficha o fechas si aplica) y el formato (**Excel**, **CSV** o **PDF**). En PDF caben hasta **2.000 filas**; un reporte más grande se descarga en Excel o CSV (hasta 20.000 filas; si las supera, el sistema pide acotar el periodo o filtrar en lugar de entregar un archivo cortado).
 
 | Reporte | Uso típico |
 |---|---|
