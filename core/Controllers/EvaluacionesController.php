@@ -84,7 +84,7 @@ class EvaluacionesController extends BaseController {
             $e['numero_ficha'], $e['aprendiz_nombre'], $e['numero_documento'], $e['competencia_codigo'], $e['competencia_nombre'],
             $e['ra_codigo'], $e['ra_denominacion'], self::CONCEPTOS[$e['concepto']][0] ?? $e['concepto'],
             $e['fecha_evaluacion'] ?? '', $e['instructor_nombre'] ?? '', (string)($e['comentario'] ?? ''),
-        ], $this->modelo->paraExportar($actor, $this->filtros(), Exportador::MAX_FILAS));
+        ], $this->filasParaExportar(fn(int $n) => $this->modelo->paraExportar($actor, $this->filtros(), $n), '/evaluaciones'));
         $enc = ['Ficha', 'Aprendiz', 'Documento', 'Código competencia', 'Competencia', 'Código RAP', 'Resultado de aprendizaje',
                 'Juicio', 'Fecha', 'Instructor', 'Comentario'];
 

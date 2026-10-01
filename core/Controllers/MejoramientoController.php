@@ -104,7 +104,7 @@ class MejoramientoController extends BaseController {
             $p['numero_ficha'], $p['aprendiz_nombre'], $p['numero_documento'], $p['ra_codigo'], $p['ra_denominacion'],
             (self::ESTADOS[$p['estado']][0] ?? $p['estado']) . ((int)$p['vencido'] ? ' (vencido)' : ''),
             $p['fecha_inicio'], $p['fecha_limite'], $p['instructor_nombre'], $p['actividades'], (string)($p['observaciones_cierre'] ?? ''),
-        ], $this->modelo->paraExportar($actor, $this->filtros(), Exportador::MAX_FILAS));
+        ], $this->filasParaExportar(fn(int $n) => $this->modelo->paraExportar($actor, $this->filtros(), $n), '/mejoramiento'));
         $enc = ['Ficha', 'Aprendiz', 'Documento', 'RAP', 'Resultado de aprendizaje', 'Estado', 'Inicio', 'Límite', 'Responsable', 'Actividades', 'Cierre'];
 
         (new Auditoria())->operacion($actor, 'Exportar', 'Mejoramiento', 'planes_mejoramiento', null, count($filas) . " planes exportados en $formato");

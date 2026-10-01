@@ -187,6 +187,26 @@ abstract class BaseController {
      * comprobar: los dos los controla el cliente, y un destino arbitrario
      * convierte la redirección en un salto a otro dominio.
      */
+    /**
+     * Filas para exportar, completas o ninguna. La consulta recibe cuántas
+     * pedir: se piden MAX_FILAS + 1 y, si llega la de más, el archivo saldría
+     * cortado sin que nadie lo notara (antes pasaba en silencio a partir de
+     * 20.000 filas). En ese caso se vuelve al listado, con sus filtros, a
+     * pedir que se acote.
+     *
+     * @param callable(int):array $consulta
+     */
+    protected function filasParaExportar(callable $consulta, string $listado): array {
+        $filas = $consulta(\Core\Exportacion\Exportador::MAX_FILAS + 1);
+        if (count($filas) > \Core\Exportacion\Exportador::MAX_FILAS) {
+            $filtros = array_filter(array_diff_key($_GET, ['formato' => true]), static fn($v) => is_scalar($v) && $v !== '');
+            $this->fallo('Hay más de ' . number_format(\Core\Exportacion\Exportador::MAX_FILAS, 0, ',', '.')
+                . ' filas con esos filtros. Filtra (por ficha, estado o fechas) para exportarlas completas.',
+                $listado . ($filtros !== [] ? '?' . http_build_query($filtros) : ''));
+        }
+        return $filas;
+    }
+
     protected function rutaDeVuelta(string $porDefecto): string {
         $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
         $prefijo = APP_URL . '/index.php';

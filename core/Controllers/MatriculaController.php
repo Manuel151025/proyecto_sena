@@ -84,7 +84,7 @@ class MatriculaController extends BaseController {
             $a['numero_ficha'], $a['nombre'], $a['tipo_documento'], $a['numero_documento'], $a['email'],
             FichaController::ESTADOS_APRENDIZ[$a['estado']][0] ?? $a['estado'], $a['genero'], $a['telefono'], $a['ciudad'],
             $a['fecha_matricula'] ? date('Y-m-d', strtotime((string)$a['fecha_matricula'])) : '',
-        ], $this->aprendices->paraExportar($this->filtros(), $actor, Exportador::MAX_FILAS));
+        ], $this->filasParaExportar(fn(int $n) => $this->aprendices->paraExportar($this->filtros(), $actor, $n), '/matriculas'));
         $enc = ['Ficha', 'Aprendiz', 'Tipo doc.', 'Documento', 'Correo', 'Estado', 'Género', 'Teléfono', 'Ciudad', 'Matrícula'];
         (new Auditoria())->operacion($actor, 'Exportar', 'Matrículas', 'aprendices', null, count($filas) . " matrículas exportadas en $formato");
         $nombre = 'matriculas_' . date('Ymd_His') . '.' . $formato;

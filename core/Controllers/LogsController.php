@@ -60,7 +60,7 @@ class LogsController extends BaseController {
             $this->fallo($errors, '/logs');
         }
         $formato = ($_GET['formato'] ?? '') === 'csv' ? 'csv' : 'xlsx';
-        $filas = $this->modelo->paraExportar($filtros, Exportador::MAX_FILAS);
+        $filas = $this->filasParaExportar(fn(int $n) => $this->modelo->paraExportar($filtros, $n), '/logs');
         (new Auditoria())->operacion(Actor::actual(), 'Exportar', 'Auditoría', 'logs_sistema', null, count($filas) . " registros de la bitácora en $formato");
         $enc = ['Fecha', 'Usuario', 'Rol', 'Acción', 'Módulo', 'Tabla', 'Registro', 'Descripción', 'IP'];
         $nombre = 'bitacora_' . date('Ymd_His') . '.' . $formato;

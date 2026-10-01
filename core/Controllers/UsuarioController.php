@@ -85,7 +85,7 @@ class UsuarioController extends BaseController {
         $formato = ($_GET['formato'] ?? '') === 'csv' ? 'csv' : 'xlsx';
         $filas = array_map(static fn($u) => [
             $u['nombre'], $u['email'], ucfirst($u['rol']), ucfirst($u['estado']), date('Y-m-d', strtotime((string)$u['fecha_creacion'])),
-        ], $this->repo->paraExportar($filtros, \Core\Exportacion\Exportador::MAX_FILAS));
+        ], $this->filasParaExportar(fn(int $n) => $this->repo->paraExportar($filtros, $n), '/usuarios'));
         $enc = ['Nombre', 'Correo', 'Rol', 'Estado', 'Creación'];
 
         (new \Core\Services\Auditoria())->operacion(Actor::actual(), 'Exportar', 'Usuarios', 'usuarios', null,

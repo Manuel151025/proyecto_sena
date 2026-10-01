@@ -157,7 +157,7 @@ class FichaController extends BaseController {
             self::ESTADOS[$f['estado']][0] ?? $f['estado'], $f['fecha_inicio'] ?? '', $f['fecha_fin'] ?? '',
             (int)$f['aprendices_activos'], (int)$f['aprobados'], (int)$f['en_d'], $pct($f['pct_a']), Semaforo::etiqueta($f['semaforo']), $pct($f['cumplimiento']),
             $f['proyecto_codigo'] ?? '', $pct($f['avance_proyecto']),
-        ], $this->fichas->paraExportar($actor, $this->filtros(), Exportador::MAX_FILAS));
+        ], $this->filasParaExportar(fn(int $n) => $this->fichas->paraExportar($actor, $this->filtros(), $n), '/fichas'));
         $enc = ['Ficha', 'Programa', 'Instructor líder', 'Estado', 'Inicio', 'Fin', 'Aprendices activos',
                 'RAP en A', 'RAP en D', '% A sobre evaluados', 'Semáforo', '% avance de RAP', 'Proyecto', '% avance proyecto'];
 
