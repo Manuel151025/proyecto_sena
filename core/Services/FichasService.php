@@ -38,6 +38,7 @@ final class FichasService {
     public function crear(array $d, Actor $actor): int {
         $this->soloCoordinacion($actor);
         $this->validarLider($d);
+        $this->validarPrograma($d, null);
         try {
             $id = $this->fichas->crear($d, $actor->id);
         } catch (Throwable $e) {
@@ -55,6 +56,7 @@ final class FichasService {
         $this->soloCoordinacion($actor);
         $actual = $this->fichas->findById($id) ?? throw new ErrorDeNegocio('La ficha no existe.');
         $this->validarLider($d);
+        $this->validarPrograma($d, $actual);
         $uso = $this->fichas->dependencias($id);
         $otroPrograma = (int)$actual['programa_id'] !== (int)$d['programa_id'];
         if ($otroPrograma && $uso['juicios'] > 0) {
@@ -119,6 +121,20 @@ final class FichasService {
     private function validarLider(array $d): void {
         if (!$this->fichas->esInstructorActivo((int)$d['instructor_id'])) {
             throw new ErrorDeNegocio('El instructor líder debe ser un instructor con cuenta activa.');
+        }
+    }
+
+    /**
+     * El formulario solo ofrece programas activos; aquí se exige lo mismo
+     * para una ficha nueva o que cambia de programa (antes bastaba con
+     * enviar el id de un programa archivado). Una ficha que ya estaba en un
+     * programa que después se archivó se sigue pudiendo editar.
+     */
+    private function validarPrograma(array $d, ?array $actual): void {
+        $estado = $this->fichas->estadoPrograma((int)$d['programa_id']) ?? throw new ErrorDeNegocio('El programa seleccionado no existe.');
+        $cambia = $actual === null || (int)$actual['programa_id'] !== (int)$d['programa_id'];
+        if ($cambia && $estado !== 'activo') {
+            throw new ErrorDeNegocio('El programa elegido no está activo: no admite fichas.');
         }
     }
 

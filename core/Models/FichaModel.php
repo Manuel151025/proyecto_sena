@@ -218,6 +218,14 @@ class FichaModel {
         return array_map('intval', $st->fetch(PDO::FETCH_ASSOC) ?: []);
     }
 
+    /** Estado del programa (activo, inactivo, archivado), o null si no existe. */
+    public function estadoPrograma(int $id): ?string {
+        $st = $this->db->prepare("SELECT estado FROM programas WHERE id = ?");
+        $st->execute([$id]);
+        $estado = $st->fetchColumn();
+        return $estado === false ? null : (string)$estado;
+    }
+
     public function esInstructorActivo(int $id): bool {
         $st = $this->db->prepare("SELECT 1 FROM usuarios WHERE id = ? AND rol = 'instructor' AND estado = 'activo'");
         $st->execute([$id]);

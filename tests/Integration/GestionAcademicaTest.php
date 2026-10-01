@@ -34,7 +34,7 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
 
     private function datosFicha(array $cambios = []): array {
         return array_merge([
-            'numero_ficha' => '9999001', 'programa_id' => (int)$this->db->query("SELECT id FROM programas LIMIT 1")->fetchColumn(),
+            'numero_ficha' => '9999001', 'programa_id' => (int)$this->db->query("SELECT id FROM programas WHERE estado = 'activo' LIMIT 1")->fetchColumn(),
             'proyecto_id' => null, 'instructor_id' => $this->idInstructorConFicha(), 'estado' => 'planeacion',
             'fecha_inicio' => null, 'fecha_fin' => null,
         ], $cambios);
@@ -115,6 +115,14 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
         $this->esperarError(fn() => (new FichasService($this->db))->editar((int)$f['id'], $d, $this->coordinador()), 'programa');
     }
 
+    #[TestDox('no se abre una ficha en un programa que no está activo')]
+    public function testProgramaInactivo(): void {
+        $this->db->exec("INSERT INTO programas (nombre, codigo, duracion_horas, estado) VALUES ('PROGRAMA ARCHIVADO QA', 'QA-ARCH-1', 100, 'archivado')");
+        $archivado = (int)$this->db->lastInsertId();
+        $this->esperarError(fn() => (new FichasService($this->db))->crear($this->datosFicha(['programa_id' => $archivado]), $this->coordinador()), 'no está activo');
+        $this->assertSame(0, $this->contar('fichas', 'numero_ficha = ?', ['9999001']));
+    }
+
     #[TestDox('una ficha con aprendices no se elimina: se cierra')]
     public function testNoEliminaFichaConAprendices(): void {
         $f = $this->unaFila("SELECT f.id FROM fichas f WHERE EXISTS (SELECT 1 FROM aprendices a WHERE a.ficha_id = f.id) LIMIT 1");
@@ -175,6 +183,7 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
     public function testCambioDePrograma(): void {
         $programas = $this->db->query("
             SELECT c.programa_id, COUNT(ra.id) AS raps FROM competencias c JOIN resultados_aprendizaje ra ON ra.competencia_id = c.id
+              JOIN programas p ON p.id = c.programa_id AND p.estado = 'activo'
              GROUP BY c.programa_id HAVING raps > 0 ORDER BY c.programa_id LIMIT 2")->fetchAll();
         if (count($programas) < 2) {
             $this->markTestSkipped('hacen falta dos programas con RAP');
