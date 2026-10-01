@@ -313,6 +313,7 @@ CREATE TABLE `password_resets` (
   PRIMARY KEY (`id`),
   KEY `idx_usuario` (`usuario_id`),
   KEY `idx_expira` (`expira_en`),
+  KEY `idx_token_hash` (`token_hash`(64)),
   CONSTRAINT `password_resets_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

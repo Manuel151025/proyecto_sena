@@ -79,8 +79,22 @@ function log_reset_link(string $email, string $link): void {
 }
 
 function build_reset_link(string $token): string {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    // Seguridad::esHttps() también mira la cabecera del proxy inverso: detrás
+    // del de Dokploy, $_SERVER['HTTPS'] viene vacío y el enlace salía http://.
+    $scheme = \Core\Support\Seguridad::esHttps() ? 'https' : 'http';
     return $scheme . '://' . APP_HOST . APP_URL . '/recover.php?step=3&token=' . urlencode($token);
+}
+
+/**
+ * Huella del token para guardarla y buscarla. El token son 256 bits de azar,
+ * así que basta SHA-256 (bcrypt solo protege secretos adivinables, como una
+ * contraseña). Antes se guardaba con bcrypt y, como no se puede buscar por
+ * él, se probaba contra los 20 tokens vigentes más recientes de todo el
+ * sistema: con más de 20 solicitudes en media hora, los enlaces anteriores
+ * dejaban de funcionar.
+ */
+function huella_token(string $token): string {
+    return hash('sha256', $token);
 }
 
 // =====================================================================
@@ -126,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reque
 
                 // Generar token nuevo
                 $token_plain = bin2hex(random_bytes(32)); // 64 chars hex
-                $token_hash  = password_hash($token_plain, PASSWORD_DEFAULT);
+                $token_hash  = huella_token($token_plain);
                 $expira_en   = (new DateTime('+' . TOKEN_TTL_MIN . ' minutes'))->format('Y-m-d H:i:s');
                 $ip          = $_SERVER['REMOTE_ADDR'] ?? null;
 
@@ -195,83 +209,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reque
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset') {
     requireCsrf();
 
-    $token_plain = $_POST['token'] ?? '';
-    $password    = $_POST['password'] ?? '';
-    $password2   = $_POST['password_confirm'] ?? '';
+    $token_plain = is_string($_POST['token'] ?? null) ? $_POST['token'] : '';
+    $password    = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+    $password2   = is_string($_POST['password_confirm'] ?? null) ? $_POST['password_confirm'] : '';
+    $volver_al_inicio = false;
 
-    // La misma política que el perfil y la gestión de usuarios.
-    array_push($errors, ...\Core\Support\PoliticaContrasena::errores($password));
-    if ($password !== $password2) {
-        $errors[] = 'Las contraseñas no coinciden.';
-    }
-    if (empty($token_plain)) {
-        $errors[] = 'Token inválido o ausente.';
-    }
-
-    if (empty($errors)) {
-        try {
-            $db = Database::getConnection();
-
-            // Buscar tokens vigentes (no usados, no expirados)
+    try {
+        $db = Database::getConnection();
+        $match = null;
+        if (preg_match('/^[0-9a-f]{64}$/', $token_plain)) {
             $stmt = $db->prepare("
-                SELECT id, usuario_id, token_hash
-                FROM password_resets
-                WHERE usado = 0 AND expira_en > NOW()
-                ORDER BY id DESC
-                LIMIT 20
+                SELECT pr.id, pr.usuario_id, u.email
+                  FROM password_resets pr
+                  JOIN usuarios u ON u.id = pr.usuario_id
+                 WHERE pr.token_hash = ? AND pr.usado = 0 AND pr.expira_en > NOW() AND u.estado = 'activo'
+                 LIMIT 1
             ");
-            $stmt->execute();
-            $candidates = $stmt->fetchAll();
-
-            // Como guardamos el token hasheado, hay que verificar contra cada candidato.
-            // Limitamos a los 20 más recientes para no hacer brute-force loops.
-            $match = null;
-            foreach ($candidates as $c) {
-                if (password_verify($token_plain, $c['token_hash'])) {
-                    $match = $c;
-                    break;
-                }
-            }
-
-            if (!$match) {
-                $errors[] = 'El enlace de recuperación es inválido o ha expirado. Solicita uno nuevo.';
-                $step = 1; // Volver al inicio
-            } else {
-                // Transacción: actualizar password + marcar token como usado
-                $db->beginTransaction();
-
-                $new_hash = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $db->prepare("UPDATE usuarios SET password = ?, fecha_actualizacion = NOW() WHERE id = ?");
-                $stmt->execute([$new_hash, (int)$match['usuario_id']]);
-
-                $stmt = $db->prepare("UPDATE password_resets SET usado = 1 WHERE id = ?");
-                $stmt->execute([(int)$match['id']]);
-
-                $db->commit();
-
-                // Limpiar intentos de bloqueo si existían
-                unset($_SESSION['login_attempts']);
-                unset($_SESSION['blocked_until']);
-
-                // Redirigir a login con mensaje de éxito
-                $_SESSION['_flash_success'] = 'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.';
-                header('Location: ' . APP_URL . '/login.php');
-                exit;
-            }
-
-        } catch (Exception $e) {
-            if (isset($db) && $db->inTransaction()) {
-                $db->rollBack();
-            }
-            $errors[] = 'No se pudo actualizar la contraseña. Inténtalo de nuevo.';
+            $stmt->execute([huella_token($token_plain)]);
+            $match = $stmt->fetch() ?: null;
         }
+
+        if (!$match) {
+            $errors[] = 'El enlace de recuperación es inválido o ha expirado. Solicita uno nuevo.';
+            $volver_al_inicio = true;
+        } else {
+            // La misma política que el perfil y la gestión de usuarios, ahora
+            // también con el correo de la cuenta (no puede contener su usuario).
+            array_push($errors, ...\Core\Support\PoliticaContrasena::errores($password, (string)$match['email']));
+            if ($password !== $password2) {
+                $errors[] = 'Las contraseñas no coinciden.';
+            }
+        }
+
+        if (empty($errors)) {
+            // Actualizar la contraseña y gastar el token, todo o nada.
+            $db->beginTransaction();
+            $stmt = $db->prepare("UPDATE usuarios SET password = ?, debe_cambiar_password = 0 WHERE id = ?");
+            $stmt->execute([password_hash($password, PASSWORD_DEFAULT), (int)$match['usuario_id']]);
+            $stmt = $db->prepare("UPDATE password_resets SET usado = 1 WHERE id = ?");
+            $stmt->execute([(int)$match['id']]);
+            $db->commit();
+
+            // Quien recupera su cuenta puede entrar ya: se levanta el bloqueo
+            // por intentos fallidos de ese correo.
+            (new Core\Services\LimitadorIntentos())->registrarExito('login', (string)$match['email']);
+            (new Core\Services\Auditoria())->cambioPassword((int)$match['usuario_id'], 'recuperación por correo');
+
+            $_SESSION['_flash_success'] = 'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.';
+            header('Location: ' . APP_URL . '/login.php');
+            exit;
+        }
+    } catch (Throwable $e) {
+        if (isset($db) && $db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log('Recuperación de contraseña: ' . $e->getMessage());
+        $errors[] = 'No se pudo actualizar la contraseña. Inténtalo de nuevo.';
     }
 
-    // Si hubo errores en step=3, conservamos el token en el formulario
+    // Con errores se vuelve al formulario de la nueva clave conservando el
+    // token. Antes el paso quedaba en 1 (el formulario se envía sin ?step=3)
+    // y una contraseña débil obligaba a pedir otro enlace por correo.
     $token_url = $token_plain;
-    if (!isset($step) || $step !== 1) {
-        $step = 3;
-    }
+    $step = $volver_al_inicio ? 1 : 3;
 }
 
 // =====================================================================
@@ -312,6 +312,7 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
   <meta name="theme-color" content="#39A900">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="<?= APP_URL ?>/assets/img/sena_logo.png">
   <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/img/sena_logo.png">
 
 

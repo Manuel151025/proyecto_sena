@@ -197,12 +197,15 @@ final class FugaDeInformacionTest extends CasoConBaseDeDatos {
         $this->assertStringContainsString('DEV_MODE', $fuente,
             'el enlace con el token debe escribirse solo en desarrollo');
 
-        // El archivo que quedó en el repositorio tiene que estar vacío.
-        $log = $raiz = dirname(__DIR__, 2) . '/logs/password_resets.log';
-        if (is_file($log)) {
-            $this->assertStringNotContainsString('token=', (string)file_get_contents($log),
-                'el log versionado todavía contiene enlaces con token');
+        // El riesgo era que el log se versionara (llegó a estar en git con
+        // enlaces reales). En desarrollo es legítimo que guarde el enlace de
+        // prueba —las pruebas en navegador lo hacen—, pero nunca en git.
+        $raiz = dirname(__DIR__, 2);
+        exec('git -C ' . escapeshellarg($raiz) . ' ls-files -- logs/password_resets.log 2>&1', $salida, $codigo);
+        if ($codigo !== 0) {
+            $this->markTestSkipped('git no está disponible para comprobarlo');
         }
+        $this->assertSame([], $salida, 'logs/password_resets.log no debe estar en el repositorio');
     }
 
     #[TestDox('los archivos sensibles están excluidos del control de versiones')]
