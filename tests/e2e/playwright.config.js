@@ -37,7 +37,10 @@ module.exports = defineConfig({
   },
   webServer: {
     command: `${process.env.E2E_PHP || 'php'} -S 127.0.0.1:${PUERTO} -t "${path.resolve(__dirname, '..', '..')}"`,
-    url: `http://127.0.0.1:${PUERTO}/login.php`,
+    // Playwright arranca el servidor ANTES de global-setup.js: en una máquina
+    // limpia (el CI) la base aún no existe y login.php responde 503, que no
+    // cuenta como "listo". Un archivo estático no depende de la base.
+    url: `http://127.0.0.1:${PUERTO}/assets/img/sena_logo.png`,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
     // Sin credenciales de correo: con las del .env de un desarrollador, la
