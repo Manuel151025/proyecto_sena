@@ -63,20 +63,18 @@ class ReportesController extends BaseController {
         try {
             @set_time_limit(180);
             $r = (new ReportesService())->generar($tipo, $actor, $params);
+            $nombre = $r['archivo'] . '.' . $formato;
+            $contenido = match ($formato) {
+                'pdf' => (new ReportePdfService())->generar($r['titulo'], $r['encabezados'], $r['filas'],
+                    $r['estilos'] + ['subtitulo' => $r['subtitulo'], 'generado_por' => (string)(getCurrentUser()['nombre'] ?? ''), 'orientacion' => 'landscape']),
+                'csv' => Exportador::csv($nombre, $r['encabezados'], $r['filas']),
+                default => Exportador::xlsx($r['titulo'], $r['encabezados'], $r['filas'],
+                    ['titulo' => $r['titulo'] . ' · ' . $r['subtitulo'] . ' · ' . date('d/m/Y'), 'anchos' => $r['anchos'], 'estilos' => $r['estilos']]),
+            };
+            // Después de generarlo: si no cabe, no se registra una exportación que no ocurrió.
             (new Auditoria())->operacion($actor, 'Exportar', 'Reportes', 'evaluaciones', null,
                 "{$r['titulo']} ({$r['subtitulo']}) en $formato: " . count($r['filas']) . ' filas');
-            $nombre = $r['archivo'] . '.' . $formato;
-            if ($formato === 'pdf') {
-                $pdf = (new ReportePdfService())->generar($r['titulo'], $r['encabezados'], $r['filas'],
-                    $r['estilos'] + ['subtitulo' => $r['subtitulo'], 'generado_por' => (string)(getCurrentUser()['nombre'] ?? ''), 'orientacion' => 'landscape']);
-                Exportador::descargar($pdf, $nombre, 'pdf');
-            }
-            Exportador::descargar(
-                $formato === 'csv'
-                    ? Exportador::csv($nombre, $r['encabezados'], $r['filas'])
-                    : Exportador::xlsx($r['titulo'], $r['encabezados'], $r['filas'],
-                        ['titulo' => $r['titulo'] . ' · ' . $r['subtitulo'] . ' · ' . date('d/m/Y'), 'anchos' => $r['anchos'], 'estilos' => $r['estilos']]),
-                $nombre, $formato);
+            Exportador::descargar($contenido, $nombre, $formato);
         } catch (Throwable $e) {
             $this->fallo(ErrorDeNegocio::mensajeSeguro($e, 'No se pudo generar el reporte'), '/reportes');
         }

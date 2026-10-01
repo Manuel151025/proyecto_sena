@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Core\Services;
 
+use Core\Support\ErrorDeNegocio;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -58,6 +59,14 @@ final class ReportePdfService {
 
     private string $rutaLogo;
 
+    /**
+     * Filas que caben en un PDF. Medido con el reporte de historial: 2.000
+     * filas son ~13 s y ~360 MB; con 3.200 se agotan los 512 MB y la descarga
+     * terminaba en la página de error. Una ficha de 32 aprendices en un
+     * programa de 99 RAP ya pasa de 3.000. Para más filas, Excel o CSV.
+     */
+    public const MAX_FILAS = 2000;
+
     public function __construct(?string $rutaLogo = null) {
         $this->rutaLogo = $rutaLogo ?? (BASE_PATH . 'assets/img/sena_logo.png');
     }
@@ -77,6 +86,10 @@ final class ReportePdfService {
      * @return string Bytes del PDF.
      */
     public function generar(string $titulo, array $headers, array $filas, array $opciones = []): string {
+        if (count($filas) > self::MAX_FILAS) {
+            throw new ErrorDeNegocio('El reporte tiene ' . number_format(count($filas), 0, ',', '.') . ' filas y en PDF caben hasta '
+                . number_format(self::MAX_FILAS, 0, ',', '.') . ': descárgalo en Excel o CSV.');
+        }
         $memoriaPrevia = ini_get('memory_limit');
         $tiempoPrevio  = ini_get('max_execution_time');
         ini_set('memory_limit', '512M');

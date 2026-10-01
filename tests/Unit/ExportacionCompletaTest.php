@@ -57,4 +57,39 @@ final class ExportacionCompletaTest extends CasoDePrueba {
             $this->assertStringContainsString('20.000', $r['errores'][0]);
         }
     }
+
+    /** Una fila más que el tope, sin ocupar memoria. */
+    private static function filas(int $n): \Generator {
+        for ($i = 0; $i < $n; $i++) {
+            yield ['fila ' . $i, $i];
+        }
+    }
+
+    #[TestDox('el CSV y el Excel no se cortan en silencio: con una fila de más avisan')]
+    public function testArchivoNoSeCorta(): void {
+        $this->assertStringContainsString('fila ' . (Exportador::MAX_FILAS - 1), Exportador::csv('a.csv', ['A', 'B'], self::filas(Exportador::MAX_FILAS)));
+        foreach (['csv', 'xlsx'] as $formato) {
+            try {
+                $formato === 'csv'
+                    ? Exportador::csv('a.csv', ['A', 'B'], self::filas(Exportador::MAX_FILAS + 1))
+                    : Exportador::xlsx('Hoja', ['A', 'B'], self::filas(Exportador::MAX_FILAS + 1));
+                $this->fail("$formato entregó un archivo cortado");
+            } catch (\Core\Support\ErrorDeNegocio $e) {
+                $this->assertStringContainsString('20.000', $e->getMessage(), $formato);
+            }
+        }
+    }
+
+    #[TestDox('un PDF con más filas de las que caben avisa antes de componerse (antes agotaba la memoria)')]
+    public function testPdfDemasiadoGrande(): void {
+        $inicio = microtime(true);
+        try {
+            (new \Core\Services\ReportePdfService())->generar('Reporte', ['A', 'B'],
+                iterator_to_array(self::filas(\Core\Services\ReportePdfService::MAX_FILAS + 1)));
+            $this->fail('compuso un PDF que no cabe en memoria');
+        } catch (\Core\Support\ErrorDeNegocio $e) {
+            $this->assertStringContainsString('Excel o CSV', $e->getMessage());
+        }
+        $this->assertLessThan(2.0, microtime(true) - $inicio, 'debe avisar sin intentar componerlo');
+    }
 }

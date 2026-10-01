@@ -21,10 +21,17 @@ use ZipArchive;
  *    el archivo. El objetivo no es quien exporta sino quien RECIBE el
  *    archivo. Esas celdas se prefijan con un apóstrofo.
  *  - Límite de filas: una exportación no puede convertirse en un volcado
- *    ilimitado de la base (ni agotar la memoria del servidor).
+ *    ilimitado de la base (ni agotar la memoria del servidor). Pasado el
+ *    tope no se corta: se avisa. Antes se entregaba el archivo con las
+ *    primeras MAX_FILAS filas y nada indicaba que faltaban las demás.
  */
 final class Exportador {
     public const MAX_FILAS = 20000;
+
+    private static function demasiadasFilas(): ErrorDeNegocio {
+        return new ErrorDeNegocio('El archivo tendría más de ' . number_format(self::MAX_FILAS, 0, ',', '.')
+            . ' filas: filtra o acota el periodo para exportarlo completo.');
+    }
 
     /**
      * @param list<string> $encabezados
@@ -39,7 +46,8 @@ final class Exportador {
         $n = 0;
         foreach ($filas as $fila) {
             if (++$n > self::MAX_FILAS) {
-                break;
+                fclose($h);
+                throw self::demasiadasFilas();
             }
             fputcsv($h, array_map([self::class, 'celdaSegura'], array_values($fila)), ';', '"', '');
         }
@@ -75,7 +83,7 @@ final class Exportador {
         $n = 0;
         foreach ($filas as $fila) {
             if (++$n > self::MAX_FILAS) {
-                break;
+                throw self::demasiadasFilas();
             }
             $filasXml[] = self::filaXml($r++, array_values($fila), 0, $opciones['estilos'] ?? []);
         }
