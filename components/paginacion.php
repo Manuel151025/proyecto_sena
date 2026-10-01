@@ -9,7 +9,9 @@ declare(strict_types=1);
  *
  * Espera una variable `$paginador` de tipo Core\Services\Paginator.
  * Si no hay nada que paginar, se dibuja solo el resumen de totales, que
- * sigue siendo información útil ("32 registros").
+ * sigue siendo información útil ("32 registros"). Sin registros no dibuja
+ * nada: cada listado ya dice por qué está vacío, y debajo aparecía además
+ * una caja «Sin evidencias» que repetía lo mismo.
  *
  * En móvil solo se muestran Anterior/Siguiente y el contador de página:
  * los números sueltos quedaban demasiado pequeños para el pulgar y se
@@ -19,7 +21,7 @@ declare(strict_types=1);
 use Core\Services\Paginator;
 
 /** @var Paginator|null $paginador */
-if (!isset($paginador) || !$paginador instanceof Paginator) {
+if (!isset($paginador) || !$paginador instanceof Paginator || $paginador->totalItems() === 0) {
     return;
 }
 
@@ -27,12 +29,8 @@ $etiqueta = $paginacionEtiqueta ?? 'registros';
 ?>
 <nav class="paginacion" aria-label="Paginación de <?= htmlspecialchars($etiqueta) ?>">
   <p class="paginacion-resumen" aria-live="polite">
-    <?php if ($paginador->totalItems() === 0): ?>
-      Sin <?= htmlspecialchars($etiqueta) ?>
-    <?php else: ?>
-      Mostrando <strong><?= $paginador->primerItem() ?></strong>–<strong><?= $paginador->ultimoItem() ?></strong>
-      de <strong><?= $paginador->totalItems() ?></strong> <?= htmlspecialchars($etiqueta) ?>
-    <?php endif; ?>
+    Mostrando <strong><?= $paginador->primerItem() ?></strong>–<strong><?= $paginador->ultimoItem() ?></strong>
+    de <strong><?= $paginador->totalItems() ?></strong> <?= htmlspecialchars($etiqueta) ?>
   </p>
 
   <?php if ($paginador->tieneVariasPaginas()): ?>

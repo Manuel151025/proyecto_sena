@@ -51,10 +51,12 @@ $hace90 = date('Y-m-d', strtotime('-90 days'));
         <p class="small text-muted"><?= e($descripcion) ?></p>
         <?php if ($tipo === 'ficha'): ?>
           <label class="form-label small fw-semibold" for="rep_ficha">Ficha</label>
-          <select name="ficha_id" id="rep_ficha" class="form-select mb-3" required data-picker data-picker-label="Ficha">
-            <option value="" disabled selected>Seleccione…</option>
-            <?php foreach ($fichas as $f): ?><option value="<?= (int)$f['id'] ?>">Ficha <?= e($f['numero_ficha']) ?></option><?php endforeach; ?>
-          </select>
+          <div class="mb-3">
+            <select name="ficha_id" id="rep_ficha" class="form-select" required data-picker data-picker-label="Ficha">
+              <option value="" disabled selected>Seleccione…</option>
+              <?php foreach ($fichas as $f): ?><option value="<?= (int)$f['id'] ?>">Ficha <?= e($f['numero_ficha']) ?></option><?php endforeach; ?>
+            </select>
+          </div>
         <?php elseif ($tipo === 'historial'): ?>
           <div class="row g-2 mb-3">
             <div class="col-6"><label class="form-label small fw-semibold" for="rep_desde">Desde</label>
@@ -74,4 +76,5 @@ $hace90 = date('Y-m-d', strtotime('-90 days'));
   </div>
   <?php endforeach; ?>
 </div>
-<p class="small text-muted mt-3">Los planes de mejoramiento y los juicios con filtros se exportan desde sus pantallas (<a href="<?= e(APP_URL . '/index.php/mejoramiento') ?>">Planes</a>, <a href="<?= e(APP_URL . '/index.php/evaluaciones') ?>">Juicios</a>).</p>
+<p class="small text-muted mt-3">Los planes de mejoramiento y los juicios con filtros se exportan desde sus pantallas (<a href="<?= e(APP_URL . '/index.php/mejoramiento') ?>">Planes</a>, <a href="<?= e(APP_URL . '/index.php/evaluaciones') ?>">Juicios</a>).
+  En PDF caben hasta <?= number_format(\Core\Services\ReportePdfService::MAX_FILAS, 0, ',', '.') ?> filas; los reportes más grandes, en Excel o CSV.</p>

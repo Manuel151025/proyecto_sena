@@ -28,7 +28,10 @@ function getBreadcrumbs(): array {
         'seguimiento' => 'Seguimiento', 'evidencias' => 'Evidencias', 'evaluaciones' => 'Evaluaciones',
         'retroalimentacion' => 'Retroalimentación', 'mejoramiento' => 'Plan de Mejora',
         'reportes' => 'Reportes', 'configuracion' => 'Configuración', 'logs' => 'Auditoría',
-        'perfil' => 'Mi Perfil',
+        'perfil' => 'Mi Perfil', 'calendario' => 'Calendario', 'estructura' => 'Estructura curricular',
+        // Subpáginas: sin ellas, «Importar» o el detalle de una ficha se
+        // presentaban como el listado.
+        'importar' => 'Importar', 'ver' => 'Detalle',
     ];
 
     foreach ($segments as $segment) {
