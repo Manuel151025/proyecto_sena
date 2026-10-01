@@ -91,7 +91,9 @@ final class Notificador {
         if ($base !== '' && str_starts_with($ruta, $base . '/')) {
             $ruta = substr($ruta, strlen($base));
         }
-        if (!preg_match('#^/index\.php/[A-Za-z0-9/_\-]*(\?[A-Za-z0-9_\-=&%.]*)?$#', $ruta)) {
+        // D: sin él, `$` también casa antes de un salto de línea final y la
+        // ruta se aceptaba (y se guardaba) con él.
+        if (!preg_match('#^/index\.php/[A-Za-z0-9/_\-]*(\?[A-Za-z0-9_\-=&%.]*)?$#D', $ruta)) {
             return null;
         }
         return mb_substr($base . $ruta, 0, 255);

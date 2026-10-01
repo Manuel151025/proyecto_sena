@@ -69,6 +69,11 @@ final class PlanesService {
         $plan = $this->vigente($d['id'], $actor);
         $v = new \Core\Support\Validador([]);
         PlanFormulario::plazo($v, (string)$plan['fecha_inicio'], $d['fecha_limite']);
+        // Como al crear: un plazo nuevo no puede estar ya vencido. Si no se
+        // cambia, se conserva aunque haya pasado (se editan las actividades).
+        if ($d['fecha_limite'] !== $plan['fecha_limite'] && $d['fecha_limite'] < date('Y-m-d')) {
+            $v->agregarError('La nueva fecha límite no puede estar en el pasado.');
+        }
         if ($v->hayErrores()) {
             throw new ErrorDeNegocio(implode(' ', $v->errores()));
         }

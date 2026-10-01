@@ -293,6 +293,29 @@ if ($step === 3 && empty($token_url) && empty($_POST['token'])) {
     $step = 1;
 }
 
+// Al abrir el enlace se comprueba ya que siga vigente (es una búsqueda por
+// índice): antes se mostraba el formulario igual y quien abría un enlace
+// usado o caducado solo se enteraba tras escribir la nueva clave dos veces.
+if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'GET' && is_string($token_url) && $token_url !== '') {
+    $vigente = false;
+    if (preg_match('/^[0-9a-f]{64}$/', $token_url)) {
+        try {
+            $st = Database::getConnection()->prepare(
+                "SELECT 1 FROM password_resets pr JOIN usuarios u ON u.id = pr.usuario_id
+                  WHERE pr.token_hash = ? AND pr.usado = 0 AND pr.expira_en > NOW() AND u.estado = 'activo' LIMIT 1");
+            $st->execute([huella_token($token_url)]);
+            $vigente = (bool)$st->fetchColumn();
+        } catch (Throwable $e) {
+            $vigente = true;   // sin base, se deja seguir: el envío lo volverá a comprobar
+        }
+    }
+    if (!$vigente) {
+        $errors[] = 'El enlace de recuperación ya se usó, caducó o no es válido. Solicita uno nuevo.';
+        $step = 1;
+        $token_url = '';
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es" data-app-url="<?= e(APP_URL) ?>">

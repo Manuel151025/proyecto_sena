@@ -120,4 +120,39 @@ final class PlanesMejoramientoTest extends CasoConBaseDeDatos {
         $this->assertContains($id, $ids);
         $this->assertGreaterThanOrEqual(1, $m->cifras($this->coordinador())['vencidos']);
     }
+
+    /**
+     * Editar un plan no puede saltarse las reglas de la creación: el plazo
+     * sigue acotado a 180 días desde el inicio, y un plazo nuevo no puede
+     * estar ya vencido. Conservar el que ya pasó sí se permite, para poder
+     * corregir las actividades de un plan vencido.
+     */
+    #[TestDox('al editar un plan, el plazo nuevo no puede estar vencido ni pasar de 180 días')]
+    public function testEditarRespetaElPlazo(): void {
+        $s = new PlanesService($this->db);
+        $id = $s->crear($this->datos(), $this->coordinador());
+        $edicion = fn(string $limite) => ['id' => $id, 'actividades' => 'Rehacer el taller con la guía corregida', 'fecha_limite' => $limite];
+
+        foreach ([date('Y-m-d', strtotime('-1 day')) => 'pasado', date('Y-m-d', strtotime('+200 days')) => '180 días'] as $limite => $motivo) {
+            try {
+                $s->editar($edicion($limite), $this->coordinador());
+                $this->fail("aceptó un plazo $motivo");
+            } catch (ErrorDeNegocio $e) {
+                $this->assertStringContainsString($motivo === 'pasado' ? 'pasado' : '180', $e->getMessage());
+            }
+        }
+
+        $avisos = $this->contar('notificaciones', 'usuario_id = ?', [(int)$this->eval['usuario_id']]);
+        $nuevo = date('Y-m-d', strtotime('+30 days'));
+        $s->editar($edicion($nuevo), $this->coordinador());
+        $this->assertSame($nuevo, (new MejoramientoModel($this->db))->findById($id)['fecha_limite']);
+        $this->assertSame($avisos + 1, $this->contar('notificaciones', 'usuario_id = ?', [(int)$this->eval['usuario_id']]),
+            'cambiar el plazo avisa al aprendiz');
+
+        // Un plan ya vencido: se pueden corregir las actividades sin moverle el plazo.
+        $vencido = date('Y-m-d', strtotime('-2 days'));
+        $this->db->exec("UPDATE planes_mejoramiento SET fecha_inicio = CURDATE() - INTERVAL 20 DAY, fecha_limite = '$vencido' WHERE id = $id");
+        $s->editar($edicion($vencido), $this->coordinador());
+        $this->assertSame('Rehacer el taller con la guía corregida', (new MejoramientoModel($this->db))->findById($id)['actividades']);
+    }
 }
