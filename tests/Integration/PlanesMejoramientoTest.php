@@ -155,4 +155,23 @@ final class PlanesMejoramientoTest extends CasoConBaseDeDatos {
         $s->editar($edicion($vencido), $this->coordinador());
         $this->assertSame('Rehacer el taller con la guía corregida', (new MejoramientoModel($this->db))->findById($id)['actividades']);
     }
+
+    /**
+     * El plan existe para recuperar el D. Si el RAP se aprueba por otro
+     * camino (Evaluaciones, la revisión de una evidencia, la importación de
+     * Sofia Plus), antes el plan seguía abierto y al vencer contaba como
+     * vencido en los paneles.
+     */
+    #[TestDox('si el RAP se aprueba desde Evaluaciones, su plan vigente se cierra como cumplido con constancia')]
+    public function testAprobarPorOtraViaCierraElPlan(): void {
+        $id = (new PlanesService($this->db))->crear($this->datos(), $this->coordinador());
+        (new \Core\Services\JuiciosService($this->db))->calificar(['evaluacion_id' => (int)$this->eval['id'], 'concepto' => 'A',
+            'comentario' => 'Sustentó el taller', 'motivo' => 'Recuperó el RAP en la sustentación'], $this->coordinador());
+
+        $plan = (new MejoramientoModel($this->db))->findById($id);
+        $this->assertSame('A', $this->concepto());
+        $this->assertSame('cumplido', $plan['estado']);
+        $this->assertSame($this->idCoordinador(), (int)$plan['cerrado_por']);
+        $this->assertStringContainsString('el RAP se aprobó', (string)$plan['observaciones_cierre']);
+    }
 }

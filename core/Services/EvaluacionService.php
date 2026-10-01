@@ -267,6 +267,9 @@ final class EvaluacionService {
         if ($cambia) {
             $this->registrarCambio($evaluacionId, $conceptoAnterior, $o);
             $this->notificarAprendiz($evaluacionId, $conceptoAnterior, $o);
+            if ($o['concepto'] === 'A') {
+                $this->cerrarPlanCumplido($evaluacionId, $o);
+            }
         }
         $this->registrarRetroalimentacion($evaluacionId, $aprendizId, $o, $datos);
 
@@ -274,6 +277,26 @@ final class EvaluacionService {
             'evaluacion_id' => $evaluacionId,
             'accion'        => $cambia ? 'actualizada' : 'sin_cambios',
         ];
+    }
+
+    /**
+     * El plan de mejoramiento existe para recuperar el D. Si el RAP se
+     * aprueba por otro camino (Evaluaciones, la revisión de una evidencia, la
+     * importación de Sofia Plus), el plan vigente se cierra como cumplido con
+     * constancia: antes seguía abierto y, al vencer, contaba como vencido en
+     * los paneles. Cuando lo cierra el propio plan (PlanesService::cerrar),
+     * ya no está vigente al llegar aquí.
+     */
+    private function cerrarPlanCumplido(int $evaluacionId, array $o): void {
+        $this->db->prepare("
+            UPDATE planes_mejoramiento
+               SET estado = 'cumplido', fecha_cierre = NOW(), cerrado_por = ?, observaciones_cierre = ?
+             WHERE evaluacion_id = ? AND estado IN ('abierto', 'en_curso')
+        ")->execute([
+            $o['usuario_id'],
+            'Cerrado automáticamente: el RAP se aprobó (' . ($o['motivo'] !== '' ? $o['motivo'] : $o['motivo_por_defecto']) . ').',
+            $evaluacionId,
+        ]);
     }
 
     /**
