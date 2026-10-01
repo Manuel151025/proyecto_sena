@@ -1818,3 +1818,61 @@ h1{font-size:1.5rem;}h2{font-size:1.25rem;}h3{font-size:1.05rem;}
 .icon-btn.icon-btn-avatar { width: auto; padding: 0; border-radius: 50%; }
 .dropdown-menu.menu-usuario { margin-top: 10px; }
 .sidebar-brand .brand-mark .logo-marca { width: 38px; height: 38px; object-fit: contain; }
+/* Las tarjetas de indicador de una fila miden lo mismo aunque alguna lleve
+   una nota debajo de la cifra (antes la fila quedaba escalonada). */
+.row > [class*="col"] > .kpi { height: 100%; }
+
+/* ==========================================================================
+   Tablas apilables en el teléfono (.table-wrap.tabla-apilable)
+   En pantallas estrechas cada fila se vuelve una tarjeta: el dato principal
+   (.celda-titulo) arriba y a todo el ancho, los demás en dos columnas con su
+   etiqueta (data-etiqueta) y las acciones (.celda-acciones) siempre a la
+   vista. Antes la tabla se desplazaba de lado y botones como «Calificar»,
+   «Editar» o «Retirar» quedaban fuera de la pantalla en cada fila.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+  .table-wrap.tabla-apilable { background-image: none; overflow: visible; }
+  .tabla-apilable > .table { min-width: 0 !important; }
+  .tabla-apilable > .table > thead { display: none; }
+  .tabla-apilable > .table > tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem .9rem;
+    padding: .85rem .95rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabla-apilable > .table > tbody > tr:last-child { border-bottom: 0; }
+  .tabla-apilable > .table > tbody > tr > td {
+    display: block;
+    min-width: 0;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: 0;
+    text-align: left !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    box-shadow: none;
+  }
+  .tabla-apilable > .table > tbody > tr > td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: .1rem;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .tabla-apilable > .table > tbody > tr > td.celda-titulo { grid-column: 1 / -1; order: -1; }
+  .tabla-apilable > .table > tbody > tr > td.celda-ancha,
+  .tabla-apilable > .table > tbody > tr > td[colspan] { grid-column: 1 / -1; }
+  .tabla-apilable > .table > tbody > tr > td.celda-acciones {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    padding-top: .25rem !important;
+  }
+  .tabla-apilable > .table > tbody > tr > td.celda-acciones form { margin: 0; }
+}

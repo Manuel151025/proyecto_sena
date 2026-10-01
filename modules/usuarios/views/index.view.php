@@ -71,7 +71,7 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
   <?php if ($hayFiltros): ?><a href="<?= e(APP_URL . '/index.php/usuarios') ?>" class="btn btn-soft text-muted">Limpiar</a><?php endif; ?>
 </form>
 
-<div class="table-wrap">
+<div class="table-wrap tabla-apilable">
   <table class="table">
     <thead>
       <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Creación</th><th class="text-end">Acciones</th></tr>
@@ -85,16 +85,16 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
           [$estTxt, $estCls] = $estados_label[$u['estado']] ?? [$u['estado'], 'secondary'];
       ?>
       <tr>
-        <td>
+        <td class="celda-titulo">
           <strong><?= e($u['nombre']) ?></strong>
           <?php if ($esYo): ?><span class="badge-soft info ms-1">Tú</span><?php endif; ?>
           <?php if ((int)$u['debe_cambiar_password'] === 1): ?><span class="badge-soft warning ms-1" title="Aún no cambia su contraseña temporal">Clave temporal</span><?php endif; ?>
         </td>
-        <td><?= e($u['email']) ?></td>
-        <td><span class="badge-soft primary"><?= e($roles_label[$u['rol']] ?? $u['rol']) ?></span></td>
-        <td><span class="badge-soft <?= e($estCls) ?>"><?= e($estTxt) ?></span></td>
-        <td><?= e(date('d/m/Y', strtotime((string)$u['fecha_creacion']))) ?></td>
-        <td class="text-end">
+        <td class="celda-ancha" data-etiqueta="Correo"><?= e($u['email']) ?></td>
+        <td data-etiqueta="Rol"><span class="badge-soft primary"><?= e($roles_label[$u['rol']] ?? $u['rol']) ?></span></td>
+        <td data-etiqueta="Estado"><span class="badge-soft <?= e($estCls) ?>"><?= e($estTxt) ?></span></td>
+        <td data-etiqueta="Creación"><?= e(date('d/m/Y', strtotime((string)$u['fecha_creacion']))) ?></td>
+        <td class="text-end celda-acciones">
           <div class="d-inline-flex gap-1">
             <button type="button" class="btn btn-sm btn-soft" data-modal="#modalEditar" aria-label="Editar <?= e($u['nombre']) ?>"
                     data-valores="<?= datosJson(['id' => (int)$u['id'], 'nombre' => $u['nombre'], 'email' => $u['email'],

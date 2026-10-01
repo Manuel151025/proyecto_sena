@@ -55,7 +55,9 @@ $comparacion = $promedio['avance'] === null ? '' : ($r['avance'] >= $promedio['a
   <p class="small text-muted mb-2">Resultados de aprendizaje aprobados, por aprobar y pendientes en cada competencia.</p>
   <div class="grafico alto">
     <canvas role="img" aria-label="Progreso por competencia" data-grafico="<?= datosJson(['tipo' => 'bar', 'horizontal' => true, 'apilado' => true,
-        'etiquetas' => array_column($competencias, 'codigo'),
+        // Código y, debajo, el nombre recortado: solo con el código el aprendiz
+        // no sabía qué competencia era cada barra.
+        'etiquetas' => array_map(static fn($c) => [$c['codigo'], mb_strimwidth((string)$c['nombre'], 0, 30, '…', 'UTF-8')], $competencias),
         'series' => [['nombre' => 'A', 'datos' => array_column($competencias, 'a'), 'color' => '#22c55e'],
                      ['nombre' => 'D', 'datos' => array_column($competencias, 'd'), 'color' => '#ef4444'],
                      ['nombre' => 'Pendiente', 'datos' => array_column($competencias, 'pendientes'), 'color' => '#94a3b8']]]) ?>"></canvas>

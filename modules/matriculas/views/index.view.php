@@ -70,25 +70,25 @@ $nombresDoc = ['CC' => 'Cédula de ciudadanía', 'TI' => 'Tarjeta de identidad',
   </div>
 </div>
 
-<div class="table-wrap">
+<div class="table-wrap tabla-apilable">
   <table class="table align-middle">
     <thead><tr><th>Documento</th><th>Aprendiz</th><th>Ficha</th><th>Contacto</th><th>Estado</th><?php if ($esCoordinador): ?><th class="text-end">Acciones</th><?php endif; ?></tr></thead>
     <tbody>
       <?php foreach ($aprendices as $ap):
           [$estTxt, $estCls] = $estados_label[$ap['estado']] ?? [$ap['estado'], 'secondary']; ?>
       <tr>
-        <td class="font-monospace"><?= e($ap['tipo_documento'] . ' ' . $ap['numero_documento']) ?></td>
-        <td>
+        <td class="font-monospace" data-etiqueta="Documento"><?= e($ap['tipo_documento'] . ' ' . $ap['numero_documento']) ?></td>
+        <td class="celda-titulo">
           <strong><?= e($ap['nombre']) ?></strong>
           <small class="d-block text-muted"><?= e($ap['email']) ?></small>
           <?php if ($ap['instructor_seguimiento_nombre']): ?><small class="d-block text-muted">Seguimiento: <?= e($ap['instructor_seguimiento_nombre']) ?></small><?php endif; ?>
         </td>
-        <td><?php if ($ap['numero_ficha']): ?><a href="<?= e(APP_URL . '/index.php/fichas/ver?id=' . (int)$ap['ficha_id']) ?>">Ficha <?= e($ap['numero_ficha']) ?></a>
+        <td data-etiqueta="Ficha"><?php if ($ap['numero_ficha']): ?><a href="<?= e(APP_URL . '/index.php/fichas/ver?id=' . (int)$ap['ficha_id']) ?>">Ficha <?= e($ap['numero_ficha']) ?></a>
           <small class="d-block text-muted"><?= e($ap['programa_nombre']) ?></small><?php else: ?>—<?php endif; ?></td>
-        <td class="small"><?= e($ap['telefono'] ?: '—') ?><br><span class="text-muted"><?= e($ap['ciudad'] ?: '') ?></span></td>
-        <td><span class="badge-soft <?= e($estCls) ?>"><?= e($estTxt) ?></span></td>
+        <td class="small" data-etiqueta="Contacto"><?= e($ap['telefono'] ?: '—') ?><br><span class="text-muted"><?= e($ap['ciudad'] ?: '') ?></span></td>
+        <td data-etiqueta="Estado"><span class="badge-soft <?= e($estCls) ?>"><?= e($estTxt) ?></span></td>
         <?php if ($esCoordinador): ?>
-        <td class="text-end">
+        <td class="text-end celda-acciones">
           <div class="d-inline-flex gap-1">
             <button type="button" class="btn btn-sm btn-soft" aria-label="Editar matrícula" data-modal="#modalEditar"
                     data-valores="<?= datosJson(['id' => (int)$ap['id'], 'nombre' => $ap['nombre'], 'email' => $ap['email'],

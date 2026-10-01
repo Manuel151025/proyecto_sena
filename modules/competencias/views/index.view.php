@@ -57,7 +57,7 @@ $hayFiltros = $filtros['search'] !== '' || $filtros['programa_id'] || $filtros['
   </div>
 </div>
 
-<div class="table-wrap">
+<div class="table-wrap tabla-apilable">
   <table class="table mb-0 align-middle">
     <thead>
       <tr><th>Código</th><th>Competencia</th><th>Programa</th><th class="text-center">Horas</th><th class="text-center">RAP</th><th>Estado</th><?php if ($puedeEditar): ?><th class="text-end">Acciones</th><?php endif; ?></tr>
@@ -65,18 +65,18 @@ $hayFiltros = $filtros['search'] !== '' || $filtros['programa_id'] || $filtros['
     <tbody>
       <?php foreach ($competencias as $c): ?>
       <tr>
-        <td class="font-monospace fw-bold text-uppercase-visual"><strong><?= e($c['codigo']) ?></strong></td>
-        <td>
+        <td class="font-monospace fw-bold text-uppercase-visual" data-etiqueta="Código"><strong><?= e($c['codigo']) ?></strong></td>
+        <td class="celda-titulo">
           <div class="fw-semibold text-uppercase-visual"><?= e($c['nombre']) ?></div>
           <?php if ((int)$c['es_etapa_practica'] === 1): ?><span class="badge-soft warning">Etapa práctica</span><?php endif; ?>
           <?php if (!empty($c['descripcion'])): ?><small class="text-muted d-block texto-recortado-2"><?= e($c['descripcion']) ?></small><?php endif; ?>
         </td>
-        <td><span class="badge bg-soft info"><?= e($c['programa_codigo']) ?></span> <small class="text-muted"><?= e($c['programa_nombre']) ?></small></td>
-        <td class="text-center"><?= (int)$c['horas'] ?></td>
-        <td class="text-center"><a href="<?= e(APP_URL . '/index.php/resultados-aprendizaje?programa_id=' . (int)$c['programa_id'] . '&search=' . rawurlencode((string)$c['codigo'])) ?>"><?= (int)$c['total_rap'] ?></a></td>
-        <td><span class="badge-soft <?= $c['estado'] === 'activo' ? 'success' : 'secondary' ?>"><?= e(ucfirst($c['estado'])) ?></span></td>
+        <td class="celda-ancha" data-etiqueta="Programa"><span class="badge bg-soft info"><?= e($c['programa_codigo']) ?></span> <small class="text-muted"><?= e($c['programa_nombre']) ?></small></td>
+        <td class="text-center" data-etiqueta="Horas"><?= (int)$c['horas'] ?></td>
+        <td class="text-center" data-etiqueta="RAP"><a href="<?= e(APP_URL . '/index.php/resultados-aprendizaje?programa_id=' . (int)$c['programa_id'] . '&search=' . rawurlencode((string)$c['codigo'])) ?>"><?= (int)$c['total_rap'] ?></a></td>
+        <td data-etiqueta="Estado"><span class="badge-soft <?= $c['estado'] === 'activo' ? 'success' : 'secondary' ?>"><?= e(ucfirst($c['estado'])) ?></span></td>
         <?php if ($puedeEditar): ?>
-        <td class="text-end">
+        <td class="text-end celda-acciones">
           <div class="d-inline-flex gap-1">
             <button type="button" class="btn btn-sm btn-soft" aria-label="Editar competencia" data-modal="#modalEditar"
                     data-valores="<?= datosJson(['id' => (int)$c['id'], 'programa_id' => (int)$c['programa_id'], 'codigo' => $c['codigo'],

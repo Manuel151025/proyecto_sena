@@ -49,24 +49,24 @@ $hayFiltros = $busqueda !== '' || $fichaId || $instructorId;
   </div>
 </div>
 
-<div class="table-wrap">
+<div class="table-wrap tabla-apilable">
   <table class="table align-middle">
     <thead><tr><th>Ficha</th><th>Competencia</th><th>Instructor</th><th class="text-center">Pendientes</th><th>Desde</th><?php if ($esCoordinador): ?><th class="text-end">Acciones</th><?php endif; ?></tr></thead>
     <tbody>
       <?php foreach ($asignaciones as $asg): ?>
       <tr>
-        <td><strong>Ficha <?= e($asg['numero_ficha']) ?></strong><small class="d-block text-muted"><?= e($asg['programa_nombre']) ?></small></td>
-        <td><span class="badge bg-soft info font-monospace"><?= e($asg['competencia_codigo']) ?></span><small class="d-block texto-recortado-2"><?= e($asg['competencia_nombre']) ?></small></td>
-        <td>
+        <td data-etiqueta="Ficha"><strong>Ficha <?= e($asg['numero_ficha']) ?></strong><small class="d-block text-muted"><?= e($asg['programa_nombre']) ?></small></td>
+        <td class="celda-titulo"><span class="badge bg-soft info font-monospace"><?= e($asg['competencia_codigo']) ?></span><small class="d-block texto-recortado-2"><?= e($asg['competencia_nombre']) ?></small></td>
+        <td data-etiqueta="Instructor">
           <div class="d-flex align-items-center gap-2">
             <div class="avatar sm" data-fondo="<?= e($asg['avatar_color'] ?: '#39A900') ?>"><?= e(getInitials($asg['instructor_nombre'])) ?></div>
             <div><strong class="d-block"><?= e($asg['instructor_nombre']) ?></strong><small class="text-muted"><?= e($asg['instructor_email']) ?></small></div>
           </div>
         </td>
-        <td class="text-center"><?= (int)$asg['pendientes'] ?></td>
-        <td class="small"><?= e(date('d/m/Y', strtotime((string)$asg['fecha_asignacion']))) ?></td>
+        <td class="text-center" data-etiqueta="Pendientes"><?= (int)$asg['pendientes'] ?></td>
+        <td class="small" data-etiqueta="Desde"><?= e(date('d/m/Y', strtotime((string)$asg['fecha_asignacion']))) ?></td>
         <?php if ($esCoordinador): ?>
-        <td class="text-end">
+        <td class="text-end celda-acciones">
           <div class="d-inline-flex gap-1">
             <button type="button" class="btn btn-sm btn-soft" data-modal="#modalReasignar" aria-label="Cambiar instructor"
                     data-valores="<?= datosJson(['id' => (int)$asg['id'], 'instructor_id' => (int)$asg['instructor_id'],

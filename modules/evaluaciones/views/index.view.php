@@ -83,7 +83,7 @@ $evaluados = $cifras['a'] + $cifras['d'];
   <?php if ($hayFiltros): ?><a class="btn btn-soft" href="<?= $url('/evaluaciones') ?>" aria-label="Quitar filtros"><i class="bi bi-x-lg"></i></a><?php endif; ?>
 </form>
 
-<div class="table-wrap">
+<div class="table-wrap tabla-apilable">
   <table class="table align-middle mb-0">
     <thead>
       <tr>
@@ -105,23 +105,23 @@ $evaluados = $cifras['a'] + $cifras['d'];
           $desertado = $ev['aprendiz_estado'] === 'desertado';
       ?>
       <tr>
-        <td class="min-w-0">
+        <td class="min-w-0 celda-titulo">
           <div class="fw-semibold font-monospace small"><?= e($ev['ra_codigo']) ?></div>
           <div class="small text-muted texto-recortado-2" title="<?= e($ev['ra_denominacion']) ?>"><?= e($ev['ra_denominacion']) ?></div>
           <span class="badge bg-soft primary">Ficha <?= e($ev['numero_ficha']) ?></span>
           <?php if ((int)$ev['es_etapa_practica'] === 1): ?><span class="badge bg-soft info">Etapa práctica</span><?php endif; ?>
         </td>
         <?php if ($gestiona): ?>
-        <td>
+        <td class="celda-ancha" data-etiqueta="Aprendiz">
           <div class="fw-semibold"><?= e($ev['aprendiz_nombre']) ?></div>
           <small class="text-muted"><?= e($ev['numero_documento']) ?></small>
           <?php if ($desertado): ?><span class="badge-soft danger ms-1">Desertado</span><?php endif; ?>
         </td>
         <?php endif; ?>
-        <td><small class="text-muted texto-recortado-2" title="<?= e($ev['competencia_nombre']) ?>"><?= e($ev['competencia_codigo']) ?> · <?= e($ev['competencia_nombre']) ?></small></td>
-        <td class="small text-nowrap"><?= e($fechaCorta($ev['fecha_evaluacion'])) ?></td>
-        <td><span class="badge-soft <?= e($cClase) ?> text-nowrap"><i class="bi <?= e($cIcono) ?> me-1"></i><?= e($cTexto) ?></span></td>
-        <td class="text-end text-nowrap">
+        <td class="celda-ancha" data-etiqueta="Competencia"><small class="text-muted texto-recortado-2" title="<?= e($ev['competencia_nombre']) ?>"><?= e($ev['competencia_codigo']) ?> · <?= e($ev['competencia_nombre']) ?></small></td>
+        <td class="small text-nowrap" data-etiqueta="Fecha"><?= e($fechaCorta($ev['fecha_evaluacion'])) ?></td>
+        <td data-etiqueta="Juicio"><span class="badge-soft <?= e($cClase) ?> text-nowrap"><i class="bi <?= e($cIcono) ?> me-1"></i><?= e($cTexto) ?></span></td>
+        <td class="text-end text-nowrap celda-acciones">
           <?php if ($gestiona && !$desertado): ?>
             <button type="button" class="btn btn-sm btn-primary" data-modal="#modalEvaluar"
                     data-valores="<?= datosJson(['_anterior' => $ev['concepto'], 'evaluacion_id' => (int)$ev['id'], 'concepto' => $ev['concepto'],

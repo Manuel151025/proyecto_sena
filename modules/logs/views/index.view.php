@@ -62,18 +62,18 @@ $qs = http_build_query($activos);
   </div>
 </div></form>
 
-<div class="table-wrap">
+<div class="table-wrap tabla-apilable">
   <table class="table table-sm align-middle mb-0">
     <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Descripción</th><th>IP</th></tr></thead>
     <tbody>
       <?php foreach ($logs as $l): ?>
       <tr>
-        <td class="small text-nowrap"><?= e(date('d/m/Y H:i', strtotime((string)$l['fecha']))) ?></td>
-        <td class="small"><?php if ($l['usuario_nombre']): ?><div class="fw-semibold"><?= e($l['usuario_nombre']) ?></div><span class="text-muted"><?= e((string)$l['usuario_rol']) ?></span><?php else: ?><span class="text-muted">Sistema / anónimo</span><?php endif; ?></td>
-        <td><span class="badge-soft <?= e($colores[$l['accion']] ?? 'secondary') ?> text-nowrap"><?= e($l['accion']) ?></span></td>
-        <td class="small"><?= e((string)$l['modulo']) ?><?= $l['id_registro'] ? '<span class="text-muted"> #' . (int)$l['id_registro'] . '</span>' : '' ?></td>
-        <td class="small text-break"><?= e((string)$l['descripcion']) ?></td>
-        <td class="small font-monospace text-nowrap"><?= e((string)$l['ip_address']) ?></td>
+        <td class="small text-nowrap" data-etiqueta="Fecha"><?= e(date('d/m/Y H:i', strtotime((string)$l['fecha']))) ?></td>
+        <td class="small" data-etiqueta="Usuario"><?php if ($l['usuario_nombre']): ?><div class="fw-semibold"><?= e($l['usuario_nombre']) ?></div><span class="text-muted"><?= e((string)$l['usuario_rol']) ?></span><?php else: ?><span class="text-muted">Sistema / anónimo</span><?php endif; ?></td>
+        <td data-etiqueta="Acción"><span class="badge-soft <?= e($colores[$l['accion']] ?? 'secondary') ?> text-nowrap"><?= e($l['accion']) ?></span></td>
+        <td class="small" data-etiqueta="Módulo"><?= e((string)$l['modulo']) ?><?= $l['id_registro'] ? '<span class="text-muted"> #' . (int)$l['id_registro'] . '</span>' : '' ?></td>
+        <td class="small text-break celda-titulo"><?= e((string)$l['descripcion']) ?></td>
+        <td class="small font-monospace text-nowrap" data-etiqueta="IP"><?= e((string)$l['ip_address']) ?></td>
       </tr>
       <?php endforeach; ?>
       <?php if (empty($logs)): ?>
