@@ -28,7 +28,12 @@ use Throwable;
  *    'pendiente', que creó el sistema: antes la clave foránea lo impedía y
  *    un RAP creado por error no se podía retirar nunca.
  *  - La marca de "etapa práctica" (de la que depende quién califica) se
- *    puede editar; antes solo se fijaba por texto al migrar.
+ *    puede editar; antes solo se fijaba por texto al migrar. Al cambiarla,
+ *    las evaluaciones pendientes pasan a quien ahora responde por ellas
+ *    (antes conservaban al anterior en los paneles y en el calendario).
+ *  - Una competencia asignada en alguna ficha no cambia de programa ni se
+ *    marca como de etapa práctica: la asignación quedaba contradiciendo la
+ *    regla (en otro programa, o por encima del instructor de seguimiento).
  */
 final class CompetenciasService {
     private PDO $db;
@@ -66,20 +71,33 @@ final class CompetenciasService {
     public function editarCompetencia(int $id, array $d, Actor $actor): void {
         $this->soloCoordinacion($actor);
         $actual = $this->competencias->findById($id) ?? throw new ErrorDeNegocio('La competencia no existe.');
+        $uso = $this->competencias->dependencias($id);
         if ((int)$actual['programa_id'] !== (int)$d['programa_id']) {
-            $uso = $this->competencias->dependencias($id);
             if ($uso['evaluaciones'] > 0) {
                 throw new ErrorDeNegocio("No se puede cambiar de programa: la competencia tiene {$uso['evaluaciones']} registros de evaluación.");
             }
+            if ($uso['asignaciones'] > 0) {
+                throw new ErrorDeNegocio("No se puede cambiar de programa: la competencia está asignada en {$uso['asignaciones']} ficha(s). Quite primero esas asignaciones.");
+            }
         }
-        try {
-            $this->competencias->actualizar($id, $d);
-        } catch (Throwable $e) {
-            ErroresBD::relanzar($e, [ErroresBD::DUPLICADO => "El programa ya tiene otra competencia con el código {$d['codigo']}."]);
+        $cambiaEtapa = (int)$actual['es_etapa_practica'] !== (int)$d['es_etapa_practica'];
+        if ($cambiaEtapa && $d['es_etapa_practica'] && $uso['asignaciones'] > 0) {
+            throw new ErrorDeNegocio("La competencia está asignada en {$uso['asignaciones']} ficha(s): quite esas asignaciones antes de marcarla "
+                . 'como de etapa práctica (allí califica el instructor de seguimiento de cada aprendiz).');
         }
+        $this->enTransaccion(function () use ($id, $d, $cambiaEtapa) {
+            try {
+                $this->competencias->actualizar($id, $d);
+            } catch (Throwable $e) {
+                ErroresBD::relanzar($e, [ErroresBD::DUPLICADO => "El programa ya tiene otra competencia con el código {$d['codigo']}."]);
+            }
+            if ($cambiaEtapa) {
+                // De la marca depende quién responde por las pendientes.
+                $this->sync->actualizarResponsables(['competencia_id' => $id]);
+            }
+        });
         $this->auditoria->operacion($actor, 'Editar', 'Competencias', 'competencias', $id,
-            "Editó la competencia {$d['codigo']}" . ((int)$actual['es_etapa_practica'] !== (int)$d['es_etapa_practica']
-                ? ' (etapa práctica: ' . ($d['es_etapa_practica'] ? 'sí' : 'no') . ')' : ''));
+            "Editó la competencia {$d['codigo']}" . ($cambiaEtapa ? ' (etapa práctica: ' . ($d['es_etapa_practica'] ? 'sí' : 'no') . ')' : ''));
     }
 
     public function eliminarCompetencia(int $id, Actor $actor): void {

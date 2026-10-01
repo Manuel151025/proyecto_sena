@@ -134,10 +134,12 @@ class CompetenciasModel {
         $st = $this->db->prepare("
             SELECT (SELECT COUNT(*) FROM resultados_aprendizaje WHERE competencia_id = ?) AS rap,
                    (SELECT COUNT(*) FROM evaluaciones e JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
-                     WHERE ra.competencia_id = ?) AS evaluaciones
+                     WHERE ra.competencia_id = ?) AS evaluaciones,
+                   (SELECT COUNT(*) FROM asignaciones WHERE competencia_id = ?) AS asignaciones
         ");
-        $st->execute([$id, $id]);
+        $st->execute([$id, $id, $id]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
-        return ['rap' => (int)($r['rap'] ?? 0), 'evaluaciones' => (int)($r['evaluaciones'] ?? 0)];
+        return ['rap' => (int)($r['rap'] ?? 0), 'evaluaciones' => (int)($r['evaluaciones'] ?? 0),
+                'asignaciones' => (int)($r['asignaciones'] ?? 0)];
     }
 }
