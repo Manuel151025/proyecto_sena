@@ -43,10 +43,10 @@ El seguimiento se llevaba en hojas de cálculo de cada instructor y en los repor
 | [Arquitectura](docs/ARQUITECTURA.md) | Capas, secuencia de una petición, control de acceso, dominio, decisiones de diseño |
 | [Flujos](docs/FLUJOS.md) | 17 diagramas de flujo y de estados: acceso, evaluación, importación, evidencias, planes, avisos… |
 | [Analítica](docs/ANALITICA.md) | Indicadores de cada rol, fórmulas, semáforo y catálogo de reportes |
-| [Seguridad](docs/SEGURIDAD.md) | Revisión OWASP: 38 hallazgos, controles por capa, límites de entrada y salida, riesgos residuales |
+| [Seguridad](docs/SEGURIDAD.md) | Revisión OWASP: 44 hallazgos, controles por capa, límites de entrada y salida, riesgos residuales |
 | [Manual de usuario](docs/MANUAL_USUARIO.md) | Uso paso a paso para aprendiz, instructor y coordinador |
 | [Despliegue](docs/DESPLIEGUE.md) | Instalación (Apache y Docker), variables de entorno, actualización, copias de seguridad |
-| [Pruebas](docs/PRUEBAS.md) | 600 pruebas automáticas, integración continua y recorridos en navegador |
+| [Pruebas](docs/PRUEBAS.md) | 818 pruebas de PHPUnit, 46 recorridos en navegador e integración continua |
 | [Datos](docs/DATOS.md) · [Rutas y permisos](docs/RUTAS_Y_PERMISOS.md) · [Formatos de importación](docs/FORMATOS_IMPORTACION.md) | Generados desde el código con `php bin/generar-docs.php` |
 | [Historial de versiones](CHANGELOG.md) | Qué cambió en cada versión y por qué |
 
@@ -118,7 +118,7 @@ Matriz completa, ruta por ruta, en [docs/RUTAS_Y_PERMISOS.md](docs/RUTAS_Y_PERMI
 
 ## Seguridad
 
-Revisión completa contra el OWASP Top 10 con **38 hallazgos** (4 críticos: `.env` y `.git` descargables por web, `.htaccess` ignorados en Docker, instalador con `DROP DATABASE` accesible por URL, y un volcado con contraseñas en el historial público del repositorio, este último pendiente de pasos del responsable). Controles vigentes:
+Revisión completa contra el OWASP Top 10 con **44 hallazgos** (4 críticos: `.env` y `.git` descargables por web, `.htaccess` ignorados en Docker, instalador con `DROP DATABASE` accesible por URL, y un volcado con contraseñas en el historial público del repositorio, este último pendiente de pasos del responsable). Controles vigentes:
 
 | Control | Implementación |
 |---|---|
@@ -148,7 +148,7 @@ cp .env.example .env                                    # credenciales, DEV_MODE
 php bin/instalar.php --confirmar-borrado-total --demo   # base nueva con datos de demostración
 ```
 
-Cuentas de demostración (contraseña `Demo2026*`): `coordinador@sena.edu.co`, `instructor@sena.edu.co`, `aprendiz@sena.edu.co`.
+Cuentas de demostración (contraseña `Demo2026*`): `coordinador@sena.edu.co`, `instructor@sena.edu.co`, `aprendiz@sena.edu.co`. En [docs/ejemplos](docs/ejemplos) hay un archivo listo para cada importación (usuarios, competencias, resultados, matrículas en CSV y Excel, y un reporte de juicios de Sofia Plus) que encaja con esos datos.
 
 Para producción (sin demostración, primera cuenta, Docker, HTTPS, copias de seguridad) ver **[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)**.
 
@@ -164,7 +164,8 @@ Para producción (sin demostración, primera cuenta, Docker, HTTPS, copias de se
 | `php bin/verificar-esquema.php` | Comprobar que la base coincide con el código |
 | `php bin/volcar-esquema.php` | Regenerar `database/esquema.sql` tras una migración |
 | `php bin/generar-docs.php` | Regenerar rutas, diccionario de datos y formatos de importación |
-| `composer test` | Las 600 pruebas |
+| `composer test` | Las 818 pruebas de PHPUnit |
+| `cd tests/e2e && npx playwright test` | Los 46 recorridos en navegador ([guía](tests/e2e/README.md)) |
 
 ---
 
@@ -190,8 +191,8 @@ proyecto_sena/
 ├── assets/              CSS (theme.css), JS por módulo, imágenes
 ├── database/            esquema.sql, migraciones/, semillas/
 ├── bin/                 Comandos de consola
-├── tests/               Unit, Security, Integration
-├── docs/                Documentación
+├── tests/               Unit, Security, Integration y e2e (Playwright)
+├── docs/                Documentación; ejemplos/ trae un archivo por importación
 └── uploads/ · logs/ · cache/   Escritura del servidor (cerradas a la web)
 ```
 

@@ -51,12 +51,13 @@ DB_NAME=sena_prueba vendor/bin/phpunit
 
 Conviene saberlo antes de confiar en un resultado verde:
 
-- **Nada se ejecuta en un navegador.** No se comprueba que las cabeceras
+- **PHPUnit no ejecuta un navegador.** No comprueba que las cabeceras
   CSP lleguen, que el formulario de cierre de sesión funcione, ni que el
-  guard de las vistas responda a una petición HTTP real. Se prueba la
-  lógica que las produce, no su efecto en el navegador. Eso se cubre con
-  el recorrido manual en navegador descrito en `docs/PRUEBAS.md`.
-- **`MailService`** no se prueba: exige un servidor SMTP.
+  guard de las vistas responda a una petición HTTP real: prueba la lógica
+  que las produce. Su efecto en el navegador lo cubren los recorridos de
+  `tests/e2e` (Playwright), que también corren en el CI.
+- **`MailService`** no se prueba: exige un servidor SMTP. Ninguna prueba
+  envía correo: `tests/bootstrap.php` anula las credenciales del `.env`.
 - **`EstructuraPdfParser`** no se prueba de extremo a extremo: haría falta
   un PDF de diseño curricular de ejemplo. El importador de juicios de Sofia
   Plus sí (`ImportadorJuiciosTest`), con filas construidas en la prueba.

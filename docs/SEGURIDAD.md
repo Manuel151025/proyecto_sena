@@ -1,6 +1,6 @@
 # Seguridad
 
-**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.3 · septiembre de 2026
+**Sistema de Seguimiento de Proyectos Formativos — SENA** · versión 3.4 · octubre de 2026
 
 Informe de la revisión de seguridad: qué se encontró, cómo se corrigió, qué prueba lo protege y qué queda pendiente. La referencia es el **OWASP Top 10 (2021)**.
 
@@ -13,7 +13,7 @@ Informe de la revisión de seguridad: qué se encontró, cómo se corrigió, qu�
 | Alcance | Todo el código (111 destinos del enrutador, 3 páginas públicas, CLI), la configuración de Apache y Docker, la base de datos y el repositorio |
 | Revisión de código | Cada consulta SQL, cada salida a HTML, cada formulario, cada subida y descarga, cada regla de acceso por rol y por dato |
 | Pruebas automáticas | Suite de seguridad de PHPUnit (8 clases) más pruebas de integración de permisos; se ejecutan en cada envío al repositorio |
-| Pruebas en navegador | Recorrido de las 51 pantallas de los tres roles con Playwright: sin errores de JavaScript, sin bloqueos de CSP, sin desbordes a 390 px |
+| Pruebas en navegador | 46 recorridos automáticos con Playwright en cada envío (`tests/e2e`): permisos forzando URL y formularios, CSRF, recuperación de contraseña, subida de un PHP disfrazado, y las pantallas de los tres roles sin errores de JavaScript, sin bloqueos de CSP y sin desbordes a 390 px |
 | Pruebas contra Apache | Peticiones directas a archivos internos (`.env`, `.git/`, volcados, `uploads/`, migraciones) antes y después de cada cambio |
 
 ## 2. Resumen
@@ -22,9 +22,9 @@ Informe de la revisión de seguridad: qué se encontró, cómo se corrigió, qu�
 |---|---:|---:|
 | Crítica | 4 | 3 + 1 mitigado (ver §6) |
 | Alta | 12 | 12 |
-| Media | 16 | 16 |
-| Baja | 6 | 6 |
-| **Total** | **38** | **37 + 1 mitigado** |
+| Media | 19 | 19 |
+| Baja | 9 | 9 |
+| **Total** | **44** | **43 + 1 mitigado** |
 
 Quedan **riesgos residuales** que no se resuelven con código (rotar credenciales expuestas, HTTPS, copias de seguridad): ver §6.
 
@@ -50,6 +50,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 | 10 | M | Un filtro con un valor desconocido (`?rol=x`) se ignoraba y mostraba **todo**. | Un valor fuera de la lista blanca no encaja con nada. | `BusquedaYFiltrosTest` |
 | 11 | M | El cambio obligatorio de contraseña se saltaba añadiendo `?x=/perfil` a la URL. | Se compara la ruta, no la URL completa. | Revisión de código |
 | 12 | M | Un coordinador podía desactivarse o quitarse el rol y dejar la institución sin administración. | Regla de negocio: siempre queda al menos un coordinador activo. | `GestionAcademicaTest::testSiempreQuedaUnCoordinador` |
+| 41 | M | Usuarios daba y quitaba el rol de aprendiz como cualquier otro: un instructor con fichas a cargo pasaba a aprendiz, se creaban cuentas de aprendiz sin ficha (su correo quedaba ocupado y ya no se podían matricular) y la cuenta de un aprendiz desertado o egresado se reactivaba sin pasar por su matrícula. | El rol de aprendiz va unido a la matrícula: Usuarios no lo da ni lo quita (salvo a una cuenta que aún no tiene matrícula) ni reactiva a quien dejó la formación; Matrículas completa la cuenta sin ficha en lugar de rechazar su correo. | `CuentasDeAprendizTest` |
 
 ### A02 — Fallos criptográficos
 
@@ -66,6 +67,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 |---|---|---|---|---|
 | 16 | A | **XSS almacenado en el calendario**: la descripción de un evento se pintaba con `innerHTML` y se ejecutaba en el navegador de quien lo abría. | Todo texto con `textContent`. | `SeguridadTest::testJavascriptSinSumiderosHtml`, recorrido e2e |
 | 17 | A | **XSS almacenado en la campana de avisos**: título, mensaje y URL en `innerHTML`; un `href="javascript:"` se ejecutaba. | Nodos con `textContent`; la URL se valida como ruta interna en servidor y cliente. | `SeguridadTest::testJavascriptSinSumiderosHtml` |
+| 40 | B | La ruta de un aviso se validaba con una expresión que aceptaba un salto de línea al final (en PCRE, `$` casa antes de un `\n` final). | Modificador `D`: la ruta termina donde termina el texto. | `NotificadorUrlTest` |
 | 18 | A | La CSP permitía `'unsafe-inline'` en `script-src`: cualquier XSS que llegara al HTML se ejecutaba. | Todo el JavaScript en archivos; `script-src 'self'` más el CDN con SRI. | `SeguridadTest::testSinCodigoEnLinea` |
 | 38 | M | La CSP seguía admitiendo `'unsafe-inline'` en `style-src`: un estilo inyectado no ejecuta código, pero puede tapar la página con un formulario falso o leer valores con selectores de atributo. | Sin atributos `style` ni bloques `<style>`: lo fijo en clases y archivos CSS, lo que sale de datos en `data-ancho`, `data-fondo` y `data-color` (aplicados por CSSOM); las páginas de error y FullCalendar usan el nonce de la respuesta. | `SeguridadTest::testStyleSrcSinUnsafeInline`, `testSinEstilosEnLinea` |
 | 19 | M | `avatar_color` iba sin validar a un atributo `style` (inyección de CSS). | Solo se acepta un color `#RRGGBB`. | `ValidadorTest::testColorHexRechazaCss` |
@@ -82,6 +84,8 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 | 24 | A | El importador de Sofia Plus leía «NO APROBADO» como **A** (contiene «APROBADO»), y un «POR EVALUAR» devolvía a pendiente un juicio emitido. | Orden de comprobación corregido; «POR EVALUAR» no toca un juicio emitido. | `ImportadorJuiciosTest` |
 | 25 | M | Revisar una evidencia como «rechazada» devolvía a pendiente un RAP en A, sin motivo ni historial. | La revisión y el juicio son decisiones separadas; el juicio pasa por `EvaluacionService` con historial. | `EvidenciasTest` |
 | 26 | M | Cuatro caminos escribían el juicio y dos no dejaban historial (RNF02). | `EvaluacionService` como única puerta de escritura, con transacción y `SELECT … FOR UPDATE`. | `EvaluacionServiceTest` |
+| 42 | M | Un reporte en PDF de más de unas 3.000 filas agotaba los 512 MB de la petición y terminaba en la página de error; basta una ficha de 32 aprendices en un programa de 99 RAP. Cualquier instructor podía repetir esa petición pesada. | El PDF admite hasta 2.000 filas (medido: unos 13 s y 360 MB) y, por encima, pide Excel o CSV antes de componer nada. | `ExportacionCompletaTest` |
+| 43 | B | Las exportaciones y los reportes en Excel y CSV se cortaban en silencio a las 20.000 filas: el archivo parecía completo. | Pasado el tope no se entrega un archivo cortado: se pide filtrar o acotar el periodo. | `ExportacionCompletaTest` |
 
 ### A05 — Configuración de seguridad incorrecta
 
@@ -92,6 +96,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 | 29 | M | Sin cabeceras de seguridad. | CSP, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS bajo HTTPS; sin `X-Powered-By`; páginas autenticadas sin caché. | `SeguridadTest` |
 | 30 | B | `vendor/`, `cache/` y `scratch/` listaban su contenido. | `Options -Indexes` y `.htaccess` de denegación (`bin/proteger-carpetas.php` los regenera tras `composer install`). | `SuperficieWebTest` |
 | 31 | B | `X-Content-Type-Options` salía duplicada (Apache y PHP). | Una sola vez. | Revisión contra Apache |
+| 44 | B | Las pruebas heredaban las credenciales SMTP del `.env` del desarrollador: la prueba de recuperación en navegador llegó a enviar correos reales. | El servidor de los recorridos arranca sin credenciales de correo y el arranque de PHPUnit las anula. | `tests/bootstrap.php`, `tests/e2e/playwright.config.js` |
 
 ### A06 — Componentes vulnerables
 
@@ -105,6 +110,7 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 | # | Sev. | Hallazgo | Corrección | Prueba |
 |---|---|---|---|---|
 | 34 | M | La sesión no caducaba nunca y el cierre de sesión era por GET sin token. | Inactividad máxima 2 h, duración máxima 12 h, máximo 12 pestañas por sesión; cierre por POST con token; identificador regenerado al entrar y al cambiar la contraseña. | `CsrfYSesionTest` |
+| 39 | M | Los enlaces de recuperación se guardaban con bcrypt y, como así no se pueden buscar, cada intento se comparaba con los 20 más recientes de todo el sistema: con más de 20 solicitudes en media hora, los anteriores dejaban de servir. Además, un enlace usado o caducado mostraba el formulario y un error de la política devolvía al primer paso. | Se guarda la huella SHA-256 del token (256 bits de azar no necesitan bcrypt) y se busca por índice (migración 0019, que anula los pendientes del formato anterior); el enlace se valida al abrirlo; la política se aplica con el correo de la cuenta; al cambiar la clave se levanta el bloqueo por intentos y queda en la bitácora; los enlaces usan https detrás del proxy. | Recorrido e2e `01-publico`, `FugaDeInformacionTest` |
 | 35 | B | El login delataba qué correos existen por el tiempo de respuesta (y la primera mitigación lo invertía con un hash de relleno mal formado). | Verificación siempre contra un bcrypt real del mismo coste: ratio de tiempos 1,01. | `AutenticacionTest` |
 
 ### A08 / A09 / A10
@@ -157,7 +163,8 @@ flowchart LR
 | Importaciones (CSV, XLSX, XLS) | 5 MB; 40 columnas; 2.000 caracteres por celda; 40 MB descomprimidos por `.xlsx` (bomba zip); filas: usuarios 1.000, matrículas 500, RAP 3.000, juicios 8.000, competencias 2.000 | `LectorTabular`, cada `Importador` |
 | Vista previa de importación | Vigencia 1 hora, ligada al usuario que la creó | `ImportacionService` |
 | Listados | 25 por página, máximo 100 | `Paginator` |
-| Exportaciones | 20.000 filas por archivo | `Exportador` |
+| Exportaciones | 20.000 filas por archivo; pasado el tope se avisa, no se corta | `Exportador`, `BaseController::filasParaExportar` |
+| Reportes en PDF | 2.000 filas (más, en Excel o CSV) | `ReportePdfService` |
 | Historial en reportes | Periodos de hasta 1 año | `ReportesService` |
 | Calendario (API) | Rangos de hasta 100 días | `CalendarioController` |
 | Plan de mejoramiento | Fecha límite de hasta 180 días | `PlanFormulario` |
@@ -172,6 +179,7 @@ flowchart LR
 | **Inmediata** | **En producción: `php bin/auditar-claves.php`** y, si encuentra cuentas, `--aplicar`. | Anula las contraseñas publicadas. Las claves temporales salen una vez por la consola para entregarlas. |
 | **Inmediata** | **Rotar la contraseña de aplicación de Gmail** (`MAIL_PASSWORD`) y la de la base de datos; comprobar con `php bin/probar-correo.php`. | Estuvieron en un `.env` descargable por web hasta el commit `d6c052b`. Si el servidor fue accesible desde fuera en ese tiempo, deben considerarse comprometidas. |
 | Alta | **Pedir a GitHub Support que purgue la caché** del repositorio. | El historial ya está reescrito, pero GitHub conserva los commits antiguos en las referencias de los PR #1 y #2 y en su caché, accesibles por su hash hasta que Support los elimine. |
+| Alta | Al actualizar producción a la v3.4: **`php bin/migrar.php`** (migración 0019). | Indexa las huellas de los enlaces de recuperación y anula los enlaces pendientes del formato anterior, que con el código nuevo ya no sirven. |
 | Alta | Servir solo por **HTTPS** y definir `APP_HOST`. | Sin HTTPS la cookie de sesión viaja en claro; HSTS y `Secure` se activan solos al detectar HTTPS. |
 | Alta | `DEV_MODE=false` en producción. | En `true` se muestran causas técnicas y el enlace de recuperación. |
 | Media | Copias de seguridad automáticas de la base y de `uploads/evidencias`. | Ver [DESPLIEGUE.md](DESPLIEGUE.md#7-copias-de-seguridad). |

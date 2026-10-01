@@ -69,7 +69,7 @@ Antes cada controlador validaba a mano, escribía SQL y decidía permisos en el 
 
 - **Una sola condición de acceso** del instructor (`InstructorAccessService::sqlCondicionAcceso()`), usada por el permiso de calificar y por todos los listados.
 - **Una sola puerta de escritura del juicio** (`EvaluacionService`): transacción, bloqueo de fila, historial en cada cambio y aviso al aprendiz, venga de donde venga (pantalla de juicios, expediente, evidencias, planes, importación).
-- Probar las reglas sin navegador (600 pruebas).
+- Probar las reglas sin navegador (818 pruebas de PHPUnit), y además con él (46 recorridos con Playwright).
 
 ---
 
