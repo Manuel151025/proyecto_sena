@@ -209,9 +209,12 @@ class FichaModel {
             SELECT (SELECT COUNT(*) FROM aprendices WHERE ficha_id = ?) AS aprendices,
                    (SELECT COUNT(*) FROM evaluaciones WHERE ficha_id = ? AND concepto IN ('A','D')) AS juicios,
                    (SELECT COUNT(*) FROM actividades WHERE ficha_id = ?) AS actividades,
-                   (SELECT COUNT(*) FROM actividades WHERE ficha_id = ? AND fase_id IS NOT NULL) AS actividades_con_fase
+                   (SELECT COUNT(*) FROM actividades WHERE ficha_id = ? AND fase_id IS NOT NULL) AS actividades_con_fase,
+                   (SELECT COUNT(*) FROM evidencias ev JOIN evaluaciones e ON e.id = ev.evaluacion_id WHERE e.ficha_id = ?)
+                 + (SELECT COUNT(*) FROM retroalimentacion r JOIN evaluaciones e ON e.id = r.evaluacion_id WHERE e.ficha_id = ?)
+                 + (SELECT COUNT(*) FROM planes_mejoramiento pm WHERE pm.ficha_id = ?) AS vinculos
         ");
-        $st->execute([$id, $id, $id, $id]);
+        $st->execute([$id, $id, $id, $id, $id, $id, $id]);
         return array_map('intval', $st->fetch(PDO::FETCH_ASSOC) ?: []);
     }
 

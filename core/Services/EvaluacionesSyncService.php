@@ -133,6 +133,25 @@ class EvaluacionesSyncService {
     }
 
     /**
+     * Borra las evaluaciones pendientes de la ficha cuyos RAP no son de su
+     * programa. Se llama al cambiar el programa de una ficha sin juicios
+     * emitidos: antes solo se creaban las del programa nuevo y las del
+     * anterior se quedaban, de modo que el avance de esos aprendices se
+     * calculaba sobre los RAP de dos programas.
+     */
+    public function retirarDeOtroPrograma(int $fichaId): int {
+        $st = $this->db->prepare("
+            DELETE e FROM evaluaciones e
+              JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c            ON c.id = ra.competencia_id
+              JOIN fichas f                  ON f.id = e.ficha_id
+             WHERE e.ficha_id = ? AND e.concepto = 'pendiente' AND c.programa_id <> f.programa_id
+        ");
+        $st->execute([$fichaId]);
+        return $st->rowCount();
+    }
+
+    /**
      * Cuenta lo que falta sin escribir nada. Útil para diagnóstico.
      *
      * @return array{faltantes:int, aprendices:int}

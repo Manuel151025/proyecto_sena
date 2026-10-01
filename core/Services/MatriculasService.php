@@ -6,6 +6,7 @@ namespace Core\Services;
 use Core\Database;
 use Core\Formularios\UsuarioFormulario;
 use Core\Models\AprendizModel;
+use Core\Models\MejoramientoModel;
 use Core\Support\Actor;
 use Core\Support\ErrorDeNegocio;
 use Core\Support\ErroresBD;
@@ -29,6 +30,9 @@ use Throwable;
  *    la dejaba activa.
  *  - La etapa práctica exige instructor de seguimiento: es quien califica
  *    esas competencias (ver InstructorAccessService).
+ *  - Quien deja la formación (retiro, deserción o egreso) no conserva planes
+ *    de mejoramiento vigentes: se cierran como no cumplidos con constancia.
+ *  - Una ficha en cierre no recibe aprendices, ni nuevos ni trasladados.
  */
 final class MatriculasService {
     private PDO $db;
@@ -67,6 +71,9 @@ final class MatriculasService {
         $fichaNueva = $this->validar($d, $id, (int)$actual['usuario_id']);
         $traslado = (int)$actual['ficha_id'] !== (int)$d['ficha_id'];
 
+        if ($traslado && $fichaNueva['estado'] === 'cierre') {
+            throw new ErrorDeNegocio("La ficha {$fichaNueva['numero_ficha']} está en cierre: no recibe aprendices trasladados.");
+        }
         if ($traslado && $this->aprendices->juiciosEmitidos($id) > 0) {
             $fichaVieja = $this->aprendices->datosFicha((int)$actual['ficha_id']);
             if ($fichaVieja && (int)$fichaVieja['programa_id'] !== (int)$fichaNueva['programa_id']) {
@@ -89,10 +96,16 @@ final class MatriculasService {
             // pasan a quien ahora responde por cada una.
             $evaluaciones->actualizarResponsables(['aprendiz_id' => $id]);
             $activo = !in_array($d['estado'], ['desertado', 'egresado'], true);
+            $cambios = [];
             if ($activo !== !in_array($actual['estado'], ['desertado', 'egresado'], true)) {
                 $this->aprendices->cambiarEstadoCuenta((int)$actual['usuario_id'], $activo ? 'activo' : 'inactivo');
+                if (!$activo) {
+                    $n = $this->cerrarPlanes($id, $d['estado'] === 'egresado' ? 'al egresar' : 'por deserción', $actor);
+                    if ($n > 0) {
+                        $cambios[] = "$n plan(es) de mejoramiento cerrados";
+                    }
+                }
             }
-            $cambios = [];
             if ($traslado) {
                 $cambios[] = "traslado a la ficha {$fichaNueva['numero_ficha']}";
             }
@@ -111,12 +124,23 @@ final class MatriculasService {
     public function retirar(int $id, Actor $actor): void {
         $this->soloCoordinacion($actor);
         $a = $this->aprendices->findById($id) ?? throw new ErrorDeNegocio('El aprendiz no existe.');
+        if ($a['estado'] === 'egresado') {
+            throw new ErrorDeNegocio('El aprendiz ya egresó: no se puede retirar su matrícula.');
+        }
         Transaccion::ejecutar($this->db, function () use ($id, $a, $actor) {
             $this->aprendices->marcarDesertado($id);
             $this->aprendices->cambiarEstadoCuenta((int)$a['usuario_id'], 'inactivo');
+            $n = $this->cerrarPlanes($id, 'al retirar la matrícula', $actor);
             $this->auditoria->operacion($actor, 'Retirar', 'Matrículas', 'aprendices', $id,
-                "Retiró la matrícula de {$a['nombre']}: queda como desertado y sin acceso");
+                "Retiró la matrícula de {$a['nombre']}: queda como desertado y sin acceso"
+                . ($n > 0 ? "; $n plan(es) de mejoramiento cerrados" : ''));
         });
+    }
+
+    /** Cierra los planes vigentes del aprendiz que deja la formación. */
+    private function cerrarPlanes(int $aprendizId, string $motivo, Actor $actor): int {
+        return (new MejoramientoModel($this->db))->cerrarVigentesDeAprendiz($aprendizId,
+            "Cerrado automáticamente $motivo: el aprendiz dejó la formación.", $actor->id);
     }
 
     /** @return array Datos de la ficha de destino. */

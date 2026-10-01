@@ -56,13 +56,17 @@ final class FichasService {
         $actual = $this->fichas->findById($id) ?? throw new ErrorDeNegocio('La ficha no existe.');
         $this->validarLider($d);
         $uso = $this->fichas->dependencias($id);
-        if ((int)$actual['programa_id'] !== (int)$d['programa_id'] && $uso['juicios'] > 0) {
+        $otroPrograma = (int)$actual['programa_id'] !== (int)$d['programa_id'];
+        if ($otroPrograma && $uso['juicios'] > 0) {
             throw new ErrorDeNegocio("No se puede cambiar el programa: la ficha ya tiene {$uso['juicios']} juicios emitidos sobre el programa actual.");
+        }
+        if ($otroPrograma && $uso['vinculos'] > 0) {
+            throw new ErrorDeNegocio('No se puede cambiar el programa: hay evidencias, retroalimentación o planes ligados a resultados del programa actual.');
         }
         if ((int)($actual['proyecto_id'] ?? 0) !== (int)($d['proyecto_id'] ?? 0) && $uso['actividades_con_fase'] > 0) {
             throw new ErrorDeNegocio("No se puede cambiar el proyecto formativo: la ficha tiene {$uso['actividades_con_fase']} actividades en fases del proyecto actual.");
         }
-        return Transaccion::ejecutar($this->db, function () use ($id, $d, $actual, $actor) {
+        return Transaccion::ejecutar($this->db, function () use ($id, $d, $actual, $actor, $otroPrograma) {
             try {
                 $this->fichas->actualizar($id, $d);
             } catch (Throwable $e) {
@@ -71,6 +75,11 @@ final class FichasService {
             // Un programa nuevo o un primer instructor líder habilitan
             // evaluaciones que antes no se podían crear.
             $evaluaciones = new EvaluacionesSyncService($this->db);
+            // Con otro programa, las pendientes del anterior (no hay juicios
+            // emitidos: se comprobó arriba) dejan de tener sentido.
+            if ($otroPrograma) {
+                $evaluaciones->retirarDeOtroPrograma($id);
+            }
             $s = $evaluaciones->sincronizar(['ficha_id' => $id]);
             // Con otro líder, las pendientes que eran del anterior pasan a él.
             $evaluaciones->actualizarResponsables(['ficha_id' => $id]);
@@ -82,6 +91,9 @@ final class FichasService {
             }
             if ($actual['estado'] !== $d['estado']) {
                 $cambios[] = "estado {$actual['estado']} → {$d['estado']}";
+            }
+            if ($otroPrograma) {
+                $cambios[] = 'cambio de programa';
             }
             $this->auditoria->operacion($actor, 'Editar', 'Fichas', 'fichas', $id,
                 "Editó la ficha {$d['numero_ficha']}" . ($cambios ? ' (' . implode(', ', $cambios) . ')' : ''));

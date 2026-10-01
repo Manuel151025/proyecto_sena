@@ -166,6 +166,34 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
         $this->assertSame(1, $this->n("SELECT COUNT(*) FROM usuarios u JOIN aprendices a ON a.usuario_id = u.id WHERE a.id = ? AND u.debe_cambiar_password = 1 AND u.rol = 'aprendiz'", [$r['id']]));
     }
 
+    /**
+     * Antes, al cambiar el programa de una ficha sin juicios, se creaban las
+     * evaluaciones del programa nuevo y se quedaban las del anterior: el
+     * avance de esos aprendices se calculaba sobre los RAP de dos programas.
+     */
+    #[TestDox('al cambiar el programa de una ficha sin juicios, sus aprendices quedan solo con los RAP del nuevo')]
+    public function testCambioDePrograma(): void {
+        $programas = $this->db->query("
+            SELECT c.programa_id, COUNT(ra.id) AS raps FROM competencias c JOIN resultados_aprendizaje ra ON ra.competencia_id = c.id
+             GROUP BY c.programa_id HAVING raps > 0 ORDER BY c.programa_id LIMIT 2")->fetchAll();
+        if (count($programas) < 2) {
+            $this->markTestSkipped('hacen falta dos programas con RAP');
+        }
+        [$a, $b] = $programas;
+        $s = new FichasService($this->db);
+        $ficha = $s->crear($this->datosFicha(['programa_id' => (int)$a['programa_id']]), $this->coordinador());
+        $m = (new MatriculasService($this->db))->matricular($this->datosMatricula($ficha), $this->coordinador());
+        $this->assertSame((int)$a['raps'], $this->contar('evaluaciones', 'aprendiz_id = ?', [$m['id']]));
+
+        $f = $this->db->query("SELECT * FROM fichas WHERE id = $ficha")->fetch();
+        $s->editar($ficha, $this->datosFicha(['programa_id' => (int)$b['programa_id'], 'numero_ficha' => $f['numero_ficha']]), $this->coordinador());
+
+        $this->assertSame((int)$b['raps'], $this->contar('evaluaciones', 'aprendiz_id = ?', [$m['id']]));
+        $this->assertSame(0, $this->n("
+            SELECT COUNT(*) FROM evaluaciones e JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c ON c.id = ra.competencia_id WHERE e.aprendiz_id = ? AND c.programa_id <> ?", [$m['id'], (int)$b['programa_id']]));
+    }
+
     #[TestDox('una ficha en cierre no admite matrículas nuevas')]
     public function testFichaEnCierre(): void {
         $id = $this->idFicha();
@@ -207,6 +235,44 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
 
         $this->assertSame(1, $this->n("SELECT COUNT(*) FROM aprendices a JOIN usuarios u ON u.id = a.usuario_id WHERE a.id = ? AND a.estado = 'desertado' AND u.estado = 'inactivo'", [$id]));
         $this->assertSame($antes, $this->contar('evaluaciones', 'aprendiz_id = ?', [$id]));
+    }
+
+    /**
+     * Antes los planes de quien se retiraba seguían «vigentes» y, al vencer,
+     * contaban como vencidos en el panel del instructor y de coordinación.
+     */
+    #[TestDox('retirar cierra como no cumplidos los planes de mejoramiento vigentes')]
+    public function testRetirarCierraPlanes(): void {
+        $e = $this->unaFila("
+            SELECT e.id, e.aprendiz_id, e.ficha_id, e.instructor_id FROM evaluaciones e JOIN aprendices a ON a.id = e.aprendiz_id
+             WHERE a.estado = 'matriculado' LIMIT 1");
+        $this->db->prepare("UPDATE evaluaciones SET concepto = 'D' WHERE id = ?")->execute([(int)$e['id']]);
+        $this->db->prepare("INSERT INTO planes_mejoramiento (evaluacion_id, aprendiz_id, ficha_id, instructor_id, actividades, fecha_inicio, fecha_limite, estado, creado_por)
+                            VALUES (?, ?, ?, ?, 'Rehacer el taller', CURDATE(), CURDATE() + INTERVAL 10 DAY, 'en_curso', ?)")
+                 ->execute([(int)$e['id'], (int)$e['aprendiz_id'], (int)$e['ficha_id'], (int)$e['instructor_id'], $this->idCoordinador()]);
+
+        (new MatriculasService($this->db))->retirar((int)$e['aprendiz_id'], $this->coordinador());
+        $this->assertSame(0, $this->contar('planes_mejoramiento', "aprendiz_id = ? AND estado IN ('abierto','en_curso')", [(int)$e['aprendiz_id']]));
+        $this->assertSame(1, $this->contar('planes_mejoramiento', "aprendiz_id = ? AND estado = 'no_cumplido' AND observaciones_cierre LIKE '%retirar%'", [(int)$e['aprendiz_id']]));
+    }
+
+    #[TestDox('no se retira la matrícula de quien ya egresó')]
+    public function testNoRetiraEgresado(): void {
+        $id = $this->idAprendiz();
+        $this->db->exec("UPDATE aprendices SET estado = 'egresado' WHERE id = $id");
+        $this->esperarError(fn() => (new MatriculasService($this->db))->retirar($id, $this->coordinador()), 'egresó');
+    }
+
+    #[TestDox('no se traslada a un aprendiz a una ficha en cierre')]
+    public function testTrasladoAFichaEnCierre(): void {
+        $a = $this->unaFila("
+            SELECT a.id, f.programa_id FROM aprendices a JOIN fichas f ON f.id = a.ficha_id
+             WHERE a.estado = 'matriculado' AND EXISTS (SELECT 1 FROM fichas f2 WHERE f2.programa_id = f.programa_id AND f2.id <> f.id)
+             LIMIT 1");
+        $destino = (int)$this->db->query("SELECT id FROM fichas WHERE programa_id = {$a['programa_id']} AND id <> (SELECT ficha_id FROM aprendices WHERE id = {$a['id']}) LIMIT 1")->fetchColumn();
+        $this->db->exec("UPDATE fichas SET estado = 'cierre' WHERE id = $destino");
+        $d = $this->matriculaActual((int)$a['id'], ['ficha_id' => $destino]);
+        $this->esperarError(fn() => (new MatriculasService($this->db))->editar((int)$a['id'], $d, $this->coordinador()), 'cierre');
     }
 
     // =================================================================

@@ -221,6 +221,18 @@ class MejoramientoModel {
                  ->execute([$estado, $observaciones, $usuarioId, $id]);
     }
 
+    /**
+     * Cierra como no cumplidos los planes vigentes de un aprendiz que deja la
+     * formación (retiro o egreso). Sin esto seguían «vigentes» y, al vencer,
+     * inflaban los planes vencidos del instructor y de los paneles.
+     */
+    public function cerrarVigentesDeAprendiz(int $aprendizId, string $observaciones, int $usuarioId): int {
+        $st = $this->db->prepare("UPDATE planes_mejoramiento SET estado = 'no_cumplido', observaciones_cierre = ?, fecha_cierre = NOW(), cerrado_por = ?
+                                   WHERE aprendiz_id = ? AND estado IN ('abierto', 'en_curso')");
+        $st->execute([$observaciones, $usuarioId, $aprendizId]);
+        return $st->rowCount();
+    }
+
     /** El aprendiz entregó evidencia del RAP: el plan abierto pasa a en curso. */
     public function marcarEnCurso(int $evaluacionId): int {
         $st = $this->db->prepare("UPDATE planes_mejoramiento SET estado = 'en_curso' WHERE evaluacion_id = ? AND estado = 'abierto'");
