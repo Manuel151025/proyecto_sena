@@ -24,6 +24,9 @@ use PDO;
  * silencio un tipo de documento o un género desconocidos por CC y O (el
  * dato quedaba mal sin que nadie lo supiera) y, si una sola fila fallaba,
  * seguía y reportaba el error mezclado con los éxitos.
+ *
+ * Un correo de una cuenta de aprendiz sin matrícula no es un error: esa
+ * cuenta se completa con la matrícula (ver AprendizModel::cuentaSinMatricula).
  */
 final class ImportadorMatriculas extends Importador {
     private PDO $db;
@@ -86,9 +89,12 @@ final class ImportadorMatriculas extends Importador {
         $v = new Validador($fila + ['ficha_id' => (string)$contexto['ficha_id'], 'instructor_seguimiento_id' => '']);
         $d = MatriculaFormulario::validar($v);
         $errores = $v->errores();
+        $avisos = [];
         if ($errores === []) {
             $m = new AprendizModel($this->db);
-            if ($m->existeEmail($d['email'])) {
+            if ($m->cuentaSinMatricula($d['email']) !== null) {
+                $avisos[] = 'Ya tiene cuenta de aprendiz sin ficha: se completa con esta matrícula y una contraseña temporal nueva.';
+            } elseif ($m->existeEmail($d['email'])) {
                 $errores[] = "El correo {$d['email']} ya tiene cuenta.";
             }
             if ($m->existeDocumento($d['numero_documento'])) {
@@ -96,7 +102,7 @@ final class ImportadorMatriculas extends Importador {
             }
         }
         // Clave compuesta: correo y documento no pueden repetirse en el archivo.
-        return ['datos' => $d, 'errores' => $errores, 'clave' => $d['email'] . '|' . $d['numero_documento']];
+        return ['datos' => $d, 'errores' => $errores, 'avisos' => $avisos, 'clave' => $d['email'] . '|' . $d['numero_documento']];
     }
 
     public function permitido(Actor $actor): bool {
@@ -113,12 +119,13 @@ final class ImportadorMatriculas extends Importador {
             foreach ($datos as $i => $d) {
                 // Se revalida contra la base: entre la vista previa y la
                 // confirmación otra persona pudo matricular el mismo documento.
-                if ($m->existeEmail($d['email']) || $m->existeDocumento($d['numero_documento'])) {
+                $cuenta = $m->cuentaSinMatricula($d['email']);
+                if (($cuenta === null && $m->existeEmail($d['email'])) || $m->existeDocumento($d['numero_documento'])) {
                     $omitidos++;
                     continue;
                 }
                 $temporal = PoliticaContrasena::temporal();
-                $id = $m->crear($d, password_hash($temporal, PASSWORD_DEFAULT), $colores[$i % count($colores)]);
+                $id = $m->crear($d, password_hash($temporal, PASSWORD_DEFAULT), $colores[$i % count($colores)], $cuenta);
                 $sync->sincronizar(['aprendiz_id' => $id]);
                 $credenciales[] = ['nombre' => $d['nombre'], 'email' => $d['email'], 'password' => $temporal];
             }

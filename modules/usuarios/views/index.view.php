@@ -159,10 +159,15 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
             <div class="<?= $accion === 'editar' ? 'col-sm-6' : 'col-12' ?>">
               <label class="form-label fw-semibold" for="<?= $accion ?>_rol">Rol <span class="text-danger">*</span></label>
               <select name="rol" id="<?= $accion ?>_rol" class="form-select" required data-picker data-picker-label="Rol">
-                <?php foreach ($roles_label as $valor => $etiqueta): ?>
+                <?php foreach ($accion === 'crear' ? array_diff_key($roles_label, [ROL_APRENDIZ => true]) : $roles_label as $valor => $etiqueta): ?>
                   <option value="<?= e($valor) ?>" <?= $valor === 'instructor' ? 'selected' : '' ?>><?= e($etiqueta) ?></option>
                 <?php endforeach; ?>
               </select>
+              <?php if ($accion === 'crear'): ?>
+              <div class="form-text">Los aprendices se crean al matricularlos, en <a href="<?= e(APP_URL . '/index.php/matriculas') ?>">Matrículas</a>.</div>
+              <?php else: ?>
+              <div class="form-text">El rol de aprendiz va con la matrícula: se gestiona en Matrículas.</div>
+              <?php endif; ?>
             </div>
             <?php if ($accion === 'editar'): ?>
             <div class="col-sm-6">

@@ -7,6 +7,7 @@ use Core\Database;
 use Core\Services\InstructorAccessService;
 use Core\Support\Actor;
 use Core\Support\Enums;
+use Core\Support\ErrorDeNegocio;
 use Core\Support\Validador;
 use PDO;
 
@@ -104,13 +105,43 @@ class AprendizModel {
         return (bool)$st->fetchColumn();
     }
 
-    /** Crea la cuenta y la matrícula. @return int id del aprendiz */
-    public function crear(array $d, string $hash, string $color): int {
-        $this->db->prepare("
-            INSERT INTO usuarios (nombre, email, password, debe_cambiar_password, rol, avatar_color, estado)
-            VALUES (?, ?, ?, 1, 'aprendiz', ?, 'activo')
-        ")->execute([$d['nombre'], $d['email'], $hash, $color]);
-        $usuarioId = (int)$this->db->lastInsertId();
+    /**
+     * Cuenta de aprendiz que aún no tiene matrícula (las creaba la gestión de
+     * usuarios). Matricular con su correo la completa: antes el correo se
+     * rechazaba como ya registrado y esa persona no se podía matricular.
+     */
+    public function cuentaSinMatricula(string $email): ?int {
+        $st = $this->db->prepare("SELECT u.id FROM usuarios u LEFT JOIN aprendices a ON a.usuario_id = u.id
+                                   WHERE u.email = ? AND u.rol = 'aprendiz' AND a.id IS NULL");
+        $st->execute([$email]);
+        $id = $st->fetchColumn();
+        return $id === false ? null : (int)$id;
+    }
+
+    /**
+     * Crea la cuenta y la matrícula. Con `$cuentaSinMatricula` no crea otra
+     * cuenta: matricula esa, con el nombre de la matrícula y una contraseña
+     * temporal nueva.
+     * @return int id del aprendiz
+     */
+    public function crear(array $d, string $hash, string $color, ?int $cuentaSinMatricula = null): int {
+        if ($cuentaSinMatricula !== null) {
+            $st = $this->db->prepare("
+                UPDATE usuarios SET nombre = ?, password = ?, debe_cambiar_password = 1, estado = 'activo'
+                 WHERE id = ? AND rol = 'aprendiz' AND NOT EXISTS (SELECT 1 FROM aprendices WHERE usuario_id = ?)
+            ");
+            $st->execute([$d['nombre'], $hash, $cuentaSinMatricula, $cuentaSinMatricula]);
+            if ($st->rowCount() !== 1) {
+                throw new ErrorDeNegocio('La cuenta de ese correo cambió mientras se matriculaba: inténtalo de nuevo.');
+            }
+            $usuarioId = $cuentaSinMatricula;
+        } else {
+            $this->db->prepare("
+                INSERT INTO usuarios (nombre, email, password, debe_cambiar_password, rol, avatar_color, estado)
+                VALUES (?, ?, ?, 1, 'aprendiz', ?, 'activo')
+            ")->execute([$d['nombre'], $d['email'], $hash, $color]);
+            $usuarioId = (int)$this->db->lastInsertId();
+        }
         $this->db->prepare("
             INSERT INTO aprendices (usuario_id, ficha_id, instructor_seguimiento_id, numero_documento, tipo_documento, genero,
                                     fecha_nacimiento, telefono, ciudad, estado)

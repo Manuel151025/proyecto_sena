@@ -42,7 +42,7 @@ test('usuarios: vista previa sin guardar, confirmación y reimportación sin dup
   expect(await confirmar(page)).toMatch(/\b3 creados/i);
   await page.goto('/index.php/usuarios?search=ejemplo');
   await expect(page.locator('main')).toContainText('aprojas.ejemplo@sena.edu.co');
-  await expect(page.locator('main')).toContainText('CAMILA ANDREA SUÁREZ PEÑA');
+  await expect(page.locator('main')).toContainText('MARTHA LUCÍA PÉREZ ROA');
 
   const otra = await analizar(page, '/usuarios/importar', 'usuarios.csv');
   expect(otra.filas.join(' ')).toMatch(/ya tiene cuenta: se omitirá/i);

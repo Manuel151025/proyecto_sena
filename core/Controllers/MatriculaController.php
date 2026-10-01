@@ -105,7 +105,9 @@ class MatriculaController extends BaseController {
             $this->fallo(ErrorDeNegocio::mensajeSeguro($e, 'No se pudo matricular'), $vuelta);
         }
         $_SESSION[self::CLAVE_CREDENCIAL] = ['nombre' => $d['nombre'], 'email' => $d['email'], 'password' => $r['temporal']];
-        $this->exito('Aprendiz matriculado.' . ($r['habilitadas'] > 0 ? " Se habilitaron {$r['habilitadas']} evaluaciones pendientes." : ''), $vuelta);
+        $this->exito('Aprendiz matriculado.'
+            . ($r['cuenta_existente'] ? ' Ya tenía cuenta sin ficha: se completó con esta matrícula y una contraseña temporal nueva.' : '')
+            . ($r['habilitadas'] > 0 ? " Se habilitaron {$r['habilitadas']} evaluaciones pendientes." : ''), $vuelta);
     }
 
     public function editar(): never {

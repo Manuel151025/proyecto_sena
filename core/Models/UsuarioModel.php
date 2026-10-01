@@ -127,6 +127,13 @@ class UsuarioModel implements UsuarioRepositoryInterface {
         return (int)$st->fetchColumn();
     }
 
+    public function estadoMatricula(int $usuarioId): ?string {
+        $st = $this->db->prepare("SELECT estado FROM aprendices WHERE usuario_id = ?");
+        $st->execute([$usuarioId]);
+        $estado = $st->fetchColumn();
+        return $estado === false ? null : (string)$estado;
+    }
+
     /**
      * Inserta las filas cuyo correo no existe todavía; omite el resto.
      * Idempotente: reimportar el mismo archivo no duplica ni falla.

@@ -14,8 +14,9 @@ use PDO;
 /**
  * Importación masiva de cuentas: nombre, correo y rol.
  *
- * Los aprendices se importan mejor desde Matrículas, que además crea su
- * matrícula en la ficha; aquí se admiten para cuentas sin ficha todavía.
+ * Coordinación e instructores. Los aprendices se importan desde Matrículas,
+ * que crea la cuenta junto con su matrícula en la ficha: una cuenta de
+ * aprendiz sin ficha no puede usar nada del sistema.
  */
 final class ImportadorUsuarios extends Importador {
     public function __construct(private ?PDO $db = null) {}
@@ -29,7 +30,7 @@ final class ImportadorUsuarios extends Importador {
             'nombre' => ['etiqueta' => 'Nombre completo', 'alias' => ['nombres', 'nombre_completo', 'nombres_y_apellidos'], 'obligatorio' => true],
             'email'  => ['etiqueta' => 'Correo', 'alias' => ['correo', 'correo_electronico', 'e_mail', 'mail'], 'obligatorio' => true],
             'rol'    => ['etiqueta' => 'Rol', 'alias' => ['perfil', 'tipo'], 'obligatorio' => true,
-                         'ayuda' => 'coordinador, instructor o aprendiz'],
+                         'ayuda' => 'coordinador o instructor (los aprendices, desde Matrículas)'],
         ];
     }
 
@@ -41,6 +42,9 @@ final class ImportadorUsuarios extends Importador {
         $fila['rol'] = mb_strtolower(trim($fila['rol']), 'UTF-8');
         $v = new Validador($fila + ['avatar_color' => '']);
         $d = UsuarioFormulario::validar($v);
+        if ($d['rol'] === ROL_APRENDIZ) {
+            $v->agregarError('Los aprendices se importan desde Matrículas, que también los inscribe en su ficha.');
+        }
         $avisos = [];
         if (!$v->hayErrores() && (new UsuarioModel($this->db))->existeEmail($d['email'])) {
             $avisos[] = 'El correo ya tiene cuenta: se omitirá.';

@@ -103,9 +103,12 @@ test('crea la cuenta de una instructora con clave temporal que debe cambiar al e
 test('no admite dos cuentas con el mismo correo aunque cambien las mayúsculas', async ({ page }) => {
   await page.goto('/index.php/usuarios');
   await abrirModal(page, 'modalCrear');
+  // Las cuentas de aprendiz se crean al matricular, con su ficha: aquí no se ofrecen.
+  await expect(page.locator('#modalCrear [name="rol"] option[value="aprendiz"]')).toHaveCount(0);
+  await expect(page.locator('#modalCrear')).toContainText('Los aprendices se crean al matricularlos');
   await page.fill('#modalCrear [name="nombre"]', 'OTRA PERSONA');
   await page.fill('#modalCrear [name="email"]', INSTRUCTOR.email.toUpperCase());
-  await page.selectOption('#modalCrear [name="rol"]', 'aprendiz');
+  await page.selectOption('#modalCrear [name="rol"]', 'coordinador');
   await enviar(page, '#modalCrear button[type=submit]');
   expect((await avisos(page)).join(' ')).toContain(`Ya existe una cuenta con el correo ${INSTRUCTOR.email}`);
 });

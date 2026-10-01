@@ -18,7 +18,7 @@ Ruta: `/usuarios/importar` · Quién: Coordinación · Máximo de filas: 1.000
 |---|---|---|---|
 | `nombre` | Nombre completo | sí | `nombres`, `nombre_completo`, `nombres_y_apellidos` |
 | `email` | Correo | sí | `correo`, `correo_electronico`, `e_mail`, `mail` |
-| `rol` | Rol — coordinador, instructor o aprendiz | sí | `perfil`, `tipo` |
+| `rol` | Rol — coordinador o instructor (los aprendices, desde Matrículas) | sí | `perfil`, `tipo` |
 
 **Ejemplo:** nombre=`MARÍA FERNANDA LÓPEZ` · email=`mflopez@sena.edu.co` · rol=`instructor`
 

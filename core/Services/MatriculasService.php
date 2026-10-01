@@ -33,6 +33,9 @@ use Throwable;
  *  - Quien deja la formación (retiro, deserción o egreso) no conserva planes
  *    de mejoramiento vigentes: se cierran como no cumplidos con constancia.
  *  - Una ficha en cierre no recibe aprendices, ni nuevos ni trasladados.
+ *  - Una cuenta de aprendiz sin matrícula (las creaba la gestión de
+ *    usuarios) se completa al matricular con su correo; antes el correo se
+ *    rechazaba como ya registrado y esa persona no se podía matricular.
  */
 final class MatriculasService {
     private PDO $db;
@@ -45,23 +48,26 @@ final class MatriculasService {
         $this->auditoria = new Auditoria($this->db);
     }
 
-    /** @return array{id:int, temporal:string, habilitadas:int} */
+    /** @return array{id:int, temporal:string, habilitadas:int, cuenta_existente:bool} */
     public function matricular(array $d, Actor $actor): array {
         $this->soloCoordinacion($actor);
-        $ficha = $this->validar($d, null, null);
+        $cuenta = $this->aprendices->cuentaSinMatricula($d['email']);
+        $ficha = $this->validar($d, null, $cuenta);
         $temporal = PoliticaContrasena::temporal();
         $colores = UsuarioFormulario::COLORES;
 
-        return Transaccion::ejecutar($this->db, function () use ($d, $ficha, $temporal, $colores, $actor) {
+        return Transaccion::ejecutar($this->db, function () use ($d, $ficha, $temporal, $colores, $actor, $cuenta) {
             try {
-                $id = $this->aprendices->crear($d, password_hash($temporal, PASSWORD_DEFAULT), $colores[random_int(0, count($colores) - 1)]);
+                $id = $this->aprendices->crear($d, password_hash($temporal, PASSWORD_DEFAULT),
+                                               $colores[random_int(0, count($colores) - 1)], $cuenta);
             } catch (Throwable $e) {
                 ErroresBD::relanzar($e, [ErroresBD::DUPLICADO => 'El correo o el documento ya están registrados.']);
             }
             $s = (new EvaluacionesSyncService($this->db))->sincronizar(['aprendiz_id' => $id]);
             $this->auditoria->operacion($actor, 'Matricular', 'Matrículas', 'aprendices', $id,
-                "Matriculó a {$d['nombre']} ({$d['tipo_documento']} {$d['numero_documento']}) en la ficha {$ficha['numero_ficha']}");
-            return ['id' => $id, 'temporal' => $temporal, 'habilitadas' => $s['creadas']];
+                "Matriculó a {$d['nombre']} ({$d['tipo_documento']} {$d['numero_documento']}) en la ficha {$ficha['numero_ficha']}"
+                . ($cuenta !== null ? '; ya tenía cuenta, sin matrícula' : ''));
+            return ['id' => $id, 'temporal' => $temporal, 'habilitadas' => $s['creadas'], 'cuenta_existente' => $cuenta !== null];
         });
     }
 

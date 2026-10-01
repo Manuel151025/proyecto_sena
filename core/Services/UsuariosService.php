@@ -25,6 +25,10 @@ use Throwable;
  *  - Nadie puede desactivarse ni quitarse el rol de coordinador a sí mismo,
  *    y el sistema no puede quedarse sin ningún coordinador activo: con un
  *    clic se perdía el acceso a toda la administración.
+ *  - El rol de aprendiz va unido a la matrícula, y esas cuentas las crea
+ *    Matrículas, con su ficha. Aquí se creaban cuentas de aprendiz sin ficha
+ *    (luego no se podían matricular: su correo ya existía) y se cambiaba el
+ *    rol de cualquiera: un instructor con fichas a cargo pasaba a aprendiz.
  */
 final class UsuariosService {
     private UsuarioRepositoryInterface $repo;
@@ -39,6 +43,9 @@ final class UsuariosService {
     /** @return array{id:int, temporal:string} */
     public function crear(array $d, Actor $actor): array {
         $this->soloCoordinacion($actor);
+        if ($d['rol'] === ROL_APRENDIZ) {
+            throw new ErrorDeNegocio('Las cuentas de aprendiz se crean al matricularlo, en Matrículas: así queda inscrito en su ficha.');
+        }
         if ($this->repo->existeEmail($d['email'])) {
             throw new ErrorDeNegocio("Ya existe una cuenta con el correo {$d['email']}.");
         }
@@ -59,6 +66,7 @@ final class UsuariosService {
             throw new ErrorDeNegocio("Otra cuenta ya usa el correo {$d['email']}.");
         }
         $this->protegerCoordinacion($id, $actual, $d['rol'], $d['estado'], $actor);
+        $this->protegerAprendiz($id, $actual, $d['rol'], $d['estado']);
         try {
             $this->repo->actualizar($id, $d);
         } catch (Throwable $e) {
@@ -79,6 +87,7 @@ final class UsuariosService {
         $this->soloCoordinacion($actor);
         $actual = $this->repo->findById($id) ?? throw new ErrorDeNegocio('El usuario no existe.');
         $this->protegerCoordinacion($id, $actual, $actual['rol'], $estado, $actor);
+        $this->protegerAprendiz($id, $actual, $actual['rol'], $estado);
         $this->repo->cambiarEstado($id, $estado);
         $this->auditoria->operacion($actor, $estado === 'activo' ? 'Activar' : 'Desactivar', 'Usuarios', 'usuarios', $id,
             "Cambió el estado de {$actual['email']} a $estado");
@@ -110,6 +119,28 @@ final class UsuariosService {
             && ($rolNuevo !== ROL_COORDINADOR || $estadoNuevo !== 'activo');
         if ($dejaDeCoordinar && $this->repo->contarCoordinadoresActivos($id) === 0) {
             throw new ErrorDeNegocio('Debe quedar al menos un coordinador activo en el sistema.');
+        }
+    }
+
+    /**
+     * El rol de aprendiz no se da ni se quita desde aquí: va con la matrícula.
+     * Solo una cuenta de aprendiz SIN matrícula puede cambiar de rol (una
+     * cuenta creada con el rol equivocado). Y la cuenta de quien dejó la
+     * formación se reactiva desde su matrícula, no por fuera.
+     */
+    private function protegerAprendiz(int $id, array $actual, string $rolNuevo, string $estadoNuevo): void {
+        if ($rolNuevo === ROL_APRENDIZ && $actual['rol'] !== ROL_APRENDIZ) {
+            throw new ErrorDeNegocio('El rol de aprendiz se asigna al matricular, en Matrículas: no se puede dar desde aquí.');
+        }
+        if ($actual['rol'] !== ROL_APRENDIZ) {
+            return;
+        }
+        $matricula = $this->repo->estadoMatricula($id);
+        if ($matricula !== null && $rolNuevo !== ROL_APRENDIZ) {
+            throw new ErrorDeNegocio('La cuenta tiene matrícula: su rol de aprendiz se gestiona desde Matrículas.');
+        }
+        if (in_array($matricula, ['desertado', 'egresado'], true) && $estadoNuevo === 'activo' && $actual['estado'] !== 'activo') {
+            throw new ErrorDeNegocio("El aprendiz figura como $matricula: para devolverle el acceso, cambia su estado en Matrículas.");
         }
     }
 
