@@ -44,6 +44,20 @@ class EvaluacionesSyncService {
             CASE WHEN c.es_etapa_practica = 1 THEN a.instructor_seguimiento_id END,
             f.instructor_id)";
 
+    /**
+     * Quién CALIFICA hoy el RAP, con la misma regla que
+     * InstructorAccessService: la asignación manda; si no hay, en etapa
+     * práctica el instructor de seguimiento y fuera de ella el líder. A
+     * diferencia de RESPONSABLE no cae en el líder para la etapa práctica
+     * (el líder no la califica), así que puede dar NULL: nadie la califica.
+     *
+     * Es la regla de los planes de mejoramiento: su responsable puede
+     * cerrarlo como cumplido y con eso aprobar el RAP.
+     */
+    private const QUIEN_CALIFICA = "COALESCE(
+            (SELECT asg.instructor_id FROM asignaciones asg WHERE asg.ficha_id = f.id AND asg.competencia_id = c.id LIMIT 1),
+            CASE WHEN c.es_etapa_practica = 1 THEN a.instructor_seguimiento_id ELSE f.instructor_id END)";
+
     private PDO $db;
 
     public function __construct(?PDO $db = null) {
@@ -112,10 +126,9 @@ class EvaluacionesSyncService {
      * una ficha, trasladar a un aprendiz o cambiar su instructor de
      * seguimiento. Los juicios ya emitidos conservan a su autor.
      *
-     * Los planes de mejoramiento vigentes también pasan a quien hoy responde
-     * por su RAP: el responsable del plan puede cerrarlo como cumplido (y con
-     * eso aprobar el RAP), y antes conservaba ese poder aunque el RAP pasara
-     * a otro instructor.
+     * Los planes de mejoramiento vigentes pasan a quien hoy califica su RAP
+     * (QUIEN_CALIFICA); si nadie lo califica, conservan su responsable, que
+     * de todos modos ya no puede cerrarlo (PlanesService exige el acceso).
      *
      * @param array $scope Mismas claves que sincronizar().
      * @return int Evaluaciones que cambiaron de responsable.
@@ -143,12 +156,28 @@ class EvaluacionesSyncService {
               JOIN fichas f                  ON f.id = a.ficha_id
               JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
               JOIN competencias c            ON c.id = ra.competencia_id
-               SET pm.instructor_id = " . self::RESPONSABLE . "
+               SET pm.instructor_id = COALESCE(" . self::QUIEN_CALIFICA . ", pm.instructor_id)
              WHERE pm.estado IN ('abierto', 'en_curso')
                AND f.instructor_id IS NOT NULL AND f.instructor_id <> 0
                $where
         ")->execute($params);
         return $cambiadas;
+    }
+
+    /** Instructor que hoy califica el RAP de esa evaluación (ver QUIEN_CALIFICA), o null si nadie. */
+    public function quienCalifica(int $evaluacionId): ?int {
+        $st = $this->db->prepare("
+            SELECT " . self::QUIEN_CALIFICA . "
+              FROM evaluaciones e
+              JOIN aprendices a              ON a.id = e.aprendiz_id
+              JOIN fichas f                  ON f.id = a.ficha_id
+              JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c            ON c.id = ra.competencia_id
+             WHERE e.id = ?
+        ");
+        $st->execute([$evaluacionId]);
+        $id = $st->fetchColumn();
+        return $id === false || $id === null ? null : (int)$id;
     }
 
     /**

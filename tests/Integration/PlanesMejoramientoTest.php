@@ -211,4 +211,56 @@ final class PlanesMejoramientoTest extends CasoConBaseDeDatos {
         }
         $this->assertSame('D', $this->concepto());
     }
+
+    /**
+     * Antes el plan que abría coordinación quedaba a nombre del autor del D,
+     * aunque el RAP ya lo calificara otro, y ese autor podía cerrarlo y
+     * aprobar el RAP: el responsable del plan tenía autoridad por serlo.
+     */
+    #[TestDox('un plan que abre coordinación queda a cargo de quien hoy califica el RAP; el autor del D ya no lo cierra')]
+    public function testPlanDeCoordinacionAQuienCalifica(): void {
+        $autor = (int)$this->eval['instructor_id'];
+        $ctx = $this->db->query("
+            SELECT e.ficha_id, ra.competencia_id, c.es_etapa_practica,
+                   (SELECT asg.id FROM asignaciones asg WHERE asg.ficha_id = e.ficha_id AND asg.competencia_id = ra.competencia_id) AS asignacion
+              FROM evaluaciones e JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c ON c.id = ra.competencia_id
+             WHERE e.id = {$this->eval['id']}")->fetch();
+        if ((int)$ctx['es_etapa_practica'] === 1) {
+            $this->markTestSkipped('el RAP elegido es de etapa práctica: no se asigna');
+        }
+        $nuevo = (int)$this->db->query("SELECT id FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' AND id <> $autor LIMIT 1")->fetchColumn()
+            ?: $this->markTestSkipped('hace falta otro instructor activo');
+        $asignaciones = new \Core\Services\AsignacionesService($this->db);
+        $ctx['asignacion']
+            ? $asignaciones->cambiarInstructor((int)$ctx['asignacion'], $nuevo, $this->coordinador())
+            : $asignaciones->asignar((int)$ctx['ficha_id'], (int)$ctx['competencia_id'], $nuevo, $this->coordinador());
+
+        // El plan se abre DESPUÉS de reasignar el RAP: el D sigue a nombre de su autor.
+        $id = (new PlanesService($this->db))->crear($this->datos(), $this->coordinador());
+        $this->assertSame($nuevo, (int)(new MejoramientoModel($this->db))->findById($id)['instructor_id']);
+        try {
+            (new PlanesService($this->db))->cerrar(['id' => $id, 'resultado' => 'cumplido', 'observaciones' => 'Cierre de quien ya no califica'],
+                new Actor($autor, ROL_INSTRUCTOR));
+            $this->fail('el autor del D cerró el plan de un RAP que ya no califica');
+        } catch (ErrorDeNegocio $e) {
+            $this->assertStringContainsString('No calificas', $e->getMessage());
+        }
+        $this->assertSame('D', $this->concepto());
+
+        (new PlanesService($this->db))->cerrar(['id' => $id, 'resultado' => 'cumplido', 'observaciones' => 'Sustentó el taller'],
+            new Actor($nuevo, ROL_INSTRUCTOR));
+        $this->assertSame('A', $this->concepto());
+    }
+
+    #[TestDox('figurar como responsable de un plan no basta para cerrarlo: hace falta calificar su RAP')]
+    public function testResponsableSinAccesoNoCierra(): void {
+        $id = (new PlanesService($this->db))->crear($this->datos(), $this->coordinador());
+        $ajeno = $this->idInstructorAjeno();
+        $this->db->exec("UPDATE planes_mejoramiento SET instructor_id = $ajeno WHERE id = $id");
+
+        $this->expectException(ErrorDeNegocio::class);
+        (new PlanesService($this->db))->cerrar(['id' => $id, 'resultado' => 'cumplido', 'observaciones' => 'Cierre sin autoridad'],
+            new Actor($ajeno, ROL_INSTRUCTOR));
+    }
 }

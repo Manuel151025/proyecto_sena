@@ -50,9 +50,13 @@ final class PlanesService {
         return Transaccion::ejecutar($this->db, function () use ($d, $e, $actor) {
             $id = $this->modelo->crear([
                 'evaluacion_id' => (int)$e['id'], 'aprendiz_id' => (int)$e['aprendiz_id'], 'ficha_id' => (int)$e['ficha_id'],
-                // Responsable: quien lo crea si es instructor; si lo crea
-                // coordinación, el instructor que califica ese RAP.
-                'instructor_id' => $actor->esInstructor() ? $actor->id : (int)$e['instructor_id'],
+                // Responsable: quien lo crea si es instructor (tiene acceso: se
+                // comprobó arriba); si lo crea coordinación, quien HOY califica
+                // el RAP. Antes era el autor del D, aunque el RAP ya hubiera
+                // pasado a otro instructor; si nadie lo califica, coordinación.
+                'instructor_id' => $actor->esInstructor()
+                    ? $actor->id
+                    : ((new EvaluacionesSyncService($this->db))->quienCalifica((int)$e['id']) ?? $actor->id),
                 'actividades' => $d['actividades'], 'fecha_inicio' => $d['fecha_inicio'], 'fecha_limite' => $d['fecha_limite'],
                 'creado_por' => $actor->id,
             ]);
@@ -114,15 +118,18 @@ final class PlanesService {
         });
     }
 
-    /** Plan vigente sobre el que el actor tiene autoridad. */
+    /**
+     * Plan vigente sobre el que el actor tiene autoridad: la de calificar su
+     * RAP hoy. Antes bastaba con figurar como responsable del plan, y quien
+     * ya no calificaba el RAP (reasignación, traslado, etapa práctica) podía
+     * cerrarlo como cumplido y aprobarlo.
+     */
     private function vigente(int $id, Actor $actor): array {
         $plan = $this->modelo->findById($id) ?? throw new ErrorDeNegocio('El plan no existe.');
         if (!in_array($plan['estado'], MejoramientoModel::VIGENTES, true)) {
             throw new ErrorDeNegocio('El plan ya está cerrado.');
         }
-        if (!($actor->esInstructor() && (int)$plan['instructor_id'] === $actor->id)) {
-            $this->exigirAutoridad((int)$plan['evaluacion_id'], $actor);
-        }
+        $this->exigirAutoridad((int)$plan['evaluacion_id'], $actor);
         return $plan;
     }
 
