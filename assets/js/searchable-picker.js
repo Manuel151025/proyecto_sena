@@ -220,10 +220,13 @@
             const terms = q ? [q] : [];
             const options = getOptions();
 
-            applyDensity(options.filter(opt => !opt.isPlaceholder).length);
+            // Las opciones deshabilitadas no se ofrecen: son placeholders o
+            // valores que el formulario no admite para este registro
+            // (data-valores con _soloOpciones, en comportamientos.js).
+            applyDensity(options.filter(opt => !opt.disabled).length);
 
             currentResults = options.filter(opt => {
-                if (opt.isPlaceholder) return false;
+                if (opt.disabled) return false;
                 if (!q) return true;
                 const hay = normalize(opt.label + ' ' + opt.searchExtra);
                 return hay.includes(q);

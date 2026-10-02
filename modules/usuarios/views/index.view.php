@@ -82,6 +82,15 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
       <?php endif; ?>
       <?php foreach ($usuarios as $u):
           $esYo = (int)$u['id'] === $actor_id;
+          // Lo que el servidor admite para esta cuenta (UsuariosService::
+          // protegerAprendiz): el modal solo ofrece eso. Antes ofrecía roles y
+          // estados que al guardar se rechazaban siempre.
+          $conMatricula = $u['matricula_estado'] !== null;
+          $fueraDeFormacion = in_array($u['matricula_estado'], ['desertado', 'egresado'], true) && $u['estado'] !== 'activo';
+          $rolesPermitidos = $u['rol'] === ROL_APRENDIZ
+              ? ($conMatricula ? [ROL_APRENDIZ] : array_keys($roles_label))
+              : [ROL_COORDINADOR, ROL_INSTRUCTOR];
+          $estadosPermitidos = $fueraDeFormacion ? array_values(array_diff(array_keys($estados_label), ['activo'])) : array_keys($estados_label);
           [$estTxt, $estCls] = $estados_label[$u['estado']] ?? [$u['estado'], 'secondary'];
       ?>
       <tr>
@@ -98,7 +107,8 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
           <div class="d-inline-flex gap-1">
             <button type="button" class="btn btn-sm btn-soft" data-modal="#modalEditar" aria-label="Editar <?= e($u['nombre']) ?>"
                     data-valores="<?= datosJson(['id' => (int)$u['id'], 'nombre' => $u['nombre'], 'email' => $u['email'],
-                        'rol' => $u['rol'], 'estado' => $u['estado'], 'avatar_color' => $u['avatar_color'] ?: $colores[0]]) ?>">
+                        'rol' => $u['rol'], 'estado' => $u['estado'], 'avatar_color' => $u['avatar_color'] ?: $colores[0],
+                        '_soloOpciones' => ['rol' => $rolesPermitidos, 'estado' => $estadosPermitidos]]) ?>">
               <i class="bi bi-pencil"></i>
             </button>
             <form method="POST" class="d-inline" data-confirmar="<?= e('¿Generar una nueva contraseña temporal para ' . $u['nombre'] . '? La actual dejará de funcionar.') ?>">
@@ -107,7 +117,11 @@ $exportar = APP_URL . '/index.php/usuarios/exportar?' . http_build_query(array_f
               <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
               <button type="submit" class="btn btn-sm btn-soft" aria-label="Restablecer contraseña de <?= e($u['nombre']) ?>" title="Restablecer contraseña"><i class="bi bi-key"></i></button>
             </form>
-            <?php if (!$esYo): ?>
+            <?php if ($fueraDeFormacion): ?>
+            <a class="btn btn-sm btn-soft" href="<?= e(APP_URL . '/index.php/matriculas?search=' . rawurlencode($u['email'])) ?>"
+               title="<?= e('Su matrícula está ' . $u['matricula_estado'] . ': el acceso se le devuelve desde Matrículas.') ?>"
+               aria-label="<?= e('Ver la matrícula de ' . $u['nombre']) ?>"><i class="bi bi-mortarboard"></i></a>
+            <?php elseif (!$esYo): ?>
             <form method="POST" class="d-inline"
                   data-confirmar="<?= e($u['estado'] === 'activo'
                       ? '¿Desactivar a ' . $u['nombre'] . '? No podrá iniciar sesión, pero sus registros se conservan.'

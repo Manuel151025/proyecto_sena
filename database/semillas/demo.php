@@ -225,9 +225,6 @@ return static function (PDO $db): array {
             // Las cinco primeras cuentas tienen correo fácil de recordar.
             $email = $contador <= 5 ? ($contador === 1 ? 'aprendiz@sena.edu.co' : "aprendiz$contador@sena.edu.co")
                                     : "aprendiz$contador.f$num@soy.sena.edu.co";
-            $uid = $ins("INSERT INTO usuarios (email, password, nombre, rol, avatar_color) VALUES (?,?,?,?,?)",
-                [$email, $hash, $nombre, 'aprendiz', $azar($colores)]);
-
             // Un par de deserciones y suspensiones por ficha: la analítica
             // de retención necesita casos que contar.
             $estado = match (true) {
@@ -236,6 +233,10 @@ return static function (PDO $db): array {
                 $i === 0 && $fi === 0             => 'etapa_practica',
                 default                           => 'matriculado',
             };
+            // Como en la aplicación (MatriculasService): quien deserta no
+            // inicia sesión. Antes los desertados de la demo seguían activos.
+            $uid = $ins("INSERT INTO usuarios (email, password, nombre, rol, avatar_color, estado) VALUES (?,?,?,?,?,?)",
+                [$email, $hash, $nombre, 'aprendiz', $azar($colores), $estado === 'desertado' ? 'inactivo' : 'activo']);
             $seguimiento = $estado === 'etapa_practica' ? $instructores[4] : null;
             $aid = $ins(
                 "INSERT INTO aprendices (usuario_id, ficha_id, instructor_seguimiento_id, numero_documento, tipo_documento,

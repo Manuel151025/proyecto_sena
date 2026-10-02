@@ -20,8 +20,12 @@ interface UsuarioRepositoryInterface {
     public function cambiarEstado(int $id, string $estado): void;
     public function fijarPassword(int $id, string $hash, bool $debeCambiar): void;
     public function contarCoordinadoresActivos(?int $excepto = null): int;
-    /** Estado de la matrícula de la cuenta (matriculado, desertado…); null si no tiene. */
-    public function estadoMatricula(int $usuarioId): ?string;
+    /**
+     * Estado de la matrícula de la cuenta (matriculado, desertado…); null si
+     * no tiene. Con $bloquear, dentro de una transacción, nadie la crea ni la
+     * cambia hasta terminar.
+     */
+    public function estadoMatricula(int $usuarioId, bool $bloquear = false): ?string;
     /** @return array{insertados: list<array>, omitidos: list<string>} */
     public function importar(array $filas): array;
 }

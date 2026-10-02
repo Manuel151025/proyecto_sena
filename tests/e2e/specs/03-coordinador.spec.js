@@ -113,6 +113,24 @@ test('no admite dos cuentas con el mismo correo aunque cambien las mayúsculas',
   expect((await avisos(page)).join(' ')).toContain(`Ya existe una cuenta con el correo ${INSTRUCTOR.email}`);
 });
 
+test('el formulario de cuentas solo ofrece los cambios que se pueden guardar', async ({ page }) => {
+  // Un instructor no pasa a aprendiz: la opción no se ofrece (las cuentas de
+  // aprendiz nacen en Matrículas).
+  await page.goto('/index.php/usuarios?rol=instructor');
+  await page.locator('[data-modal="#modalEditar"]').first().click();
+  await page.waitForSelector('#modalEditar.show');
+  await expect(page.locator('#editar_rol option[value="aprendiz"]')).toHaveJSProperty('disabled', true);
+  await expect(page.locator('#editar_rol option[value="coordinador"]')).toHaveJSProperty('disabled', false);
+  await page.keyboard.press('Escape');
+
+  // Quien desertó recupera el acceso desde Matrículas: su fila lleva allí y no
+  // ofrece un «Activar» que el servidor rechazaría.
+  await page.goto('/index.php/usuarios?rol=aprendiz&estado=inactivo');
+  const fila = page.locator('tbody tr').first();
+  await expect(fila.locator('a[href*="/index.php/matriculas?search="]')).toHaveCount(1);
+  await expect(fila.locator('input[name="action"][value="estado"]')).toHaveCount(0);
+});
+
 test('abre la ficha del programa nuevo con la instructora como líder', async ({ page }) => {
   await page.goto('/index.php/fichas');
   await abrirModal(page, 'modalCrear');

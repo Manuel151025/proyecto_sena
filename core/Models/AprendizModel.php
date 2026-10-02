@@ -109,13 +109,30 @@ class AprendizModel {
      * Cuenta de aprendiz que aún no tiene matrícula (las creaba la gestión de
      * usuarios). Matricular con su correo la completa: antes el correo se
      * rechazaba como ya registrado y esa persona no se podía matricular.
+     *
+     * @return array{id:int, nombre:string, estado:string}|null
      */
-    public function cuentaSinMatricula(string $email): ?int {
-        $st = $this->db->prepare("SELECT u.id FROM usuarios u LEFT JOIN aprendices a ON a.usuario_id = u.id
+    public function cuentaSinMatricula(string $email): ?array {
+        $st = $this->db->prepare("SELECT u.id, u.nombre, u.estado FROM usuarios u LEFT JOIN aprendices a ON a.usuario_id = u.id
                                    WHERE u.email = ? AND u.rol = 'aprendiz' AND a.id IS NULL");
         $st->execute([$email]);
-        $id = $st->fetchColumn();
-        return $id === false ? null : (int)$id;
+        $c = $st->fetch(PDO::FETCH_ASSOC);
+        return $c === false ? null : ['id' => (int)$c['id'], 'nombre' => (string)$c['nombre'], 'estado' => (string)$c['estado']];
+    }
+
+    /**
+     * Lo que liga al aprendiz a los RAP de su programa además de los juicios:
+     * evidencias y retroalimentación sobre una evaluación, y planes. Con algo
+     * de esto, sus pendientes no se pueden retirar al trasladarlo de programa.
+     */
+    public function vinculosAcademicos(int $aprendizId): int {
+        $st = $this->db->prepare("
+            SELECT (SELECT COUNT(*) FROM evidencias WHERE aprendiz_id = ? AND evaluacion_id IS NOT NULL)
+                 + (SELECT COUNT(*) FROM retroalimentacion r JOIN evaluaciones e ON e.id = r.evaluacion_id WHERE e.aprendiz_id = ?)
+                 + (SELECT COUNT(*) FROM planes_mejoramiento WHERE aprendiz_id = ?)
+        ");
+        $st->execute([$aprendizId, $aprendizId, $aprendizId]);
+        return (int)$st->fetchColumn();
     }
 
     /**
@@ -128,7 +145,8 @@ class AprendizModel {
         if ($cuentaSinMatricula !== null) {
             $st = $this->db->prepare("
                 UPDATE usuarios SET nombre = ?, password = ?, debe_cambiar_password = 1, estado = 'activo'
-                 WHERE id = ? AND rol = 'aprendiz' AND NOT EXISTS (SELECT 1 FROM aprendices WHERE usuario_id = ?)
+                 WHERE id = ? AND rol = 'aprendiz' AND estado <> 'bloqueado'
+                   AND NOT EXISTS (SELECT 1 FROM aprendices WHERE usuario_id = ?)
             ");
             $st->execute([$d['nombre'], $hash, $cuentaSinMatricula, $cuentaSinMatricula]);
             if ($st->rowCount() !== 1) {

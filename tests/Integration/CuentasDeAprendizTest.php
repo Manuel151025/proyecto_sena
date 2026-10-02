@@ -176,4 +176,54 @@ final class CuentasDeAprendizTest extends CasoConBaseDeDatos {
             ['nombre' => 'CAMILA PRUEBA QA', 'email' => 'camila.qa@example.com', 'rol' => 'Aprendiz'], $this->coordinador(), []);
         $this->assertStringContainsString('Matrículas', implode(' ', $v['errores']));
     }
+
+    #[TestDox('una cuenta de aprendiz bloqueada no se reactiva al matricularla: se desbloquea en Usuarios')]
+    public function testCuentaBloqueadaNoSeCompleta(): void {
+        $cuenta = $this->cuentaSinMatricula();
+        $this->db->exec("UPDATE usuarios SET estado = 'bloqueado' WHERE id = $cuenta");
+        $this->esperarError(fn() => (new MatriculasService($this->db))->matricular($this->datosMatricula($this->fichaAbierta()),
+            $this->coordinador()), 'bloqueada');
+
+        $importador = new ImportadorMatriculas($this->db);
+        $contexto = ['ficha_id' => $this->fichaAbierta()];
+        $v = $importador->validarFila(['nombre' => 'LAURA PRUEBA QA', 'email' => self::CORREO, 'tipo_documento' => 'CC',
+            'numero_documento' => '99990000777', 'genero' => 'F', 'telefono' => '', 'ciudad' => '', 'fecha_nacimiento' => ''],
+            $this->coordinador(), $contexto);
+        $this->assertStringContainsString('bloqueada', implode(' ', $v['errores']));
+        $r = $importador->guardar([$v['datos']], $this->coordinador(), $contexto);
+        $this->assertSame([0, 1], [$r['creados'], $r['omitidos']]);
+        $this->assertSame('bloqueado', $this->usuario($cuenta)['estado']);
+    }
+
+    /**
+     * Cambiar el rol se decide mirando si la cuenta tiene matrícula. Esa
+     * lectura bloquea la fila: una matrícula que se esté creando a la vez
+     * (importación larga) espera o se ve, en lugar de colarse entre la
+     * comprobación y el guardado y dejar un instructor con matrícula.
+     */
+    #[TestDox('al cambiar el rol de una cuenta de aprendiz, su matrícula se lee con bloqueo')]
+    public function testRolSeComprobaConBloqueo(): void {
+        $repo = new class implements \Core\Interfaces\UsuarioRepositoryInterface {
+            public array $llamadas = [];
+            public function listar(array $filtros, int $limite, int $offset): array { return []; }
+            public function contar(array $filtros): int { return 0; }
+            public function findById(int $id): ?array {
+                return ['id' => $id, 'nombre' => 'CUENTA SIN FICHA', 'email' => 'sin.ficha.qa@example.com', 'rol' => 'aprendiz', 'estado' => 'activo'];
+            }
+            public function existeEmail(string $email, ?int $exceptoId = null): bool { return false; }
+            public function crear(array $datos, string $hash, bool $debeCambiar): int { return 0; }
+            public function actualizar(int $id, array $datos): void { $this->llamadas[] = 'actualizar'; }
+            public function cambiarEstado(int $id, string $estado): void { $this->llamadas[] = 'cambiarEstado'; }
+            public function fijarPassword(int $id, string $hash, bool $debeCambiar): void {}
+            public function contarCoordinadoresActivos(?int $excepto = null): int { return 1; }
+            public function importar(array $filas): array { return ['insertados' => [], 'omitidos' => []]; }
+            public function estadoMatricula(int $usuarioId, bool $bloquear = false): ?string {
+                $this->llamadas[] = $bloquear ? 'matricula con bloqueo' : 'matricula sin bloqueo';
+                return null;
+            }
+        };
+        (new UsuariosService($this->db, $repo))->editar(999999, ['nombre' => 'CUENTA SIN FICHA', 'email' => 'sin.ficha.qa@example.com',
+            'rol' => ROL_INSTRUCTOR, 'estado' => 'activo', 'avatar_color' => '#39A900'], $this->coordinador());
+        $this->assertSame(['matricula con bloqueo', 'actualizar'], $repo->llamadas);
+    }
 }

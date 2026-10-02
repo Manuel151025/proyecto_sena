@@ -110,7 +110,26 @@
   // asignación de .value).
   // -------------------------------------------------------------------
   function rellenar(modal, valores) {
+    // _soloOpciones: {campo: [valores]} deja elegir solo esos valores en el
+    // <select> de ese campo; el resto se deshabilita (y el selector no lo
+    // ofrece). Sin la clave, el select recupera todas sus opciones: el modal
+    // se reutiliza entre filas.
+    var solo = valores._soloOpciones || {};
+    modal.querySelectorAll('select[name]').forEach(function (s) {
+      var permitidos = Array.isArray(solo[s.name]) ? solo[s.name].map(String) : null;
+      Array.prototype.forEach.call(s.options, function (o) {
+        if (o.hasAttribute('data-restringida')) {
+          o.disabled = false;
+          o.removeAttribute('data-restringida');
+        }
+        if (permitidos && !o.disabled && permitidos.indexOf(o.value) === -1) {
+          o.disabled = true;
+          o.setAttribute('data-restringida', '');
+        }
+      });
+    });
     Object.keys(valores).forEach(function (campo) {
+      if (campo === '_soloOpciones') return;
       var controles = modal.querySelectorAll('[name="' + campo.replace(/"/g, '') + '"]');
       controles.forEach(function (c) {
         var v = valores[campo];

@@ -54,21 +54,28 @@ final class MatriculasService {
     public function matricular(array $d, Actor $actor): array {
         $this->soloCoordinacion($actor);
         $cuenta = $this->aprendices->cuentaSinMatricula($d['email']);
-        $ficha = $this->validar($d, null, $cuenta);
+        // Completar la cuenta la activa: una bloqueada a propósito no se
+        // reactiva por esta vía, sin pasar por Usuarios ni dejar constancia.
+        if ($cuenta !== null && $cuenta['estado'] === 'bloqueado') {
+            throw new ErrorDeNegocio("La cuenta de {$d['email']} está bloqueada: desbloquéala en Usuarios antes de matricularla.");
+        }
+        $ficha = $this->validar($d, null, $cuenta['id'] ?? null);
         $temporal = PoliticaContrasena::temporal();
         $colores = UsuarioFormulario::COLORES;
 
         return Transaccion::ejecutar($this->db, function () use ($d, $ficha, $temporal, $colores, $actor, $cuenta) {
             try {
                 $id = $this->aprendices->crear($d, password_hash($temporal, PASSWORD_DEFAULT),
-                                               $colores[random_int(0, count($colores) - 1)], $cuenta);
+                                               $colores[random_int(0, count($colores) - 1)], $cuenta['id'] ?? null);
             } catch (Throwable $e) {
                 ErroresBD::relanzar($e, [ErroresBD::DUPLICADO => 'El correo o el documento ya están registrados.']);
             }
             $s = (new EvaluacionesSyncService($this->db))->sincronizar(['aprendiz_id' => $id]);
             $this->auditoria->operacion($actor, 'Matricular', 'Matrículas', 'aprendices', $id,
                 "Matriculó a {$d['nombre']} ({$d['tipo_documento']} {$d['numero_documento']}) en la ficha {$ficha['numero_ficha']}"
-                . ($cuenta !== null ? '; ya tenía cuenta, sin matrícula' : ''));
+                . ($cuenta !== null
+                    ? "; completó la cuenta que ya existía sin matrícula (antes «{$cuenta['nombre']}», {$cuenta['estado']}): queda activa y con contraseña temporal nueva"
+                    : ''));
             return ['id' => $id, 'temporal' => $temporal, 'habilitadas' => $s['creadas'], 'cuenta_existente' => $cuenta !== null];
         });
     }
@@ -82,14 +89,20 @@ final class MatriculasService {
         if ($traslado && $fichaNueva['estado'] === 'cierre') {
             throw new ErrorDeNegocio("La ficha {$fichaNueva['numero_ficha']} está en cierre: no recibe aprendices trasladados.");
         }
-        if ($traslado && $this->aprendices->juiciosEmitidos($id) > 0) {
+        $otroPrograma = false;
+        if ($traslado) {
             $fichaVieja = $this->aprendices->datosFicha((int)$actual['ficha_id']);
-            if ($fichaVieja && (int)$fichaVieja['programa_id'] !== (int)$fichaNueva['programa_id']) {
-                throw new ErrorDeNegocio('El aprendiz ya tiene juicios emitidos: solo se puede trasladar a otra ficha del mismo programa.');
-            }
+            $otroPrograma = $fichaVieja !== null && (int)$fichaVieja['programa_id'] !== (int)$fichaNueva['programa_id'];
+        }
+        if ($otroPrograma && $this->aprendices->juiciosEmitidos($id) > 0) {
+            throw new ErrorDeNegocio('El aprendiz ya tiene juicios emitidos: solo se puede trasladar a otra ficha del mismo programa.');
+        }
+        if ($otroPrograma && $this->aprendices->vinculosAcademicos($id) > 0) {
+            throw new ErrorDeNegocio('El aprendiz tiene evidencias, retroalimentación o planes ligados a resultados de su programa: '
+                . 'solo se puede trasladar a otra ficha del mismo programa.');
         }
 
-        Transaccion::ejecutar($this->db, function () use ($id, $d, $actual, $fichaNueva, $traslado, $actor) {
+        Transaccion::ejecutar($this->db, function () use ($id, $d, $actual, $fichaNueva, $traslado, $otroPrograma, $actor) {
             try {
                 $this->aprendices->actualizar($id, (int)$actual['usuario_id'], $d);
             } catch (Throwable $e) {
@@ -98,6 +111,12 @@ final class MatriculasService {
             $evaluaciones = new EvaluacionesSyncService($this->db);
             if ($traslado) {
                 $this->aprendices->trasladarRegistros($id, (int)$d['ficha_id']);
+            }
+            // A otro programa (sin juicios ni vínculos: se comprobó arriba),
+            // las pendientes del anterior sobran: antes se quedaban y el avance
+            // se calculaba sobre los RAP de dos programas.
+            if ($otroPrograma) {
+                $evaluaciones->retirarDeOtroPrograma((int)$d['ficha_id']);
             }
             // Las pendientes que falten: las del programa de destino en un
             // traslado y, al reintegrar a un desertado, las de los RAP creados

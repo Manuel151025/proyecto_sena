@@ -59,7 +59,8 @@ class UsuarioModel implements UsuarioRepositoryInterface {
         $limite = max(1, min($limite, 100));
         $offset = max(0, $offset);
         $st = $this->db->prepare("
-            SELECT id, nombre, email, rol, estado, avatar_color, debe_cambiar_password, fecha_creacion
+            SELECT id, nombre, email, rol, estado, avatar_color, debe_cambiar_password, fecha_creacion,
+                   (SELECT ap.estado FROM aprendices ap WHERE ap.usuario_id = usuarios.id) AS matricula_estado
               FROM usuarios
              WHERE 1=1 $where
              ORDER BY fecha_creacion DESC, id DESC
@@ -127,8 +128,8 @@ class UsuarioModel implements UsuarioRepositoryInterface {
         return (int)$st->fetchColumn();
     }
 
-    public function estadoMatricula(int $usuarioId): ?string {
-        $st = $this->db->prepare("SELECT estado FROM aprendices WHERE usuario_id = ?");
+    public function estadoMatricula(int $usuarioId, bool $bloquear = false): ?string {
+        $st = $this->db->prepare("SELECT estado FROM aprendices WHERE usuario_id = ?" . ($bloquear ? ' FOR UPDATE' : ''));
         $st->execute([$usuarioId]);
         $estado = $st->fetchColumn();
         return $estado === false ? null : (string)$estado;

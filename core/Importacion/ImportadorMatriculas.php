@@ -92,8 +92,13 @@ final class ImportadorMatriculas extends Importador {
         $avisos = [];
         if ($errores === []) {
             $m = new AprendizModel($this->db);
-            if ($m->cuentaSinMatricula($d['email']) !== null) {
-                $avisos[] = 'Ya tiene cuenta de aprendiz sin ficha: se completa con esta matrícula y una contraseña temporal nueva.';
+            $cuenta = $m->cuentaSinMatricula($d['email']);
+            if ($cuenta !== null && $cuenta['estado'] === 'bloqueado') {
+                $errores[] = "La cuenta de {$d['email']} está bloqueada: desbloquéala en Usuarios antes de matricularla.";
+            } elseif ($cuenta !== null) {
+                $avisos[] = "Ya tiene cuenta de aprendiz sin ficha («{$cuenta['nombre']}»"
+                    . ($cuenta['estado'] !== 'activo' ? ", {$cuenta['estado']}" : '')
+                    . '): se completa con esta matrícula, queda activa y recibe una contraseña temporal nueva.';
             } elseif ($m->existeEmail($d['email'])) {
                 $errores[] = "El correo {$d['email']} ya tiene cuenta.";
             }
@@ -115,22 +120,28 @@ final class ImportadorMatriculas extends Importador {
             $sync = new EvaluacionesSyncService($this->db);
             $colores = UsuarioFormulario::COLORES;
             $credenciales = [];
+            $completadas = [];
             $omitidos = 0;
             foreach ($datos as $i => $d) {
                 // Se revalida contra la base: entre la vista previa y la
                 // confirmación otra persona pudo matricular el mismo documento.
                 $cuenta = $m->cuentaSinMatricula($d['email']);
-                if (($cuenta === null && $m->existeEmail($d['email'])) || $m->existeDocumento($d['numero_documento'])) {
+                if (($cuenta === null && $m->existeEmail($d['email'])) || ($cuenta !== null && $cuenta['estado'] === 'bloqueado')
+                    || $m->existeDocumento($d['numero_documento'])) {
                     $omitidos++;
                     continue;
                 }
                 $temporal = PoliticaContrasena::temporal();
-                $id = $m->crear($d, password_hash($temporal, PASSWORD_DEFAULT), $colores[$i % count($colores)], $cuenta);
+                $id = $m->crear($d, password_hash($temporal, PASSWORD_DEFAULT), $colores[$i % count($colores)], $cuenta['id'] ?? null);
+                if ($cuenta !== null) {
+                    $completadas[] = "{$d['email']} (antes «{$cuenta['nombre']}», {$cuenta['estado']})";
+                }
                 $sync->sincronizar(['aprendiz_id' => $id]);
                 $credenciales[] = ['nombre' => $d['nombre'], 'email' => $d['email'], 'password' => $temporal];
             }
             (new Auditoria($this->db))->operacion($actor, 'Importar', 'Matrículas', 'aprendices', null,
-                count($credenciales) . " aprendices matriculados en la ficha {$contexto['ficha_id']}");
+                count($credenciales) . " aprendices matriculados en la ficha {$contexto['ficha_id']}"
+                . ($completadas !== [] ? '; cuentas que ya existían sin matrícula, ahora activas y con contraseña temporal nueva: ' . implode(', ', $completadas) : ''));
             return ['creados' => count($credenciales), 'omitidos' => $omitidos, 'credenciales' => $credenciales];
         });
     }

@@ -10,6 +10,7 @@ use Core\Support\Actor;
 use Core\Support\ErrorDeNegocio;
 use Core\Support\ErroresBD;
 use Core\Support\PoliticaContrasena;
+use Core\Support\Transaccion;
 use PDO;
 use Throwable;
 
@@ -31,13 +32,14 @@ use Throwable;
  *    rol de cualquiera: un instructor con fichas a cargo pasaba a aprendiz.
  */
 final class UsuariosService {
+    private PDO $db;
     private UsuarioRepositoryInterface $repo;
     private Auditoria $auditoria;
 
     public function __construct(?PDO $db = null, ?UsuarioRepositoryInterface $repo = null, ?Auditoria $auditoria = null) {
-        $db ??= Database::getConnection();
-        $this->repo = $repo ?? new UsuarioModel($db);
-        $this->auditoria = $auditoria ?? new Auditoria($db);
+        $this->db = $db ?? Database::getConnection();
+        $this->repo = $repo ?? new UsuarioModel($this->db);
+        $this->auditoria = $auditoria ?? new Auditoria($this->db);
     }
 
     /** @return array{id:int, temporal:string} */
@@ -65,13 +67,18 @@ final class UsuariosService {
         if ($this->repo->existeEmail($d['email'], $id)) {
             throw new ErrorDeNegocio("Otra cuenta ya usa el correo {$d['email']}.");
         }
-        $this->protegerCoordinacion($id, $actual, $d['rol'], $d['estado'], $actor);
-        $this->protegerAprendiz($id, $actual, $d['rol'], $d['estado']);
-        try {
-            $this->repo->actualizar($id, $d);
-        } catch (Throwable $e) {
-            ErroresBD::relanzar($e, [ErroresBD::DUPLICADO => "Otra cuenta ya usa el correo {$d['email']}."]);
-        }
+        // En una transacción: la comprobación de la matrícula bloquea su fila
+        // hasta guardar, y una matrícula que se esté creando a la vez para esta
+        // cuenta espera (o se ve) en lugar de colarse entre las dos.
+        Transaccion::ejecutar($this->db, function () use ($id, $d, $actual, $actor) {
+            $this->protegerCoordinacion($id, $actual, $d['rol'], $d['estado'], $actor);
+            $this->protegerAprendiz($id, $actual, $d['rol'], $d['estado']);
+            try {
+                $this->repo->actualizar($id, $d);
+            } catch (Throwable $e) {
+                ErroresBD::relanzar($e, [ErroresBD::DUPLICADO => "Otra cuenta ya usa el correo {$d['email']}."]);
+            }
+        });
         $cambios = [];
         if ($actual['rol'] !== $d['rol']) {
             $cambios[] = "rol {$actual['rol']} → {$d['rol']}";
@@ -86,9 +93,11 @@ final class UsuariosService {
     public function cambiarEstado(int $id, string $estado, Actor $actor): void {
         $this->soloCoordinacion($actor);
         $actual = $this->repo->findById($id) ?? throw new ErrorDeNegocio('El usuario no existe.');
-        $this->protegerCoordinacion($id, $actual, $actual['rol'], $estado, $actor);
-        $this->protegerAprendiz($id, $actual, $actual['rol'], $estado);
-        $this->repo->cambiarEstado($id, $estado);
+        Transaccion::ejecutar($this->db, function () use ($id, $actual, $estado, $actor) {
+            $this->protegerCoordinacion($id, $actual, $actual['rol'], $estado, $actor);
+            $this->protegerAprendiz($id, $actual, $actual['rol'], $estado);
+            $this->repo->cambiarEstado($id, $estado);
+        });
         $this->auditoria->operacion($actor, $estado === 'activo' ? 'Activar' : 'Desactivar', 'Usuarios', 'usuarios', $id,
             "Cambió el estado de {$actual['email']} a $estado");
     }
@@ -135,7 +144,7 @@ final class UsuariosService {
         if ($actual['rol'] !== ROL_APRENDIZ) {
             return;
         }
-        $matricula = $this->repo->estadoMatricula($id);
+        $matricula = $this->repo->estadoMatricula($id, true);
         if ($matricula !== null && $rolNuevo !== ROL_APRENDIZ) {
             throw new ErrorDeNegocio('La cuenta tiene matrícula: su rol de aprendiz se gestiona desde Matrículas.');
         }
