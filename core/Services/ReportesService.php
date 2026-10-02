@@ -64,7 +64,8 @@ final class ReportesService {
                     $f['numero_ficha'], $f['codigo_programa'], $f['instructor'], $f['estado'], (int)$f['aprendices_activos'],
                     (int)$f['aprobados'], (int)$f['en_d'], $f['pct_a'] ?? '', Semaforo::etiqueta($f['semaforo']),
                     $f['cumplimiento'] ?? '', $f['avance_proyecto'] ?? '', (int)($f['planes_abiertos'] ?? 0),
-                ], (new FichaModel($this->db))->paraExportar($actor, [], \Core\Exportacion\Exportador::MAX_FILAS)),
+                // Una fila más que el tope: así el Exportador avisa en lugar de cortar.
+                ], (new FichaModel($this->db))->paraExportar($actor, [], \Core\Exportacion\Exportador::MAX_FILAS + 1)),
                 'estilos' => ['columna_porcentaje' => 7], 'anchos' => [11, 10, 26, 11, 10, 9, 9, 12, 11, 12, 11, 10],
             ],
             'instructor' => [
@@ -84,7 +85,7 @@ final class ReportesService {
                 'encabezados' => ['Ficha', 'Aprendiz', 'Documento', 'RAP en A', 'RAP en D', 'Pendientes', '% Desempeño', 'Semáforo', 'Planes vigentes'],
                 'filas' => array_map(static fn($a) => [$a['numero_ficha'], $a['nombre'], $a['numero_documento'], (int)$a['aprobados'], (int)$a['en_d'],
                     (int)$a['pendientes'], $a['pct_a'] ?? '', Semaforo::etiqueta($a['semaforo']), (int)$a['planes']],
-                    (new AnaliticaModel($this->db))->aprendicesEnRiesgo($actor, 5000)),
+                    (new AnaliticaModel($this->db))->aprendicesEnRiesgo($actor, \Core\Exportacion\Exportador::MAX_FILAS + 1)),
                 'estilos' => ['columna_porcentaje' => 6], 'anchos' => [10, 32, 14, 9, 9, 10, 12, 10, 10],
             ],
             'historial' => $this->historial($modelo, $actor, $params, $titulo),

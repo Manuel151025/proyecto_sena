@@ -59,9 +59,9 @@ final class ConsultasDeModelosTest extends CasoConBaseDeDatos {
         $this->assertSame($this->contar('fichas'), $m->contar($coord));
         $this->assertLessThanOrEqual(1, $m->contar($aprendiz), 'el aprendiz solo alcanza su ficha');
         $this->assertSame(0, $m->contar($coord, ['estado' => 'inventado']), 'un estado inventado no debe devolver filas');
-        $this->ejecuta(fn() => $m->getProgramasActivos(), 'getProgramasActivos');
+        $this->ejecuta(fn() => $m->getProgramas(), 'getProgramas');
         $this->ejecuta(fn() => $m->getInstructoresActivos(), 'getInstructoresActivos');
-        $this->ejecuta(fn() => $m->getProyectosActivos(), 'getProyectosActivos');
+        $this->ejecuta(fn() => $m->getProyectos(), 'getProyectos');
     }
 
     /**

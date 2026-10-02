@@ -66,10 +66,10 @@ class FichaController extends BaseController {
         try {
             $paginacion = Paginator::desdePeticion($this->fichas->contar($actor, $filtros), 24);
             $fichas = $this->fichas->listar($actor, $filtros, $paginacion->perPage(), $paginacion->offset());
-            $programas = $this->fichas->getProgramasActivos();
+            $programas = $this->fichas->getProgramas();
             if ($actor->esCoordinador()) {
                 $instructores = $this->fichas->getInstructoresActivos();
-                $proyectos = $this->fichas->getProyectosActivos();
+                $proyectos = $this->fichas->getProyectos();
             }
         } catch (Throwable $e) {
             $errors[] = ErrorDeNegocio::mensajeSeguro($e, 'Error al cargar las fichas');

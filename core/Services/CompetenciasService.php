@@ -85,11 +85,18 @@ final class CompetenciasService {
             throw new ErrorDeNegocio("La competencia está asignada en {$uso['asignaciones']} ficha(s): quite esas asignaciones antes de marcarla "
                 . 'como de etapa práctica (allí califica el instructor de seguimiento de cada aprendiz).');
         }
-        $this->enTransaccion(function () use ($id, $d, $cambiaEtapa) {
+        $otroPrograma = (int)$actual['programa_id'] !== (int)$d['programa_id'];
+        $this->enTransaccion(function () use ($id, $d, $cambiaEtapa, $otroPrograma) {
             try {
                 $this->competencias->actualizar($id, $d);
             } catch (Throwable $e) {
                 ErroresBD::relanzar($e, [ErroresBD::DUPLICADO => "El programa ya tiene otra competencia con el código {$d['codigo']}."]);
+            }
+            if ($otroPrograma) {
+                // Sin evaluaciones ni asignaciones (se comprobó arriba): sus RAP
+                // llegan a los aprendices del programa de destino, como al crear
+                // un RAP. Antes no aparecían hasta otra sincronización.
+                $this->sync->sincronizar(['competencia_id' => $id]);
             }
             if ($cambiaEtapa) {
                 // De la marca depende quién responde por las pendientes.

@@ -40,7 +40,7 @@ $exportar = APP_URL . '/index.php/fichas/exportar?' . http_build_query(array_fil
     <select name="programa_id" id="f_programa" class="form-select" data-autoenvio data-picker data-picker-label="Programa">
       <option value="0">Todos los programas</option>
       <?php foreach ($programas as $p): ?>
-        <option value="<?= (int)$p['id'] ?>" <?= $filtros['programa_id'] === (int)$p['id'] ? 'selected' : '' ?>><?= e($p['nombre']) ?></option>
+        <option value="<?= (int)$p['id'] ?>" <?= $filtros['programa_id'] === (int)$p['id'] ? 'selected' : '' ?>><?= e($p['nombre'] . ($p['estado'] !== 'activo' ? ' (' . $p['estado'] . ')' : '')) ?></option>
       <?php endforeach; ?>
     </select>
   </div>
@@ -133,7 +133,10 @@ $exportar = APP_URL . '/index.php/fichas/exportar?' . http_build_query(array_fil
               <label class="form-label small fw-semibold" for="<?= $accion ?>_programa">Programa <span class="text-danger">*</span></label>
               <select name="programa_id" id="<?= $accion ?>_programa" class="form-select" required data-picker data-picker-label="Programa">
                 <option value="" disabled selected>Seleccione…</option>
-                <?php foreach ($programas as $p): ?><option value="<?= (int)$p['id'] ?>"><?= e($p['codigo'] . ' — ' . $p['nombre']) ?></option><?php endforeach; ?>
+                <?php foreach ($programas as $p): ?>
+                  <?php if ($accion === 'crear' && $p['estado'] !== 'activo') { continue; } ?>
+                  <option value="<?= (int)$p['id'] ?>"><?= e($p['codigo'] . ' — ' . $p['nombre'] . ($p['estado'] !== 'activo' ? ' (' . $p['estado'] . ')' : '')) ?></option>
+                <?php endforeach; ?>
               </select>
             </div>
             <div class="col-sm-6">
@@ -147,7 +150,10 @@ $exportar = APP_URL . '/index.php/fichas/exportar?' . http_build_query(array_fil
               <label class="form-label small fw-semibold" for="<?= $accion ?>_proyecto">Proyecto formativo</label>
               <select name="proyecto_id" id="<?= $accion ?>_proyecto" class="form-select" data-picker data-picker-label="Proyecto formativo">
                 <option value="0">Sin proyecto asignado</option>
-                <?php foreach ($proyectos as $pr): ?><option value="<?= (int)$pr['id'] ?>"><?= e($pr['codigo'] . ' — ' . $pr['nombre']) ?></option><?php endforeach; ?>
+                <?php foreach ($proyectos as $pr): ?>
+                  <?php if ($accion === 'crear' && $pr['estado'] !== 'activo') { continue; } ?>
+                  <option value="<?= (int)$pr['id'] ?>"><?= e($pr['codigo'] . ' — ' . $pr['nombre'] . ($pr['estado'] !== 'activo' ? ' (' . $pr['estado'] . ')' : '')) ?></option>
+                <?php endforeach; ?>
               </select>
             </div>
             <div class="col-sm-4">

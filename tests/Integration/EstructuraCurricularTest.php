@@ -199,4 +199,42 @@ final class EstructuraCurricularTest extends CasoConBaseDeDatos {
         $this->esperarError(fn() => $this->s->eliminarRap($rap, $this->coordinador()), 'juicio');
         $this->assertSame(1, $this->contar('resultados_aprendizaje', 'id = ?', [$rap]));
     }
+
+    /**
+     * En etapa práctica el líder no califica. Al quitarle el instructor de
+     * seguimiento al aprendiz, el plan pasaba al líder (la regla de las
+     * pendientes cae en él), y el líder podía cerrarlo y aprobar el RAP.
+     */
+    #[TestDox('el plan de un RAP de etapa práctica nunca pasa al líder, que no la califica')]
+    public function testPlanDeEtapaPracticaNoPasaAlLider(): void {
+        [, $rap] = $this->competenciaConRap(['es_etapa_practica' => true]);
+        $eval = (int)$this->db->query("SELECT id FROM evaluaciones WHERE aprendiz_id = {$this->aprendiz} AND resultado_aprendizaje_id = $rap")->fetchColumn();
+        (new \Core\Services\JuiciosService($this->db))->calificar(['evaluacion_id' => $eval, 'concepto' => 'D',
+            'comentario' => 'Falta la bitácora de la etapa práctica', 'motivo' => ''], new Actor($this->seguimiento, ROL_INSTRUCTOR));
+        $planes = new \Core\Services\PlanesService($this->db);
+        $plan = $planes->crear(['evaluacion_id' => $eval, 'actividades' => 'Completar la bitácora',
+            'fecha_inicio' => date('Y-m-d'), 'fecha_limite' => date('Y-m-d', strtotime('+10 days'))], $this->coordinador());
+        $responsable = fn() => (int)$this->db->query("SELECT instructor_id FROM planes_mejoramiento WHERE id = $plan")->fetchColumn();
+        $this->assertSame($this->seguimiento, $responsable());
+
+        $this->db->exec("UPDATE aprendices SET instructor_seguimiento_id = NULL WHERE id = {$this->aprendiz}");
+        (new \Core\Services\EvaluacionesSyncService($this->db))->actualizarResponsables(['aprendiz_id' => $this->aprendiz]);
+        $this->assertNotSame($this->lider, $responsable());
+
+        $this->esperarError(fn() => $planes->cerrar(['id' => $plan, 'resultado' => 'cumplido', 'observaciones' => 'Cierre del líder'],
+            new Actor($this->lider, ROL_INSTRUCTOR)), 'No calificas');
+        $this->assertSame('D', (string)$this->db->query("SELECT concepto FROM evaluaciones WHERE id = $eval")->fetchColumn());
+    }
+
+    #[TestDox('una competencia movida a otro programa llega a los aprendices de ese programa')]
+    public function testCompetenciaMovidaLlegaALosAprendices(): void {
+        $this->db->exec("INSERT INTO programas (nombre, codigo, duracion_horas, estado) VALUES ('PROGRAMA SIN FICHAS QA', 'QA-PROG-3', 100, 'activo')");
+        $sinFichas = (int)$this->db->lastInsertId();
+        [$c, $rap] = $this->competenciaConRap(['programa_id' => $sinFichas]);
+        $this->assertSame(0, $this->contar('evaluaciones', 'resultado_aprendizaje_id = ?', [$rap]));
+
+        $this->s->editarCompetencia($c, $this->competencia(), $this->coordinador());
+        $this->assertSame(1, $this->contar('evaluaciones', "aprendiz_id = ? AND resultado_aprendizaje_id = ? AND concepto = 'pendiente'",
+            [$this->aprendiz, $rap]));
+    }
 }

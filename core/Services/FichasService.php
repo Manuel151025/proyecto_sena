@@ -39,6 +39,7 @@ final class FichasService {
         $this->soloCoordinacion($actor);
         $this->validarLider($d);
         $this->validarPrograma($d, null);
+        $this->validarProyecto($d, null);
         try {
             $id = $this->fichas->crear($d, $actor->id);
         } catch (Throwable $e) {
@@ -57,6 +58,7 @@ final class FichasService {
         $actual = $this->fichas->findById($id) ?? throw new ErrorDeNegocio('La ficha no existe.');
         $this->validarLider($d);
         $this->validarPrograma($d, $actual);
+        $this->validarProyecto($d, $actual);
         $uso = $this->fichas->dependencias($id);
         $otroPrograma = (int)$actual['programa_id'] !== (int)$d['programa_id'];
         if ($otroPrograma && $uso['juicios'] > 0) {
@@ -79,8 +81,10 @@ final class FichasService {
             $evaluaciones = new EvaluacionesSyncService($this->db);
             // Con otro programa, las pendientes del anterior (no hay juicios
             // emitidos: se comprobó arriba) dejan de tener sentido.
+            $asignacionesRetiradas = 0;
             if ($otroPrograma) {
                 $evaluaciones->retirarDeOtroPrograma($id);
+                $asignacionesRetiradas = $this->fichas->quitarAsignacionesDeOtroPrograma($id);
             }
             $s = $evaluaciones->sincronizar(['ficha_id' => $id]);
             // Con otro líder, las pendientes que eran del anterior pasan a él.
@@ -95,7 +99,8 @@ final class FichasService {
                 $cambios[] = "estado {$actual['estado']} → {$d['estado']}";
             }
             if ($otroPrograma) {
-                $cambios[] = 'cambio de programa';
+                $cambios[] = 'cambio de programa'
+                    . ($asignacionesRetiradas > 0 ? "; $asignacionesRetiradas asignación(es) del programa anterior retiradas" : '');
             }
             $this->auditoria->operacion($actor, 'Editar', 'Fichas', 'fichas', $id,
                 "Editó la ficha {$d['numero_ficha']}" . ($cambios ? ' (' . implode(', ', $cambios) . ')' : ''));
@@ -135,6 +140,18 @@ final class FichasService {
         $cambia = $actual === null || (int)$actual['programa_id'] !== (int)$d['programa_id'];
         if ($cambia && $estado !== 'activo') {
             throw new ErrorDeNegocio('El programa elegido no está activo: no admite fichas.');
+        }
+    }
+
+    /** Como el programa: un proyecto nuevo para la ficha tiene que estar activo; el que ya tenía se conserva. */
+    private function validarProyecto(array $d, ?array $actual): void {
+        $proyecto = (int)($d['proyecto_id'] ?? 0);
+        if ($proyecto === 0 || ($actual !== null && $proyecto === (int)($actual['proyecto_id'] ?? 0))) {
+            return;
+        }
+        $estado = $this->fichas->estadoProyecto($proyecto) ?? throw new ErrorDeNegocio('El proyecto seleccionado no existe.');
+        if ($estado !== 'activo') {
+            throw new ErrorDeNegocio('El proyecto elegido no está activo: no se puede asignar a una ficha.');
         }
     }
 

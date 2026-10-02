@@ -369,4 +369,93 @@ final class GestionAcademicaTest extends CasoConBaseDeDatos {
         $this->esperarError(fn() => $s->cambiarEstado($yo->id, 'inactivo', $otro), 'al menos un coordinador');
         $this->assertSame('activo', (string)$this->db->query("SELECT estado FROM usuarios WHERE id = {$yo->id}")->fetchColumn());
     }
+
+    /** Dos programas activos con RAP (sin etapa práctica), o se omite la prueba. */
+    private function dosProgramasConRap(): array {
+        $p = $this->db->query("
+            SELECT c.programa_id, COUNT(ra.id) AS raps FROM competencias c JOIN resultados_aprendizaje ra ON ra.competencia_id = c.id
+              JOIN programas p ON p.id = c.programa_id AND p.estado = 'activo'
+             GROUP BY c.programa_id ORDER BY c.programa_id LIMIT 2")->fetchAll();
+        if (count($p) < 2) {
+            $this->markTestSkipped('hacen falta dos programas con RAP');
+        }
+        return [(int)$p[0]['programa_id'], (int)$p[1]['programa_id'], (int)$p[1]['raps']];
+    }
+
+    #[TestDox('al cambiar el programa de una ficha se retiran las asignaciones del anterior, que daban acceso a la ficha')]
+    public function testCambioDeProgramaRetiraAsignaciones(): void {
+        [$a, $b] = $this->dosProgramasConRap();
+        $s = new FichasService($this->db);
+        $ficha = $s->crear($this->datosFicha(['programa_id' => $a, 'numero_ficha' => '9999201']), $this->coordinador());
+        (new MatriculasService($this->db))->matricular($this->datosMatricula($ficha), $this->coordinador());
+        $comp = (int)$this->db->query("SELECT id FROM competencias WHERE programa_id = $a AND es_etapa_practica = 0 LIMIT 1")->fetchColumn();
+        $lider = $this->idInstructorConFicha();
+        $x = (int)$this->db->query("SELECT id FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' AND id <> $lider LIMIT 1")->fetchColumn();
+        (new AsignacionesService($this->db))->asignar($ficha, $comp, $x, $this->coordinador());
+        $acceso = new \Core\Services\InstructorAccessService($this->db);
+        $this->assertTrue($acceso->tieneAccesoFicha($ficha, $x));
+
+        $s->editar($ficha, $this->datosFicha(['programa_id' => $b, 'numero_ficha' => '9999201']), $this->coordinador());
+        $this->assertSame(0, $this->contar('asignaciones', 'ficha_id = ?', [$ficha]));
+        $this->assertFalse($acceso->tieneAccesoFicha($ficha, $x));
+    }
+
+    #[TestDox('trasladar sin juicios a una ficha de otro programa deja solo los RAP del programa nuevo')]
+    public function testTrasladoAOtroProgramaSinJuicios(): void {
+        [$a, $b, $rapsB] = $this->dosProgramasConRap();
+        $s = new FichasService($this->db);
+        $origen = $s->crear($this->datosFicha(['programa_id' => $a, 'numero_ficha' => '9999301']), $this->coordinador());
+        $destino = $s->crear($this->datosFicha(['programa_id' => $b, 'numero_ficha' => '9999302']), $this->coordinador());
+        $m = new MatriculasService($this->db);
+        $id = $m->matricular($this->datosMatricula($origen), $this->coordinador())['id'];
+
+        $m->editar($id, $this->matriculaActual($id, ['ficha_id' => $destino]), $this->coordinador());
+        $this->assertSame($rapsB, $this->contar('evaluaciones', 'aprendiz_id = ?', [$id]));
+        $this->assertSame(0, $this->n("
+            SELECT COUNT(*) FROM evaluaciones e JOIN resultados_aprendizaje ra ON ra.id = e.resultado_aprendizaje_id
+              JOIN competencias c ON c.id = ra.competencia_id WHERE e.aprendiz_id = ? AND c.programa_id <> ?", [$id, $b]));
+    }
+
+    #[TestDox('con evidencias ligadas a su programa no se traslada a una ficha de otro programa')]
+    public function testTrasladoAOtroProgramaConEvidencias(): void {
+        [$a, $b] = $this->dosProgramasConRap();
+        $s = new FichasService($this->db);
+        $origen = $s->crear($this->datosFicha(['programa_id' => $a, 'numero_ficha' => '9999401']), $this->coordinador());
+        $destino = $s->crear($this->datosFicha(['programa_id' => $b, 'numero_ficha' => '9999402']), $this->coordinador());
+        $m = new MatriculasService($this->db);
+        $id = $m->matricular($this->datosMatricula($origen), $this->coordinador())['id'];
+        $eval = (int)$this->db->query("SELECT id FROM evaluaciones WHERE aprendiz_id = $id LIMIT 1")->fetchColumn();
+        $this->db->prepare("INSERT INTO evidencias (aprendiz_id, ficha_id, evaluacion_id, titulo, descripcion, estado) VALUES (?, ?, ?, 'Informe', 'Entrega', 'enviada')")
+                 ->execute([$id, $origen, $eval]);
+
+        $this->esperarError(fn() => $m->editar($id, $this->matriculaActual($id, ['ficha_id' => $destino]), $this->coordinador()), 'evidencias');
+        $this->assertSame($origen, (int)$this->db->query("SELECT ficha_id FROM aprendices WHERE id = $id")->fetchColumn());
+    }
+
+    /**
+     * El formulario solo listaba programas y proyectos activos: al editar una
+     * ficha cuyo proyecto ya estaba finalizado, el campo quedaba vacío y la
+     * ficha perdía su proyecto al guardar. El servidor conserva el suyo y solo
+     * admite proyectos y programas activos como cambio.
+     */
+    #[TestDox('una ficha conserva su programa archivado y su proyecto finalizado al editarla, pero no se le asignan otros no activos')]
+    public function testFichaConProgramaYProyectoNoActivos(): void {
+        $this->db->exec("INSERT INTO programas (nombre, codigo, duracion_horas, estado) VALUES ('PROGRAMA QA ARCHIVABLE', 'QA-ARCH-2', 100, 'activo')");
+        $programa = (int)$this->db->lastInsertId();
+        $this->db->exec("INSERT INTO proyectos (nombre, codigo, objetivo, estado) VALUES ('PROYECTO QA', 'QA-PROY-1', 'Objetivo de prueba', 'activo')");
+        $proyecto = (int)$this->db->lastInsertId();
+        $this->db->exec("INSERT INTO proyectos (nombre, codigo, objetivo, estado) VALUES ('OTRO PROYECTO QA', 'QA-PROY-2', 'Objetivo de prueba', 'finalizado')");
+        $otro = (int)$this->db->lastInsertId();
+        $s = new FichasService($this->db);
+        $datos = $this->datosFicha(['programa_id' => $programa, 'proyecto_id' => $proyecto, 'numero_ficha' => '9999501']);
+        $ficha = $s->crear($datos, $this->coordinador());
+        $this->db->exec("UPDATE programas SET estado = 'archivado' WHERE id = $programa");
+        $this->db->exec("UPDATE proyectos SET estado = 'finalizado' WHERE id = $proyecto");
+
+        $s->editar($ficha, array_merge($datos, ['estado' => 'cierre']), $this->coordinador());
+        $f = $this->db->query("SELECT programa_id, proyecto_id, estado FROM fichas WHERE id = $ficha")->fetch();
+        $this->assertSame([$programa, $proyecto, 'cierre'], [(int)$f['programa_id'], (int)$f['proyecto_id'], $f['estado']]);
+
+        $this->esperarError(fn() => $s->editar($ficha, array_merge($datos, ['proyecto_id' => $otro]), $this->coordinador()), 'no está activo');
+    }
 }

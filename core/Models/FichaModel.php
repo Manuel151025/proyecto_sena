@@ -279,15 +279,50 @@ class FichaModel {
         return (int)$st->fetchColumn();
     }
 
-    public function getProgramasActivos(): array {
-        return $this->db->query("SELECT id, codigo, nombre FROM programas WHERE estado = 'activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    /**
+     * Todos los programas con su estado, los activos primero. Crear una ficha
+     * ofrece solo los activos; editarla ofrece también el suyo aunque se haya
+     * archivado: sin él, el selector quedaba vacío y la ficha no se podía
+     * guardar, o cambiaba de programa sin querer.
+     */
+    public function getProgramas(): array {
+        return $this->db->query("SELECT id, codigo, nombre, estado FROM programas ORDER BY estado = 'activo' DESC, nombre")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getInstructoresActivos(): array {
         return $this->db->query("SELECT id, nombre FROM usuarios WHERE rol = 'instructor' AND estado = 'activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getProyectosActivos(): array {
-        return $this->db->query("SELECT id, nombre, codigo FROM proyectos WHERE estado = 'activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    /**
+     * Todos los proyectos con su estado, los activos primero. Al editar una
+     * ficha cuyo proyecto ya estaba finalizado, el selector quedaba vacío y
+     * la ficha perdía su proyecto en silencio al guardar.
+     */
+    public function getProyectos(): array {
+        return $this->db->query("SELECT id, nombre, codigo, estado FROM proyectos ORDER BY estado = 'activo' DESC, nombre")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Estado del proyecto (activo, inactivo, finalizado), o null si no existe. */
+    public function estadoProyecto(int $id): ?string {
+        $st = $this->db->prepare("SELECT estado FROM proyectos WHERE id = ?");
+        $st->execute([$id]);
+        $estado = $st->fetchColumn();
+        return $estado === false ? null : (string)$estado;
+    }
+
+    /**
+     * Quita las asignaciones de la ficha cuya competencia no es de su programa
+     * (tras cambiarla de programa). Seguían dando acceso a la ficha y a sus
+     * aprendices a un instructor sin ninguna competencia en el programa nuevo.
+     */
+    public function quitarAsignacionesDeOtroPrograma(int $fichaId): int {
+        $st = $this->db->prepare("
+            DELETE asg FROM asignaciones asg
+              JOIN competencias c ON c.id = asg.competencia_id
+              JOIN fichas f       ON f.id = asg.ficha_id
+             WHERE asg.ficha_id = ? AND c.programa_id <> f.programa_id
+        ");
+        $st->execute([$fichaId]);
+        return $st->rowCount();
     }
 }
