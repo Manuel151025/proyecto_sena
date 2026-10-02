@@ -473,7 +473,7 @@ Sprint 4 · Media · ✅
 ### HU-47 · Pruebas automáticas
 > **Como** desarrollador del sistema **quiero** que cada cambio se pruebe solo **para** no romper lo que funciona.
 
-1. 822 pruebas (unitarias, de integración y de seguridad) y 46 recorridos en navegador en cada envío al repositorio, sobre una instalación limpia ([PRUEBAS.md](PRUEBAS.md)).
+1. 832 pruebas (unitarias, de integración y de seguridad) y 47 recorridos en navegador en cada envío al repositorio, sobre una instalación limpia ([PRUEBAS.md](PRUEBAS.md)).
 
 Sprint 4 · Media · ✅
 

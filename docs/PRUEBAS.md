@@ -12,9 +12,9 @@ Cómo se verifica el sistema: pruebas automáticas de PHPUnit, recorridos autom�
 |---|---:|---:|---|
 | Unitarias (`tests/Unit`) | 409 | 1.160 | No |
 | Seguridad (`tests/Security`) | 191 | 2.014 | Algunas |
-| Integración (`tests/Integration`) | 222 | 1.775 | Sí |
-| **Total PHPUnit** | **822** | **4.949** | |
-| Navegador (`tests/e2e`, Playwright) | 46 recorridos | | Propia (`sena_e2e`) |
+| Integración (`tests/Integration`) | 232 | 1.800 | Sí |
+| **Total PHPUnit** | **832** | **4.974** | |
+| Navegador (`tests/e2e`, Playwright) | 47 recorridos | | Propia (`sena_e2e`) |
 
 ```bash
 composer test                 # todas las de PHPUnit
@@ -70,17 +70,17 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 |---|---:|---|
 | `EsquemaTest` | 39 | Modo estricto, misma hora en PHP y en la base, llaves foráneas, índices, únicos, trazabilidad completa de los juicios |
 | `EvaluacionServiceTest` | 24 | Única puerta de escritura del juicio: historial solo si cambia, transacción, bloqueo de fila, motivo obligatorio |
-| `GestionAcademicaTest` | 23 | Fichas (programa activo, cambio de programa sin arrastrar RAP del anterior), matrículas, traslados, retiros que cierran planes, reintegros que completan los RAP, asignaciones y cuentas de coordinación |
+| `GestionAcademicaTest` | 27 | Fichas (programa activo; al cambiar de programa no quedan RAP ni asignaciones del anterior; se editan conservando un programa archivado o un proyecto finalizado), matrículas, traslados entre programas, retiros que cierran planes, reintegros que completan los RAP, asignaciones y cuentas de coordinación |
 | `ModelosRestantesTest` | 19 | Consultas de todos los modelos en los tres roles; conteos que cuadran |
 | `SoporteTest` | 16 | Transacciones anidadas y revertidas, traducción de errores reales de la base, configuración |
 | `ConsultasDeModelosTest` | 15 | Analítica por rol, semáforo SQL = PHP, progreso del aprendiz |
 | `ImportadorJuiciosTest` | 14 | Importación de Sofia Plus: conceptos, permisos del instructor, estructura faltante, historial |
-| `EstructuraCurricularTest` | 12 | Competencias y RAP: códigos transversales, pendientes al crear un RAP, etapa práctica y quién responde, asignaciones, borrado sin perder historial |
+| `EstructuraCurricularTest` | 14 | Competencias y RAP: códigos transversales, pendientes al crear un RAP o mover una competencia, etapa práctica y quién responde (también por los planes), asignaciones, borrado sin perder historial |
 | `ProyectoFormativoTest` | 11 | Proyectos, fases, actividades y avance calculado (RF02) |
 | `AuditoriaYReportesTest` | 10 | Eventos de la bitácora; cada reporte en PDF y Excel; volumen grande |
 | `EvidenciasTest` | 10 | Envío ligado a un RAP propio, descarga con permiso, revisión y juicio separados, sin juicios nuevos a un desertado |
-| `CuentasDeAprendizTest` | 9 | El rol de aprendiz va con la matrícula: Usuarios no lo da ni lo quita, y una cuenta de aprendiz sin ficha se completa al matricularla |
-| `PlanesMejoramientoTest` | 10 | Ciclo del plan: apertura sobre un D, en curso, cierre cumplido (A) o no cumplido; el plazo no se mueve al pasado; se cierra solo si el RAP se aprueba por otra vía y pasa a quien califica el RAP |
+| `CuentasDeAprendizTest` | 11 | El rol de aprendiz va con la matrícula: Usuarios no lo da ni lo quita (y lo comprueba con bloqueo), una cuenta de aprendiz sin ficha se completa al matricularla y una bloqueada no |
+| `PlanesMejoramientoTest` | 12 | Ciclo del plan: apertura sobre un D, en curso, cierre cumplido (A) o no cumplido; el plazo no se mueve al pasado; se cierra solo si el RAP se aprueba por otra vía; su responsable es quien califica el RAP y solo quien lo califica lo cierra |
 | `RutasYPermisosTest` | 8 | Matriz de accesos; canario del número de rutas (111) |
 | `AuditoriaContrasenasTest` | 2 | Detecta las cuentas con contraseñas conocidas (también si comparten hash) y las anula con temporal y bitácora |
 
@@ -101,7 +101,7 @@ Las pruebas con base de datos corren dentro de una transacción que se revierte:
 **navegador**
 
 1. PHP 8.2, Node 22, Playwright y Chromium.
-2. Los 46 recorridos de `tests/e2e` contra el servidor integrado de PHP y su propia base, reinstalada con los datos de demostración.
+2. Los 47 recorridos de `tests/e2e` contra el servidor integrado de PHP y su propia base, reinstalada con los datos de demostración.
 3. Cada fallo se publica como anotación del commit; el informe HTML, las capturas y las trazas quedan como artefacto durante 7 días.
 
 ## 4. Recorridos en navegador
@@ -119,6 +119,8 @@ PHPUnit no ejecuta un navegador. Los recorridos de `tests/e2e` usan la aplicaci�
 | `07-pantallas` | Todas las pantallas de cada rol en escritorio y en el teléfono (390 px, tema oscuro): sin errores de JavaScript, sin bloqueos de la CSP y sin desborde horizontal |
 | `08-transversales` | Calendario y su aviso (y que otra ficha no lo vea), perfil, configuración con bitácora y campana de avisos |
 
+Antes de integrar la v3.4 en `main` se hizo además una **revisión adversarial**: tres revisores independientes (lógica de negocio, seguridad e integridad, interfaz) leyeron todos los cambios y un verificador intentó refutar cada hallazgo reproduciéndolo con PHPUnit. De 11 hallazgos se reprodujeron 9; todos quedaron corregidos, cada uno con una prueba que falla con el código anterior.
+
 Además de detectar regresiones, los recorridos encontraron fallos reales que se corrigieron en la v3.4: el aviso que faltaba al negar un acceso, el enlace de recuperación que volvía al primer paso tras un error, el icono que faltaba en cada página y la importación del propio Excel.
 
 ## 5. Verificación de una instalación nueva
@@ -129,7 +131,7 @@ DB_NAME=sena_verificacion php bin/verificar-esquema.php
 DB_NAME=sena_verificacion vendor/bin/phpunit
 ```
 
-Las 822 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
+Las 832 pruebas pasan tanto sobre la base de trabajo como sobre una instalación limpia con datos de demostración.
 
 ## 6. Cómo añadir una prueba
 

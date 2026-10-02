@@ -164,7 +164,7 @@ Además de todo lo del instructor, sobre **todo el centro**:
 
 **Usuarios → Nuevo usuario**: correo, nombre y rol (coordinación o instructor). El sistema genera una **contraseña temporal** que se muestra **una sola vez**: entréguela a la persona; deberá cambiarla al entrar. **Restablecer contraseña** genera otra temporal.
 
-Las cuentas de **aprendiz** no se crean aquí: nacen al matricularlo en **Matrículas**, que también lo inscribe en su ficha. Por eso, desde Usuarios no se da ni se quita el rol de aprendiz, ni se reactiva la cuenta de un aprendiz desertado o egresado (eso se hace cambiando su estado en Matrículas). Si quedó alguna cuenta de aprendiz sin ficha de versiones anteriores, matricúlela con el mismo correo: la cuenta se completa con la matrícula y una contraseña temporal nueva.
+Las cuentas de **aprendiz** no se crean aquí: nacen al matricularlo en **Matrículas**, que también lo inscribe en su ficha. Por eso, desde Usuarios no se da ni se quita el rol de aprendiz, ni se reactiva la cuenta de un aprendiz desertado o egresado: su fila lleva a Matrículas, donde se cambia su estado. El formulario de edición solo ofrece los roles y estados que se pueden guardar para cada cuenta. Si quedó alguna cuenta de aprendiz sin ficha de versiones anteriores, matricúlela con el mismo correo: la cuenta se completa con la matrícula, queda activa y recibe una contraseña temporal nueva (si está **bloqueada**, desbloquéela antes en Usuarios).
 
 Para muchas cuentas: **Usuarios → Importar**, descargue la **Plantilla CSV**, complétela, **Analizar archivo**, revise la vista previa e **Importar**. Al final puede **Imprimir credenciales**.
 
@@ -183,9 +183,11 @@ Para muchas cuentas: **Usuarios → Importar**, descargue la **Plantilla CSV**, 
 3. **Matrículas → Matricular** (uno a uno) o **Matrícula masiva** (archivo): se crean las cuentas de los aprendices con clave temporal y todas sus evaluaciones pendientes.
 4. **Asignar Instructores → Asignar instructor**: decida quién califica cada competencia. Las evaluaciones pendientes pasan al asignado; lo que no asigne lo califica el líder.
 
+Al **editar** una ficha, el formulario conserva su programa y su proyecto aunque ya estén archivado o finalizado (aparecen marcados); como cambio solo se ofrecen los activos. Si cambia el programa de una ficha sin juicios, sus aprendices pasan a los RAP del programa nuevo y se retiran las asignaciones del anterior.
+
 ### Cambios en una matrícula
 
-- **Trasladar** a otra ficha del mismo programa: se mueven sus registros.
+- **Trasladar** a otra ficha del mismo programa: se mueven sus registros. A una ficha de otro programa solo si aún no tiene juicios, evidencias, retroalimentación ni planes; entonces cambia su rejilla de RAP por la del programa nuevo.
 - **Etapa práctica**: exige elegir el instructor de seguimiento.
 - **Retirar**: el aprendiz queda desertado y sin acceso; su historial se conserva y sus planes vigentes se cierran como no cumplidos.
 - **Reintegrar** (de desertado a matriculado): recupera el acceso y recibe las evaluaciones pendientes de los RAP que se crearon mientras estuvo fuera.

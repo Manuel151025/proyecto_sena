@@ -2,11 +2,11 @@
 
 **Sistema de Seguimiento de Proyectos Formativos — SENA**
 
-Reconstruido a partir del historial real del repositorio: **183 commits** entre el 19 de mayo y el 1 de octubre de 2026. Las versiones agrupan el trabajo por objetivo, no por fecha arbitraria.
+Reconstruido a partir del historial real del repositorio: **187 commits** entre el 19 de mayo y el 2 de octubre de 2026. Las versiones agrupan el trabajo por objetivo, no por fecha arbitraria.
 
 | Versión | Fecha | Commits | Objetivo |
 |---|---|---:|---|
-| [v3.4](#v34) | 1 oct 2026 | 28 | Cierre usando el sistema en los tres roles: lógica, entradas, diseño y pruebas en navegador |
+| [v3.4](#v34) | 1–2 oct 2026 | 32 | Cierre usando el sistema en los tres roles: lógica, entradas, diseño y pruebas en navegador |
 | [v3.3](#v33) | 28 sep 2026 | 3 | Contraseñas publicadas en el historial, CSP estricta también para estilos y PWA en producción |
 | [v3.2](#v32) | 23 sep 2026 | 17 | Cierre: módulos por capas, analítica por rol, seguridad OWASP y documentación completa |
 | [v3.1](#v31) | 23 sep 2026 | 1 | Suite de pruebas: 492 casos unitarios, de seguridad e integración |
@@ -26,13 +26,13 @@ Reconstruido a partir del historial real del repositorio: **183 commits** entre 
 
 ## v3.4
 
-**1 de octubre de 2026 · 28 commits**
+**1 y 2 de octubre de 2026 · 32 commits**
 
 Cierre del proyecto, esta vez usándolo: la coordinación, un instructor y un aprendiz recorrieron el sistema —también con pruebas automáticas en el navegador— y cada fallo de lógica, de entrada de datos o de diseño que apareció se corrigió con su prueba.
 
 ```
-822 pruebas de PHPUnit · 4.949 comprobaciones · 46 recorridos en navegador, todo en el CI
-19 migraciones · 44 hallazgos de seguridad documentados
+832 pruebas de PHPUnit · 4.974 comprobaciones · 47 recorridos en navegador, todo en el CI
+19 migraciones · 48 hallazgos de seguridad documentados · revisión adversarial antes de integrar
 ```
 
 ### Fallos de lógica corregidos
@@ -40,17 +40,19 @@ Cierre del proyecto, esta vez usándolo: la coordinación, un instructor y un ap
 | Dónde | Qué pasaba | Ahora |
 |---|---|---|
 | Usuarios y matrículas | Usuarios creaba cuentas de aprendiz sin ficha, que después no se podían matricular (su correo «ya estaba registrado»), y cambiaba el rol de cualquiera: un instructor con fichas a cargo pasaba a aprendiz. | El rol de aprendiz va con la matrícula. Una cuenta de aprendiz sin ficha se completa al matricularla. |
-| Fichas | Cambiar el programa de una ficha sin juicios dejaba las pendientes del anterior: el avance se calculaba sobre los RAP de dos programas. | Se retiran, y el cambio se bloquea si hay evidencias, retroalimentación o planes ligados. |
+| Fichas | Cambiar el programa de una ficha sin juicios dejaba las pendientes del anterior (el avance se calculaba sobre los RAP de dos programas) y las asignaciones del anterior (el instructor conservaba el acceso a la ficha). | Se retiran las dos, y el cambio se bloquea si hay evidencias, retroalimentación o planes ligados. |
+| Fichas | El formulario de edición solo listaba programas y proyectos activos: una ficha de un programa archivado no se podía guardar, y una con el proyecto finalizado lo perdía en silencio al guardar. | Muestra el programa y el proyecto de la ficha, marcados; un proyecto nuevo tiene que estar activo. |
 | Fichas | Con el id de un programa archivado se abría una ficha en él (el formulario solo ofrece los activos). | Solo en programas activos. |
 | Matrículas | Retirar, desertar o egresar dejaba los planes «vigentes», que al vencer inflaban los paneles. Se podía retirar a un egresado y trasladar a una ficha en cierre. | Los planes se cierran con constancia; lo demás se rechaza. |
-| Matrículas | Al reintegrar a un desertado no le llegaban los RAP creados mientras estuvo fuera. | Se completa su rejilla de pendientes. |
+| Matrículas | Al reintegrar a un desertado no le llegaban los RAP creados mientras estuvo fuera; al trasladar sin juicios a una ficha de otro programa conservaba las pendientes del anterior. | Se completa su rejilla de pendientes; en el traslado se retiran las del programa anterior (o se rechaza si hay vínculos). |
 | Matrículas | La fecha de nacimiento solo admitía años desde el 2000: nadie mayor de 26 años se podía matricular con ella. | De 1900 a hoy; la regla real es la edad (14 a 90). |
 | Evidencias | Revisar una evidencia registraba un juicio a un aprendiz desertado. | La misma regla que en Evaluaciones. |
-| Planes de mejoramiento | Si el RAP se aprobaba por otra vía (Evaluaciones, una evidencia, Sofia Plus) el plan seguía abierto; si el RAP pasaba a otro instructor, el anterior conservaba el plan y podía aprobar un RAP que ya no califica; editar un plan movía el plazo al pasado. | El plan se cierra como cumplido o pasa a quien califica; el plazo no retrocede. |
-| Competencias | Marcar o desmarcar «etapa práctica» dejaba las pendientes a nombre de quien ya no califica. Una competencia asignada podía cambiar de programa o volverse de etapa práctica. | Responsables recalculados; esos cambios exigen quitar antes las asignaciones. |
+| Planes de mejoramiento | Si el RAP se aprobaba por otra vía (Evaluaciones, una evidencia, Sofia Plus) el plan seguía abierto. Figurar como responsable bastaba para cerrarlo y aprobar el RAP, y el responsable podía ser quien ya no lo calificaba: el autor del D, el instructor anterior tras una reasignación o el líder en etapa práctica. Editar un plan movía el plazo al pasado. | El plan se cierra como cumplido; su responsable es quien califica el RAP y solo quien lo califica lo cierra; el plazo no retrocede. |
+| Competencias | Marcar o desmarcar «etapa práctica» dejaba las pendientes a nombre de quien ya no califica. Una competencia asignada podía cambiar de programa o volverse de etapa práctica, y una movida a otro programa no llegaba a sus aprendices. | Responsables recalculados y pendientes creadas; esos cambios exigen quitar antes las asignaciones. |
+| Usuarios | El formulario ofrecía cambios de rol y estado que el servidor rechazaba siempre (como «Activar» a un desertado); matricular el correo de una cuenta bloqueada la reactivaba; un cambio de rol simultáneo a una matrícula masiva podía dejar un instructor con matrícula. | Solo se ofrece lo que se puede guardar; la cuenta bloqueada se desbloquea antes en Usuarios; la comprobación bloquea la matrícula. |
 | Recuperación de contraseña | Con más de 20 solicitudes en media hora los enlaces dejaban de servir; uno usado mostraba el formulario; un error de la política devolvía al primer paso. | Huella SHA-256 indexada (migración 0019), el enlace se valida al abrirlo y el formulario se conserva. |
 | Importación | El propio Excel exportado se leía con 0 filas, las fechas de Excel se rechazaban y solo se leía `sheet1.xml`. | Lector de .xlsx completo. |
-| Exportación y reportes | Excel y CSV se cortaban en silencio a las 20.000 filas; un PDF de más de unas 3.000 filas agotaba la memoria y terminaba en la página de error. | Se avisa en lugar de cortar; el PDF admite 2.000 filas y sugiere Excel o CSV. |
+| Exportación y reportes | Excel y CSV se cortaban en silencio a las 20.000 filas (aprendices en riesgo, a las 5.000); un PDF de más de unas 3.000 filas agotaba la memoria y terminaba en la página de error. | Se avisa en lugar de cortar; el PDF admite 2.000 filas y sugiere Excel o CSV. |
 | Configuración | Un error al guardar mostraba el SQLSTATE con tablas y columnas, y podía dejar la configuración a medias. | Referencia en pantalla, detalle al registro y guardado en una transacción. |
 
 ### Experiencia de uso y diseño
@@ -65,15 +67,16 @@ Cierre del proyecto, esta vez usándolo: la coordinación, un instructor y un ap
 
 ### Pruebas
 
-- **PHPUnit: de 600 a 822 casos.** Nuevas clases para los 12 formularios, el lector de CSV y Excel, transacciones y errores reales de la base, las rutas de los avisos, la exportación completa, las cuentas de aprendiz y la estructura curricular (`CompetenciasService` no tenía ninguna), más una prueba de seguridad que impide meter un error técnico en un mensaje para el usuario.
-- **46 recorridos en navegador** con Playwright (`tests/e2e`): los tres roles, en escritorio y en el teléfono, sobre su propia base. Encontraron fallos reales: el aviso al negar un acceso, la recuperación de contraseña, el ícono y la importación del propio Excel.
+- **Revisión adversarial antes de integrar**: tres revisores independientes (lógica, seguridad, interfaz) leyeron todos los cambios y un verificador intentó refutar cada hallazgo reproduciéndolo. De 11 hallazgos se reprodujeron 9 —el más grave, que el responsable de un plan pudiera aprobar un RAP que ya no calificaba— y todos quedaron corregidos con su prueba.
+- **PHPUnit: de 600 a 832 casos.** Nuevas clases para los 12 formularios, el lector de CSV y Excel, transacciones y errores reales de la base, las rutas de los avisos, la exportación completa, las cuentas de aprendiz y la estructura curricular (`CompetenciasService` no tenía ninguna), más una prueba de seguridad que impide meter un error técnico en un mensaje para el usuario.
+- **47 recorridos en navegador** con Playwright (`tests/e2e`): los tres roles, en escritorio y en el teléfono, sobre su propia base. Encontraron fallos reales: el aviso al negar un acceso, la recuperación de contraseña, el ícono y la importación del propio Excel.
 - **El CI tiene dos trabajos**, `pruebas` y `navegador`, y publica cada fallo como anotación del commit.
 - Ninguna prueba envía correo: la de recuperación llegó a enviar correos reales con el SMTP del `.env` local.
 
 ### De paso
 
-- Semilla de demostración: cada evaluación queda a nombre de quien la califica.
-- `docs/SEGURIDAD.md` suma los hallazgos 39 a 44; `PRUEBAS.md`, el manual, el despliegue y el README, al día.
+- Semilla de demostración: cada evaluación queda a nombre de quien la califica, y los desertados, con la cuenta inactiva.
+- `docs/SEGURIDAD.md` suma los hallazgos 39 a 48; `PRUEBAS.md`, el manual, el despliegue y el README, al día.
 - Retirado `assets/css/login-nano.css`, una hoja de estilos que nada usaba.
 
 ---

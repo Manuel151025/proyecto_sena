@@ -8,7 +8,7 @@ Recorridos reales de la aplicación con [Playwright](https://playwright.dev): co
 |---|---|
 | `01-publico` | Inicio de sesión (CSP estricta, credenciales incorrectas con mensaje genérico), cierre de sesión por rol, recuperación de contraseña de punta a punta (enlace de un solo uso, política, enlace usado) |
 | `02-permisos` | Pantallas y acciones de otro rol (forzando la URL o enviando el formulario a mano), formulario sin token CSRF, expediente ajeno |
-| `03-coordinador` | Programa → competencia → RAP → cuenta de instructora con clave temporal y cambio obligatorio → ficha → matrícula → asignación → exportaciones; duplicados rechazados |
+| `03-coordinador` | Programa → competencia → RAP → cuenta de instructora con clave temporal y cambio obligatorio → ficha → matrícula → asignación → exportaciones; duplicados rechazados; el formulario de cuentas solo ofrece lo que se puede guardar (sin crear aprendices ni activar a un desertado) |
 | `04-importaciones` | Los archivos de `docs/ejemplos`: vista previa sin guardar, confirmación, reimportación sin duplicar; CSV y Excel; reporte de Sofia Plus |
 | `05-ciclo-formativo` | Juicio A → cambio a D con motivo obligatorio e historial → aviso al aprendiz → plan de mejoramiento → evidencia (y un PHP disfrazado de PDF rechazado) → revisión → cierre cumplido → RAP aprobado |
 | `06-reportes` | Los seis reportes en Excel, PDF y CSV; alcance por rol; límite del historial; CSV sin fórmulas |

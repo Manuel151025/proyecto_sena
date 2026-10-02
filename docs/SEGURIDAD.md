@@ -13,7 +13,7 @@ Informe de la revisión de seguridad: qué se encontró, cómo se corrigió, qu�
 | Alcance | Todo el código (111 destinos del enrutador, 3 páginas públicas, CLI), la configuración de Apache y Docker, la base de datos y el repositorio |
 | Revisión de código | Cada consulta SQL, cada salida a HTML, cada formulario, cada subida y descarga, cada regla de acceso por rol y por dato |
 | Pruebas automáticas | Suite de seguridad de PHPUnit (8 clases) más pruebas de integración de permisos; se ejecutan en cada envío al repositorio |
-| Pruebas en navegador | 46 recorridos automáticos con Playwright en cada envío (`tests/e2e`): permisos forzando URL y formularios, CSRF, recuperación de contraseña, subida de un PHP disfrazado, y las pantallas de los tres roles sin errores de JavaScript, sin bloqueos de CSP y sin desbordes a 390 px |
+| Pruebas en navegador | 47 recorridos automáticos con Playwright en cada envío (`tests/e2e`): permisos forzando URL y formularios, CSRF, recuperación de contraseña, subida de un PHP disfrazado, y las pantallas de los tres roles sin errores de JavaScript, sin bloqueos de CSP y sin desbordes a 390 px |
 | Pruebas contra Apache | Peticiones directas a archivos internos (`.env`, `.git/`, volcados, `uploads/`, migraciones) antes y después de cada cambio |
 
 ## 2. Resumen
@@ -21,10 +21,10 @@ Informe de la revisión de seguridad: qué se encontró, cómo se corrigió, qu�
 | Severidad | Hallazgos | Corregidos |
 |---|---:|---:|
 | Crítica | 4 | 3 + 1 mitigado (ver §6) |
-| Alta | 12 | 12 |
-| Media | 19 | 19 |
-| Baja | 9 | 9 |
-| **Total** | **44** | **43 + 1 mitigado** |
+| Alta | 13 | 13 |
+| Media | 20 | 20 |
+| Baja | 11 | 11 |
+| **Total** | **48** | **47 + 1 mitigado** |
 
 Quedan **riesgos residuales** que no se resuelven con código (rotar credenciales expuestas, HTTPS, copias de seguridad): ver §6.
 
@@ -50,6 +50,8 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 | 10 | M | Un filtro con un valor desconocido (`?rol=x`) se ignoraba y mostraba **todo**. | Un valor fuera de la lista blanca no encaja con nada. | `BusquedaYFiltrosTest` |
 | 11 | M | El cambio obligatorio de contraseña se saltaba añadiendo `?x=/perfil` a la URL. | Se compara la ruta, no la URL completa. | Revisión de código |
 | 12 | M | Un coordinador podía desactivarse o quitarse el rol y dejar la institución sin administración. | Regla de negocio: siempre queda al menos un coordinador activo. | `GestionAcademicaTest::testSiempreQuedaUnCoordinador` |
+| 45 | A | El responsable de un plan de mejoramiento podía cerrarlo como cumplido —y con eso aprobar el RAP— aunque ya no lo calificara: coordinación abría el plan a nombre del autor del D aunque el RAP hubiera pasado a otro instructor, y en etapa práctica sin instructor de seguimiento el plan pasaba al líder, que no la califica. | La autoridad sobre un plan es la de calificar hoy su RAP (`InstructorAccessService`), sin atajos por figurar como responsable; el responsable sale de esa misma regla. | `PlanesMejoramientoTest`, `EstructuraCurricularTest` |
+| 46 | M | Cambiar el programa de una ficha dejaba las asignaciones de competencias del anterior: el instructor asignado conservaba el acceso a la ficha, a los datos personales de sus aprendices y a sus actividades. | Se retiran las asignaciones cuya competencia no es del programa nuevo. | `GestionAcademicaTest::testCambioDeProgramaRetiraAsignaciones` |
 | 41 | M | Usuarios daba y quitaba el rol de aprendiz como cualquier otro: un instructor con fichas a cargo pasaba a aprendiz, se creaban cuentas de aprendiz sin ficha (su correo quedaba ocupado y ya no se podían matricular) y la cuenta de un aprendiz desertado o egresado se reactivaba sin pasar por su matrícula. | El rol de aprendiz va unido a la matrícula: Usuarios no lo da ni lo quita (salvo a una cuenta que aún no tiene matrícula) ni reactiva a quien dejó la formación; Matrículas completa la cuenta sin ficha en lugar de rechazar su correo. | `CuentasDeAprendizTest` |
 
 ### A02 — Fallos criptográficos
@@ -85,7 +87,9 @@ Severidad: **C** crítica · **A** alta · **M** media · **B** baja.
 | 25 | M | Revisar una evidencia como «rechazada» devolvía a pendiente un RAP en A, sin motivo ni historial. | La revisión y el juicio son decisiones separadas; el juicio pasa por `EvaluacionService` con historial. | `EvidenciasTest` |
 | 26 | M | Cuatro caminos escribían el juicio y dos no dejaban historial (RNF02). | `EvaluacionService` como única puerta de escritura, con transacción y `SELECT … FOR UPDATE`. | `EvaluacionServiceTest` |
 | 42 | M | Un reporte en PDF de más de unas 3.000 filas agotaba los 512 MB de la petición y terminaba en la página de error; basta una ficha de 32 aprendices en un programa de 99 RAP. Cualquier instructor podía repetir esa petición pesada. | El PDF admite hasta 2.000 filas (medido: unos 13 s y 360 MB) y, por encima, pide Excel o CSV antes de componer nada. | `ExportacionCompletaTest` |
-| 43 | B | Las exportaciones y los reportes en Excel y CSV se cortaban en silencio a las 20.000 filas: el archivo parecía completo. | Pasado el tope no se entrega un archivo cortado: se pide filtrar o acotar el periodo. | `ExportacionCompletaTest` |
+| 43 | B | Las exportaciones y los reportes en Excel y CSV se cortaban en silencio a las 20.000 filas (el de aprendices en riesgo, ya a las 5.000): el archivo parecía completo. | Pasado el tope no se entrega un archivo cortado: se pide filtrar o acotar el periodo. | `ExportacionCompletaTest` |
+| 47 | B | Cambiar el rol de una cuenta en Usuarios mientras una matrícula masiva la completaba podía dejar un instructor con matrícula. | La comprobación lee la matrícula con bloqueo, dentro de una transacción. | `CuentasDeAprendizTest::testRolSeComprobaConBloqueo` |
+| 48 | B | Matricular el correo de una cuenta de aprendiz bloqueada la reactivaba sin pasar por Usuarios, y la bitácora no decía qué cuenta se había completado. | Se rechaza hasta desbloquearla; la bitácora registra el nombre y el estado anteriores. | `CuentasDeAprendizTest::testCuentaBloqueadaNoSeCompleta` |
 
 ### A05 — Configuración de seguridad incorrecta
 
